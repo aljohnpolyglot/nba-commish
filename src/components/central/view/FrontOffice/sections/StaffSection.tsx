@@ -10,6 +10,7 @@ import { getStaffImageUrl, deterministicStaffImageId, resolveStaffImageId } from
 import { inferEuroStaffLeagueId } from '../../../../../services/euro/staffPool';
 import { getCoachPhoto, getNBA2KCoach, getTeamStaff, getCoachContract, OWNER_IMAGES } from '../../../../../services/staffService';
 import { StaffSigningModal, type StaffCandidate } from '../StaffSigning/StaffSigningModal';
+import { getStaffMarketSalary, getStaffRoleBaseSalary, normalizeStaffSalary } from '../../../../../services/tycoon/economyScale';
 import { SectionTitle } from '../shared/helpers';
 import { FacilityKpi } from '../shared/FacilityKpi';
 import { PersonnelActionsModal, type PersonnelActionType } from '../../PersonnelActionsModal';
@@ -38,6 +39,7 @@ export const StaffSection: React.FC<{
   const [ratingsPerson, setRatingsPerson] = useState<{ role: string; person: any; years: number; salary: number } | null>(null);
   const [resignPool, setResignPool] = useState<any[] | null>(null);
   const firedRoles: string[] = (team.tycoon?.firedStaffRoles ?? []);
+  const tycoonTier = team.tycoon?.tier;
   const currentYear: number = state.leagueStats?.year ?? new Date().getFullYear();
   const currency: string = state.leagueStats?.currency ?? 'EUR';
   const teamName = getTeamFullName(team);
@@ -115,7 +117,7 @@ export const StaffSection: React.FC<{
     return null;
   };
   const roles = [
-    { role: 'Head Coach', person: resolvePerson('Head Coach', coach), group: 'Coaching', focus: 'Tactics, rotations, game-day decisions', salary: 1_850_000, years: (() => {
+    { role: 'Head Coach', person: resolvePerson('Head Coach', coach), group: 'Coaching', focus: 'Tactics, rotations, game-day decisions', salary: getStaffRoleBaseSalary(tycoonTier, 'Head Coach'), years: (() => {
       const persisted = persistentStaff.get('Head Coach')?.contractYears;
       if (persisted) return persisted;
       // Real contract length from nbacoachescontract gist when available.
@@ -133,23 +135,30 @@ export const StaffSection: React.FC<{
       const ac2 = resolvePerson('Assistant Coach 2', null);
       const ac3 = resolvePerson('Assistant Coach 3', null);
       return [
-        { role: 'Assistant Coach',   person: ac1, group: 'Coaching', focus: 'Training sessions and opponent prep', salary: 620_000, years: persistentStaff.get('Assistant Coach')?.contractYears   ?? (ac1 as any)?.contractYears ?? 0 },
-        { role: 'Assistant Coach 2', person: ac2, group: 'Coaching', focus: 'Training sessions and opponent prep', salary: 580_000, years: persistentStaff.get('Assistant Coach 2')?.contractYears ?? (ac2 as any)?.contractYears ?? 0 },
-        { role: 'Assistant Coach 3', person: ac3, group: 'Coaching', focus: 'Training sessions and opponent prep', salary: 550_000, years: persistentStaff.get('Assistant Coach 3')?.contractYears ?? (ac3 as any)?.contractYears ?? 0 },
+        { role: 'Assistant Coach',   person: ac1, group: 'Coaching', focus: 'Training sessions and opponent prep', salary: getStaffRoleBaseSalary(tycoonTier, 'Assistant Coach'), years: persistentStaff.get('Assistant Coach')?.contractYears   ?? (ac1 as any)?.contractYears ?? 0 },
+        { role: 'Assistant Coach 2', person: ac2, group: 'Coaching', focus: 'Training sessions and opponent prep', salary: getStaffRoleBaseSalary(tycoonTier, 'Assistant Coach 2'), years: persistentStaff.get('Assistant Coach 2')?.contractYears ?? (ac2 as any)?.contractYears ?? 0 },
+        { role: 'Assistant Coach 3', person: ac3, group: 'Coaching', focus: 'Training sessions and opponent prep', salary: getStaffRoleBaseSalary(tycoonTier, 'Assistant Coach 3'), years: persistentStaff.get('Assistant Coach 3')?.contractYears ?? (ac3 as any)?.contractYears ?? 0 },
       ];
     })(),
-    { role: 'Head of Sports Science', person: resolvePerson('Head of Sports Science', null), group: 'Performance', focus: 'Injury prevention and workload monitoring', salary: 540_000, years: persistentStaff.get('Head of Sports Science')?.contractYears ?? 0 },
-    { role: 'Head Physio', person: resolvePerson('Head Physio', null), group: 'Performance', focus: 'Recovery speed and day-to-day availability', salary: 460_000, years: persistentStaff.get('Head Physio')?.contractYears ?? 0 },
+    { role: 'Head of Sports Science', person: resolvePerson('Head of Sports Science', null), group: 'Performance', focus: 'Injury prevention and workload monitoring', salary: getStaffRoleBaseSalary(tycoonTier, 'Head of Sports Science'), years: persistentStaff.get('Head of Sports Science')?.contractYears ?? 0 },
+    { role: 'Head Physio', person: resolvePerson('Head Physio', null), group: 'Performance', focus: 'Recovery speed and day-to-day availability', salary: getStaffRoleBaseSalary(tycoonTier, 'Head Physio'), years: persistentStaff.get('Head Physio')?.contractYears ?? 0 },
     // Player Development Coach — drives off-floor skill growth. Will wire to
     // the player progression engine: their development + motivating attrs
     // multiply per-player progression deltas during the season.
-    { role: 'Player Development Coach', person: resolvePerson('Player Development Coach', null), group: 'Performance', focus: 'Individual workouts and off-season skill growth', salary: 480_000, years: persistentStaff.get('Player Development Coach')?.contractYears ?? 0 },
-    { role: 'Chief Scout', person: resolvePerson('Chief Scout', gm), group: 'Scouting & Analytics', focus: 'Player evaluation and market intelligence', salary: 720_000, years: persistentStaff.get('Chief Scout')?.contractYears ?? 2 },
-    { role: 'Head of Analytics', person: resolvePerson('Head of Analytics', null), group: 'Scouting & Analytics', focus: 'Shot profile, lineup data, and opponent models', salary: 510_000, years: persistentStaff.get('Head of Analytics')?.contractYears ?? 0 },
+    { role: 'Player Development Coach', person: resolvePerson('Player Development Coach', null), group: 'Performance', focus: 'Individual workouts and off-season skill growth', salary: getStaffRoleBaseSalary(tycoonTier, 'Player Development Coach'), years: persistentStaff.get('Player Development Coach')?.contractYears ?? 0 },
+    { role: 'Chief Scout', person: resolvePerson('Chief Scout', gm), group: 'Scouting & Analytics', focus: 'Player evaluation and market intelligence', salary: getStaffRoleBaseSalary(tycoonTier, 'Chief Scout'), years: persistentStaff.get('Chief Scout')?.contractYears ?? 2 },
+    { role: 'Head of Analytics', person: resolvePerson('Head of Analytics', null), group: 'Scouting & Analytics', focus: 'Shot profile, lineup data, and opponent models', salary: getStaffRoleBaseSalary(tycoonTier, 'Head of Analytics'), years: persistentStaff.get('Head of Analytics')?.contractYears ?? 0 },
   ];
-  const filledRoles = roles.filter((r) => r.person).length;
-  const totalCost = roles.reduce((sum, r) => sum + (r.person ? r.salary : 0), 0);
-  const avgSkill = Math.round(roles.reduce((sum, r) => sum + (r.person ? staffOverallFor(r.role, r.person) : 58), 0) / roles.length);
+  const rolesWithLiveSalaries = roles.map(item => {
+    const persisted = persistentStaff.get(item.role);
+    const salary = item.person
+      ? normalizeStaffSalary(tycoonTier, item.role, persisted?.salary ?? item.person?.salary ?? item.salary, persisted?.rating ?? item.person?.rating)
+      : item.salary;
+    return { ...item, salary };
+  });
+  const filledRoles = rolesWithLiveSalaries.filter((r) => r.person).length;
+  const totalCost = rolesWithLiveSalaries.reduce((sum, r) => sum + (r.person ? r.salary : 0), 0);
+  const avgSkill = Math.round(rolesWithLiveSalaries.reduce((sum, r) => sum + (r.person ? staffOverallFor(r.role, r.person) : 58), 0) / rolesWithLiveSalaries.length);
   // Single source of truth for FA candidates: read from state.staffFreeAgents,
   // filter by user's league (so a Manresa GM never sees Euroleague-only FAs)
   // and target position. The pool is guaranteed depth=10 per position via
@@ -157,8 +166,7 @@ export const StaffSection: React.FC<{
   const userLeagueId = inferEuroStaffLeagueId(team.tid ?? team.id ?? 0);
   const candidatePool = useMemo(() => {
     const map = new Map<string, StaffCandidate[]>();
-    for (const r of roles) {
-      const roleIdx = roles.findIndex((roleDef) => roleDef.role === r.role);
+    for (const r of rolesWithLiveSalaries) {
       // Assistant Coach 2/3 are slot variants — they share the 'Assistant Coach'
       // pool. The base role name is what the FA pool tracks.
       const poolRole = r.role.replace(/ \d+$/, '');
@@ -175,15 +183,15 @@ export const StaffSection: React.FC<{
           const seed = seedForStaff(member);
           const attrsFull = buildStaffAttrs(seed);
           const rating = computeStaffOverall(r.role, attrsFull);
-          const baseSalary = roles[Math.max(0, roleIdx)].salary;
-          const salaryMult = 0.55 + (rating - 60) / 60;
+          const baseSalary = getStaffMarketSalary(tycoonTier, r.role, rating);
+          const salaryMult = 0.9 + (rating - 70) / 180;
           return {
             id: member.id ?? `staff-fa-${r.role}-${member.name}-${index}`,
             role: r.role,
             name: member.name,
             nationality: member.nationality ?? 'Unknown',
             flag: getCountryFlag(member.nationality),
-            salary: Math.round((baseSalary * salaryMult) / 10_000) * 10_000,
+            salary: Math.round((baseSalary * salaryMult) / 5_000) * 5_000,
             rating,
             years: Math.max(1, (member.yearsWithTeam ?? 1) + 2),
             face: member.face,
@@ -196,7 +204,7 @@ export const StaffSection: React.FC<{
       map.set(r.role, generated);
     }
     return map;
-  }, [state.staffFreeAgents, userLeagueId, teamName]);
+  }, [state.staffFreeAgents, userLeagueId, teamName, tycoonTier]);
   const renderPortrait = (face: any, initials: string, size = 'w-16 h-20', staffImageId?: number, name?: string, portraitUrl?: string) => {
     // Real photo (from nba2kcoachlist / state.staff.coaches) always wins over
     // the random Staff{N}.png fallback. Without this Ime Udoka rendered as a
@@ -232,7 +240,7 @@ export const StaffSection: React.FC<{
             <section key={group} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
               <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">{group}</div>
               <div className="grid md:grid-cols-2 2xl:grid-cols-3 gap-4">
-                {roles.filter((item) => item.group === group).map((item) => {
+                {rolesWithLiveSalaries.filter((item) => item.group === group).map((item) => {
                   // Real NBA coaches (HC / AC) get curated or seeded gist
                   // values from nbacoachesratings; everyone else falls back
                   // to the local hashed-name seed.
@@ -403,7 +411,7 @@ export const StaffSection: React.FC<{
         <StaffSigningModal
           selectedRole={selectedRole}
           pool={resignPool ?? (candidatePool.get(selectedRole) ?? [])}
-          roleFocus={roles.find((r) => r.role === selectedRole)?.focus ?? ''}
+          roleFocus={rolesWithLiveSalaries.find((r) => r.role === selectedRole)?.focus ?? ''}
           currency={currency}
           // NBA tids (0-99) → USA-only emergency pool. Spaniards/Frenchmen as
           // "limited options" candidates for a Mavs GM was the bug.
@@ -466,8 +474,8 @@ export const StaffSection: React.FC<{
               else if (action === 'promote_to_hc') { onPromoteStaff(person, role, 'Head Coach'); setActionPerson(null); }
               else if (action === 'resign_staff') {
                 const baseRole = role.replace(/ \d+$/, '');
-                const roleIdx = roles.findIndex(r => r.role === role);
-                const baseSalary = roles[Math.max(0, roleIdx)]?.salary ?? 600_000;
+                const roleIdx = rolesWithLiveSalaries.findIndex(r => r.role === role);
+                const baseSalary = rolesWithLiveSalaries[Math.max(0, roleIdx)]?.salary ?? getStaffRoleBaseSalary(tycoonTier, role);
                 const rating = Math.min(95, (member?.rating ?? 72) + 1);
                 const resignCandidate = {
                   id: member?.id ?? `resign-${role}`,

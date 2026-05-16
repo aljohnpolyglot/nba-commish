@@ -143,6 +143,19 @@ export interface FinanceRecapSettings {
   mutedMonth?: string;
 }
 
+export interface OneTimePayout {
+  id?: string;
+  year: number;
+  brand: string;
+  amount: number;
+  kind: 'endorsement' | 'sponsorship';
+  date: string;
+  expiresAfterYear?: number;
+  offerLabel?: string;
+  slotLabel?: string;
+  industry?: SponsorIndustry | 'generic';
+}
+
 export interface PressConferencePendingOption {
   id: 'support' | 'discipline' | 'deflect';
   label: string;
@@ -204,6 +217,7 @@ export interface TycoonState {
   pendingPressConference?: PressConferencePending;
   pendingFinanceRecap?: FinanceRecapPending;
   financeRecapSettings?: FinanceRecapSettings;
+  oneTimePayouts?: OneTimePayout[];
   playerDramaLog?: PlayerDramaLogEntry[];
   /** One-shot marker that the init-heal pass has run for this club.
    *  Once set, tier and tier-derived defaults are NEVER touched by the
@@ -211,6 +225,7 @@ export interface TycoonState {
    *  promotion via Euroleague performance) flows through gameplay events
    *  and should not be reverted by re-loading the save. */
   tierInitHealed?: boolean;
+  staffSalaryScaleHealed?: boolean;
   staffMembers?: Array<{
     id: string;
     role: string;

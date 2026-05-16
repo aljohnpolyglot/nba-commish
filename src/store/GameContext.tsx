@@ -1872,6 +1872,16 @@ const actions = useGameActions(setState, () => stateRef.current);
       const { playerId, sellerTid, askingEUR, durationDays } = action.payload as any;
       const days = durationDays ?? 7;
       const today = stateRef.current.date ?? new Date().toISOString().slice(0, 10);
+      const todayIso = typeof today === 'string' ? today.slice(0, 10) : new Date(today).toISOString().slice(0, 10);
+      const todayYear = parseInt(todayIso.slice(0, 4), 10);
+      const todayMonth = parseInt(todayIso.slice(5, 7), 10);
+      const seasonStartYear = todayMonth >= 7 ? todayYear : todayYear - 1;
+      const seasonStart = `${seasonStartYear}-07-01`;
+      const seasonEnd = `${seasonStartYear + 1}-06-30`;
+      const alreadyTransferred = (stateRef.current.transferActivity ?? []).some((a: any) =>
+        a.playerId === playerId && a.date >= seasonStart && a.date <= seasonEnd,
+      );
+      if (alreadyTransferred) return;
       const newListing: import('../types').TransferListing = {
         id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         playerId,

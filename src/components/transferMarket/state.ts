@@ -84,7 +84,7 @@ function toMockPlayer(p: NBAPlayer, currentYear: number): MockPlayer {
     pot,
     nationality: p.born?.loc ?? '—',
     flag: flagFor(p.born?.loc),
-    contractYearsLeft: Math.max(0, contractExp - currentYear),
+    contractYearsLeft: Math.max(1, contractExp - currentYear),
     annualWageEUR: usdThousandsToEUR(annualUSDK),
     imgURL: (p as any).imgURL,
     face: (p as any).face,

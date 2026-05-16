@@ -1,6 +1,7 @@
 import type { NBATeam } from '../../types';
 import type { AnnualLedger, TycoonState } from '../../types/tycoon';
 import { TIER_BASE } from './specs/spain';
+import { academyBudgetCostEUR, sumStaffPayrollEUR } from './economyScale';
 
 export interface BudgetContext {
   year: number;
@@ -107,16 +108,14 @@ export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayer
   const transfer = 0;
 
   const wages = wagesEUR(team, allPlayers);
-  const staff = Math.round((t.staffMembers ?? []).reduce((sum, s) => sum + (s.salary ?? 0), 0)) || Math.round(wages * 0.10);
+  const staff = sumStaffPayrollEUR(t) || Math.round(wages * 0.10);
   const facilityLevelSum = (t.facilities?.stadium?.level ?? 1)
     + (t.facilities?.trainingCenter?.level ?? 1)
     + (t.facilities?.academy?.level ?? 1);
   const facility = facilityLevelSum * tb.facilityOpsPerLevel;
   const scouting = t.scoutingInvestment ?? tb.scoutingBudget;
   const medical = t.medicalBudget ?? 0;
-  // Academy spending tier → annual EUR cost. Mirror the table in AcademySection.
-  const ACADEMY_COST_BY_TIER = [0, 250_000, 750_000, 1_500_000, 3_000_000, 6_000_000];
-  const academy = ACADEMY_COST_BY_TIER[Math.max(0, Math.min(5, t.academyBudget ?? 0))];
+  const academy = academyBudgetCostEUR(t.academyBudget, t.tier);
   const travelPrefs = t.travelPreferences;
   const travel = travelPrefs
     ? estimateTravelCost(travelPrefs, 17, ctx.euroleagueAwayGames)

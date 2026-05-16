@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { X, CheckCircle2, Star, ArrowRight, Sparkles } from 'lucide-react';
 import { SponsorLogo } from './SponsorLogo';
 import { getBrandMeta } from '../../data/sponsorCatalogFetcher';
@@ -51,18 +51,7 @@ interface Props {
   onStartNegotiation?: () => void;
 }
 
-type Tab = 'overview' | 'brand-profile' | 'activation-rights' | 'financials' | 'comparable-deals';
-
-const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'overview', label: 'OVERVIEW' },
-  { id: 'brand-profile', label: 'BRAND PROFILE' },
-  { id: 'activation-rights', label: 'ACTIVATION RIGHTS' },
-  { id: 'financials', label: 'FINANCIALS' },
-  { id: 'comparable-deals', label: 'COMPARABLE DEALS' },
-];
-
 export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDismiss, onStartNegotiation }) => {
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
   if (!open || !data) return null;
 
   const isEndorsement = data.dealType === 'endorsement';
@@ -134,32 +123,10 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
           />
         </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-1 px-7 border-b border-slate-800">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`relative px-5 py-3 text-xs font-black tracking-widest transition ${
-                activeTab === tab.id ? 'text-violet-300' : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              {tab.label}
-              {activeTab === tab.id && <span className="absolute left-0 right-0 bottom-0 h-[2px] bg-violet-400" />}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab content */}
+        {/* Overview content */}
         <div className="px-7 py-6 space-y-5">
-          {activeTab !== 'overview' ? (
-            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/30 p-12 text-center text-sm text-slate-500">
-              {TABS.find((t) => t.id === activeTab)?.label} — coming soon.
-            </div>
-          ) : (
-            <>
-              {/* Row 1: Sponsorship Details / Deal Breakdown / What X Gets */}
-              <div className="grid lg:grid-cols-3 gap-5">
+          {/* Row 1: Sponsorship Details / Deal Breakdown / What X Gets */}
+          <div className="grid lg:grid-cols-3 gap-5">
                 {/* Sponsorship / Endorsement Details */}
                 <Panel title={detailsPanelTitle}>
                   <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
@@ -317,8 +284,6 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
                   </div>
                 </Panel>
               </div>
-            </>
-          )}
         </div>
 
         {/* Footer */}

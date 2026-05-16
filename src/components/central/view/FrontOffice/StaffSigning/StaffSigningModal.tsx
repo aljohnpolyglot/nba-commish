@@ -304,7 +304,7 @@ export const StaffSigningModal: React.FC<{
                 <div className="text-xs font-black uppercase tracking-widest text-violet-300">Negotiation Package</div>
                 <p className="text-sm text-slate-400 mt-2">Tune the offer. Strength compares against the current ask.</p>
               </div>
-              <SliderRow label="Annual Salary" value={salary} min={200_000} max={3_000_000} step={50_000} onChange={setSalary} formatter={(v) => formatCurrencyWithCode(v, currency, false)} />
+              <SliderRow label="Annual Salary" value={salary} min={Math.max(80_000, Math.round(candidate.salary * 0.65 / 5_000) * 5_000)} max={Math.round(candidate.salary * 1.65 / 5_000) * 5_000} step={5_000} onChange={setSalary} formatter={(v) => formatCurrencyWithCode(v, currency, false)} />
               <SliderRow label="Contract Length" value={years} min={1} max={4} step={1} onChange={setYears} formatter={(v) => `${v} years`} />
               <SliderRow label="Signing Bonus" value={bonus} min={0} max={900_000} step={25_000} onChange={setBonus} formatter={(v) => formatCurrencyWithCode(v, currency, false)} />
               {(() => {

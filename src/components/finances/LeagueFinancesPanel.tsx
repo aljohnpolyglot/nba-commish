@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import type { NBAPlayer } from '../../types';
 import type { TycoonState, TycoonTier } from '../../types/tycoon';
 import { TIER_BASE, getTierForClub } from '../../services/tycoon/specs/spain';
+import { academyBudgetCostEUR, sumStaffPayrollEUR } from '../../services/tycoon/economyScale';
 
 // Structural team shape — works for both NBATeam (`id`, `logoUrl`) and
 // NonNBATeam (`tid`, `imgURL`). The panel resolves the right field at
@@ -91,7 +92,7 @@ function buildFinanceRow(team: FinanceTeamLike, players: NBAPlayer[]): FinanceRo
     sponsorship = ledger.revenue.sponsorship ?? 0;
     tv          = ledger.revenue.tv          ?? 0;
     wages       = ledger.expenses.wages      ?? liveWages;
-    staff       = ledger.expenses.staff      ?? 0;
+    staff       = sumStaffPayrollEUR(t) || (ledger.expenses.staff ?? 0);
     facility    = ledger.expenses.facility   ?? 0;
     scouting    = ledger.expenses.scouting   ?? 0;
     travel      = ledger.expenses.travel     ?? 0;
@@ -144,7 +145,7 @@ function buildFinanceRow(team: FinanceTeamLike, players: NBAPlayer[]): FinanceRo
       matchday = Math.round(wages * 0.32);
     }
 
-    staff = (t?.staffMembers?.reduce((s, m) => s + Number(m.salary ?? 0), 0) ?? 0)
+    staff = sumStaffPayrollEUR(t)
          || Math.round(wages * 0.10);
 
     const facLevels = (t?.facilities?.stadium?.level ?? 1)
@@ -156,9 +157,7 @@ function buildFinanceRow(team: FinanceTeamLike, players: NBAPlayer[]): FinanceRo
 
     travel  = tb ? tb.travelBase : Math.round(wages * 0.06);
     medical = (t?.medicalBudget ?? 0) || Math.round(wages * 0.06);
-    // Academy spending tier → EUR. Same table as budgetEngine + AcademySection.
-    const ACADEMY_COST_BY_TIER = [0, 250_000, 750_000, 1_500_000, 3_000_000, 6_000_000];
-    academy = ACADEMY_COST_BY_TIER[Math.max(0, Math.min(5, t?.academyBudget ?? 0))];
+    academy = academyBudgetCostEUR(t?.academyBudget, tier);
   }
 
   const totalRev   = matchday + sponsorship + tv;

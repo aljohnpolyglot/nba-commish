@@ -176,6 +176,20 @@ export function tickTransferMarket(state: GameState): TickResult {
   // this window decide the per-club caps.
   const settings = state.leagueStats?.transferMarket ?? { summerStart: '07-01', summerEnd: '09-30', winterStart: '01-01', winterEnd: '01-31' };
   const todayY = parseInt(today.slice(0, 4), 10);
+  const todayMonth = parseInt(today.slice(5, 7), 10);
+  const seasonStartYear = todayMonth >= 7 ? todayY : todayY - 1;
+  const transferSeasonStartIso = `${seasonStartYear}-07-01`;
+  const transferSeasonEndIso = `${seasonStartYear + 1}-06-30`;
+  const transferredPlayerIdsThisSeason = new Set(
+    activity
+      .filter(a => a.date >= transferSeasonStartIso && a.date <= transferSeasonEndIso)
+      .map(a => a.playerId),
+  );
+  listings = listings.map(l =>
+    l.status === 'active' && transferredPlayerIdsThisSeason.has(l.playerId)
+      ? { ...l, status: 'expired' as const, daysLeft: 0 }
+      : l,
+  );
   const windowOpenIsoCap = windowStatus.window === 'summer'
     ? `${todayY}-${settings.summerStart}`
     : windowStatus.window === 'winter'
@@ -225,6 +239,7 @@ export function tickTransferMarket(state: GameState): TickResult {
   const newBids: typeof bids = [];
   for (const l of listings) {
     if (l.status !== 'active') continue;
+    if (transferredPlayerIdsThisSeason.has(l.playerId)) continue;
     const player = playerById.get(l.playerId);
     if (!player) continue;
     const fairEUR = estimatePlayerValueEUR(player, currentYear);
@@ -318,6 +333,10 @@ export function tickTransferMarket(state: GameState): TickResult {
   for (const l of listings) {
     if (l.status !== 'active') continue;
     if (l.sellerTid === userTid) continue; // never auto-accept for the user
+    if (transferredPlayerIdsThisSeason.has(l.playerId)) {
+      listings = listings.map(x => x.id === l.id ? { ...x, status: 'expired' as const, daysLeft: 0 } : x);
+      continue;
+    }
     const highest = bids.find(b => b.listingId === l.id && b.status === 'highest');
     if (!highest) continue;
     const meetsAsk = highest.amountEUR >= l.askingEUR;
@@ -362,6 +381,7 @@ export function tickTransferMarket(state: GameState): TickResult {
           bidType: highest.bidType,
         },
       ];
+      transferredPlayerIdsThisSeason.add(highest.playerId);
       // Close listing + losing bids
       listings = listings.map(x => x.id === l.id ? { ...x, status: 'sold' as const, daysLeft: 0 } : x);
       bids = bids.map(b => {
@@ -442,7 +462,7 @@ export function tickTransferMarket(state: GameState): TickResult {
       if (roster.length < 13) continue;
       const candidates = roster.filter(p => {
         const ovr2k = Math.round(convertTo2KRating(p.overallRating ?? 60));
-        return ovr2k >= 60 && ovr2k <= 82 && !alreadyListed.has(p.internalId);
+        return ovr2k >= 60 && ovr2k <= 82 && !alreadyListed.has(p.internalId) && !transferredPlayerIdsThisSeason.has(p.internalId);
       });
       if (candidates.length === 0) continue;
       const pick = candidates[Math.floor(rng() * candidates.length)];

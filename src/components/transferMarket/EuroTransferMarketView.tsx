@@ -171,7 +171,11 @@ const HeaderStrip: React.FC = () => {
     <div className="bg-slate-900/60 border-b border-slate-800/60 px-6 py-3 flex items-center justify-between">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white border-2 border-white/20" style={{ background: club.colorHex }}>
-          {club.shortName}
+          {club.logoUrl ? (
+            <img src={club.logoUrl} alt={club.name} className="w-full h-full object-contain p-1" />
+          ) : (
+            club.shortName
+          )}
         </div>
         <div>
           <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{club.name} · Front Office</div>
@@ -1265,11 +1269,45 @@ const TransferCompleteModal: React.FC<{
 const BrowseMarketTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPlayer }) => {
   const { browseListings, actions, window: w } = useTransferMarketContext();
   const [selected, setSelected] = useState<BrowseListing | null>(null);
+  const [sort, setSort] = useState<{ key: 'ovr' | 'pot' | 'contract' | 'asking' | 'highestBid' | 'left'; dir: 'asc' | 'desc' }>({ key: 'asking', dir: 'desc' });
   // Session-local "ignored listings" — user hides ones they don't care about.
   // Stored as a Set of listing ids. Resets when the user re-enters the tab.
   const [ignored, setIgnored] = useState<Set<string>>(new Set());
-  const visibleListings = browseListings.filter(b => !ignored.has(b.id));
+  const visibleListings = useMemo(() => {
+    const valueFor = (b: BrowseListing): number => {
+      switch (sort.key) {
+        case 'ovr': return b.player.ovr;
+        case 'pot': return b.player.pot;
+        case 'contract': return b.player.contractYearsLeft;
+        case 'asking': return b.askingEUR;
+        case 'highestBid': return b.highestBidEUR;
+        case 'left': return b.daysLeft;
+      }
+    };
+    return browseListings
+      .filter(b => !ignored.has(b.id))
+      .slice()
+      .sort((a, b) => {
+        const diff = valueFor(a) - valueFor(b);
+        return sort.dir === 'asc' ? diff : -diff;
+      });
+  }, [browseListings, ignored, sort]);
   const ignoredCount = browseListings.length - visibleListings.length;
+  const toggleSort = (key: typeof sort.key) => {
+    setSort(prev => prev.key === key
+      ? { key, dir: prev.dir === 'desc' ? 'asc' : 'desc' }
+      : { key, dir: 'desc' });
+  };
+  const SortHead: React.FC<{ id: typeof sort.key; label: string; align?: 'left' | 'center' | 'right' }> = ({ id, label, align = 'left' }) => (
+    <button
+      onClick={() => toggleSort(id)}
+      className={`uppercase tracking-wider hover:text-amber-300 transition-colors ${align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left'}`}
+      title={`Sort by ${label}`}
+    >
+      {label} {sort.key === id && <span className="text-amber-300">{sort.dir === 'desc' ? '▼' : '▲'}</span>}
+    </button>
+  );
+  const browseGrid = '3fr 0.55fr 0.55fr 1.15fr 1.9fr 1.25fr 1.25fr 0.65fr 1.25fr 0.85fr';
 
   // Clear selection when the underlying listing disappears (sold/expired).
   React.useEffect(() => {
@@ -1304,14 +1342,15 @@ const BrowseMarketTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenP
         </div>
 
         <div className="bg-slate-800/40 rounded-2xl border border-slate-800/50 overflow-hidden">
-          <div className="grid gap-2 px-4 py-2 bg-slate-900/60 text-[9px] uppercase tracking-wider text-slate-500 font-bold" style={{ gridTemplateColumns: '3fr 0.6fr 0.6fr 2fr 1.5fr 1.5fr 0.7fr 1.4fr 0.9fr' }}>
+          <div className="grid gap-2 px-4 py-2 bg-slate-900/60 text-[9px] uppercase tracking-wider text-slate-500 font-bold" style={{ gridTemplateColumns: browseGrid }}>
             <div>Player</div>
-            <div className="text-center">OVR</div>
-            <div className="text-center">POT</div>
+            <SortHead id="ovr" label="OVR" align="center" />
+            <SortHead id="pot" label="POT" align="center" />
+            <SortHead id="contract" label="Contract" />
             <div>Selling Club</div>
-            <div>Asking</div>
-            <div>Highest Bid</div>
-            <div className="text-right">Left</div>
+            <SortHead id="asking" label="Asking" />
+            <SortHead id="highestBid" label="Highest Bid" />
+            <SortHead id="left" label="Left" align="right" />
             <div className="text-right">Action</div>
             <div className="text-right">Ignore</div>
           </div>
@@ -1326,14 +1365,20 @@ const BrowseMarketTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenP
             <div
               key={b.id}
               className="grid gap-2 px-4 py-3 items-center border-t border-slate-800/40 hover:bg-slate-800/30 transition-colors"
-              style={{ gridTemplateColumns: '3fr 0.6fr 0.6fr 2fr 1.5fr 1.5fr 0.7fr 1.4fr 0.9fr' }}
+              style={{ gridTemplateColumns: browseGrid }}
             >
               <div><PlayerCell p={b.player} small onOpen={onOpenPlayer} /></div>
               <div className="flex justify-center"><RatingBadge label="OVR" value={b.player.ovr} small /></div>
               <div className="flex justify-center"><RatingBadge label="POT" value={b.player.pot} small /></div>
+              <div>
+                <div className="text-xs font-black text-white tabular-nums">{b.player.contractYearsLeft}y</div>
+                <div className="text-[9px] font-bold text-slate-500 tabular-nums">{fmtEUR(b.player.annualWageEUR)}/yr</div>
+              </div>
               <div><ClubChip c={b.club} small /></div>
               <div className="text-xs font-black text-white">{fmtEUR(b.askingEUR)}</div>
-              <div className={`text-xs font-black ${b.highestBidEUR >= b.askingEUR ? 'text-emerald-300' : 'text-amber-300'}`}>{fmtEUR(b.highestBidEUR)}</div>
+              <div className={`text-xs font-black ${b.highestBidEUR <= 0 ? 'text-slate-500' : b.highestBidEUR >= b.askingEUR ? 'text-emerald-300' : 'text-amber-300'}`}>
+                {b.highestBidEUR > 0 ? fmtEUR(b.highestBidEUR) : 'No bids'}
+              </div>
               <div className="text-right text-[10px] font-bold text-amber-300">{b.daysLeft}d</div>
               <div className="flex justify-end">
                 <button

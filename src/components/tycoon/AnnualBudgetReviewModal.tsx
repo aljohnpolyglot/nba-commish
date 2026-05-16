@@ -3,6 +3,7 @@ import { CheckCircle2, HeartPulse, Lock, Plane, Search, Ticket, Trophy, X } from
 import type { NBATeam } from '../../types';
 import type { TravelPreferences } from '../../types/tycoon';
 import { computeAnnualBudget } from '../../services/tycoon/budgetEngine';
+import { ACADEMY_COST_BY_TIER, defaultAcademyBudgetForTier } from '../../services/tycoon/economyScale';
 import { MEDICAL_BUDGET_MAX_EUR, MEDICAL_BUDGET_MIN_EUR } from '../../services/tycoon/medicalEngine';
 import { formatCurrencyWithCode } from '../../utils/helpers';
 
@@ -32,8 +33,6 @@ const TRAVEL_DEFAULTS: Record<string, TravelPreferences> = {
   D: { hotel: 3.0, flight: 2.5, bus: 2.5 },
 };
 
-const ACADEMY_COST_BY_TIER = [0, 250_000, 750_000, 1_500_000, 3_000_000, 6_000_000];
-
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -46,7 +45,7 @@ function initialValues(team: NBATeam | null): AnnualBudgetReviewValues {
     travelPreferences: tycoon?.travelPreferences ?? travelDefaults,
     medicalBudget: tycoon?.medicalBudget ?? MEDICAL_BUDGET_MIN_EUR,
     scoutingInvestment: tycoon?.scoutingInvestment ?? 250_000,
-    academyBudget: tycoon?.academyBudget ?? 0,
+    academyBudget: tycoon?.academyBudget ?? defaultAcademyBudgetForTier(tycoon?.tier),
   };
 }
 

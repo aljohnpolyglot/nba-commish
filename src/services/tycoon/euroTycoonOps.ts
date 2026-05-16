@@ -2,6 +2,7 @@ import type { GameState, NBATeam, NBAPlayer } from '../../types';
 import type { BoardPromise, FinanceRecapLine, SponsorReview, TycoonState } from '../../types/tycoon';
 import { ALL_SLOTS } from '../../types/tycoon';
 import { getSponsorConflictWarnings } from './sponsorshipEngine';
+import { sumStaffPayrollEUR } from './economyScale';
 
 interface EuroTycoonOpsResult {
   teams: NBATeam[];
@@ -34,7 +35,7 @@ function rosterWages(players: NBAPlayer[], tid: number): number {
 }
 
 function staffWages(tycoon: TycoonState): number {
-  return Math.round((tycoon.staffMembers ?? []).reduce((sum, s) => sum + (s.salary ?? 0), 0));
+  return sumStaffPayrollEUR(tycoon);
 }
 
 function seedPromises(year: number, tycoon: TycoonState): BoardPromise[] {

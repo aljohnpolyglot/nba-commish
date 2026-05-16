@@ -243,6 +243,7 @@ export function dekrementSponsorshipYears(state: TycoonState): void {
       state.sponsorships[slot] = null;
     }
   });
+  state.oneTimePayouts = [];
 }
 
 export function seedInitialSponsorships(

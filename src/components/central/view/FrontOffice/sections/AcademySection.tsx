@@ -6,6 +6,7 @@ import {
 import type { TycoonState } from '../../../../../types/tycoon';
 import { convertTo2KRating, computeAge } from '../../../../../utils/helpers';
 import { MyFace, isRealFaceConfig } from '../../../../shared/MyFace';
+import { defaultAcademyBudgetForTier } from '../../../../../services/tycoon/economyScale';
 
 function potColor(pot: number): string {
   if (pot >= 80) return 'text-emerald-300';
@@ -59,7 +60,7 @@ export const AcademySection: React.FC<AcademySectionProps> = ({
 }) => {
   const level = tycoon.facilities.academy.level;
   const rating = 54 + level * 9;
-  const budget = (tycoon as any).academyBudget ?? level; // fallback to facility level for legacy saves
+  const budget = (tycoon as any).academyBudget ?? defaultAcademyBudgetForTier(tycoon.tier);
   const budgetTier = ACADEMY_BUDGET_TIERS[Math.max(0, Math.min(5, budget))];
 
   const youthPlayers = useMemo(() => {

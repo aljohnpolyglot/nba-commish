@@ -32,7 +32,7 @@ import RetiredPlayersReviewModal from './views/RetiredPlayersReviewView';
 import HOFCeremonyModal from './views/HOFCeremonyView';
 import { useExpiringResignGate } from '../../hooks/useExpiringResignGate';
 import { getOffseasonState, computeDraftSeasonYear, computeUpcomingSeasonYear } from '../../services/offseason/offseasonState';
-import { isInTransferWindow } from '../../utils/transferWindow';
+import { getTransferMarketSettings, isInTransferWindow } from '../../utils/transferWindow';
 import { PlayerProtectionModal } from '../expansion/PlayerProtectionModal';
 import { ExpansionDraftView } from '../expansion/ExpansionDraftView';
 import { YouthPromotionPanel } from '../central/view/FrontOffice/sections/AcademySection';
@@ -430,9 +430,17 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       : new Date(state.date ?? '').toISOString().slice(0, 10);
     const closeIso = ws.currentClose.toISOString().slice(0, 10);
     const msPerDay = 86_400_000;
-    const daysLeft = Math.max(0, Math.round((new Date(closeIso).getTime() - new Date(todayIso).getTime()) / msPerDay));
-    const total = ws.window === 'summer' ? 92 : 31;
-    const current = Math.max(1, total - daysLeft + 1);
+    const settings = getTransferMarketSettings(state.leagueStats);
+    const startMMDD = ws.window === 'summer' ? settings.summerStart : settings.winterStart;
+    const [startMonth, startDay] = startMMDD.split('-').map((n: string) => parseInt(n, 10));
+    const todayDate = new Date(`${todayIso}T00:00:00Z`);
+    const closeDate = new Date(`${closeIso}T00:00:00Z`);
+    let startDate = new Date(Date.UTC(closeDate.getUTCFullYear(), startMonth - 1, startDay));
+    if (startDate.getTime() > closeDate.getTime()) {
+      startDate = new Date(Date.UTC(closeDate.getUTCFullYear() - 1, startMonth - 1, startDay));
+    }
+    const total = Math.max(1, Math.round((closeDate.getTime() - startDate.getTime()) / msPerDay) + 1);
+    const current = Math.max(1, Math.min(total, Math.round((todayDate.getTime() - startDate.getTime()) / msPerDay) + 1));
     return { current, total };
   }, [isEuroMode, state.date, state.leagueStats, checklist?.transferMarket]);
   const confirmActionRef = useRef<(() => void) | null>(null);
@@ -1060,14 +1068,22 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       const TYPED_SLOTS: SponsorshipSlot[] = ['kit', 'sleeve', 'back', 'shorts', 'training', 'court', 'stadium', 'practice'];
       const emptySlotCount = TYPED_SLOTS.filter((s) => !sponsorships[s]).length;
       if (expiredSponsorCount === 0 && emptySlotCount === 0) {
+        const activeEndorsements = ((userTeam as any)?.tycoon?.oneTimePayouts ?? []).filter((p: any) => p.kind === 'endorsement').length;
+        const endorsementSlotsLeft = Math.max(0, 4 - activeEndorsements);
         openStepConfirm(
           {
             eyebrow: 'Front Office',
             title: 'Sponsorship Review',
-            body: 'All sponsorship slots are active and not up for renewal. You can review deals anytime in the Front Office.',
-            confirmLabel: 'Continue',
+            body: endorsementSlotsLeft > 0
+              ? `No sponsorship slots expire this year, but you still have ${endorsementSlotsLeft}/4 extra endorsement slot${endorsementSlotsLeft === 1 ? '' : 's'} open for one-year brand campaigns. Review the open market before closing sponsor renewals.`
+              : 'All sponsorship slots are active and your four extra endorsement slots are already used for this season.',
+            confirmLabel: endorsementSlotsLeft > 0 ? 'Review Endorsements' : 'Complete Review',
           },
           () => {
+            if (endorsementSlotsLeft > 0) {
+              dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row: 'sponsorRenewals' } } as any);
+              return;
+            }
             dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'sponsorRenewals' } } as any);
           },
         );

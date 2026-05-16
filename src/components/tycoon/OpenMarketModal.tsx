@@ -24,6 +24,7 @@ type DealCategory =
   | 'automotive' | 'technology' | 'beverage' | 'travel' | 'gambling' | 'local-business' | 'other';
 type OfferStatus = 'interested' | 'negotiation' | 'neutral' | 'not-interested';
 type DealType = 'sponsorship' | 'endorsement';
+const ENDORSEMENT_SLOT_CAP = 4;
 
 interface MockOffer {
   id: string;
@@ -381,6 +382,9 @@ export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
   const tier: TycoonTier = tycoon?.tier ?? 'A';
   const currency = state?.leagueStats?.currency ?? 'EUR';
   const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
+  const activeEndorsements = ((tycoon?.oneTimePayouts ?? []) as any[]).filter((p) => p.kind === 'endorsement');
+  const activeEndorsementBrands = new Set(activeEndorsements.map((p) => p.brand).filter(Boolean));
+  const endorsementCapReached = activeEndorsements.length >= ENDORSEMENT_SLOT_CAP;
 
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('potential-high');
@@ -417,10 +421,15 @@ export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
 
   const availableCount = useMemo(() => {
     const sponsorships = tycoon?.sponsorships ?? {};
-    const signedBrands = new Set(Object.values(sponsorships).map((s: any) => s?.sponsor).filter(Boolean));
+    const signedBrands = new Set([
+      ...Object.values(sponsorships).map((s: any) => s?.sponsor).filter(Boolean),
+      ...((tycoon?.oneTimePayouts ?? []) as any[]).filter((p) => p.kind === 'endorsement').map((p) => p.brand).filter(Boolean),
+    ]);
+    const endorsementsSigned = ((tycoon?.oneTimePayouts ?? []) as any[]).filter((p) => p.kind === 'endorsement').length;
     return allOffers.filter((o) => {
       if (o.interestLevel === 'not-interested') return false;
       if (signedBrands.has(o.brand)) return false;
+      if (o.dealType === 'endorsement' && endorsementsSigned >= ENDORSEMENT_SLOT_CAP) return false;
       if (o.dealType !== 'endorsement') {
         const isKitFamily = (KIT_FAMILY_SLOTS as string[]).includes(o.slot);
         if (isKitFamily && KIT_FAMILY_SLOTS.every((s) => sponsorships[s])) return false;
@@ -537,6 +546,11 @@ export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
         <div className="flex items-center gap-3 px-7 py-3 border-b border-slate-800">
           <span className="text-xs font-black uppercase tracking-widest text-emerald-300">Interested Sponsors</span>
           <span className="inline-flex items-center justify-center min-w-[26px] h-[22px] rounded-full px-2 text-[11px] font-black bg-emerald-500/25 text-emerald-300">{availableCount}</span>
+          <span className={`ml-auto inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-widest ${
+            endorsementCapReached ? 'border-amber-400/40 bg-amber-400/10 text-amber-200' : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+          }`}>
+            Endorsements {Math.min(activeEndorsements.length, ENDORSEMENT_SLOT_CAP)}/{ENDORSEMENT_SLOT_CAP}
+          </span>
           <span className="absolute left-0 right-0 bottom-0 h-[2px] bg-emerald-400 hidden" />
         </div>
 
@@ -681,12 +695,16 @@ export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
                           ? KIT_FAMILY_SLOTS.every((s) => Boolean(tycoon?.sponsorships?.[s]))
                           : Boolean(tycoon?.sponsorships?.[o.slot])
                       );
-                      const brandAlreadySigned = Object.values(tycoon?.sponsorships ?? {}).some(
+                      const sponsorBrandAlreadySigned = Object.values(tycoon?.sponsorships ?? {}).some(
                         (s: any) => s?.sponsor === o.brand,
                       );
+                      const endorsementAlreadySigned = activeEndorsementBrands.has(o.brand);
                       const industryConflict = conflictIndustries.has(o.industry);
-                      const unavailable = o.interestLevel === 'not-interested' || slotOccupied || industryConflict || brandAlreadySigned;
-                      const unavailReason = brandAlreadySigned ? 'Brand already partnered with club'
+                      const endorsementBlocked = o.dealType === 'endorsement' && endorsementCapReached && !endorsementAlreadySigned;
+                      const unavailable = o.interestLevel === 'not-interested' || slotOccupied || industryConflict || sponsorBrandAlreadySigned || endorsementAlreadySigned || endorsementBlocked;
+                      const unavailReason = endorsementAlreadySigned ? 'Endorsement already signed this season'
+                        : sponsorBrandAlreadySigned ? 'Brand already partnered with club'
+                        : endorsementBlocked ? 'Endorsement cap reached'
                         : slotOccupied ? 'Slot already filled'
                         : industryConflict ? 'Conflicts with current sponsor'
                         : o.interestLevel === 'not-interested' ? 'Not interested'
@@ -744,7 +762,7 @@ export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
                                   : 'border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10'
                               }`}
                             >
-                              {unavailable ? 'Unavailable' : o.dealType === 'endorsement' ? 'View Details' : 'View Offer'}
+                              {endorsementAlreadySigned ? 'Signed' : unavailable ? 'Unavailable' : o.dealType === 'endorsement' ? 'View Details' : 'View Offer'}
                             </button>
                           </td>
                         </tr>
@@ -791,17 +809,23 @@ export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
           const year = state?.leagueStats?.year ?? new Date().getFullYear();
           // One-time community / endorsement deal — immediate payout, no ongoing slot occupation.
           if (negotiationOffer.oneTime) {
+            if (negotiationOffer.dealType === 'endorsement' && ((tycoon?.oneTimePayouts ?? []) as any[]).filter((p) => p.kind === 'endorsement').length >= ENDORSEMENT_SLOT_CAP) return;
             const payout = sub.valuePerYear;
             const brand = negotiationOffer.brand;
             applyTycoonMutation(userTeamId, (t: any) => {
               t.tycoon.cashOnHand = (t.tycoon.cashOnHand ?? 0) + payout;
               const ledger: any[] = t.tycoon.oneTimePayouts ?? (t.tycoon.oneTimePayouts = []);
               ledger.push({
+                id: `one-time-${year}-${brand.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
                 year,
                 brand,
                 amount: payout,
                 kind: negotiationOffer.dealType === 'endorsement' ? 'endorsement' : 'sponsorship',
                 date: new Date().toISOString().slice(0, 10),
+                expiresAfterYear: year + 1,
+                offerLabel: negotiationOffer.offerLabel,
+                slotLabel: negotiationOffer.slotLabel,
+                industry: negotiationOffer.industry,
               });
             });
             return;

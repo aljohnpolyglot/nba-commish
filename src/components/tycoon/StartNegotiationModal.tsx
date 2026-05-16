@@ -119,6 +119,7 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
   const seasonRange = `${startYear}/${String(startYear + 1).slice(-2)} – ${endYear - 1}/${String(endYear).slice(-2)}`;
   const exclusivityDefault = EXCLUSIVITY_DEFAULT_BY_SLOT[slot];
   const benefits = getSponsorPerks(slot);
+  const includedBenefits = benefits.slice(0, Math.max(1, Math.min(benefits.length, strength.lit)));
 
   const handleSubmit = () => {
     onSubmit?.({
@@ -229,8 +230,8 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
             <Panel title={data.oneTime ? 'Deal Type' : 'Contract Length'}>
               {data.oneTime ? (
                 <div>
-                  <div className="text-sm font-bold text-white">{data.dealTypeLabel ?? 'One-Time Campaign'}</div>
-                  <div className="text-xs text-slate-500 mt-1">Immediate payout on signing — no recurring contract.</div>
+                  <div className="text-sm font-bold text-white">{data.dealTypeLabel ?? 'One-Year Campaign'}</div>
+                  <div className="text-xs text-slate-500 mt-1">Paid immediately, active this season, cleared at year rollover.</div>
                 </div>
               ) : (
                 <>
@@ -268,13 +269,16 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
           <div className="space-y-4">
             <Panel title="Benefits Included">
               <ul className="space-y-2">
-                {benefits.map((b) => (
+                {includedBenefits.map((b) => (
                   <li key={b} className="flex items-start gap-2.5 text-sm text-slate-200">
                     <CheckCircle2 size={16} className="text-emerald-400 mt-0.5 shrink-0" />
                     <span>{b}</span>
                   </li>
                 ))}
               </ul>
+              <div className="mt-3 text-xs text-slate-500">
+                Higher offers unlock more sponsor visibility. Low offers reduce placement inventory.
+              </div>
             </Panel>
 
             <Panel title="Estimated Value">
@@ -303,13 +307,13 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
             Cancel
           </button>
           <div className="flex-1 text-center text-xs text-slate-500">
-            ⓘ You can make changes to your offer before submitting.
+            Offer amount controls brand visibility and offer strength.
           </div>
           <button
             onClick={handleSubmit}
             className="px-7 py-2.5 rounded-lg bg-violet-500 hover:bg-violet-400 text-white text-sm font-bold"
           >
-            Submit Offer
+            {data.oneTime ? 'Sign Deal' : 'Submit Offer'}
           </button>
         </div>
       </div>
@@ -328,7 +332,7 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
                   Signed a one-time deal with <span className="font-bold text-white">{confirmation.brand}</span> for{' '}
                   <span className="font-bold text-emerald-300">{fmt(confirmation.value)}</span>.
                 </p>
-                <p className="mt-2 text-xs text-slate-500">Cash hits the books immediately and lands in this year's endorsement ledger.</p>
+                <p className="mt-2 text-xs text-slate-500">Cash hits immediately, the deal stays visible this season, and rollover clears the slot.</p>
               </>
             ) : (
               <>

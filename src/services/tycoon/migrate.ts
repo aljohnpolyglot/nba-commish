@@ -3,6 +3,7 @@ import type { TycoonState } from '../../types/tycoon';
 import { TIER_BASE, getTierForClub, getCityPrestige, SPAIN_INITIAL_SPONSORS } from './specs/spain';
 import { classifySponsor, seedInitialSponsorships } from './sponsorshipEngine';
 import { ALL_SLOTS } from '../../types/tycoon';
+import { defaultAcademyBudgetForTier, getStaffMarketSalary, normalizeStaffSalary } from './economyScale';
 
 type TycoonHost = NBATeam | NonNBATeam;
 
@@ -71,6 +72,64 @@ function seedBoardPromises(currentYear: number, t: TycoonState): TycoonState['bo
   ];
 }
 
+const TYCOON_STAFF_ROLES = [
+  'Head Coach',
+  'Assistant Coach',
+  'Assistant Coach 2',
+  'Assistant Coach 3',
+  'Head of Sports Science',
+  'Head Physio',
+  'Player Development Coach',
+  'Chief Scout',
+  'Head of Analytics',
+] as const;
+
+function hashSeed(key: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function seedDefaultStaffMembers(team: TycoonHost, tier: TycoonState['tier'], currentYear: number): TycoonState['staffMembers'] {
+  const teamKey = `${(team as any).name ?? (team as any).region ?? 'club'}-${(team as any).tid ?? (team as any).id ?? 0}`;
+  const firstNames = ['Adrian', 'Bruno', 'Carlos', 'Diego', 'Esteban', 'Javier', 'Luis', 'Marco', 'Nico', 'Rafael', 'Sergio', 'Tomas'];
+  const lastNames = ['Alonso', 'Cabrera', 'Delgado', 'Herrera', 'Iglesias', 'Lopez', 'Morales', 'Navarro', 'Ortega', 'Romero', 'Santos', 'Vidal'];
+  return TYCOON_STAFF_ROLES.map((role, index) => {
+    const seed = hashSeed(`${teamKey}-${role}`);
+    const rating = 58 + (seed % 24);
+    const first = firstNames[(seed + index) % firstNames.length];
+    const last = lastNames[((seed >>> 4) + index * 3) % lastNames.length];
+    return {
+      id: `staff-${teamKey.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${role.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      role,
+      name: `${first} ${last}`,
+      nationality: 'Spain',
+      salary: getStaffMarketSalary(tier, role, rating),
+      contractYears: 1 + (seed % 4),
+      rating,
+      hiredYear: currentYear - 1,
+    };
+  });
+}
+
+function ensureDefaultStaffMembers(team: TycoonHost, currentYear: number): void {
+  const t: TycoonState = (team as any).tycoon;
+  if (!t) return;
+  const existing = Array.isArray(t.staffMembers) ? t.staffMembers : [];
+  if (existing.length === 0) {
+    t.staffMembers = seedDefaultStaffMembers(team, t.tier, currentYear);
+    return;
+  }
+  const byRole = new Map(existing.map(member => [member.role, member]));
+  const missing = TYCOON_STAFF_ROLES.filter(role => !byRole.has(role));
+  if (missing.length === 0) return;
+  const seeded = seedDefaultStaffMembers(team, t.tier, currentYear);
+  t.staffMembers = [...existing, ...seeded.filter(member => missing.includes(member.role as any))];
+}
+
 export function migrateTeamTycoon(team: TycoonHost, currentYear: number): void {
   if ((team as any).tycoon) return;
   const tier = getTierForClub((team as any).name ?? (team as any).region ?? '');
@@ -92,8 +151,9 @@ export function migrateTeamTycoon(team: TycoonHost, currentYear: number): void {
     medicalBudget: defaultMedicalBudgetForTier(tier),
     travelPreferences: defaultTravelPreferencesForTier(tier),
     scoutingInvestment: defaultScoutingInvestmentForTier(tier),
+    academyBudget: defaultAcademyBudgetForTier(tier),
     boardPromises: [],
-    staffMembers: [],
+    staffMembers: seedDefaultStaffMembers(team, tier, currentYear),
     tierInitHealed: true,
   } as TycoonState;
   // Seed board promises after creation (needs t.cashOnHand etc)
@@ -152,9 +212,18 @@ export function upgradeExistingTycoon(
   if (t.ticketPriceMultiplier === undefined) t.ticketPriceMultiplier = 1.0;
   if (t.medicalBudget === undefined) t.medicalBudget = defaultMedicalBudgetForTier(t.tier);
   if (t.scoutingInvestment === undefined) t.scoutingInvestment = defaultScoutingInvestmentForTier(t.tier);
+  if (t.academyBudget === undefined) t.academyBudget = defaultAcademyBudgetForTier(t.tier);
   if (t.travelPreferences === undefined) t.travelPreferences = defaultTravelPreferencesForTier(t.tier);
   if (!Array.isArray(t.boardPromises)) t.boardPromises = seedBoardPromises(currentYear, t);
   if (!Array.isArray(t.staffMembers)) t.staffMembers = [];
+  ensureDefaultStaffMembers(team, currentYear);
+  if (!t.staffSalaryScaleHealed) {
+    t.staffMembers = t.staffMembers.map(member => ({
+      ...member,
+      salary: normalizeStaffSalary(t.tier, member.role, member.salary, member.rating),
+    }));
+    t.staffSalaryScaleHealed = true;
+  }
 
   // Heal incomplete facilities (older saves may have only stadium set)
   const f = t.facilities ?? ({} as any);

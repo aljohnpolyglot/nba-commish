@@ -1863,15 +1863,9 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
             </div>
 
             <div className="sticky bottom-0 z-40 px-3 sm:px-8 xl:px-10 py-3 sm:py-6 bg-black/80 backdrop-blur-xl border-t border-white/10 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-end shrink-0 shadow-[0_-18px_40px_rgba(0,0,0,0.45)]">
-              {cashGateDeficit && (
-                <div className={`w-full sm:max-w-xl rounded-sm border px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${
-                  cashGateOverride
-                    ? 'border-rose-500/40 bg-rose-500/10 text-rose-200'
-                    : 'border-amber-500/40 bg-amber-500/10 text-amber-200'
-                }`}>
-                  {cashGateOverride
-                    ? `Owner alarm active - this deal projects year-end cash at ${moneyPrecise(Math.abs(projectedCashAfterDeal ?? 0), 2)} below zero.`
-                    : `Cash warning - this deal pushes projected year-end cash below zero. Submit again to override with an owner-confidence hit.`}
+              {cashGateDeficit && cashGateOverride && (
+                <div className="w-full sm:max-w-xl rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-200">
+                  {`Cash warning - this deal projects year-end cash ${moneyPrecise(Math.abs(projectedCashAfterDeal ?? 0), 2)} below zero. Submit again to override with an owner-confidence hit.`}
                 </div>
               )}
               <div className="flex w-full sm:w-auto gap-2 sm:gap-3 flex-nowrap justify-end">
