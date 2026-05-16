@@ -11,6 +11,8 @@ import { pushToast } from '../shared/ToastNotifier';
 import { getCurrentOffseasonFAMoratoriumEnd, parseGameDate } from '../../utils/dateUtils';
 import { classifyResignIntent } from '../central/view/PlayerBioMoraleTab';
 import { computeMoodScore, normalizeMoodTraits } from '../../utils/mood/moodScore';
+import { getActiveLeagueTeams, resolveAnyTeam } from '../../utils/teamLookup';
+import { isEuroIsolatedMode } from '../../utils/uiMode';
 
 interface SigningDetails {
   playerId: string;
@@ -39,9 +41,10 @@ interface SignFreeAgentModalProps {
 export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose, onConfirm, initialPlayer, initialTeam, forceContractType }) => {
   const { state, dispatchAction } = useGame();
   const isGM = state.gameMode === 'gm';
+  const euroIsolated = isEuroIsolatedMode(state);
   const userTeam = useMemo(
-    () => (isGM && state.userTeamId != null ? state.teams.find(t => t.id === state.userTeamId) ?? null : null),
-    [isGM, state.userTeamId, state.teams],
+    () => (isGM && state.userTeamId != null ? resolveAnyTeam(state.userTeamId, state.teams, state.nonNBATeams ?? []) : null),
+    [isGM, state.userTeamId, state.teams, state.nonNBATeams],
   );
 
   type Step = 'player' | 'team' | 'negotiate';
@@ -63,11 +66,12 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
     return state.players.filter(p => {
       if (p.status === 'Retired' || p.status === 'WNBA' || p.tid === -100) return false;
       if (p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect') return false;
+      if (euroIsolated && (p.tid ?? -1) >= 0) return false;
       const isInternational = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '');
       const isNBAFreeAgent = p.tid === -1 || p.status === 'Free Agent';
       return isInternational || isNBAFreeAgent;
     });
-  }, [state.players]);
+  }, [state.players, euroIsolated]);
 
   const filteredPlayers = useMemo(() => {
     return freeAgents.filter(p =>
@@ -76,11 +80,12 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
   }, [freeAgents, searchTerm]);
 
   const filteredTeams = useMemo(() => {
-    return state.teams.filter(t =>
+    const teams = euroIsolated ? getActiveLeagueTeams(state) : state.teams;
+    return teams.filter(t =>
       t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.abbrev.toLowerCase().includes(searchTerm.toLowerCase())
     ).sort((a, b) => a.name.localeCompare(b.name));
-  }, [state.teams, searchTerm]);
+  }, [state, euroIsolated, searchTerm]);
 
   // In negotiation step, SigningModal is the source of truth.
   // Commissioner mode auto-accepts the offer (executive authority); GM must win the interest check.
@@ -262,7 +267,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
                                 <div className="text-sm font-bold truncate text-white">{player.name}</div>
                                 <div className="text-xs text-slate-500">
                                     {player.pos} • OVR: {convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp)}
-                                    {['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '') && (
+                                    {!euroIsolated && ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '') && (
                                         <span className="ml-1 text-indigo-400 font-bold tracking-tighter">• {player.status}</span>
                                     )}
                                 </div>
@@ -288,7 +293,9 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="text-sm font-bold truncate text-white">{team.name}</div>
-                                <div className="text-xs text-slate-500">{team.conference}ern Conference</div>
+                                <div className="text-xs text-slate-500">
+                                  {euroIsolated ? team.conference : `${team.conference}ern Conference`}
+                                </div>
                             </div>
                             {selectedTeam?.id === team.id && <CheckCircle2 size={16} className="text-indigo-400" />}
                         </button>

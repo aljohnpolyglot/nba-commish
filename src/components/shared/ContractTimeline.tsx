@@ -1,7 +1,9 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../store/GameContext';
-import { convertTo2KRating } from '../../utils/helpers';
+import { convertTo2KRating, formatCurrencyWithCode, getLeagueCurrencyCode } from '../../utils/helpers';
 import { contractToUSD, formatSalaryM } from '../../utils/salaryUtils';
+import { isEuroIsolatedMode } from '../../utils/uiMode';
+import { isOnRoster } from '../../utils/teamLookup';
 
 /** Apply NBA-standard ~5% annual raise to locked contract years (baked in at signing). */
 function annualRaise(baseUSD: number, yearsFromNow: number): number {
@@ -18,21 +20,24 @@ interface ContractTimelineProps {
 export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, currentYear: yearProp }) => {
   const { state } = useGame();
   const currentYear = yearProp ?? state.leagueStats.year;
+  const euroTimeline = isEuroIsolatedMode(state) || teamId >= 100;
+  const currencyCode = getLeagueCurrencyCode(state.leagueStats);
 
   const teamPlayers = useMemo(
-    () => state.players.filter(p =>
-      p.tid === teamId &&
-      !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')
-    ),
-    [state.players, teamId]
+    () => state.players.filter(p => {
+      if (p.tid !== teamId) return false;
+      if (euroTimeline) return isOnRoster(p);
+      return !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '');
+    }),
+    [state.players, teamId, euroTimeline]
   );
 
   const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? 15;
   const maxTwoWay = state.leagueStats.maxTwoWayPlayersPerTeam ?? 3;
-  const twoWayCount = teamPlayers.filter(p => !!(p as any).twoWay).length;
-  const ngCount = teamPlayers.filter(p => !!(p as any).nonGuaranteed).length;
+  const twoWayCount = euroTimeline ? 0 : teamPlayers.filter(p => !!(p as any).twoWay).length;
+  const ngCount = euroTimeline ? 0 : teamPlayers.filter(p => !!(p as any).nonGuaranteed).length;
   const standardCount = teamPlayers.length - twoWayCount;
-  const mleCount = teamPlayers.filter(p => !!(p as any).mleSignedVia).length;
+  const mleCount = euroTimeline ? 0 : teamPlayers.filter(p => !!(p as any).mleSignedVia).length;
 
   const team = state.teams.find(t => t.id === teamId);
   const deadMoneyEntries = team?.deadMoney ?? [];
@@ -52,8 +57,8 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
         </thead>
         <tbody>
           {[...teamPlayers].sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)).map(player => {
-            const isTwoWayPlayer = !!(player as any).twoWay;
-            const isNGPlayer = !!(player as any).nonGuaranteed;
+            const isTwoWayPlayer = !euroTimeline && !!(player as any).twoWay;
+            const isNGPlayer = !euroTimeline && !!(player as any).nonGuaranteed;
             const baseUSD = isTwoWayPlayer ? 625_000 : contractToUSD(player.contract?.amount || 0);
             const expYear = player.contract?.exp || currentYear;
             const yearsLeft = expYear - currentYear + 1;
@@ -93,6 +98,7 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
             };
 
             const optType = (n: number): 'player' | 'team' | 'twoway' | 'ng' | null => {
+              if (euroTimeline) return null;
               if (isTwoWayPlayer) return 'twoway';
               if (isNGPlayer && n === 0) return 'ng';
               const y = currentYear + n;
@@ -122,7 +128,7 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
               // currentYear+1). Leave blank — they're not on the books yet.
               if (firstCyYear !== null && currentYear + n < firstCyYear) return emptyCell;
               return yearsLeft > n
-                ? <div className={getCellStyle(n)}>{formatSalaryM(yr(n))}</div>
+                ? <div className={getCellStyle(n)}>{euroTimeline ? formatCurrencyWithCode(yr(n), currencyCode, false) : formatSalaryM(yr(n))}</div>
                 : (yearsLeft === n ? faCell : emptyCell);
             };
 
@@ -189,35 +195,37 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
           })}
         </tbody>
       </table>
-      <div className="mt-6 flex items-center gap-6 text-xs text-slate-400 flex-wrap">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-[#facc15] rounded-sm" />
-          <span>Guaranteed <span className="text-slate-300 font-mono">{standardCount}/{maxStandard}</span></span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-cyan-500/20 border border-cyan-500/30 rounded-sm" />
-          <span className="text-cyan-300">MLE <span className="font-mono">{mleCount}</span></span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-purple-500/20 border border-purple-500/30 rounded-sm" />
-          <span className="text-purple-300">Two-Way <span className="font-mono">{twoWayCount}/{maxTwoWay}</span></span>
-        </div>
-        {ngCount > 0 && (
+      {!euroTimeline && (
+        <div className="mt-6 flex items-center gap-6 text-xs text-slate-400 flex-wrap">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-amber-500/15 border border-amber-500/40 border-dashed rounded-sm" />
-            <span className="text-amber-300">Non-Guaranteed <span className="font-mono">{ngCount}</span></span>
+            <div className="w-3 h-3 bg-[#facc15] rounded-sm" />
+            <span>Guaranteed <span className="text-slate-300 font-mono">{standardCount}/{maxStandard}</span></span>
           </div>
-        )}
-        {deadMoneyEntries.length > 0 && (
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-slate-700/30 border border-slate-700/40 border-dashed rounded-sm" />
-            <span className="text-slate-400">Dead Money <span className="font-mono">{deadMoneyEntries.length}</span></span>
+            <div className="w-3 h-3 bg-cyan-500/20 border border-cyan-500/30 rounded-sm" />
+            <span className="text-cyan-300">MLE <span className="font-mono">{mleCount}</span></span>
           </div>
-        )}
-        <div className="flex items-center gap-2 border border-slate-500 border-dashed px-2 py-0.5 rounded"><span>Player option</span></div>
-        <div className="flex items-center gap-2 border border-[#38bdf8] border-dashed px-2 py-0.5 rounded text-[#38bdf8]"><span>Team option</span></div>
-        <div className="flex items-center gap-2"><span className="text-slate-600 font-bold">FA</span><span>Free agent</span></div>
-      </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-purple-500/20 border border-purple-500/30 rounded-sm" />
+            <span className="text-purple-300">Two-Way <span className="font-mono">{twoWayCount}/{maxTwoWay}</span></span>
+          </div>
+          {ngCount > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-amber-500/15 border border-amber-500/40 border-dashed rounded-sm" />
+              <span className="text-amber-300">Non-Guaranteed <span className="font-mono">{ngCount}</span></span>
+            </div>
+          )}
+          {deadMoneyEntries.length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-slate-700/30 border border-slate-700/40 border-dashed rounded-sm" />
+              <span className="text-slate-400">Dead Money <span className="font-mono">{deadMoneyEntries.length}</span></span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 border border-slate-500 border-dashed px-2 py-0.5 rounded"><span>Player option</span></div>
+          <div className="flex items-center gap-2 border border-[#38bdf8] border-dashed px-2 py-0.5 rounded text-[#38bdf8]"><span>Team option</span></div>
+          <div className="flex items-center gap-2"><span className="text-slate-600 font-bold">FA</span><span>Free agent</span></div>
+        </div>
+      )}
     </div>
   );
 };

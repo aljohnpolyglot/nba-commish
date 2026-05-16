@@ -15,7 +15,7 @@
  * that on Aug 14 when it detects no regular-season games exist.
  */
 
-import { GameState, NBAPlayer, NBACupState, HistoricalAward } from '../../types';
+import { GameState, NBAPlayer, NBACupState, HistoricalAward, type NBATeam, type OwnerProfile, type SetupTierLabel } from '../../types';
 import { applyCapInflation } from '../../utils/finance/inflationUtils';
 import { drawCupGroups } from '../nbaCup/drawGroups';
 import { sweepExpiredTPEs } from '../../utils/tradeExceptionUtils';
@@ -44,6 +44,23 @@ import * as tycoonBudget from '../tycoon/budgetEngine';
 import * as tycoonLedger from '../tycoon/ledgerEngine';
 import * as tycoonSponsor from '../tycoon/sponsorshipEngine';
 import * as tycoonFacility from '../tycoon/facilityEngine';
+import { evaluateSeasonForOwner, type SeasonStatsForOwner } from '../euro/evaluateSeasonForOwner';
+
+const OWNER_PATIENCE_THRESHOLD: Record<OwnerProfile['patience'], number> = {
+  TriggerHappy: 1,
+  Steady: 2,
+  LongTerm: 4,
+};
+
+function tickOwnerPatience(team: NBATeam, stats: SeasonStatsForOwner): boolean {
+  const owner = team.ownerProfile;
+  if (!owner) return false;
+  const outcome = evaluateSeasonForOwner(stats, owner.vision, (team.startingTier ?? 'MidTier') as SetupTierLabel);
+  owner.consecutiveBadSeasons = outcome === 'bad' ? (owner.consecutiveBadSeasons ?? 0) + 1 : 0;
+  owner.cashInjectionUsedThisSeason = false;
+  owner.seasonsSinceLastInjection = (owner.seasonsSinceLastInjection ?? 0) + 1;
+  return owner.consecutiveBadSeasons >= OWNER_PATIENCE_THRESHOLD[owner.patience];
+}
 
 // Bird-Rights computation. Repeated 5× across rollover branches (option-in,
 // option-decline, option-exercise, contract-expired, still-under-contract).
@@ -745,16 +762,20 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // always has 4 populated classes ahead (currentYear+1 through +4 at this point,
   // since nextYear is now the "current" season).
   const fillResult = ensureDraftClasses(playersAfterMortality, nextYear, state.leagueStats.draftEligibilityRule);
-  const playersWithDraftClasses = fillResult.additions.length > 0
+  const playersWithYouth = fillResult.additions.length > 0
     ? [...playersAfterMortality, ...fillResult.additions]
     : playersAfterMortality;
+  // Note: youth academy spawning is NOT a parallel pipeline — it rides on
+  // externalLeagueSustainer.repopulateExternalLeagues below, which already
+  // spawns 15-18yo on Euroleague/Endesa/NBL/B-League teams 1:1 per retiree.
+  // academyBudget is now read inside spawnExternalPlayer to scale OVR/POT.
 
   // ── 3e. External-league repopulation ─────────────────────────────────────
   // Two-track: youth (15-18yo) for Euroleague/Endesa/NBL/BLeague/GLeague;
   // adult-direct (22-26yo) for PBA/ChinaCBA. Matches 1:1 outflow from retirements
   // + 19y auto-declares that happened in the age-increment step above.
   const { additions: extRepopPlayers } = repopulateExternalLeagues(
-    { ...state, players: playersWithDraftClasses } as any,
+    { ...state, players: playersWithYouth } as any,
     extRetirees,
     currentYear,
     nextYear,
@@ -763,8 +784,8 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   // ── 3f. External min-roster safety net ───────────────────────────────────
   // After all the above, any external team still below 12 gets journeyman fills.
   const postRepopPlayers = extRepopPlayers.length > 0
-    ? [...playersWithDraftClasses, ...extRepopPlayers]
-    : playersWithDraftClasses;
+    ? [...playersWithYouth, ...extRepopPlayers]
+    : playersWithYouth;
   const { additions: safetyPlayers } = enforceExternalMinRoster(
     { ...state, players: postRepopPlayers } as any,
     nextYear,
@@ -1133,6 +1154,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   let pendingEuroBankruptcy: GameState['pendingEuroBankruptcy'] | undefined;
   const euroBankruptcyNews: GameState['news'] = [];
   const euroBankruptcyHistory: GameState['history'] = [];
+  const nonNBATeamsWithTycoon = (state.nonNBATeams ?? []).map((team: any) => ({ ...team }));
   if (isEuroIsolatedMode(state)) {
     const endesaResolution = euroCompetitionResolutions.find(r => r.competitionId === 'endesa');
     const euroleagueResolution = euroCompetitionResolutions.find(r => r.competitionId === 'euroleague');
@@ -1174,7 +1196,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       return 0;
     };
 
-    for (const team of teamsWithSweptTPEs as any[]) {
+    for (const team of [...(teamsWithSweptTPEs as any[]), ...nonNBATeamsWithTycoon]) {
       if (!team.tycoon) continue;
       try {
         const tid = team.id ?? team.tid;
@@ -1194,6 +1216,41 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
         tycoonSponsor.dekrementSponsorshipYears(team.tycoon);
         tycoonFacility.completeFinishedUpgrades(team, nextYear);
         team.tycoon.cashGateOverridesThisSeason = 0;
+        team.tycoon.budgetLocked = false;
+        delete team.tycoon.budgetLockedYear;
+
+        if (team.ownerProfile) {
+          const totalGames = (team.wins ?? 0) + (team.losses ?? 0);
+          const ownerLostPatience = tickOwnerPatience(team as NBATeam, {
+            domesticPlayoffAppearance: endesaFinish <= 8,
+            continentalFinalFour: elStage === 'final-four',
+            winPct: totalGames > 0 ? (team.wins ?? 0) / totalGames : 0,
+            netProfitEUR: ledger.profit ?? 0,
+            youthProgressed: (playersFinalized ?? []).some((p: any) =>
+              p.tid === tid &&
+              p.born?.year &&
+              currentYear - p.born.year <= 22 &&
+              ((p as any).ovrDeltaThisSeason ?? 0) >= 3
+            ),
+          });
+          if (ownerLostPatience && state.gameMode === 'gm' && state.userTeamId === tid) {
+            pendingEuroBankruptcy = {
+              teamId: tid,
+              teamName: getTeamFullName(team),
+              cashOnHand: team.tycoon.cashOnHand,
+              year: nextYear,
+            };
+            const text = `${team.ownerProfile.name} has lost patience with the ${getTeamFullName(team)} project after repeated missed goals. The board ends your tenure.`;
+            euroBankruptcyNews.push({
+              id: `euro-owner-patience-${tid}-${currentYear}`,
+              text,
+              date: state.date,
+              type: 'Business',
+              tid,
+            } as any);
+            euroBankruptcyHistory.push({ text, date: state.date, type: 'Business', tid } as any);
+          }
+        }
 
         team.recentEndesaPositions = [...(team.recentEndesaPositions ?? []), endesaFinish].slice(-3);
         team.recentEuroleagueStages = [...(team.recentEuroleagueStages ?? []), elStage].slice(-3);
@@ -1249,6 +1306,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   return {
     players: playersFinalized,
     teams: teamsWithSweptTPEs,
+    nonNBATeams: nonNBATeamsWithTycoon,
     draftPicks: updatedPicks,
     bets: prunedBets,
     boxScores: prunedBoxScores,

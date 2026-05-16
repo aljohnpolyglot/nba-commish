@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useGame } from '../../../store/GameContext';
+import { isEuroIsolatedMode } from '../../../utils/uiMode';
 import { NBAPlayer } from '../../../types';
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { formatHeight, getCountryFromLoc, convertTo2KRating } from '../../../utils/helpers';
@@ -35,8 +36,9 @@ export const PlayerBiosView: React.FC = () => {
   const { state } = useGame();
   const { players, teams, nonNBATeams = [] } = state;
   const quick = usePlayerQuickActions();
+  const euroIsolated = isEuroIsolatedMode(state);
   const [searchTerm, setSearchTerm] = useState('');
-  const [league, setLeague] = useState('NBA');
+  const [league, setLeague] = useState(euroIsolated ? 'Endesa' : 'NBA');
   const [teamFilter, setTeamFilter] = useState('');
   const [position, setPosition] = useState('');
   const [college, setCollege] = useState('');

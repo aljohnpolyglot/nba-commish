@@ -130,6 +130,7 @@ export function getMarketOffer(
   slot: SponsorshipSlot,
   history: SuccessHistory,
   starBoost: number = 0,
+  overrideSponsor?: string,
 ): SponsorshipOffer {
   const existing = state.sponsorships[slot];
   const successBonus = recentSuccessBonus(history);
@@ -138,7 +139,7 @@ export function getMarketOffer(
   const noise = 0.95 + Math.random() * 0.10;
 
   const floor = sponsorFloor(state, slot, history);
-  const sponsor = existing?.sponsor ?? pickSponsorName(state.tier, slot, null);
+  const sponsor = overrideSponsor ?? existing?.sponsor ?? pickSponsorName(state.tier, slot, null);
   const sponsorProfile = classifySponsor(sponsor);
   const archetypeMultiplier = sponsorProfile.archetype === 'gambling' ? 1.22
     : sponsorProfile.archetype === 'premium' ? 1.12

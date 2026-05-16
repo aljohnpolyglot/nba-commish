@@ -2,6 +2,34 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 61 (May 15, 2026) — PBA Isolated Mode Phase 2 completion
+
+- `src/utils/playerRatings.ts` — fixed NaN team OVR for PBA teams: `qualityCutoff` floor of 50 excluded all PBA players (BBGM OVR ~33 after 0.510 multiplier). Changed to `Math.max(star1Ovr - 20, 0)` with empty-pool fallback to top 10 players.
+- `src/components/setup/StartDateTimeline.tsx` — PBA jumpstart timeline: component now accepts `moddedLeagueBase` prop and dynamically switches between NBA and PBA constants (timeline min/max, zone segments, zone colors/labels, month ticks). PBA timeline spans Oct 2025 – Jan 2027 with 4 zone segments (Philippine Cup / All-Star / Commissioner's Cup / Governors' Cup).
+- `src/components/setup/keyDates.ts` — PBA key dates zone field updated from NBA zones ('early'/'mid'/'late') to PBA-native zones ('philippineCup'/'commissionersCup'/'governorsCup'). `KeyDate.zone` type widened to `DateZone | PbaDateZone`.
+- `src/components/CommissionerSetup.tsx` — passes `moddedLeagueBase` through to `StartDateTimeline`.
+- `src/components/sidebar/NavigationMenu.tsx` — PBA GM sidebar: `pbaGmGroups` hides NBA Central, NBA Cup, All-Star, Hall of Fame, Broadcasting, League Office, Commissioner-only surfaces. Keeps My Team, Season, League, Analytics, Draft, Communications, Entertainment groups.
+- `src/store/GameContext.tsx` — `INIT_PBA_CAREER` reducer: seeds `PBA_ISOLATED_DEFAULTS`, sets `uiMode: 'pba_isolated'`, `pbaConference: 'philippine'`, `pbaConferencePhase: 'setup'`, date to Oct 5, userTeamId, and PBA offseason checklist.
+- `src/App.tsx` — dispatches `INIT_PBA_CAREER` after `START_GAME` when `moddedLeagueBase === 'philippines'`.
+- `src/types.ts` — added `'INIT_PBA_CAREER'` to `ActionType` union.
+- `src/services/offseason/offseasonState.ts` — added `initialPbaChecklist()` with NBA rows skipped and PBA rows skipped (first season starts at Phil. Cup opening, no pre-game offseason).
+- `src/hooks/useHubScope.ts` — PBA isolated mode scoping: filters to PBA teams (tid 2000-2099) from `nonNBATeams` and PBA players. Auto-scopes PlayerStats, TeamStats, LeagueLeaders, Injuries, StatisticalFeats, AwardRaces, PowerRankings.
+- `src/components/central/view/StandingsView.tsx` — PBA standings table: flat 12-team W-L-PCT-PF-PA-Diff table with current conference label. Skips NBA conference/division grouping.
+- `src/components/players/view/FreeAgentsView.tsx` — `euroIsolated` → `nonNbaIsolated` for market pool, FA filter, two-way/NG counts, and UI toggle gates. PBA mode gets the same simplified "All Available" free agent view.
+- `src/components/players/view/FreeAgentCard.tsx` — `euroIsolated` → `nonNbaIsolated` for league logo and org label display.
+
+## Session 60 (May 15, 2026) — Euro-mode recovery wiring in worktree
+
+- `src/services/staff/staffFallback.ts`, `src/services/euro/tierBudgetSeed.ts`, `staffSeed.ts`, `ownerSeed.ts`, `sponsorSeed.ts`, `careerSeed.ts` — continued Euro setup recovery in the worktree: dynamic nationality-aware staff placeholders, deterministic tier/budget, six-role staff, owner, sponsor, and career seed orchestration. New recovery test files were removed per user request; verification path is lint/build plus manual app checks.
+- `src/types.ts`, `src/store/GameContext.tsx` — added `INIT_EURO_CAREER` action wiring and legacy `LOAD_GAME` heal. Euro setup now writes owner profile, tier, starting budget, six staff members, seeded sponsors, setup memo, user team, and July 1 season-start date into the actual save state; older Euro GM saves missing `autoOwnerSeeded` are deterministically healed on load.
+- `src/components/CommissionerSetup.tsx`, `src/App.tsx` — Endesa franchise selection now opens a minimal Euro Career Setup review and then dispatches `START_GAME` followed by `INIT_EURO_CAREER`, so the setup seeders are on the live game-start path.
+- `src/services/euro/staffPool.ts`, `src/store/logic/gameLogic.ts`, `src/components/central/view/FrontOffice/sections/StaffSection.tsx`, `src/components/central/view/FrontOffice/StaffSigning/StaffSigningModal.tsx`, `src/components/central/view/FrontOfficeView.tsx` — Euro staff hiring now uses a generated `staffFreeAgents` pool seeded at setup/load, refills monthly, removes hired staff from the pool, and only falls back to low-rated emergency candidates if a role is empty.
+- `src/services/euro/evaluateSeasonForOwner.ts`, `src/services/logic/seasonRollover.ts`, `src/components/tycoon/EuroBankruptcyModal.tsx` — owner mechanics now evaluate Euro seasons by owner vision, tick patience at year end, route owner-firing through the existing Euro game-over modal, include non-NBA Euro takeover candidates, and allow eligible wealthy owners to inject emergency cash.
+- `src/components/central/view/TeamOffice/pages/TeamIntel.tsx`, `src/components/transferMarket/EuroTransferMarketView.tsx`, `src/components/transferMarket/state.ts` — Euro Team Intel no longer exposes the NBA-style free-agent board; Transfer Market listings/browse/inbox are filtered to real rostered seller players.
+- `src/services/offseason/offseasonState.ts`, `src/components/offseason/OffseasonAufgaben.tsx`, `src/store/GameContext.tsx` — Euro initial offseason now starts on the Transfer Market row instead of jumping to Training Camp; NBA-only FA/draft/HOF rows are skipped for Euro, Euro sponsor/facility/friendly tasks stay live in the checklist order, the transfer window is force-enabled on setup/load, and the Tasks confirmation copy has Euro-specific instruction modals.
+- `src/components/central/view/TeamOffice/pages/CoachingView/CoachingView.tsx`, `GameplanTab.tsx` — generated Euro coach records now surface `careerStartYear`, `bornYear`, `yearsWithTeam`, and nationality in the coach profile; Gameplan starter seeding now uses the actual Euro roster instead of NBA-only `status === Active`, and the minute budget follows FIBA 4x10 settings (`200`) instead of hardcoded NBA `240`.
+- `TODO.md`, `docs/superpowers/plans/2026-05-14-euro-setup-hybrid.md`, `plans/europe-ui-phase1.md` — recovery docs updated to mark T6-T12 as worktree-only/in-flight and to document the no-new-test-file verification mode.
+
 ## Session 59 (May 10, 2026) — Commissioner Elam/target-score rules wired into saves, sim, and live UI
 
 - `src/types.ts`, `src/services/simulation/types.ts`, `src/services/simulation/SimulatorKnobs.ts` — added explicit `gameFormat` / `targetScore` support for schedule games and sim results, plus Elam-capable sim knobs so non-timed formats are first-class state instead of UI-only values.

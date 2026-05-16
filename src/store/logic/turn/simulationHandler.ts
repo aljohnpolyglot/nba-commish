@@ -17,6 +17,7 @@ import { markBustLottery, resolveBustLottery } from '../../../services/playerDev
 import { generateAIDayTradeProposals, executeAITrade } from '../../../services/AITradeHandler';
 import { runAIFreeAgencyRound, runAIMidSeasonExtensions, runAISeasonEndExtensions, autoTrimOversizedRosters, autoPromoteTwoWayExcess, runAIMleUpgradeSwaps, runAIBirdRightsResigns } from '../../../services/AIFreeAgentHandler';
 import { tickFAMarkets } from '../../../services/faMarketTicker';
+import { tickTransferMarket } from '../../../services/transfer/transferMarketTicker';
 import { routeUnsignedPlayers } from '../../../services/externalSigningRouter';
 import { formatExternalSalary } from '../../../constants';
 import { applySeasonRollover } from '../../../services/logic/seasonRollover';
@@ -1963,6 +1964,31 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 };
                 stateWithSim = normalizeReservedJerseys(stateWithSim, mleSwaps.map(s => s.sign.teamId));
             }
+        }
+
+        // Euro Transfer Market: daily tick (AI listings/bids/accepts).
+        // Safe to run in NBA mode too — transferListings array would be empty —
+        // but gate on euro_isolated for clarity + perf.
+        if (stateWithSim.leagueStats?.uiMode === 'euro_isolated') {
+            const tmTick = tickTransferMarket(stateWithSim);
+            stateWithSim = {
+                ...stateWithSim,
+                transferListings: tmTick.transferListings,
+                transferBids: tmTick.transferBids,
+                transferActivity: tmTick.transferActivity,
+                players: tmTick.players,
+                teams: tmTick.teams,
+                nonNBATeams: tmTick.nonNBATeams,
+                ...(tmTick.historyEntries.length > 0 ? {
+                    history: [...(stateWithSim.history ?? []), ...tmTick.historyEntries] as any,
+                } : {}),
+                ...(tmTick.userBidResolutions.length > 0 ? {
+                    pendingTransferToasts: [
+                        ...(stateWithSim.pendingTransferToasts ?? []),
+                        ...tmTick.userBidResolutions,
+                    ],
+                } : {}),
+            };
         }
 
         // End-of-day: if a user-facing FA event fired this tick, stop the batch

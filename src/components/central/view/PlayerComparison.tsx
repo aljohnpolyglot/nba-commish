@@ -6,6 +6,8 @@ import { NBAPlayer } from '../../../types';
 import { calculateK2, K2_CATS } from '../../../services/simulation/convert2kAttributes';
 import { getDisplayOverall, getDisplayPotential } from '../../../utils/playerRatings';
 import { PlayerSelectorGrid, PlayerSelectorItem } from '../../shared/PlayerSelectorGrid';
+import { getDomesticPlayerStatus } from '../../../utils/euroLeagueDefaults';
+import { isEuroIsolatedMode } from '../../../utils/uiMode';
 
 const cn = (...classes: (string | boolean | undefined)[]) => classes.filter(Boolean).join(' ');
 
@@ -105,10 +107,16 @@ function getK2(player: NBAPlayer) {
 
 export const PlayerComparisonView: React.FC = () => {
   const { state } = useGame();
+  const defaultModalLeague = (): ModalLeague => {
+    const domestic = getDomesticPlayerStatus(state as any);
+    return isEuroIsolatedMode(state) && domestic && MODAL_LEAGUES.includes(domestic as ModalLeague)
+      ? domestic as ModalLeague
+      : 'NBA';
+  };
   const [player1, setPlayer1] = useState<NBAPlayer | null>(null);
   const [player2, setPlayer2] = useState<NBAPlayer | null>(null);
   const [selectingForSlot, setSelectingForSlot] = useState<1 | 2 | null>(null);
-  const [modalLeague, setModalLeague] = useState<ModalLeague>('NBA');
+  const [modalLeague, setModalLeague] = useState<ModalLeague>(defaultModalLeague);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
   const [season, setSeason] = useState<number>(() => state.leagueStats.year);
   const [statMode, setStatMode] = useState<StatMode>('perGame');
@@ -163,7 +171,7 @@ export const PlayerComparisonView: React.FC = () => {
     });
 
   const openSlot = (slot: 1 | 2) => {
-    setModalLeague('NBA');
+    setModalLeague(defaultModalLeague());
     setSelectingForSlot(slot);
   };
 

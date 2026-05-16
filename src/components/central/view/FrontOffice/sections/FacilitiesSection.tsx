@@ -71,8 +71,18 @@ export const FacilitiesSection: React.FC<{
   onTravelDetails?: () => void;
   onMedicalDetails?: () => void;
   onAnalyticsDetails?: () => void;
-}> = ({ tycoon, fmt, onTravelDetails, onMedicalDetails, onAnalyticsDetails }) => {
-  const [facilityModal, setFacilityModal] = useState<{ title: string; body: string; tone: 'amber' | 'slate' } | null>(null);
+  onArenaDetails?: () => void;
+  onTrainingDetails?: () => void;
+  onAcademyDetails?: () => void;
+}> = ({ tycoon, fmt, onTravelDetails, onMedicalDetails, onAnalyticsDetails, onArenaDetails, onTrainingDetails, onAcademyDetails }) => {
+  const [facilityModal, setFacilityModal] = useState<{ title: string; body: string; tone: 'amber' | 'slate'; comingSoon?: boolean } | null>(null);
+  const openComingSoon = (title: string, tone: 'amber' | 'slate' = 'amber') =>
+    setFacilityModal({
+      title,
+      body: 'This screen is under construction. It will let you plan, approve, and track infrastructure projects directly from the Front Office in a future update.',
+      tone,
+      comingSoon: true,
+    });
   const medicalRating = 50 + Math.round(medicalQuality(tycoon.medicalBudget) * 45);
   const travelAverage = tycoon.travelPreferences
     ? Math.round((tycoon.travelPreferences.hotel + tycoon.travelPreferences.flight + tycoon.travelPreferences.bus) / 3)
@@ -193,7 +203,10 @@ export const FacilitiesSection: React.FC<{
     <div className="space-y-6">
       <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
         <SectionTitle icon={<Building2 size={22} />} title="Facilities" subtitle="Manage and upgrade your club's infrastructure and facilities." />
-        <button className="h-14 rounded-xl border border-amber-400/50 bg-amber-400/10 px-8 text-amber-200 font-black hover:bg-amber-400/15">
+        <button
+          onClick={() => openComingSoon('Facility Masterplan')}
+          className="h-14 rounded-xl border border-amber-400/50 bg-amber-400/10 px-8 text-amber-200 font-black hover:bg-amber-400/15"
+        >
           View Masterplan →
         </button>
       </div>
@@ -220,6 +233,12 @@ export const FacilitiesSection: React.FC<{
                     ? onMedicalDetails
                     : card.title === 'Analytics Lab' && onAnalyticsDetails
                     ? onAnalyticsDetails
+                    : card.title === 'Arena & Fan Experience' && onArenaDetails
+                    ? onArenaDetails
+                    : card.title === 'Training Center' && onTrainingDetails
+                    ? onTrainingDetails
+                    : card.title === 'Youth Academy' && onAcademyDetails
+                    ? onAcademyDetails
                     : () => setFacilityModal({
                         title: card.title,
                         body: `${card.title} is rated ${Math.min(99, card.rating)}. The strongest traits are ${card.attributes.slice(0, 2).map(([label]) => label).join(' and ')}. Upgrades here raise the club's operational ceiling without changing NBA-mode behavior.`,
@@ -259,16 +278,10 @@ export const FacilitiesSection: React.FC<{
           </div>
 
           <div className="grid md:grid-cols-5 gap-3">
-            {[
-              ['Upgrade Facility', 'Upgrade planning queues the highest-impact facility first. Current recommendation: Medical & Recovery Center because it directly affects availability.'],
-              ['View Blueprints', 'Blueprints summarize each facility stage, estimated cost, and expected club-impact before construction begins.'],
-              ['Hire Architects', 'Specialist architects are not active yet. This action is reserved for a future infrastructure staffing slice.'],
-              ['Compare League Facilities', `Your club grades at ${avgRating}/100 overall. Elite Euro clubs are expected around 88-94, contenders around 78-87, and survival clubs below 68.`],
-              ['Infrastructure Report', `Facility value is ${fmt(facilityValue)} with projected annual maintenance of ${fmt(maintenance)}. The strongest areas are ${[...cards].sort((a, b) => b.rating - a.rating).slice(0, 2).map(card => card.title).join(' and ')}.`],
-            ].map(([action, body], index) => (
+            {['Upgrade Facility', 'View Blueprints', 'Hire Architects', 'Compare League Facilities', 'Infrastructure Report'].map((action, index) => (
               <button
                 key={action}
-                onClick={() => setFacilityModal({ title: action, body, tone: index === 0 ? 'amber' : 'slate' })}
+                onClick={() => openComingSoon(action, index === 0 ? 'amber' : 'slate')}
                 className={`h-14 rounded-xl border font-black text-sm ${index === 0 ? 'border-amber-400/50 bg-amber-400/15 text-amber-200' : 'border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-600'}`}
               >
                 {action}
@@ -293,7 +306,7 @@ export const FacilitiesSection: React.FC<{
               </div>
             ))}
             <button
-              onClick={() => setFacilityModal({ title: 'Operational Insights', body: `The club's current facilities average ${avgRating}/100. Training and medical investment are the fastest paths to immediate squad impact, while stadium work mainly improves matchday revenue.`, tone: 'slate' })}
+              onClick={() => openComingSoon('Infrastructure Report', 'slate')}
               className="mt-4 w-full h-12 rounded-xl border border-slate-700 text-slate-300 hover:text-white"
             >
               View Full Report →
@@ -323,7 +336,7 @@ export const FacilitiesSection: React.FC<{
               </div>
             ))}
             <button
-              onClick={() => setFacilityModal({ title: 'Facility Masterplan', body: 'The masterplan prioritizes recovery, arena monetization, analytics, and academy housing over four staged projects. Each stage should be approved only if cash runway stays healthy after payroll.', tone: 'amber' })}
+              onClick={() => openComingSoon('Facility Masterplan')}
               className="mt-4 w-full h-14 rounded-xl border border-amber-400/50 bg-amber-400/10 text-amber-200 font-black"
             >
               View Masterplan →
@@ -336,7 +349,14 @@ export const FacilitiesSection: React.FC<{
           <button className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setFacilityModal(null)} />
           <div className={`relative w-full max-w-xl rounded-2xl border bg-slate-950 p-6 shadow-2xl ${facilityModal.tone === 'amber' ? 'border-amber-400/40' : 'border-slate-700'}`}>
             <div className={`text-xs font-black uppercase tracking-widest ${facilityModal.tone === 'amber' ? 'text-amber-300' : 'text-slate-400'}`}>Facilities</div>
-            <h3 className="mt-2 text-2xl font-black text-white">{facilityModal.title}</h3>
+            <div className="mt-2 flex items-center gap-3 flex-wrap">
+              <h3 className="text-2xl font-black text-white">{facilityModal.title}</h3>
+              {facilityModal.comingSoon && (
+                <span className="rounded-md border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-amber-300">
+                  Coming Soon
+                </span>
+              )}
+            </div>
             <p className="mt-4 text-sm leading-6 text-slate-300">{facilityModal.body}</p>
             <button onClick={() => setFacilityModal(null)} className="mt-6 w-full h-12 rounded-xl border border-slate-700 text-slate-200 font-black hover:border-amber-400/50">
               Close

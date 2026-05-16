@@ -17,6 +17,7 @@ import { Settings2, ArrowLeft, Search, Menu, X, Loader2 } from 'lucide-react';
 import { useInView } from '../../hooks/useInView';
 import { enrichPostWithPhoto, getResolvedUrl, type GamePhotoInfo } from '../../services/social/photoEnricher';
 import type { GameResult, SocialPost } from '../../types';
+import { resolveAnyTeam } from '../../utils/teamLookup';
 
 // ─── Game photo lookup (boxScores + teams) ────────────────────────────────────
 function useGameLookup(): Map<number, GamePhotoInfo> {
@@ -24,9 +25,9 @@ function useGameLookup(): Map<number, GamePhotoInfo> {
   return useMemo(() => {
     const lookup = new Map<number, GamePhotoInfo>();
     for (const bs of (state.boxScores || []) as GameResult[]) {
-      if (!bs.gameId || bs.homeTeamId <= 0 || bs.awayTeamId <= 0) continue;
-      const home = state.teams.find(t => t.id === bs.homeTeamId);
-      const away = state.teams.find(t => t.id === bs.awayTeamId);
+      if (!bs.gameId || bs.homeTeamId < 0 || bs.awayTeamId < 0) continue;
+      const home = resolveAnyTeam(bs.homeTeamId, state.teams, state.nonNBATeams ?? []);
+      const away = resolveAnyTeam(bs.awayTeamId, state.teams, state.nonNBATeams ?? []);
       if (!home || !away) continue;
       const topPlayers = [...(bs.homeStats || []), ...(bs.awayStats || [])]
         .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0))
@@ -36,7 +37,7 @@ function useGameLookup(): Map<number, GamePhotoInfo> {
     }
     return lookup;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.boxScores, state.teams]);
+  }, [state.boxScores, state.teams, state.nonNBATeams]);
 }
 
 // ─── Lazy-photo wrapper (only enriches when post scrolls into view) ───────────

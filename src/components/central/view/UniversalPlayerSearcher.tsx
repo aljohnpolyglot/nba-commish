@@ -6,6 +6,8 @@ import { getCountryFromLoc, getCountryCode } from '../../../utils/helpers';
 import { PlayerSearchCard } from './PlayerSearchCard';
 import { useGame } from '../../../store/GameContext';
 import { getDisplayOverall } from '../../../utils/playerRatings';
+import { getDefaultEuroLeagueSearcherIds } from '../../../utils/euroLeagueDefaults';
+import { isEuroIsolatedMode } from '../../../utils/uiMode';
 
 interface UniversalPlayerSearcherProps {
   players: NBAPlayer[];
@@ -33,8 +35,12 @@ const GENDERS = ['Men', 'Women'];
 
 export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = ({ players, teams, nonNBATeams = [], onActionClick, onTeamClick }) => {
   const { state } = useGame();
+  const getInitialLeagues = () => {
+    const euroIds = getDefaultEuroLeagueSearcherIds(state as any);
+    return isEuroIsolatedMode(state) && euroIds.length > 0 ? euroIds : ['nba'];
+  };
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedLeagues, setSelectedLeagues] = useState<string[]>(['nba']);
+  const [selectedLeagues, setSelectedLeagues] = useState<string[]>(getInitialLeagues);
   const [ageRange, setAgeRange] = useState({ min: 18, max: 45 });
   const [selectedCountry, setSelectedCountry] = useState<string>('All');
   const [selectedGender, setSelectedGender] = useState<string[]>(['Men']);
@@ -274,7 +280,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
             <button 
               onClick={() => {
                 setSearchTerm('');
-                setSelectedLeagues(['nba']);
+                setSelectedLeagues(getInitialLeagues());
                 setAgeRange({ min: 18, max: 45 });
                 setSelectedCountry('All');
                 setSelectedGender(['Men']);

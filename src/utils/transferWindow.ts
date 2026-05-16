@@ -111,7 +111,9 @@ export function isInTransferWindow(
       date = new Date(`${currentDate}T00:00:00Z`);
     } else {
       const parsed = new Date(currentDate);
-      date = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+      date = Number.isNaN(parsed.getTime())
+        ? new Date()
+        : new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
     }
   } else {
     date = currentDate;

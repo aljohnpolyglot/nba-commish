@@ -2,12 +2,13 @@ import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Trophy, Users, LayoutDashboard, Calendar, MapPin, DollarSign,
-  TrendingUp, Globe2, ChevronRight,
+  TrendingUp, Globe2, ChevronRight, Wallet,
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import type { NBAPlayer, NonNBATeam } from '../../types';
 import { PlayerBioView } from '../central/view/PlayerBioView';
 import { EXTERNAL_SALARY_SCALE, EXTERNAL_CURRENCY, formatExternalSalary, EUROLEAGUE_TEAM_COUNTRIES, ENDESA_TEAM_COUNTRY } from '../../constants';
+import { LeagueFinancesPanel } from '../finances/LeagueFinancesPanel';
 
 // ─── League config ────────────────────────────────────────────────────────────
 type LeagueId = 'Euroleague' | 'Endesa' | 'G-League' | 'WNBA' | 'B-League' | 'China CBA' | 'NBL Australia' | 'PBA';
@@ -272,13 +273,14 @@ const HubHeader: React.FC<{ config: LeagueConfig; teamCount: number; playerCount
 );
 
 // ─── Subtab strip ─────────────────────────────────────────────────────────────
-type SubView = 'standings' | 'teams' | 'players' | 'economy' | 'playoffs';
+type SubView = 'standings' | 'teams' | 'players' | 'economy' | 'finances' | 'playoffs';
 
 const SUBTABS: { id: SubView; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
   { id: 'standings', label: 'Standings',  icon: TrendingUp },
   { id: 'teams',     label: 'Teams',      icon: Users },
   { id: 'players',   label: 'Players',    icon: Trophy },
   { id: 'economy',   label: 'Economy',    icon: DollarSign },
+  { id: 'finances',  label: 'Finances',   icon: Wallet },
   { id: 'playoffs',  label: 'Playoffs',   icon: LayoutDashboard },
 ];
 
@@ -730,6 +732,16 @@ export const InternationalLeagueHub: React.FC<Props> = ({ league }) => {
           )}
           {view === 'economy' && (
             <EconomyPanel config={config} nbaSalaryCap={state.leagueStats.salaryCap ?? 154_647_000} />
+          )}
+          {view === 'finances' && (
+            <LeagueFinancesPanel
+              teams={teams}
+              players={players}
+              displayName={config.fullName}
+              shortName={config.shortName}
+              currencySymbol={EXTERNAL_CURRENCY[config.id]?.symbol ?? '$'}
+              seasonYear={state.leagueStats?.year ?? new Date().getFullYear()}
+            />
           )}
           {view === 'playoffs' && <PlayoffPlaceholder rows={standings} config={config} />}
         </motion.div>

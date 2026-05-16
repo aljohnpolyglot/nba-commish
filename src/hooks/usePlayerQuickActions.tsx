@@ -10,6 +10,9 @@ import { FAOffersModal } from '../components/modals/FAOffersModal';
 import { WaiveConfirmModal } from '../components/modals/WaiveConfirmModal';
 import type { NBAPlayer } from '../types';
 import { formatGameDateShort, getCurrentOffseasonEffectiveFAStart, parseGameDate } from '../utils/dateUtils';
+import { isOnRoster, resolveAnyTeam } from '../utils/teamLookup';
+import { isPbaIsolatedMode } from '../utils/uiMode';
+import { canSignInPba, isFilipino } from '../services/pba/importManager';
 
 /**
  * Unified "click a player name" handler — one hook that owns the entire modal stack:
@@ -74,6 +77,13 @@ export function usePlayerQuickActions() {
       if (faStartLabel && state.gameMode === 'gm') {
         setBlockedMessage(`Free agency has not opened yet. You can view the pool now, but offers start on ${faStartLabel}.`);
         return true;
+      }
+      if (isPbaIsolatedMode(state) && state.userTeamId != null) {
+        const check = canSignInPba(player, state.userTeamId, state.leagueStats?.pbaConference as any, state.players);
+        if (!check.allowed) {
+          setBlockedMessage(check.reason!);
+          return true;
+        }
       }
       setSigningPlayer(player);
       setResignTeamId(null);
@@ -141,12 +151,12 @@ export function usePlayerQuickActions() {
       if (tid != null && tid >= 0) {
         const minRoster = state.leagueStats?.minPlayersPerTeam ?? 14;
         const standardCount = state.players.filter(p =>
-          p.tid === tid && !(p as any).twoWay && p.status === 'Active'
+          p.tid === tid && !(p as any).twoWay && isOnRoster(p)
         ).length;
         const isStandardPlayer = !(player as any).twoWay;
         const afterWaive = standardCount - (isStandardPlayer ? 1 : 0);
         if (isStandardPlayer && afterWaive < minRoster) {
-          const teamName = state.teams.find(t => t.id === tid)?.name ?? 'This team';
+          const teamName = resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? [])?.name ?? 'This team';
           setBlockedMessage(
             `${teamName} is at the minimum roster size (${minRoster}). Waiving ${player.name} would drop the roster to ${afterWaive} — sign another player first.`
           );
@@ -207,7 +217,7 @@ export function usePlayerQuickActions() {
       {waivePlayer && (
         <WaiveConfirmModal
           player={waivePlayer}
-          team={state.teams.find(t => t.id === waivePlayer.tid)}
+          team={resolveAnyTeam(waivePlayer.tid, state.teams, state.nonNBATeams ?? []) ?? undefined}
           state={state}
           onClose={() => setWaivePlayer(null)}
           onConfirm={({ stretch }) => {
@@ -228,12 +238,31 @@ export function usePlayerQuickActions() {
       {signingPlayer && (
         <SignFreeAgentModal
           initialPlayer={signingPlayer}
-          initialTeam={resignTeamId != null ? state.teams.find(t => t.id === resignTeamId) ?? undefined : undefined}
+          initialTeam={resignTeamId != null ? resolveAnyTeam(resignTeamId, state.teams, state.nonNBATeams ?? []) ?? undefined : undefined}
           forceContractType={forceContractType}
           onClose={closeSigning}
           onConfirm={async (payload) => {
             closeSigning();
             await dispatchAction({ type: 'SIGN_FREE_AGENT', payload });
+            // Stamp import flag for non-Filipino players signed to PBA teams
+            if (isPbaIsolatedMode(state) && payload.playerId) {
+              const signed = state.players.find(p => p.internalId === payload.playerId);
+              if (signed && !isFilipino(signed)) {
+                const conf = (state.leagueStats as any)?.pbaConference;
+                if (conf && conf !== 'philippine') {
+                  dispatchAction({
+                    type: 'UPDATE_STATE',
+                    payload: {
+                      players: state.players.map(p =>
+                        p.internalId === payload.playerId
+                          ? { ...p, isImport: true, importConference: conf }
+                          : p
+                      ),
+                    },
+                  } as any);
+                }
+              }
+            }
           }}
         />
       )}

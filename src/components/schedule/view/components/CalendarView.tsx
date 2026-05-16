@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, Star, Trophy, Award, Clock, DollarSign, Shuffle, Clipboard, Zap, Globe, Timer, BookOpen } from 'lucide-react';
 import { Game, NBATeam } from '../../../../types';
 import { normalizeDate, getOwnTeamId } from '../../../../utils/helpers';
@@ -55,6 +55,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const euroIsolated = isEuroIsolatedMode(state);
   const noDraft = isNoDraftLeague(state.leagueStats);
   const userInEL = userQualifiesForContinental(state as any);
+  useEffect(() => {
+    setActiveTab('Calendar');
+  }, [state.saveId, state.leagueStats?.uiMode]);
+
   const visibleSchedule = euroIsolated
     ? (state.schedule ?? []).filter((g: Game) => {
         if (!userInEL && g.competitionId === 'euroleague') return false;
@@ -110,7 +114,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const euroGames = monthGames.filter((g: Game) => g.competitionId === 'euroleague').length;
   const domesticGames = monthGames.filter((g: Game) => g.competitionId === 'endesa').length;
   const congestion = ownMonthGames.length >= 8 ? 'High' : ownMonthGames.length >= 5 ? 'Medium' : 'Low';
-  const competitionTabId = activeTab === 'EuroLeague' ? 'euroleague'
+  const competitionTabId = !euroIsolated ? null
+    : activeTab === 'EuroLeague' ? 'euroleague'
     : activeTab === 'Endesa' ? 'endesa'
     : activeTab === 'Copa del Rey' ? 'copa-del-rey'
     : activeTab === 'Supercopa' ? 'supercopa'

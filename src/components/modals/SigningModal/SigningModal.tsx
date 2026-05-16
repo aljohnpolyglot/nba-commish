@@ -21,6 +21,7 @@ import { useGame } from '../../../store/GameContext';
 import { computeOfferStrength, isPlausibleActiveMarket } from '../../../services/freeAgencyBidding';
 import { getGMAttributes, clampSpendOffer, spendingOfferMultiplier } from '../../../services/staff/gmAttributes';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
+import { projectYearEndCash } from '../../../services/tycoon/budgetEngine';
 
 interface SigningModalProps {
   player: NBAPlayer;
@@ -130,7 +131,7 @@ function useHoldable(callback: () => void, disabled: boolean) {
 }
 
 const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, autoAccept = false, preflightMessage, initialContractType, onClose, onSign, onSubmitBid }) => {
-  const { state } = useGame();
+  const { state, applyTycoonMutation } = useGame() as any;
 
   // GM mode: user IS the GM for their own team — spending attribute shapes the opening offer.
   const isOwnTeamGM = state.gameMode === 'gm' && team.id === (state as any).userTeamId;
@@ -157,6 +158,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   }, [toast]);
   // Final cap warning gate — shown on Submit when the deal would blow past cap with no Bird / MLE cover.
   const [showCapWarning, setShowCapWarning] = useState(false);
+  const [cashGateOverride, setCashGateOverride] = useState(false);
   // Commissioner dismisses roster-full preflight.
   const [rosterFullOverridden, setRosterFullOverridden] = useState(false);
   const [overLimitAction, setOverLimitAction] = useState<null | 'showResponse' | 'sign'>(null);
@@ -170,6 +172,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   const moneyPrecise = (value: number, decimals = 2) => currencyCode === 'USD'
     ? formatSalaryMPrecise(value, decimals)
     : formatCurrencyWithCode(value, currencyCode, false);
+  const euroIsolated = state.leagueStats?.uiMode === 'euro_isolated';
 
   // Roster-slot accounting. Training camp rule: 21 TOTAL (standard + NG + two-way all share one pool).
   // Regular season: 15 standard (guaranteed + NG) + 3 two-way are separate buckets.
@@ -177,8 +180,16 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     const { month: mo, day: dy } = state.date ? getGameDateParts(state.date) : getGameDateParts(new Date());
     const isTrainingCamp = (mo >= 7 && mo <= 9) || (mo === 10 && dy <= 21);
     const onTeam = state.players.filter(p => p.tid === team.id);
-    const twoWayCount   = onTeam.filter(p => (p as any).twoWay).length;
+    const twoWayCount   = euroIsolated ? 0 : onTeam.filter(p => (p as any).twoWay).length;
     const standardCount = onTeam.length - twoWayCount;
+
+    if (euroIsolated) {
+      return {
+        maxStandard: Math.max(99, standardCount), maxTwoWay: 0, maxTotal: Math.max(99, standardCount),
+        standardCount, twoWayCount,
+        standardFull: false, twoWayFull: true, totalFull: false,
+      };
+    }
 
     if (isTrainingCamp) {
       const campLimit = leagueStats?.maxTrainingCampRoster ?? 21;
@@ -201,7 +212,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
       standardFull, twoWayFull,
       totalFull: standardFull && twoWayFull,
     };
-  }, [state.players, team.id, leagueStats, state.date]);
+  }, [state.players, team.id, leagueStats, state.date, euroIsolated]);
   const guaranteedCount = useMemo(
     () => state.players.filter(p =>
       p.tid === team.id &&
@@ -259,11 +270,12 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
 
   // Training camp window: Jul 1 – Oct 21. NG option only shown when standard slots ≥ 15 and in this window.
   const isTrainingCampPeriod = useMemo(() => {
+    if (euroIsolated) return false;
     if (!(leagueStats?.nonGuaranteedContractsEnabled ?? true)) return false;
     if (!state.date) return false;
     const { month: mo, day: dy } = getGameDateParts(state.date);
     return (mo >= 7 && mo <= 9) || (mo === 10 && dy <= 21);
-  }, [state.date, leagueStats?.nonGuaranteedContractsEnabled]);
+  }, [state.date, leagueStats?.nonGuaranteedContractsEnabled, euroIsolated]);
 
   // Real age (from born.year when available — player.age goes stale).
   const seasonYear = leagueStats?.year ?? new Date().getUTCFullYear();
@@ -291,12 +303,13 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     return roll < prob;
   }, [realAge, player.internalId, playerK2, player]);
   const canOfferTwoWay = useMemo(() => {
+    if (euroIsolated) return false;
     if (playerK2 > 76) return false;
     if (realAge > 25) return false;
     const yearsOfService = ((player as any).stats ?? [])
       .filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
     return yearsOfService <= 4;
-  }, [player, playerK2, realAge]);
+  }, [player, playerK2, realAge, euroIsolated]);
 
   const minAllowed = contractType === 'TWO_WAY' ? twoWaySalaryUSD : limits.minSalaryUSD;
   const maxAllowed = contractType === 'TWO_WAY' ? twoWaySalaryUSD : contractType === 'NON_GUARANTEED' ? limits.minSalaryUSD * 3 : limits.maxSalaryUSD;
@@ -399,7 +412,18 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   const isBiddingMode = !!onSubmitBid && !autoAccept && !isResignFromOwnTeam && player.tid < 0 && state.gameMode === 'gm';
   const shouldSubmitBid = isBiddingMode && (hasActiveMarket || isPeakFA);
   const showOffersTab = hasActiveMarket || isPeakFA;
-  const euroIsolated = state.leagueStats?.uiMode === 'euro_isolated';
+  const projectedCashAfterDeal = useMemo(() => {
+    if (!euroIsolated || !(team as any).tycoon || contractType === 'TWO_WAY') return null;
+    return projectYearEndCash(team, {
+      year: leagueStats.year,
+      endesaFinishPosition: (team as any).lastEndesaFinish ?? 9,
+      euroleagueStage: (team as any).lastEuroleagueStage ?? 'none',
+      euroleagueAwayGames: (team as any).lastEuroAwayGames ?? 0,
+      endesaPrizeEUR: 0,
+      euroleaguePrizeEUR: 0,
+    }, salary, state.players);
+  }, [euroIsolated, team, contractType, leagueStats.year, salary, state.players]);
+  const cashGateDeficit = projectedCashAfterDeal != null && projectedCashAfterDeal < 0;
 
   const tabs = useMemo(() => {
     let result = showOffersTab ? ALL_TABS : ALL_TABS.filter(t => t.id !== 'OFFERS');
@@ -426,7 +450,8 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     const forcedGuaranteed = !hasBirdBypass && roster.twoWayFull && !roster.standardFull;
     // Resolution order: roster-full forcing > caller override (initialContractType, e.g. 2W→Guaranteed promotion) > Bird Rights re-sign default to GUARANTEED > age-based candidate default.
     let chosenType: ContractType;
-    if (forcedGuaranteed) chosenType = 'GUARANTEED';
+    if (euroIsolated) chosenType = 'GUARANTEED';
+    else if (forcedGuaranteed) chosenType = 'GUARANTEED';
     else if (forcedTwoWay) chosenType = 'TWO_WAY';
     else if (initialContractType) chosenType = initialContractType;
     else if (hasBirdBypass) chosenType = 'GUARANTEED';
@@ -447,13 +472,17 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
       setYears(initialOffer.years);
       setOption(initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
     }
-  }, [player.internalId, isTwoWayCandidate, canOfferTwoWay, twoWaySalaryUSD, initialOffer, limits.minSalaryUSD, limits.maxSalaryUSD, roster.standardFull, roster.twoWayFull, initialContractType, isOwnTeamGM, gmSpending]);
+  }, [player.internalId, isTwoWayCandidate, canOfferTwoWay, twoWaySalaryUSD, initialOffer, limits.minSalaryUSD, limits.maxSalaryUSD, roster.standardFull, roster.twoWayFull, initialContractType, isOwnTeamGM, gmSpending, euroIsolated]);
 
   // User-driven contractType toggle — rebuild salary/years/option for the chosen type.
   // Skips the first run so we don't clobber the init effect above.
   const contractTypeInitedRef = React.useRef(false);
   useEffect(() => {
     if (!contractTypeInitedRef.current) { contractTypeInitedRef.current = true; return; }
+    if (euroIsolated && contractType !== 'GUARANTEED') {
+      setContractType('GUARANTEED');
+      return;
+    }
     if (contractType === 'TWO_WAY' && !canOfferTwoWay) {
       setContractType('GUARANTEED');
       return;
@@ -475,7 +504,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
       setYears(initialOffer.years);
       setOption(initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
     }
-  }, [contractType, canOfferTwoWay]);
+  }, [contractType, canOfferTwoWay, euroIsolated]);
 
   // BBGM imgURL is the canonical photo source — same as PlayerCard/bioCache.
   const portraitFallback = useMemo(() => getPlayerImage(player), [player]);
@@ -592,6 +621,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
   const decOptionProps = useHoldable(() => setOption(v => v === 'NONE' ? 'TEAM' : v === 'PLAYER' ? 'NONE' : 'PLAYER'), contractType === 'TWO_WAY');
   const incOptionProps = useHoldable(() => setOption(v => v === 'NONE' ? 'PLAYER' : v === 'PLAYER' ? 'TEAM' : 'NONE'), contractType === 'TWO_WAY');
   const needsGuaranteedOverLimitConfirm =
+    !euroIsolated &&
     contractType === 'GUARANTEED' &&
     !isResign &&
     !teamHoldsBirdRights &&
@@ -607,14 +637,22 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
     // Only stamp mleType when salary actually fits the MLE cap. Without this
     // gate the modal would auto-flag every guaranteed signing as "via MLE",
     // letting users bypass cap checks with $30M+ salaries on a $13M MLE tier.
-    const fitsMLE = !!mle && !mle.blocked && salary > 0 && salary <= mle.available;
+    const fitsMLE = !euroIsolated && !!mle && !mle.blocked && salary > 0 && salary <= mle.available;
+    if (cashGateDeficit && cashGateOverride && applyTycoonMutation) {
+      applyTycoonMutation(team.id, (t: any) => {
+        if (!t.tycoon) return;
+        t.tycoon.boardConfidence = Math.max(0, (t.tycoon.boardConfidence ?? 60) - 10);
+        t.tycoon.cashGateOverridesThisSeason = (t.tycoon.cashGateOverridesThisSeason ?? 0) + 1;
+        if (t.tycoon.cashGateOverridesThisSeason >= 2) t.tycoon.ownerFiringRisk = true;
+      });
+    }
     onSign({
       salary,
       years,
       option,
       twoWay: contractType === 'TWO_WAY',
       nonGuaranteed: contractType === 'NON_GUARANTEED',
-      mleType: (contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || !fitsMLE) ? null : mleTypeOverride,
+      mleType: (euroIsolated || contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || !fitsMLE) ? null : mleTypeOverride,
     });
   };
   const requestPlayerResponse = (useMle = false) => {
@@ -1366,7 +1404,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                       <div>
                         <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 mb-2">Contract Type</p>
                         <div className="flex border border-white/5 rounded-sm p-1 bg-black/60 gap-1">
-                          {(['GUARANTEED', 'TWO_WAY', 'NON_GUARANTEED'] as ContractType[])
+                          {(euroIsolated ? (['GUARANTEED'] as ContractType[]) : (['GUARANTEED', 'TWO_WAY', 'NON_GUARANTEED'] as ContractType[]))
                             .filter(type =>
                               // Bird Rights re-signs (own player or FA with prior-tenure rights)
                               // bypass roster-full filtering — the player IS the slot.
@@ -1824,7 +1862,18 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
               )}
             </div>
 
-            <div className="sticky bottom-0 z-40 px-3 sm:px-8 xl:px-10 py-3 sm:py-6 bg-black/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-end shrink-0 shadow-[0_-18px_40px_rgba(0,0,0,0.45)]">
+            <div className="sticky bottom-0 z-40 px-3 sm:px-8 xl:px-10 py-3 sm:py-6 bg-black/80 backdrop-blur-xl border-t border-white/10 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-end shrink-0 shadow-[0_-18px_40px_rgba(0,0,0,0.45)]">
+              {cashGateDeficit && (
+                <div className={`w-full sm:max-w-xl rounded-sm border px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${
+                  cashGateOverride
+                    ? 'border-rose-500/40 bg-rose-500/10 text-rose-200'
+                    : 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+                }`}>
+                  {cashGateOverride
+                    ? `Owner alarm active - this deal projects year-end cash at ${moneyPrecise(Math.abs(projectedCashAfterDeal ?? 0), 2)} below zero.`
+                    : `Cash warning - this deal pushes projected year-end cash below zero. Submit again to override with an owner-confidence hit.`}
+                </div>
+              )}
               <div className="flex w-full sm:w-auto gap-2 sm:gap-3 flex-nowrap justify-end">
                 <button
                   onClick={onClose}
@@ -1833,7 +1882,7 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                   Withdraw
                 </button>
                 {/* Sign with MLE — only when the team has an MLE tier available; grayed when the salary overshoots the cap on it. */}
-                {contractType !== 'TWO_WAY' && mle.type && (() => {
+                {!euroIsolated && contractType !== 'TWO_WAY' && mle.type && (() => {
                   const mleCanCover = !mle.blocked && salary > 0 && salary <= mle.available;
                   const mleLabel = mle.type === 'room' ? 'Room MLE' : mle.type === 'non_taxpayer' ? 'NT MLE' : 'Tax MLE';
                   return (
@@ -1891,6 +1940,10 @@ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, 
                     const blownCap = !euroIsolated && contractType !== 'TWO_WAY' && !hasOwnTeamBirdRights && projectedPayroll > thresholds.salaryCap && !isMinContract;
                     if (blownCap) {
                       setShowCapWarning(true);
+                      return;
+                    }
+                    if (cashGateDeficit && !cashGateOverride) {
+                      setCashGateOverride(true);
                       return;
                     }
                     if (shouldSubmitBid && onSubmitBid) {

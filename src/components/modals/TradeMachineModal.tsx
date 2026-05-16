@@ -20,6 +20,7 @@ import { isWalkingExpiring, isRecentlySignedLocked } from '../../services/trade/
 import { isTradeEligible } from '../../utils/signingMoratorium';
 import { PlayerHoverCard } from '../shared/PlayerHoverCard';
 import { PlayerHoverCardK2 } from '../shared/PlayerHoverCardK2';
+import { formatCurrencyWithCode, getLeagueCurrencyCode } from '../../utils/helpers';
 
 // OVR text color matching TradeFinder's ovrText helper — keeps the number coloring
 // consistent between TradeMachineModal and the OfferCard stack.
@@ -220,7 +221,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
     initialTeamBPickDpids ? state.draftPicks.filter(pk => initialTeamBPickDpids.includes(pk.dpid)) : []
   );
   
-  // Cash considerations — NBA cap $7.5M per team per season. Step $250K.
+  // Cash considerations — NBA cap equivalent per team per season. Step $250K.
   const teamACashUsedUSD = ((state.teams.find(t => t.id === teamAId) as any)?.cashUsedInTrades ?? 0);
   const teamBCashUsedUSD = ((state.teams.find(t => t.id === teamBId) as any)?.cashUsedInTrades ?? 0);
   const teamACashCapRemaining = Math.max(0, 7_500_000 - teamACashUsedUSD);
@@ -237,7 +238,8 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   const [activeTabB, setActiveTabB] = useState<'roster' | 'picks'>('roster');
   const [openDropdown, setOpenDropdown] = useState<'A' | 'B' | null>(null);
 
-  const formatContract = (amount: number) => `$${(amount / 1000).toFixed(1)}M`;
+  const currencyCode = getLeagueCurrencyCode(state.leagueStats);
+  const formatContract = (amount: number) => formatCurrencyWithCode(amount * 1_000, currencyCode, false);
 
   // Use the W-L already stored on each team (updated live by the game engine).
   // TeamDropdown sorts within each conference itself, so no sort needed here.

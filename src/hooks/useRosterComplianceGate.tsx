@@ -6,6 +6,8 @@ import { getDisplayOverall } from '../utils/playerRatings';
 import { getGameDateParts } from '../utils/dateUtils';
 import { getContractLimits } from '../utils/salaryUtils';
 import type { NBAPlayer } from '../types';
+import { isOnRoster, resolveAnyTeam } from '../utils/teamLookup';
+import { isEuroIsolatedMode } from '../utils/uiMode';
 
 /**
  * Roster compliance gate — single chokepoint for every user-triggered sim
@@ -41,16 +43,17 @@ export function useRosterComplianceGate() {
       description: undefined as string | undefined,
     };
     if (state.gameMode !== 'gm' || state.userTeamId == null || !state.date) return empty;
+    const euroIsolated = isEuroIsolatedMode(state);
     const { month, day } = getGameDateParts(state.date);
     const isTrainingCamp = (month >= 7 && month <= 9) || (month === 10 && day <= 21);
     const isRegularSeason = (month === 10 && day >= 22) || (month >= 11) || (month >= 1 && month <= 3);
     const isPlayoffs = month >= 4 && month <= 6;
-    const userTeam = state.teams?.find(t => t.id === state.userTeamId);
+    const userTeam = resolveAnyTeam(state.userTeamId, state.teams ?? [], state.nonNBATeams ?? []);
     const userClinched = (userTeam as any)?.clinchedPlayoffs as string | undefined;
     const userStillInPlayoffs = isPlayoffs && (userClinched === 'w' || userClinched === 'x' || userClinched === 'y' || userClinched === 'z');
 
     const allRoster = state.players.filter(p =>
-      p.tid === state.userTeamId && p.status === 'Active'
+      p.tid === state.userTeamId && isOnRoster(p)
     );
     const standardRoster = allRoster.filter(p => !(p as any).twoWay);
     const twoWayRoster = allRoster.filter(p => !!(p as any).twoWay);
@@ -81,6 +84,9 @@ export function useRosterComplianceGate() {
       return !today || (g.date ?? '') >= today;
     }) ?? false;
     const livePhase = isRegularSeason || (isPlayoffs && userStillInPlayoffs && hasUpcomingUserGame);
+    if (euroIsolated) {
+      return { ...empty, phase, maxRoster: Math.max(maxStd, standardRoster.length) };
+    }
     if (livePhase && standardRoster.length < minRoster) {
       return { ...empty, mode: 'under' as const, slotsNeeded: minRoster - standardRoster.length, phase, maxRoster: maxStd };
     }
@@ -137,7 +143,7 @@ export function useRosterComplianceGate() {
       }
     }
     return { ...empty, isPreseasonEnd: isTrainingCamp, phase, maxRoster: isTrainingCamp ? maxCamp : maxStd };
-  }, [state.gameMode, state.userTeamId, state.players, state.leagueStats, state.date]);
+  }, [state.gameMode, state.userTeamId, state.players, state.leagueStats, state.date, state.schedule, state.teams, state.nonNBATeams]);
 
   const attempt = (fn: () => void | Promise<void>) => {
     if (check.mode) {
@@ -235,12 +241,14 @@ export function useRosterComplianceGate() {
     && check.phase === 'regular-season'
     && (() => {
       const standardCount = state.players.filter(p =>
-        p.tid === state.userTeamId && p.status === 'Active' && !(p as any).twoWay
+        p.tid === state.userTeamId && isOnRoster(p) && !(p as any).twoWay
       ).length;
       return standardCount < (state.leagueStats?.maxStandardPlayersPerTeam ?? 15);
     })();
 
-  const userTeam = state.teams.find(t => t.id === state.userTeamId);
+  const userTeam = state.userTeamId != null
+    ? resolveAnyTeam(state.userTeamId, state.teams, state.nonNBATeams ?? [])
+    : null;
 
   const modal = (
     <>

@@ -1,5 +1,5 @@
 import type { SponsorshipSlot, TycoonTier, SponsorIndustry } from '../types/tycoon';
-import { SPAIN_INITIAL_SPONSORS } from '../services/tycoon/specs/spain';
+import { SPAIN_INITIAL_SPONSORS, SPAIN_BRAND_META } from '../services/tycoon/specs/spain';
 import type { BrandMeta } from '../utils/sponsorLogos';
 
 export type LeagueKey = 'spain' | 'france' | 'italy' | 'greece' | 'germany' | 'turkey' | 'israel';
@@ -58,13 +58,23 @@ export function pickSponsorName(
 }
 
 export function getBrandMeta(league: LeagueKey, sponsorName: string): BrandMeta | undefined {
+  const fromCache = cache?.leagues[league]?.brands?.[sponsorName];
+  if (fromCache) return fromCache;
+  return OFFLINE_FALLBACK.leagues[league]?.brands?.[sponsorName];
+}
+
+export function getSponsorPool(
+  league: LeagueKey,
+  tier: TycoonTier,
+  slot: SponsorshipSlot,
+): string[] {
   const data = (cache ?? OFFLINE_FALLBACK).leagues[league];
-  return data?.brands?.[sponsorName];
+  return data?.tiers?.[tier]?.[slot] ?? SPAIN_INITIAL_SPONSORS[tier]?.[slot] ?? [];
 }
 
 const OFFLINE_FALLBACK: SponsorCatalog = {
   version: 0,
   leagues: {
-    spain: { tiers: SPAIN_INITIAL_SPONSORS, brands: {} },
+    spain: { tiers: SPAIN_INITIAL_SPONSORS, brands: SPAIN_BRAND_META },
   },
 };

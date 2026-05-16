@@ -53,8 +53,8 @@ These bugs have shipped multiple times across sessions. Before writing code, sca
 2. **`p.tid >= 0` is NOT the NBA-only filter.**
    External leagues use offsets: Euroleague +1000, PBA +2000, **WNBA +3000**, B-League +4000, Endesa +5000, G-League +6000, CBA +7000, NBL +8000. Correct filter is `p.tid >= 0 && p.tid < 100`. Add a `status`-not-in-(WNBA/Euroleague/…) check as defense-in-depth. Symptom: A'ja Wilson appears in NBA pools.
 
-3. **`player.age` is unreliable; use `leagueYear - player.born.year`.**
-   BBGM rosters set `born.year` consistently but not `age`. UI shows `?y` if you bind to `age`.
+3. **`player.age` is unreliable — ALWAYS use `computeAge(player, simYear)` from `src/utils/helpers.ts`.**
+   BBGM rosters set `born.year` consistently but not `age`. The helper handles `born.year` → `simYear - born.year`, falls back to `player.age`, then 25. Never inline the formula — use the helper so the fallback chain stays in one place. `simYear` comes from `state.leagueStats?.year`.
 
 4. **Family-Lock: `relatives.length > 0` ≠ "has family on this roster".**
    `player.relatives` lists ALL known kin league-wide (BBGM-pid based, doesn't match our `internalId`). Use `hasFamilyOnRoster(player, roster)` from `utils/familyTies.ts` — it matches by name within the given roster. Symptom: Aaron Holiday locked on Houston because Justin Holiday is in the league elsewhere.

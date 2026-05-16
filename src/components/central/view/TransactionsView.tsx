@@ -1,12 +1,14 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { ArrowRightLeft, Calendar, Info, Search, Filter, UserCheck, UserX, AlertTriangle, Users, ChevronLeft, ChevronRight, Sunset, TrendingDown, TrendingUp, Trophy, CheckCircle } from 'lucide-react';
+import { ArrowRightLeft, Calendar, Info, Search, Filter, UserCheck, UserX, AlertTriangle, Users, ChevronLeft, ChevronRight, Sunset, TrendingDown, TrendingUp, Trophy, CheckCircle, Handshake } from 'lucide-react';
 import { motion } from 'motion/react';
 import { NBAPlayer } from '../../../types';
 import { PlayerBioView } from './PlayerBioView';
 import { TradeDetailView } from './TradeDetailView';
 import { getOwnTeamId } from '../../../utils/helpers';
 import { getGameDateParts } from '../../../utils/dateUtils';
+import { getDomesticPlayerStatus } from '../../../utils/euroLeagueDefaults';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -37,6 +39,11 @@ function detectType(text: string, type?: string) {
   if (type === 'NG Guaranteed' || (t.includes('guaranteed by') && t.includes('january 10'))) return 'NG Guaranteed';
   if (type === 'Jersey Retirement' || t.includes('retired #') || t.includes('retired jersey')) return 'Jersey Retirement';
   if (type === 'Retirement'  || t.includes('has retired') || t.includes('announced his retirement') || t.includes('announced retirement')) return 'Retirement';
+  // Euro Transfer Market entries — type === 'Transfer' carries the buyout-fee
+  // moves between Euroleague/Liga Endesa clubs (NOT NBA trades, which keep
+  // the 'Trade' label). Text fallback covers stale history before this
+  // wiring shipped.
+  if (type === 'Transfer'    || t.includes('transferred from'))        return 'Transfer';
   if (type === 'Trade'       || t.includes('trade'))                   return 'Trade';
   if (type === 'Re-signing'  || t.includes('re-signed'))               return 'Re-signing';
   if (type === 'Signing'     || t.includes('signed') || t.includes('signs with')) return 'Signing';
@@ -49,6 +56,7 @@ function detectType(text: string, type?: string) {
 const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React.ReactNode; label: string }> = {
   Draft:                { color: 'text-violet-400',   bg: 'bg-violet-500/10',   icon: <Trophy size={18}/>,         label: 'Draft' },
   Trade:                { color: 'text-blue-400',    bg: 'bg-blue-500/10',     icon: <ArrowRightLeft size={18}/>, label: 'Trade' },
+  Transfer:             { color: 'text-rose-300',    bg: 'bg-rose-500/10',     icon: <Handshake size={18}/>,      label: 'Transfer' },
   Signing:              { color: 'text-emerald-400', bg: 'bg-emerald-500/10',  icon: <UserCheck size={18}/>,      label: 'Signing' },
   'Re-signing':         { color: 'text-teal-400',    bg: 'bg-teal-500/10',     icon: <UserCheck size={18}/>,      label: 'Re-signing' },
   Waive:                { color: 'text-amber-400',   bg: 'bg-amber-500/10',    icon: <UserX size={18}/>,          label: 'Waiver' },
@@ -95,7 +103,14 @@ export const TransactionsView: React.FC = () => {
   const { state } = useGame();
   const ownTid = getOwnTeamId(state);
   const ownTeam = ownTid !== null ? state.teams.find(t => t.id === ownTid) : null;
-  const [filterLeague, setFilterLeague] = React.useState<LeagueFilter>('nba');
+  const getDefaultFilterLeague = (): LeagueFilter => {
+    if (isPbaIsolatedMode(state)) return 'PBA';
+    const domestic = getDomesticPlayerStatus(state as any);
+    return isEuroIsolatedMode(state) && domestic && EXTERNAL_LEAGUES.includes(domestic as any)
+      ? domestic as LeagueFilter
+      : 'nba';
+  };
+  const [filterLeague, setFilterLeague] = React.useState<LeagueFilter>(getDefaultFilterLeague);
   const [filterType, setFilterType] = React.useState('');
   const [filterTeam, setFilterTeam] = React.useState('');
   const [filterMonth, setFilterMonth] = React.useState('');
@@ -365,6 +380,7 @@ export const TransactionsView: React.FC = () => {
               <option value="Draft">Draft</option>
               <option value="Signing">Signing / Extension</option>
               <option value="Trade">Trade</option>
+              <option value="Transfer">Transfer (Buyout)</option>
               <option value="Waive">Waive</option>
               <option value="AwardOnWaivers">Claimed off Waivers</option>
               <option value="Retirement">Retirement</option>
@@ -784,6 +800,7 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
           <option value="Draft">Draft</option>
           <option value="Signing">Signing</option>
           <option value="Trade">Trade</option>
+          <option value="Transfer">Transfer (Buyout)</option>
           <option value="Waive">Waive</option>
           <option value="Retirement">Retirement</option>
           <option value="Jersey Retirement">Jersey Retirement</option>

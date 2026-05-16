@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Trophy, Table2, BarChart2, Users, ListOrdered, TrendingUp,
-  Star, Zap, BookOpen, Stethoscope, History, LayoutGrid,
+  Star, Zap, BookOpen, Stethoscope, History, LayoutGrid, Wallet,
 } from 'lucide-react';
 
 export type CompetitionHubView =
@@ -9,6 +9,7 @@ export type CompetitionHubView =
   | 'standings'
   | 'central'
   | 'team-history'
+  | 'finances'
   | 'player-stats'
   | 'player-ratings'
   | 'team-stats'
@@ -39,6 +40,7 @@ const SECTIONS: AsideSection[] = [
       { id: 'bracket',      label: 'Bracket',      icon: Trophy },
       { id: 'standings',    label: 'Standings',    icon: Table2 },
       { id: 'team-history', label: 'Team History', icon: History },
+      { id: 'finances',     label: 'Finances',     icon: Wallet },
     ],
   },
   {

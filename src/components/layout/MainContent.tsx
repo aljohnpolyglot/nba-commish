@@ -64,6 +64,7 @@ import { CompetitionHubLayout } from '../competition/CompetitionHubLayout';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
 import { PBAHubView } from '../pba/PBAHubView';
 import { PBAConferenceHubLayout } from '../pba/PBAConferenceHubLayout';
+import { isNoDraftLeague } from '../../services/offseason/offseasonState';
 import { Tab } from '../../types';
 
 interface MainContentProps {
@@ -73,6 +74,10 @@ interface MainContentProps {
 
 export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewChange }) => {
   const { state } = useGame();
+  const euroIsolated = isEuroIsolatedMode(state);
+  const tradesDisabled = state.leagueStats?.tradesAllowed === false;
+  const noDraft = isNoDraftLeague(state.leagueStats as any);
+
   switch (currentView) {
     case 'Inbox':
       return <Inbox />;
@@ -97,21 +102,23 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Team Stats':
       return <TeamStatsView />;
     case 'Award Races':
+      if (euroIsolated) return <div className="p-8 text-slate-500">European season awards will appear here once the trophy system is complete.</div>;
       return <AwardRacesView />;
     case 'All-Star':
       return <AllStarView />;
     case 'NBA Cup':
+      if (euroIsolated) return <CompetitionHubLayout specId="euroleague" />;
       return (
         <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
           <NBACupView />
         </div>
       );
     case 'Playoffs':
-      return isEuroIsolatedMode(state)
+      return euroIsolated
         ? <CompetitionHubLayout specId="endesa" />
         : <PlayoffView />;
     case 'NBA Central':
-      return isEuroIsolatedMode(state)
+      return euroIsolated
         ? <CompetitionHubLayout specId="endesa" />
         : <NBACentral />;
     case 'Player Search':
@@ -121,10 +128,13 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Events':
       return <LeagueEvent />;
     case 'Trade Machine':
+      if (tradesDisabled) return <div className="p-8 text-slate-500">This competition is built around signings, loans and free agency rather than trades.</div>;
       return <TradeMachineView onViewChange={onViewChange} />;
     case 'Trade Finder':
+      if (tradesDisabled) return <div className="p-8 text-slate-500">This competition is built around signings, loans and free agency rather than trades.</div>;
       return <TradeFinderView />;
     case 'Trade Proposals':
+      if (tradesDisabled) return <div className="p-8 text-slate-500">This competition is built around signings, loans and free agency rather than trades.</div>;
       // GM-only view — in commissioner mode fall through to the default dashboard.
       return state.gameMode === 'gm' ? <TradeProposalsView /> : <div className="p-8 text-slate-500">Trade Proposals is available in GM mode.</div>;
     case 'Free Agents':
@@ -154,6 +164,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
         </div>
       );
     case 'Seasonal':
+      if (euroIsolated) return <CompetitionHubLayout specId="euroleague" />;
       return (
         <div className="h-full overflow-hidden flex flex-col">
           <SeasonalView />
@@ -220,11 +231,14 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Team Finances':
       return <TeamFinancesViewDetailed />;
     case 'Draft Scouting':
+      if (noDraft) return <div className="p-8 text-slate-500">This league signs and develops players without a draft.</div>;
       return <DraftScoutingView />;
     case 'Draft Lottery':
+      if (noDraft) return <div className="p-8 text-slate-500">This league signs and develops players without a draft.</div>;
       return <DraftLotteryView />;
     case 'Draft Board':
     case 'Draft History': {
+      if (noDraft) return <div className="p-8 text-slate-500">This league signs and develops players without a draft.</div>;
       // On draft day (and draft not yet complete) → show the live simulator
       // Otherwise → show draft history (past draft classes)
       const _ls = state?.leagueStats ?? {} as any;
@@ -297,6 +311,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
         </div>
       );
     case 'Hall of Fame':
+      if (euroIsolated) return <div className="p-8 text-slate-500">European legacy tracking will appear here after club history has enough seasons.</div>;
       return <HallofFameView />;
     case 'Front Office':
       return <FrontOfficeView initialSection="finances" />;
@@ -313,7 +328,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Front Office Transfer Market':
       return <EuroTransferMarketView />;
     case 'Euroleague Hub':
-      return isEuroIsolatedMode(state)
+      return euroIsolated
         ? <CompetitionHubLayout specId="euroleague" />
         : (() => {
             const league = HUB_TAB_TO_LEAGUE[currentView];
@@ -324,7 +339,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
             ) : null;
           })();
     case 'Endesa Hub':
-      return isEuroIsolatedMode(state)
+      return euroIsolated
         ? <CompetitionHubLayout specId="endesa" />
         : (() => {
             const league = HUB_TAB_TO_LEAGUE[currentView];

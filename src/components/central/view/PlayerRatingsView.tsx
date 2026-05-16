@@ -4,12 +4,13 @@ import { evaluateFilter } from '../../../utils/filterUtils';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
 import { calculateK2, K2_CATS, K2Data } from '../../../services/simulation/convert2kAttributes';
-import { convertTo2KRating } from '../../../utils/helpers';
 import { getDisplayOverall, getDisplayPotential } from '../../../utils/playerRatings';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { applyLeagueDisplayScale } from '../../../hooks/useLeagueScaledRatings';
 import { getRealDurability, applyDurabilityToK2 } from '../../../utils/durabilityUtils';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
+import { isEuroIsolatedMode } from '../../../utils/uiMode';
+import { fuzzRatingValue } from '../../../utils/scoutingFuzz';
 
 // Category summary config
 const CAT_CONFIG = [
@@ -114,7 +115,9 @@ export const PlayerRatingsView: React.FC = () => {
   // Build row data
   const rows: RowData[] = useMemo(() => {
     return state.players
-      .filter(p => p.status === 'Active' || p.status === 'Free Agent' || p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect')
+      .filter(p => isEuroIsolatedMode(state)
+        ? p.status === 'Euroleague' || p.status === 'Endesa'
+        : p.status === 'Active' || p.status === 'Free Agent' || p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect')
       .map(player => {
         const ratings = player.ratings?.find((r: any) => r.season === season)
           ?? player.ratings?.[player.ratings?.length - 1]
@@ -139,24 +142,24 @@ export const PlayerRatingsView: React.FC = () => {
         const k2 = applyDurabilityToK2(rawK2, realDur);
         // Canonical single-source-of-truth helpers — same functions every
         // other view uses (NBA Central, Team Office, modals, drafts).
-        const ovr = getDisplayOverall(player, season);
-        const pot = getDisplayPotential(player, currentYear, season);
+        const ovr = fuzzRatingValue(getDisplayOverall(player, season), state, player);
+        const pot = fuzzRatingValue(getDisplayPotential(player, currentYear, season), state, player, 'pot');
         return {
           player,
           age,
           ovr,
           pot,
           k2,
-          OS: k2.OS.ovr,
-          AT: k2.AT.ovr,
-          IS: k2.IS.ovr,
-          PL: k2.PL.ovr,
-          DF: k2.DF.ovr,
-          RB: k2.RB.ovr,
-          MI: k2.MI.ovr,
+          OS: fuzzRatingValue(k2.OS.ovr, state, player, 'OS'),
+          AT: fuzzRatingValue(k2.AT.ovr, state, player, 'AT'),
+          IS: fuzzRatingValue(k2.IS.ovr, state, player, 'IS'),
+          PL: fuzzRatingValue(k2.PL.ovr, state, player, 'PL'),
+          DF: fuzzRatingValue(k2.DF.ovr, state, player, 'DF'),
+          RB: fuzzRatingValue(k2.RB.ovr, state, player, 'RB'),
+          MI: fuzzRatingValue(k2.MI.ovr, state, player, 'MI'),
         };
       });
-  }, [state.players, season]); // currentYear is stable within a session
+  }, [state, state.players, season]); // currentYear is stable within a session
 
   // Filter
   const filtered = useMemo(() => {

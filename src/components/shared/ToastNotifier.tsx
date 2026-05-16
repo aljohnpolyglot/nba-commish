@@ -23,6 +23,8 @@ type ToastItem =
   | { type: 'rfa-offer-received'; playerId: string; playerName: string; signingTeamName: string; annualM: number; years: number; expiresInDays: number }
   | { type: 'rfa-matched'; playerName: string; priorTeamName: string; signingTeamName: string }
   | { type: 'rfa-not-matched'; playerName: string; signingTeamName: string }
+  | { type: 'transfer-accepted'; playerName: string; sellerTeamName: string; feeEUR: number }
+  | { type: 'transfer-rejected'; playerName: string; sellerTeamName: string; feeEUR: number; reason?: string }
   | { type: 'gameplan-copied' };
 
 // ── Imperative push API (usable outside React tree) ─────────────────────────
@@ -46,6 +48,8 @@ const TOAST_DURATION: Record<ToastItem['type'], number> = {
   'rfa-offer-received': 12000,
   'rfa-matched': 6000,
   'rfa-not-matched': 6000,
+  'transfer-accepted': 6000,
+  'transfer-rejected': 5500,
   'gameplan-copied': 3500,
 };
 
@@ -67,6 +71,8 @@ const ACCENT: Record<ToastItem['type'], Accent> = {
   'rfa-offer-received': { bg: 'bg-fuchsia-950/95', border: 'border-fuchsia-500/60', label: 'text-fuchsia-300', icon: 'text-fuchsia-400' },
   'rfa-matched':     { bg: 'bg-emerald-950/90', border: 'border-emerald-500/50', label: 'text-emerald-300', icon: 'text-emerald-400' },
   'rfa-not-matched': { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
+  'transfer-accepted': { bg: 'bg-emerald-950/90', border: 'border-emerald-500/50', label: 'text-emerald-300', icon: 'text-emerald-400' },
+  'transfer-rejected': { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
   'gameplan-copied': { bg: 'bg-sky-950/90',     border: 'border-sky-500/50',     label: 'text-sky-300',     icon: 'text-sky-400'     },
 };
 
@@ -97,7 +103,11 @@ export const ToastNotifier: React.FC = () => {
   // pendingRFAOfferSheets is now handled by RFAOfferSheetModal (mounted in App.tsx).
   // The modal owns the queue and dispatches MATCH_RFA_OFFER / DECLINE_RFA_OFFER per row.
 
-  // Drain pendingRFAMatchResolutions — outcome toasts (matched / not-matched).
+  // Transfer market resolutions are handled by TransferResolutionModal mounted
+  // globally in App.tsx — keeps the user attention on rejections instead of
+  // letting them auto-dismiss as toasts.
+
+// Drain pendingRFAMatchResolutions — outcome toasts (matched / not-matched).
   useEffect(() => {
     const pending = (state as any).pendingRFAMatchResolutions as Array<{ playerName: string; priorTeamName: string; signingTeamName: string; matched: boolean }> | undefined;
     if (!pending || pending.length === 0) return;
@@ -313,6 +323,11 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
       </Card>
     );
   }
+
+  // transfer-accepted / transfer-rejected render via TransferResolutionModal
+  // (global mount in App.tsx) — kept out of the toast queue intentionally so
+  // rejection reasons aren't lost to a 5s auto-dismiss.
+  if (item.type === 'transfer-accepted' || item.type === 'transfer-rejected') return null;
 
   if (item.type === 'eliminated') {
     return (

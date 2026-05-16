@@ -11,9 +11,10 @@ interface PlayerCardProps {
   player: NBAPlayer;
   team?: NBATeam;
   onActionClick: (player: NBAPlayer) => void;
+  hideNbaContractBadges?: boolean;
 }
 
-export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionClick }) => {
+export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionClick, hideNbaContractBadges = false }) => {
   const { state } = useGame();
   const simYear = state.leagueStats?.year ?? new Date().getFullYear();
   const isInjured = player.injury && player.injury.type !== 'Healthy' && player.injury.gamesRemaining > 0;
@@ -42,8 +43,8 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
     statusText = 'OUT - SUSPENDED';
   }
 
-  const isTwoWay = !!(player as any).twoWay;
-  const isNonGuaranteed = !!(player as any).nonGuaranteed;
+  const isTwoWay = !hideNbaContractBadges && !!(player as any).twoWay;
+  const isNonGuaranteed = !hideNbaContractBadges && !!(player as any).nonGuaranteed;
   const contractBorder = isTwoWay
     ? 'border-purple-500/40 hover:border-purple-500/70'
     : isNonGuaranteed

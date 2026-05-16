@@ -17,6 +17,8 @@ import { getScoringOptions, saveScoringOptions } from '../../../../../../store/s
 import { getLockedStrategy, lockStrategy, unlockStrategy } from '../../../../../../store/coachStrategyLockStore';
 import { getCoachSystem } from '../../../../../../store/coachSystemStore';
 import { getDisplayOverall } from '../../../../../../utils/playerRatings';
+import { getStaffImageUrl } from '../../../../../../utils/staffPortrait';
+import { useGame } from '../../../../../../store/GameContext';
 
 interface CoachingViewProps {
   team: any; // The processed team object from App.tsx
@@ -113,6 +115,10 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   // it increases their shot diet or pts target, but reduces efficiency.
   // Note that these options still don't change overall team strength, 
   // just the tendencies and shot distribution.
+  const { state } = useGame();
+  // GM darf nur die eigene Mannschaft konfigurieren. Commissioner darf alles.
+  // Greift auf Strategy-, Scoring-, System-, Gameplan-, Ideal-, Defense-Tabs durch.
+  const canEdit = state.gameMode !== 'gm' || Number(team.tid) === state.userTeamId;
   const [activeTab, setActiveTab] = useState<'GAMEPLAN' | 'DEFENSE' | 'IDEAL' | 'SYSTEM' | 'COACHING' | 'PREFERENCES' | 'STAFF'>('GAMEPLAN');
   const [starters, setStarters] = useState<any[]>([]);
   const [isMobile, setIsMobile] = useState(false);
@@ -175,6 +181,7 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   );
   const effectiveSliders = lockedStrategy?.sliders ?? team.coachSliders;
   const toggleStrategyLock = () => {
+    if (!canEdit) return;
     if (lockedStrategy) {
       unlockStrategy(Number(team.tid));
     } else {
@@ -185,6 +192,7 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   const updateLockedSlider = (key: string, value: number) => {
     // Only applies when locked — editing an unlocked slider is a no-op since
     // the underlying value is auto-computed from the roster.
+    if (!canEdit) return;
     if (!lockedStrategy) return;
     lockStrategy(Number(team.tid), { ...lockedStrategy.sliders, [key]: value });
     setLockTick(t => t + 1);
@@ -230,6 +238,7 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   }, [team.tid, baselineIds.join('|'), lockedStrategy]);
 
   const handleOptionChange = (optionIndex: number, direction: number) => {
+    if (!canEdit) return;
     setScoringOptionIds(prev => {
       if (usageSortedPlayers.length === 0) return prev;
       const ids = usageSortedPlayers.map((p: any) => String(p.internalId ?? p.pid));
@@ -257,6 +266,7 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   };
 
   const handleSystemChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (!canEdit) return;
     const newSystem = e.target.value;
     setSelectedSystem(newSystem);
     if (onSaveSystem) {
@@ -297,6 +307,7 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   let coachBio: CoachBioData | undefined;
   let nba2kCoach: NBA2KCoachData | undefined;
   let coachContract: CoachContractData | undefined;
+  let teamCoachRecord: any;
 
   if (staffData && staffData.coaches) {
     const teamLabel = team.teamName.toLowerCase().trim();
@@ -313,11 +324,12 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
       );
     });
     if (teamCoach) {
+      teamCoachRecord = teamCoach;
       coachName = teamCoach.name;
       coachBio = getCoachBio(coachName);
       nba2kCoach = getNBA2KCoach(coachName);
       coachContract = getCoachContract(coachName);
-      coachImg = getCoachPhoto(coachName) || teamCoach.playerPortraitUrl || nba2kCoach?.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(teamCoach.name)}&background=1a1a2e&color=FDB927&size=512&bold=true`;
+      coachImg = getCoachPhoto(coachName) || teamCoach.playerPortraitUrl || nba2kCoach?.image || getStaffImageUrl(teamCoach.staffImageId) || `https://ui-avatars.com/api/?name=${encodeURIComponent(teamCoach.name)}&background=1a1a2e&color=FDB927&size=512&bold=true`;
       
       if (!coachContract) {
         console.log(`No contract data found for coach: ${coachName}`);
@@ -335,6 +347,13 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
     } else {
       contractDisplay = `Until ${currentContract.end_year}`;
     }
+  } else if (teamCoachRecord?.contractExp) {
+    contractDisplay = `Until ${teamCoachRecord.contractExp}`;
+  } else if (teamCoachRecord?.contractYears != null) {
+    contractDisplay = `${teamCoachRecord.contractYears}yr remaining`;
+  } else if (teamCoachRecord?.yearsWithTeam != null) {
+    const remaining = Math.max(1, 4 - Math.min(3, teamCoachRecord.yearsWithTeam));
+    contractDisplay = `${remaining}yr remaining`;
   }
 
   const getBornDate = (bornStr?: string) => {
@@ -356,7 +375,8 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
     return 2026 - birthYear;
   };
 
-  const nationality = nba2kCoach?.nationality || coachBio?.nationality || 'Unknown';
+  const displayYear = 2026;
+  const nationality = nba2kCoach?.nationality || coachBio?.nationality || teamCoachRecord?.nationality || teamCoachRecord?.born?.loc || 'Unknown';
   
   let coachingCareer = nba2kCoach?.coaching_career;
   if (!coachingCareer || coachingCareer === 'Unknown') {
@@ -364,6 +384,11 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
       const startYear = coachBio.startSeason.split('-')[0];
       // Using 2026 as current season for now
       coachingCareer = `${startYear}-present`;
+    } else if (teamCoachRecord?.startSeason) {
+      const startYear = String(teamCoachRecord.startSeason).split('-')[0];
+      coachingCareer = `${startYear}-present`;
+    } else if (teamCoachRecord?.careerStartYear) {
+      coachingCareer = `${teamCoachRecord.careerStartYear}-present`;
     } else {
       coachingCareer = 'Unknown';
     }
@@ -371,8 +396,9 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
 
   let born = getBornDate(nba2kCoach?.born);
   if (!born || born === 'Unknown') {
-    born = coachBio?.birthDate || 'Unknown';
+    born = coachBio?.birthDate || (teamCoachRecord?.born?.year ? `${teamCoachRecord.born.year}` : teamCoachRecord?.bornYear ? `${teamCoachRecord.bornYear}` : 'Unknown');
   }
+  const coachAge = nba2kCoach?.age || calculateAge(born) || (teamCoachRecord?.bornYear ? displayYear - Number(teamCoachRecord.bornYear) : null);
 
   const formatName = (name: string) => {
     if (!name) return 'Unknown';
@@ -433,7 +459,15 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
   };
 
   return (
-    <div className="bg-[#1a1a1a] text-white p-3 md:p-6 rounded-lg shadow-xl max-w-6xl mx-auto flex flex-col lg:flex-row gap-6">
+    <div className="bg-[#1a1a1a] text-white p-3 md:p-6 rounded-lg shadow-xl max-w-6xl mx-auto flex flex-col gap-3">
+      {!canEdit && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          <Lock size={12} className="shrink-0" />
+          <span className="font-bold uppercase tracking-widest text-[10px]">Read only</span>
+          <span className="text-amber-100/80">GM mode — coaching settings can only be edited for your own team.</span>
+        </div>
+      )}
+      <div className="flex flex-col lg:flex-row gap-6">
       {/* Left Sidebar */}
       <div className="w-full lg:w-1/3 bg-[#222] rounded-lg overflow-hidden border border-gray-700 flex flex-col">
         {/* Coach Image */}
@@ -457,12 +491,12 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
           />
           <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black via-black/90 to-transparent p-4 pt-20">
             <h2 className="text-xl md:text-2xl font-bold uppercase mb-0.5">{coachName}</h2>
-            <div className="text-[10px] md:text-xs text-yellow-500 font-bold uppercase mb-4">{nba2kCoach?.position || 'Head Coach'}</div>
+            <div className="text-[10px] md:text-xs text-yellow-500 font-bold uppercase mb-4">{nba2kCoach?.position || teamCoachRecord?.position || 'Head Coach'}</div>
             
             <div className="flex flex-col gap-1.5 text-xs md:text-sm text-gray-300">
               <div className="flex justify-between items-center">
                 <span className="uppercase text-[10px] text-gray-500">Years with team:</span>
-                <span className="font-bold text-white">{coachBio?.yearsInRole ?? '-'}</span>
+                <span className="font-bold text-white">{coachBio?.yearsInRole ?? teamCoachRecord?.yearsWithTeam ?? '-'}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="uppercase text-[10px] text-gray-500">Contract Exp:</span>
@@ -480,7 +514,7 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
               )}
               <div className="flex justify-between items-center">
                 <span className="uppercase text-[10px] text-gray-500">Age:</span>
-                <span className="font-bold text-white">{nba2kCoach?.age || calculateAge(born) || '-'}</span>
+                <span className="font-bold text-white">{coachAge || '-'}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="uppercase text-[10px] text-gray-500">Born:</span>
@@ -579,10 +613,12 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
             <div className="flex flex-col h-full">
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-3">
-                  <select 
-                    className="bg-[#1a1a1a] border border-gray-700 text-white font-bold text-lg md:text-xl py-1 px-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 scrollbar-hide"
+                  <select
+                    className={`bg-[#1a1a1a] border border-gray-700 text-white font-bold text-lg md:text-xl py-1 px-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 scrollbar-hide ${!canEdit ? 'opacity-70 cursor-not-allowed' : ''}`}
                     value={selectedSystem}
                     onChange={handleSystemChange}
+                    disabled={!canEdit}
+                    title={!canEdit ? 'GM mode — read only for other teams' : undefined}
                   >
                     {[...team.sortedProfs].sort((a, b) => a[0].localeCompare(b[0])).map(([name]) => (
                       <option key={name} value={name}>{toTitleCase(name)}</option>
@@ -675,12 +711,15 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                 <h4 className="font-bold text-yellow-500 uppercase text-[10px] md:text-sm">Tactics</h4>
                 <button
                   onClick={toggleStrategyLock}
+                  disabled={!canEdit}
                   className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] md:text-xs font-bold uppercase transition-colors ${
-                    lockedStrategy
+                    !canEdit
+                      ? 'bg-gray-900 text-gray-600 border border-gray-800 cursor-not-allowed'
+                      : lockedStrategy
                       ? 'bg-yellow-500 text-black hover:bg-yellow-400'
                       : 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700'
                   }`}
-                  title={lockedStrategy ? 'Strategy locked — roster changes won\'t shift sliders' : 'Lock strategy against roster/injury changes'}
+                  title={!canEdit ? 'GM mode — read only for other teams' : lockedStrategy ? 'Strategy locked — roster changes won\'t shift sliders' : 'Lock strategy against roster/injury changes'}
                 >
                   {lockedStrategy ? <Lock size={12} /> : <Unlock size={12} />}
                   {lockedStrategy ? 'Locked' : 'Lock'}
@@ -704,10 +743,11 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                     <input
                       type="range" min="0" max="100"
                       value={effectiveSliders[slider.key]}
-                      readOnly={!lockedStrategy}
-                      disabled={!lockedStrategy}
+                      readOnly={!canEdit || !lockedStrategy}
+                      disabled={!canEdit || !lockedStrategy}
                       onChange={(e) => updateLockedSlider(slider.key, Number(e.target.value))}
-                      className={`w-full accent-yellow-500 ${lockedStrategy ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                      className={`w-full accent-yellow-500 ${canEdit && lockedStrategy ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                      title={!canEdit ? 'GM mode — read only for other teams' : undefined}
                     />
                   </div>
                 </div>
@@ -729,10 +769,11 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                     <input
                       type="range" min="0" max="100"
                       value={effectiveSliders[slider.key]}
-                      readOnly={!lockedStrategy}
-                      disabled={!lockedStrategy}
+                      readOnly={!canEdit || !lockedStrategy}
+                      disabled={!canEdit || !lockedStrategy}
                       onChange={(e) => updateLockedSlider(slider.key, Number(e.target.value))}
-                      className={`w-full accent-yellow-500 ${lockedStrategy ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                      className={`w-full accent-yellow-500 ${canEdit && lockedStrategy ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                      title={!canEdit ? 'GM mode — read only for other teams' : undefined}
                     />
                   </div>
                 </div>
@@ -745,12 +786,15 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
               <div className="flex items-center justify-end mb-2">
                 <button
                   onClick={toggleStrategyLock}
+                  disabled={!canEdit}
                   className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] md:text-xs font-bold uppercase transition-colors ${
-                    lockedStrategy
+                    !canEdit
+                      ? 'bg-gray-900 text-gray-600 border border-gray-800 cursor-not-allowed'
+                      : lockedStrategy
                       ? 'bg-yellow-500 text-black hover:bg-yellow-400'
                       : 'bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700'
                   }`}
-                  title={lockedStrategy ? 'Strategy locked — roster changes won\'t shift sliders' : 'Lock strategy against roster/injury changes'}
+                  title={!canEdit ? 'GM mode — read only for other teams' : lockedStrategy ? 'Strategy locked — roster changes won\'t shift sliders' : 'Lock strategy against roster/injury changes'}
                 >
                   {lockedStrategy ? <Lock size={12} /> : <Unlock size={12} />}
                   {lockedStrategy ? 'Locked' : 'Lock'}
@@ -769,18 +813,18 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => handleOptionChange(idx, -1)}
-                          disabled={!lockedStrategy}
-                          className={`transition-colors p-1 ${lockedStrategy ? 'text-gray-400 hover:text-white' : 'text-gray-700 cursor-not-allowed'}`}
-                          title={lockedStrategy ? 'Previous option' : 'Lock strategy to edit scoring options'}
+                          disabled={!canEdit || !lockedStrategy}
+                          className={`transition-colors p-1 ${canEdit && lockedStrategy ? 'text-gray-400 hover:text-white' : 'text-gray-700 cursor-not-allowed'}`}
+                          title={!canEdit ? 'GM mode — read only for other teams' : lockedStrategy ? 'Previous option' : 'Lock strategy to edit scoring options'}
                         ><ChevronLeft size={16} /></button>
                         <span className="text-yellow-500 font-bold text-sm w-40 text-center truncate">
                           {player ? formatName(player.name || `${player.firstName} ${player.lastName}`) : '-'}
                         </span>
                         <button
                           onClick={() => handleOptionChange(idx, 1)}
-                          disabled={!lockedStrategy}
-                          className={`transition-colors p-1 ${lockedStrategy ? 'text-gray-400 hover:text-white' : 'text-gray-700 cursor-not-allowed'}`}
-                          title={lockedStrategy ? 'Next option' : 'Lock strategy to edit scoring options'}
+                          disabled={!canEdit || !lockedStrategy}
+                          className={`transition-colors p-1 ${canEdit && lockedStrategy ? 'text-gray-400 hover:text-white' : 'text-gray-700 cursor-not-allowed'}`}
+                          title={!canEdit ? 'GM mode — read only for other teams' : lockedStrategy ? 'Next option' : 'Lock strategy to edit scoring options'}
                         ><ChevronRight size={16} /></button>
                       </div>
                     </div>
@@ -804,10 +848,11 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                     <input
                       type="range" min="0" max="100"
                       value={effectiveSliders[slider.key]}
-                      readOnly={!lockedStrategy}
-                      disabled={!lockedStrategy}
+                      readOnly={!canEdit || !lockedStrategy}
+                      disabled={!canEdit || !lockedStrategy}
                       onChange={(e) => updateLockedSlider(slider.key, Number(e.target.value))}
-                      className={`w-full accent-yellow-500 ${lockedStrategy ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                      className={`w-full accent-yellow-500 ${canEdit && lockedStrategy ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                      title={!canEdit ? 'GM mode — read only for other teams' : undefined}
                     />
                   </div>
                 </div>
@@ -830,10 +875,11 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
                         <input
                           type="range" min="0" max="100"
                           value={val}
-                          readOnly={!lockedStrategy}
-                          disabled={!lockedStrategy}
+                          readOnly={!canEdit || !lockedStrategy}
+                          disabled={!canEdit || !lockedStrategy}
                           onChange={(e) => updateLockedSlider(slider.key, Number(e.target.value))}
-                          className={`w-full accent-yellow-500 ${lockedStrategy ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                          className={`w-full accent-yellow-500 ${canEdit && lockedStrategy ? 'cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
+                          title={!canEdit ? 'GM mode — read only for other teams' : undefined}
                         />
                       </div>
                     </div>
@@ -843,45 +889,58 @@ export default function CoachingView({ team, allCoaches, staffData, onSaveSystem
               })}
             </div>
           )}
-          {activeTab === 'STAFF' && (
-            <div className="flex flex-col h-full overflow-y-auto max-h-[500px] pr-2 scrollbar-hide">
-              <h3 className="text-xl font-bold uppercase mb-4 text-yellow-500">Other Staff</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {getTeamStaff(team.teamName).filter(s => s.name !== coachName).map((staff, idx) => (
-                  <div key={idx} className="bg-[#1a1a1a] border border-gray-700 rounded-lg p-4 flex gap-4 items-center">
-                    <img
-                      src={staff.image || getCoachPhoto(staff.name) || `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}&background=1a1a2e&color=FDB927&size=128`}
-                      alt={staff.name}
-                      className="w-16 h-16 rounded-full object-cover border-2 border-gray-600 flex-shrink-0"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        const img = e.target as HTMLImageElement;
-                        const nba2k = getNBA2KCoach(staff.name);
-                        const fallbacks = [
-                          getCoachPhoto(staff.name),
-                          nba2k?.image,
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}&background=1a1a2e&color=FDB927&size=128`,
-                        ].filter(Boolean) as string[];
-                        const next = fallbacks.find(u => u && u !== img.src);
-                        if (next) img.src = next;
-                      }}
-                    />
-                    <div className="flex flex-col">
-                      <span className="font-bold text-lg leading-tight">{staff.name}</span>
-                      <span className="text-sm text-yellow-500 mb-1">{staff.position}</span>
-                      <span className="text-xs text-gray-400 line-clamp-2" title={staff.coaching_career || staff.playing_career || ''}>
-                        {staff.coaching_career || staff.playing_career || 'Career info unavailable'}
-                      </span>
+          {activeTab === 'STAFF' && (() => {
+            // CoachingView's STAFF tab is the source of truth for assistant
+            // coaches in NBA mode — the BBGM/NBA2K coach list has real
+            // current-team assignments + portraits. Front Office's Staff
+            // section covers performance + scouting; we don't duplicate
+            // managers / sports performance / training staff here.
+            const assistants = getTeamStaff(team.teamName).filter(s => {
+              if (s.name === coachName) return false;
+              const pos = (s.position ?? '').toLowerCase();
+              return pos.includes('assistant') && pos.includes('coach');
+            });
+            return (
+              <div className="flex flex-col h-full overflow-y-auto max-h-[500px] pr-2 scrollbar-hide">
+                <h3 className="text-xl font-bold uppercase mb-4 text-yellow-500">Assistant Coaches</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {assistants.map((staff, idx) => (
+                    <div key={idx} className="bg-[#1a1a1a] border border-gray-700 rounded-lg p-4 flex gap-4 items-center">
+                      <img
+                        src={staff.image || getCoachPhoto(staff.name) || `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}&background=1a1a2e&color=FDB927&size=128`}
+                        alt={staff.name}
+                        className="w-16 h-16 rounded-full object-cover border-2 border-gray-600 flex-shrink-0"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          const nba2k = getNBA2KCoach(staff.name);
+                          const fallbacks = [
+                            getCoachPhoto(staff.name),
+                            nba2k?.image,
+                            `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}&background=1a1a2e&color=FDB927&size=128`,
+                          ].filter(Boolean) as string[];
+                          const next = fallbacks.find(u => u && u !== img.src);
+                          if (next) img.src = next;
+                        }}
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-bold text-lg leading-tight">{staff.name}</span>
+                        <span className="text-sm text-yellow-500 mb-1">{staff.position}</span>
+                        <span className="text-xs text-gray-400 line-clamp-2" title={staff.coaching_career || staff.playing_career || ''}>
+                          {staff.coaching_career || staff.playing_career || 'Career info unavailable'}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {getTeamStaff(team.teamName).filter(s => s.name !== coachName).length === 0 && (
-                  <div className="col-span-full text-gray-400 text-sm italic">No other staff information available.</div>
-                )}
+                  ))}
+                  {assistants.length === 0 && (
+                    <div className="col-span-full text-gray-400 text-sm italic">No assistant coach information available for this team.</div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
+      </div>
       </div>
 
       {/* Unbalanced-minutes guard — stops the user from leaving GAMEPLAN with a

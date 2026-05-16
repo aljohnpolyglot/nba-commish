@@ -229,13 +229,24 @@ export function logOffseasonDrift(
 // metadata lives in one folder — no new files (keeps the tree uncluttered).
 
 import type { OffseasonChecklist, OffseasonChecklistRow, OffseasonRowStatus, Tab } from '../../types';
-import { isEuroIsolatedMode } from '../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
 import { getHOFCeremonyDateString } from '../playerDevelopment/hofChecker';
 
 const NO_DRAFT_ROWS: readonly OffseasonChecklistRow[] = [
   'draftLottery',
   'draft',
   'rookieContracts',
+] as const;
+
+const EURO_TASK_ROWS: readonly OffseasonChecklistRow[] = [
+  'coachingSignings',
+  'transferMarket',
+  'sponsorRenewals',
+  'facilityUpgrades',
+  'staffSignings',
+  'budgetLock',
+  'youthPromotion',
+  'preseasonFriendlies',
 ] as const;
 
 export function isNoDraftLeague(
@@ -245,28 +256,33 @@ export function isNoDraftLeague(
 }
 
 export function getVisibleOffseasonRows(
-  leagueStats?: { draftType?: string; uiMode?: string; year?: number } | null,
+  leagueStats?: { draftType?: string; uiMode?: string; year?: number; pbaConference?: string; pbaConferencePhase?: string } | null,
   userTeam?: { tycoon?: { sponsorships: { kit: unknown; sleeve: unknown; stadium: unknown } } } | null,
   currentDate?: string | Date | null,
 ): readonly OffseasonChecklistRow[] {
+  if (isPbaIsolatedMode({ leagueStats })) {
+    const phase = (leagueStats as any)?.pbaConferencePhase;
+    if (phase === 'offseason') {
+      const conf = (leagueStats as any)?.pbaConference;
+      if (conf === 'governors') {
+        return ['pbaConferenceAwards', 'pbaDraft', 'pbaLocalFreeAgency', 'pbaOpeningCeremony', 'trainingCamp'];
+      }
+      return ['pbaConferenceAwards', 'pbaImportSearch', 'pbaImportDecision', 'pbaOpeningCeremony', 'trainingCamp'];
+    }
+    return ['trainingCamp'] as readonly OffseasonChecklistRow[];
+  }
   if (isEuroIsolatedMode({ leagueStats })) {
     // NBA-only rows EXCLUDED from Euro offseason: 'options' (team-option exercise
     // is NBA-CBA-only) and 'qualifyingOffers' (RFA system NBA-only). Euro contracts
     // use straight multi-year deals + buyout clauses instead. HOF / retiree
     // rituals also NBA-only for the moment.
-    const rows: OffseasonChecklistRow[] = ['myFAs', 'freeAgency'];
-    const hasExpiredSlot = userTeam?.tycoon
-      ? (userTeam.tycoon.sponsorships.kit === null
-          || userTeam.tycoon.sponsorships.sleeve === null
-          || userTeam.tycoon.sponsorships.stadium === null)
-      : false;
-    if (hasExpiredSlot) rows.push('sponsorRenewals');
-    rows.push('facilityUpgrades', 'preseasonFriendlies', 'trainingCamp');
+    const rows: OffseasonChecklistRow[] = ['myFAs', 'coachingSignings', 'transferMarket', 'sponsorRenewals', 'facilityUpgrades', 'staffSignings', 'budgetLock', 'youthPromotion', 'preseasonFriendlies', 'trainingCamp'];
     return rows;
   }
+  const nbaRows = OFFSEASON_ROW_ORDER.filter(row => !EURO_TASK_ROWS.includes(row));
   const base = isNoDraftLeague(leagueStats)
-    ? OFFSEASON_ROW_ORDER.filter(row => !NO_DRAFT_ROWS.includes(row))
-    : OFFSEASON_ROW_ORDER;
+    ? nbaRows.filter(row => !NO_DRAFT_ROWS.includes(row))
+    : nbaRows;
 
   // Calendar-gated legacy rows — only surface in the sidebar once the in-game
   // date has reached their real-world window. retiredPlayersReview → July 1 of
@@ -305,8 +321,15 @@ export const OFFSEASON_ROW_ORDER: readonly OffseasonChecklistRow[] = [
   'options',
   'qualifyingOffers',
   'myFAs',
+  'coachingSignings',
   'freeAgency',
   'transferMarket',
+  'sponsorRenewals',
+  'facilityUpgrades',
+  'staffSignings',
+  'budgetLock',
+  'youthPromotion',
+  'preseasonFriendlies',
   'hofCeremony',
   'trainingCamp',
 ] as const;
@@ -324,9 +347,21 @@ export const OFFSEASON_ROW_LABELS: Record<OffseasonChecklistRow, string> = {
   transferMarket:   'Transfer Market',
   sponsorRenewals:  'Sponsor Renewals',
   facilityUpgrades: 'Facility Upgrades',
+  budgetLock: 'Annual Budget Review',
+  coachingSignings: 'Coaching Signings',
+  staffSignings: 'Support Staff Signings',
+  youthPromotion: 'Youth Promotion',
   preseasonFriendlies: 'Preseason Friendlies',
   hofCeremony:      'Hall of Fame Ceremony',
   trainingCamp:     'Training Camp',
+  pbaDraft:         'PBA Draft',
+  pbaLocalFreeAgency: 'Local Free Agency',
+  pbaImportSearch:  'Import Search',
+  pbaImportDecision: 'Import Decision',
+  pbaMuseSelection: 'Muse Selection',
+  pbaOpeningCeremony: 'Opening Ceremony',
+  pbaAllStarWeekend: 'All-Star Weekend',
+  pbaConferenceAwards: 'Conference Awards',
 };
 
 export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> = {
@@ -342,9 +377,21 @@ export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> =
   transferMarket:   'Review transfer listings, bids, and release-clause activity before preseason.',
   sponsorRenewals:  'Review sponsorship placeholders for the next operating year.',
   facilityUpgrades: 'Plan facility work before players report.',
+  budgetLock: 'Finalize next season\'s ticketing, travel, medical, scouting, and academy budgets.',
+  coachingSignings: 'Sign or extend your head coach and assistants right after the season ends.',
+  staffSignings: 'Finalize sports science, physio, scouting, and analytics staff before training camp.',
+  youthPromotion: 'Decide which academy prospects earn a senior roster spot before training camp.',
   preseasonFriendlies: 'Review Supercopa and preseason friendly slots.',
   hofCeremony:      'Welcome the new Hall of Fame class on enshrinement weekend.',
   trainingCamp:     'Set your training camp drills and finalize your opening-night roster.',
+  pbaDraft:         'Run the PBA Draft and select your rookies.',
+  pbaLocalFreeAgency: 'Sign local free agents before the conference begins.',
+  pbaImportSearch:  'Search the free agent pool for a conference import.',
+  pbaImportDecision: 'Decide whether to sign an import or play all-Filipino.',
+  pbaMuseSelection: 'Choose your team muse for the conference opening.',
+  pbaOpeningCeremony: 'Watch the conference opening ceremony.',
+  pbaAllStarWeekend: 'The PBA All-Star Weekend — captain draft, 3-point contest, and the main event.',
+  pbaConferenceAwards: 'Review conference awards and champion.',
 };
 
 /** Where each row navigates when "Enter Phase" is clicked. `null` = opens as a
@@ -361,11 +408,23 @@ export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab | null> = {
   rookieContracts:  'Team Office',
   freeAgency:       'Team Office',
   transferMarket:   'Front Office Transfer Market',
-  sponsorRenewals:  'Team Finances',
-  facilityUpgrades: 'Team Office',
+  sponsorRenewals:  'Front Office Sponsorships',
+  facilityUpgrades: 'Front Office Facilities',
+  budgetLock: null,
+  coachingSignings: 'Front Office Staff',
+  staffSignings: 'Front Office Staff',
+  youthPromotion: null,
   preseasonFriendlies: 'Schedule',
   hofCeremony:      null,
   trainingCamp:     'Training Center',
+  pbaDraft:         'Draft Board',
+  pbaLocalFreeAgency: 'Team Office',
+  pbaImportSearch:  'Free Agents',
+  pbaImportDecision: null,
+  pbaMuseSelection: null,
+  pbaOpeningCeremony: null,
+  pbaAllStarWeekend: null,
+  pbaConferenceAwards: null,
 };
 
 function baseOffseasonChecklist(): OffseasonChecklist {
@@ -382,23 +441,131 @@ function baseOffseasonChecklist(): OffseasonChecklist {
     transferMarket:   'pending',
     sponsorRenewals:  'pending',
     facilityUpgrades: 'pending',
+    budgetLock:       'skipped',
+    coachingSignings: 'skipped',
+    staffSignings:    'skipped',
+    youthPromotion:   'skipped',
     preseasonFriendlies: 'pending',
     hofCeremony:      'pending',
     trainingCamp:     'pending',
+    pbaDraft:         'skipped',
+    pbaLocalFreeAgency: 'skipped',
+    pbaImportSearch:  'skipped',
+    pbaImportDecision: 'skipped',
+    pbaMuseSelection: 'skipped',
+    pbaOpeningCeremony: 'skipped',
+    pbaAllStarWeekend: 'skipped',
+    pbaConferenceAwards: 'skipped',
   };
 }
 
 /** Default — every row 'pending'. Created when offseason begins. */
 export function defaultOffseasonChecklist(
-  leagueStats?: { draftType?: string } | null,
+  leagueStats?: { draftType?: string; uiMode?: string } | null,
 ): OffseasonChecklist {
   const checklist = baseOffseasonChecklist();
-  if (!isNoDraftLeague(leagueStats)) return checklist;
-  return {
+  if (isEuroIsolatedMode({ leagueStats })) {
+    return {
+      ...checklist,
+      draftLottery: 'skipped',
+      retiredPlayersReview: 'skipped',
+      expansionDraft: 'skipped',
+      options: 'skipped',
+      qualifyingOffers: 'skipped',
+      draft: 'skipped',
+      rookieContracts: 'skipped',
+      freeAgency: 'skipped',
+      hofCeremony: 'skipped',
+    };
+  }
+  const nonEuroBase: OffseasonChecklist = {
     ...checklist,
+    transferMarket: 'skipped',
+    sponsorRenewals: 'skipped',
+    facilityUpgrades: 'skipped',
+    budgetLock: 'skipped',
+    preseasonFriendlies: 'skipped',
+  };
+  if (!isNoDraftLeague(leagueStats)) return nonEuroBase;
+  return {
+    ...nonEuroBase,
     draftLottery: 'skipped',
     draft: 'skipped',
     rookieContracts: 'skipped',
+  };
+}
+
+export function initialEuroOffseasonChecklist(): OffseasonChecklist {
+  return {
+    ...defaultOffseasonChecklist({ uiMode: 'euro_isolated' }),
+    myFAs: 'skipped',
+    coachingSignings: 'pending',
+    transferMarket: 'pending',
+    sponsorRenewals: 'pending',
+    facilityUpgrades: 'pending',
+    staffSignings: 'pending',
+    budgetLock: 'pending',
+    youthPromotion: 'pending',
+    preseasonFriendlies: 'pending',
+    trainingCamp: 'pending',
+  };
+}
+
+export function initialPbaChecklist(): OffseasonChecklist {
+  return {
+    ...defaultOffseasonChecklist({ uiMode: 'pba_isolated' }),
+    draftLottery: 'skipped',
+    retiredPlayersReview: 'skipped',
+    expansionDraft: 'skipped',
+    options: 'skipped',
+    qualifyingOffers: 'skipped',
+    myFAs: 'skipped',
+    draft: 'skipped',
+    rookieContracts: 'skipped',
+    freeAgency: 'skipped',
+    transferMarket: 'skipped',
+    sponsorRenewals: 'skipped',
+    facilityUpgrades: 'skipped',
+    coachingSignings: 'skipped',
+    staffSignings: 'skipped',
+    youthPromotion: 'skipped',
+    preseasonFriendlies: 'skipped',
+    hofCeremony: 'skipped',
+    trainingCamp: 'pending',
+    pbaDraft: 'skipped',
+    pbaLocalFreeAgency: 'skipped',
+    pbaImportSearch: 'skipped',
+    pbaImportDecision: 'skipped',
+    pbaMuseSelection: 'skipped',
+    pbaOpeningCeremony: 'skipped',
+    pbaAllStarWeekend: 'skipped',
+    pbaConferenceAwards: 'skipped',
+  };
+}
+
+/** PBA inter-conference mini-offseason (Phil→Comm or Comm→Gov). */
+export function initialPbaInterConferenceChecklist(): OffseasonChecklist {
+  const base = initialPbaChecklist();
+  return {
+    ...base,
+    pbaConferenceAwards: 'done',
+    pbaImportSearch: 'pending',
+    pbaImportDecision: 'pending',
+    pbaOpeningCeremony: 'pending',
+    trainingCamp: 'pending',
+  };
+}
+
+/** PBA end-of-season offseason (after Gov Cup → new season Phil Cup). */
+export function initialPbaEndOfSeasonChecklist(): OffseasonChecklist {
+  const base = initialPbaChecklist();
+  return {
+    ...base,
+    pbaConferenceAwards: 'done',
+    pbaDraft: 'pending',
+    pbaLocalFreeAgency: 'pending',
+    pbaOpeningCeremony: 'pending',
+    trainingCamp: 'pending',
   };
 }
 
@@ -421,9 +588,21 @@ export function initialPreseasonChecklist(): OffseasonChecklist {
     transferMarket:   'pending',
     sponsorRenewals:  'skipped',
     facilityUpgrades: 'skipped',
+    budgetLock:       'skipped',
+    coachingSignings: 'skipped',
+    staffSignings:    'skipped',
+    youthPromotion:   'skipped',
     preseasonFriendlies: 'skipped',
     hofCeremony:      'skipped',
     trainingCamp:     'pending',
+    pbaDraft:         'skipped',
+    pbaLocalFreeAgency: 'skipped',
+    pbaImportSearch:  'skipped',
+    pbaImportDecision: 'skipped',
+    pbaMuseSelection: 'skipped',
+    pbaOpeningCeremony: 'skipped',
+    pbaAllStarWeekend: 'skipped',
+    pbaConferenceAwards: 'skipped',
   };
 }
 
@@ -442,25 +621,31 @@ export function firstUnfinishedRow(
     onFAOpenDay?: boolean;
     onCampOpenDay?: boolean;
   },
+  visibleRows?: readonly OffseasonChecklistRow[],
 ): OffseasonChecklistRow | null {
   if (!checklist) return null;
-  const isUnfinished = (s: OffseasonRowStatus) => s === 'pending' || s === 'in-progress';
+  const isUnfinished = (s: OffseasonRowStatus | undefined) => s === undefined || s === 'pending' || s === 'in-progress';
   // Calendar-anchored priority — these win over strict order when today is
   // the actual day of that event.
   if (signals?.onDraftDay     && isUnfinished(checklist.draft))         return 'draft';
   if (signals?.onLotteryDay   && isUnfinished(checklist.draftLottery))  return 'draftLottery';
   if (signals?.onFAOpenDay    && isUnfinished(checklist.freeAgency))    return 'freeAgency';
   if (signals?.onCampOpenDay  && isUnfinished(checklist.trainingCamp))  return 'trainingCamp';
-  for (const row of OFFSEASON_ROW_ORDER) {
+  const rows = visibleRows ?? OFFSEASON_ROW_ORDER;
+  for (const row of rows) {
     if (isUnfinished(checklist[row])) return row;
   }
   return null;
 }
 
 /** All rows resolved (done or skipped). */
-export function isChecklistComplete(checklist: OffseasonChecklist | undefined): boolean {
+export function isChecklistComplete(
+  checklist: OffseasonChecklist | undefined,
+  visibleRows?: readonly OffseasonChecklistRow[],
+): boolean {
   if (!checklist) return false;
-  return OFFSEASON_ROW_ORDER.every(row => {
+  const rows = visibleRows ?? OFFSEASON_ROW_ORDER;
+  return rows.every(row => {
     const s = checklist[row];
     return s === 'done' || s === 'skipped';
   });

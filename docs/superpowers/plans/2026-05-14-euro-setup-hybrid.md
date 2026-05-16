@@ -48,6 +48,17 @@
 
 ---
 
+## Worktree Recovery Notes — May 15, 2026
+
+- Euro GM setup now dispatches `INIT_EURO_CAREER` after the minimal Endesa review and seeds the save on July 1.
+- Legacy Euro GM saves heal owner/staff setup, generated staff pool, 4x10 FIBA cadence, and enabled transfer-market settings on load.
+- Initial Euro offseason checklist is Euro-specific: NBA draft/options/QO/free-agency/HOF rows are skipped, while Transfer Market, sponsor renewals, facility upgrades, preseason friendlies, and Training Camp remain live checklist rows. `Transfer Market` is current on July 1; `Training Camp` stays later in the order.
+- `OffseasonAufgaben` now exposes a Transfer Market confirmation modal with Euro-specific instructions instead of dropping the user into Training Camp.
+- Team Office Coaching now displays generated staff `yearsWithTeam`, `careerStartYear`, `bornYear`, and `nationality`; Gameplan starter seeding uses Euro roster statuses and the minute budget follows `quarterLength * numQuarters * 5` (200 in Euro).
+- Verification mode remains no new test files per user instruction. Current check: `npm run lint` PASS after this recovery patch.
+
+---
+
 ## Phase 1.A — Types + Infrastructure
 
 ### Task 1: Add OwnerProfile + NBATeam optional fields
@@ -426,7 +437,7 @@ git commit -m "feat(euro): player-pool-derived coach nationality distribution"
 - Modify: `src/services/staff/staffFallback.ts:95-121` (makePlaceholderCoach signature)
 - Modify: `src/services/staff/staffFallback.ts:123-151` (makePlaceholderGM signature)
 
-- [ ] **Step 1: Replace `pickCountry` to accept optional pool**
+- [x] **Step 1: Replace `pickCountry` to accept optional pool**
 
 In `src/services/staff/staffFallback.ts`, replace lines 79–83:
 
@@ -445,7 +456,7 @@ function pickCountry(
 }
 ```
 
-- [ ] **Step 2: Extend `makePlaceholderCoach` opts**
+- [x] **Step 2: Extend `makePlaceholderCoach` opts**
 
 Modify the `opts` param type and call inside (line ~97):
 
@@ -462,7 +473,7 @@ Then at line ~103:
   const nationality = pickCountry(homeCountry, rng, opts?.nationalityPool);
 ```
 
-- [ ] **Step 3: Same change for `makePlaceholderGM`**
+- [x] **Step 3: Same change for `makePlaceholderGM`**
 
 Modify signature at line ~124:
 
@@ -479,7 +490,7 @@ At line ~131:
   const nationality = pickCountry(homeCountry, rng, opts?.nationalityPool);
 ```
 
-- [ ] **Step 4: Type-check**
+- [x] **Step 4: Type-check**
 
 Run: `npx tsc --noEmit`
 Expected: PASS, no new errors.
@@ -497,11 +508,13 @@ git commit -m "feat(staff): accept optional nationality pool in placeholder gene
 
 ### Task 7: Tier + Budget seeder
 
+**Worktree status (May 15, Codex): implemented and verified, not committed.**
+
 **Files:**
 - Create: `src/services/euro/tierBudgetSeed.ts`
 - Create: `src/services/euro/__tests__/tierBudgetSeed.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 // src/services/euro/__tests__/tierBudgetSeed.test.ts
@@ -531,12 +544,12 @@ describe('seedTierAndBudget', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/services/euro/__tests__/tierBudgetSeed.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```typescript
 // src/services/euro/tierBudgetSeed.ts
@@ -600,7 +613,7 @@ export function seedTierAndBudget(input: {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run src/services/euro/__tests__/tierBudgetSeed.test.ts`
 Expected: PASS — 4 tests.
@@ -616,11 +629,13 @@ git commit -m "feat(euro): tier + budget seeder with prestige-hint table"
 
 ### Task 8: Staff seeder (6 roles)
 
+**Worktree status (May 15, Codex): implemented and verified, not committed.**
+
 **Files:**
 - Create: `src/services/euro/staffSeed.ts`
 - Create: `src/services/euro/__tests__/staffSeed.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 // src/services/euro/__tests__/staffSeed.test.ts
@@ -666,12 +681,12 @@ describe('seedStaffSix', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/services/euro/__tests__/staffSeed.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```typescript
 // src/services/euro/staffSeed.ts
@@ -769,7 +784,7 @@ export function seedStaffSix(
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run src/services/euro/__tests__/staffSeed.test.ts`
 Expected: PASS — 3 tests.
@@ -785,11 +800,13 @@ git commit -m "feat(euro): seed 6 staff roles with tier-coupled reputation"
 
 ### Task 9: Owner seeder
 
+**Worktree status (May 15, Codex): implemented and verified, not committed.**
+
 **Files:**
 - Create: `src/services/euro/ownerSeed.ts`
 - Create: `src/services/euro/__tests__/ownerSeed.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 // src/services/euro/__tests__/ownerSeed.test.ts
@@ -845,12 +862,12 @@ describe('seedOwner', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/services/euro/__tests__/ownerSeed.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```typescript
 // src/services/euro/ownerSeed.ts
@@ -943,7 +960,7 @@ export function seedOwner(
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run src/services/euro/__tests__/ownerSeed.test.ts`
 Expected: PASS — 4 tests.
@@ -959,13 +976,15 @@ git commit -m "feat(euro): tier-biased owner profile seeder"
 
 ### Task 10: Sponsor seeder (adapts existing sponsorCatalogFetcher)
 
+**Worktree status (May 15, Codex): implemented and verified, not committed.**
+
 **Files:**
 - Create: `src/services/euro/sponsorSeed.ts`
 - Create: `src/services/euro/__tests__/sponsorSeed.test.ts`
 
 **Context:** This calls `pickSponsorName()` for each of the 3 slots (main / jersey / arena → maps to the catalog's `SponsorshipSlot` union from `src/types/tycoon.ts`). `getSponsorCatalogSync()` returns `null` if `loadSponsorCatalog()` hasn't been awaited yet — in that case we return `[]` so the review screen shows "Sponsors pending".
 
-- [ ] **Step 1: Inspect the SponsorshipSlot type**
+- [x] **Step 1: Inspect the SponsorshipSlot type**
 
 Run `grep -n 'export type SponsorshipSlot' src/types/tycoon.ts` to see the canonical slot names (likely `'jersey' | 'sleeve' | 'shorts' | 'stadium' | ...`). Our review screen uses 3 logical slots — pick the catalog's closest names for the 3 we surface:
 
@@ -975,7 +994,7 @@ Run `grep -n 'export type SponsorshipSlot' src/types/tycoon.ts` to see the canon
 
 (If those names differ, adjust the constant below.)
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```typescript
 // src/services/euro/__tests__/sponsorSeed.test.ts
@@ -1011,12 +1030,12 @@ describe('seedSponsors (catalog loaded)', () => {
 });
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `npx vitest run src/services/euro/__tests__/sponsorSeed.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 4: Write the implementation**
+- [x] **Step 4: Write the implementation**
 
 ```typescript
 // src/services/euro/sponsorSeed.ts
@@ -1055,7 +1074,7 @@ export function seedSponsors(leagueId: string, tier: TycoonTier, _subSeed: numbe
 }
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `npx vitest run src/services/euro/__tests__/sponsorSeed.test.ts`
 Expected: PASS — 2 tests.
@@ -1073,11 +1092,13 @@ git commit -m "feat(euro): sponsor seeder using sponsorCatalogFetcher.pickSponso
 
 ### Task 11: Career-seed orchestrator (master-seed + reroll + override)
 
+**Worktree status (May 15, Codex): implemented and verified, not committed.**
+
 **Files:**
 - Create: `src/services/euro/careerSeed.ts`
 - Create: `src/services/euro/__tests__/careerSeed.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 // src/services/euro/__tests__/careerSeed.test.ts
@@ -1128,12 +1149,12 @@ describe('seedEuroCareer', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/services/euro/__tests__/careerSeed.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```typescript
 // src/services/euro/careerSeed.ts
@@ -1273,7 +1294,7 @@ export function clearOverride(
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run src/services/euro/__tests__/careerSeed.test.ts`
 Expected: PASS — 4 tests.
@@ -1291,16 +1312,18 @@ git commit -m "feat(euro): career seed orchestrator with sub-seed reroll + overr
 
 ### Task 12: INIT_EURO_CAREER reducer action
 
+**May 15 Codex status:** Implemented directly in `src/types.ts` and `src/store/GameContext.tsx`. This app handles setup actions inside `dispatchAction`, not a standalone reducer export, so the implementation lives beside the existing `START_GAME` branch. Per user request, no new smoke-test file was added; validation is `npm run lint` plus app/manual verification.
+
 **Files:**
 - Modify: `src/store/logic/initialization.ts` (or wherever the START_GAME / INIT logic lives)
 - Modify: `src/store/types.ts` or action types file (find with `grep "type: 'START_GAME'"`)
 
-- [ ] **Step 1: Locate the reducer file**
+- [x] **Step 1: Locate the reducer file**
 
 Run: `grep -rln "START_GAME" src/store/`
 Identify the file that handles initial game-state setup. (Likely `src/store/logic/initialization.ts` based on existing imports.)
 
-- [ ] **Step 2: Add action type**
+- [x] **Step 2: Add action type**
 
 Find the action union type. Add:
 
@@ -1315,7 +1338,7 @@ Find the action union type. Add:
   }
 ```
 
-- [ ] **Step 3: Add reducer case**
+- [x] **Step 3: Add dispatcher case**
 
 In the reducer's switch:
 
@@ -1366,56 +1389,19 @@ case 'INIT_EURO_CAREER': {
 }
 ```
 
-**Note on date fields:** Inspect the existing reducer's `state` shape before applying — the project may use `currentDate`, `gameDate`, or a combined `(year, month, day)` triple. Set whichever keys the store actually reads. The intent: when the user clicks "Start Career", the save's logical clock is **1 July of the season-start year**, matching the real ACB summer window. Keep the calendar 0-indexed if the project does (check `state.month` in any existing rollover).
+**Implementation note:** The store uses `GameState.date` as the canonical display/logical date. The wired case writes `Jul 1, {leagueStats.year - 1}` so a 2025-26 save begins on July 1, 2025, matching the real ACB summer transfer window.
 
-- [ ] **Step 4: Add a smoke test**
+- [x] **Step 4: Skip new smoke-test file by user request**
 
-Create `src/store/logic/__tests__/initEuroCareer.test.ts`:
+No new test file. The old test-first instruction is intentionally bypassed for this recovery run.
 
-```typescript
-import { describe, it, expect } from 'vitest';
-import { reducer } from '../initialization';  // adjust import path to actual reducer
-import type { GameState } from '../../../types';
+- [x] **Step 5: Run lint; leave uncommitted**
 
-describe('INIT_EURO_CAREER', () => {
-  it('writes ownerProfile + startingTier on the target team', () => {
-    const baseState: Partial<GameState> = {
-      teams: [{ tid: 5001, id: 5001, name: 'Real Madrid', region: 'Real', abbrev: 'RMB' } as any],
-      players: [],
-      staff: { coaches: [], gms: [], owners: [] } as any,
-      leagueStats: {} as any,
-    };
-    const action = {
-      type: 'INIT_EURO_CAREER',
-      payload: {
-        teamId: 5001,
-        leagueId: 'endesa',
-        seed: {
-          masterSeed: 1,
-          tier: 'Powerhouse',
-          budget: 12_000_000,
-          staff: [],
-          owner: { name: 'F. Test', wealthTier: 'Billionaire', patience: 'LongTerm', vision: 'WinNow' } as any,
-          sponsors: [],
-          manualOverrides: {},
-        },
-      },
-    } as any;
-    const next = reducer(baseState as GameState, action);
-    expect(next.teams[0].startingTier).toBe('Powerhouse');
-    expect(next.teams[0].ownerProfile?.name).toBe('F. Test');
-    expect(next.leagueStats?.autoOwnerSeeded).toBe(true);
-  });
-});
-```
-
-- [ ] **Step 5: Run + commit**
-
-Run: `npx vitest run src/store/logic/__tests__/initEuroCareer.test.ts`
-Expected: PASS — 1 test.
+Run: `npm run lint`
+Expected: PASS.
 
 ```bash
-git add src/store/logic/initialization.ts src/store/logic/__tests__/initEuroCareer.test.ts
+git add src/types.ts src/store/GameContext.tsx
 git commit -m "feat(store): INIT_EURO_CAREER action writes owner + tier + setup memo"
 ```
 
@@ -1423,14 +1409,16 @@ git commit -m "feat(store): INIT_EURO_CAREER action writes owner + tier + setup 
 
 ### Task 13: LOAD_GAME migration heal
 
+**May 15 Codex status:** Implemented directly in `src/store/GameContext.tsx` inside the existing `LOAD_GAME` handler. It runs only for Euro-isolated GM saves missing `leagueStats.autoOwnerSeeded`, reseeds deterministically from `euroSetupSeed.masterSeed` when present, writes owner/staff/sponsor setup back to the target club, and marks the seed flag. No new test file per recovery instruction; `npm run lint` passes.
+
 **Files:**
 - Modify: `src/store/logic/initialization.ts` (LOAD_GAME case) OR `src/services/SaveManager.ts` if migrations are centralized there
 
-- [ ] **Step 1: Locate the LOAD_GAME handler**
+- [x] **Step 1: Locate the LOAD_GAME handler**
 
 Run: `grep -rln "case 'LOAD_GAME'" src/store/`. Open the matching file.
 
-- [ ] **Step 2: Add migration block**
+- [x] **Step 2: Add migration block**
 
 Inside the LOAD_GAME reducer case, after `state` is restored, before returning:
 
@@ -1453,7 +1441,7 @@ if (needsOwnerHeal) {
 }
 ```
 
-- [ ] **Step 3: Add `inferLeagueIdFromTid` helper**
+- [x] **Step 3: Infer league id from loaded team**
 
 If not already present, add to the same file (top-level helper):
 
@@ -1468,61 +1456,25 @@ function inferLeagueIdFromTid(tid: number): string {
 }
 ```
 
-- [ ] **Step 4: Add migration snapshot test**
+- [x] **Step 4: Skip new migration snapshot test by user request**
 
-Create `src/store/logic/__tests__/loadGameOwnerHeal.test.ts`:
+No new test file. Manual/load-save verification remains for the app pass.
 
-```typescript
-import { describe, it, expect } from 'vitest';
-import { reducer } from '../initialization';
+- [x] **Step 5: Run lint; leave uncommitted**
 
-describe('LOAD_GAME owner migration', () => {
-  it('seeds ownerProfile for Euro save missing autoOwnerSeeded flag', () => {
-    const state = {
-      gameMode: 'gm',
-      userTeamId: 5001,
-      teams: [{ tid: 5001, id: 5001, name: 'Real Madrid', region: 'Real', abbrev: 'RMB' }],
-      players: [],
-      staff: { coaches: [], gms: [], owners: [] },
-      leagueStats: {},
-      saveId: 'test_save_1',
-    } as any;
-    const action = { type: 'LOAD_GAME', payload: { state } } as any;
-    const next = reducer({} as any, action);
-    expect(next.teams[0].ownerProfile).toBeDefined();
-    expect(next.leagueStats.autoOwnerSeeded).toBe(true);
-  });
-
-  it('does not re-seed if autoOwnerSeeded flag is already true', () => {
-    const state = {
-      gameMode: 'gm',
-      userTeamId: 5001,
-      teams: [{ tid: 5001, id: 5001, name: 'Real Madrid', region: 'Real', abbrev: 'RMB' }],
-      players: [],
-      staff: { coaches: [], gms: [], owners: [] },
-      leagueStats: { autoOwnerSeeded: true },
-      saveId: 'test_save_1',
-    } as any;
-    const action = { type: 'LOAD_GAME', payload: { state } } as any;
-    const next = reducer({} as any, action);
-    expect(next.teams[0].ownerProfile).toBeUndefined();
-  });
-});
-```
-
-- [ ] **Step 5: Run + commit**
-
-Run: `npx vitest run src/store/logic/__tests__/loadGameOwnerHeal.test.ts`
-Expected: PASS — 2 tests.
+Run: `npm run lint`
+Expected: PASS.
 
 ```bash
-git add src/store/logic/initialization.ts src/store/logic/__tests__/loadGameOwnerHeal.test.ts
+git add src/store/GameContext.tsx
 git commit -m "feat(store): LOAD_GAME heal seeds ownerProfile for legacy Euro saves"
 ```
 
 ---
 
 ## Phase 1.E — Review Screen UI
+
+**May 15 Codex recovery adaptation:** A minimal functional review screen was wired inline in `src/components/CommissionerSetup.tsx` so the seed path is usable immediately. The planned standalone `SectionGroup`, four card components, and edit modals remain pending polish work.
 
 ### Task 14: SectionGroup wrapper
 
@@ -2360,6 +2312,8 @@ git commit -m "feat(setup): EditSponsorSlotModal with brand/amount/years control
 
 ### Task 24: Add euroReview phase to App.tsx
 
+**May 15 Codex status:** Functional path implemented without a separate top-level `euroReview` App phase. `CommissionerSetup` owns the Endesa review step after franchise selection; `App.tsx` strips `euroCareerSeed` from the START_GAME payload, awaits START_GAME, then dispatches `INIT_EURO_CAREER`. Standalone review-component routing can still replace this inline version later.
+
 **Files:**
 - Modify: `src/App.tsx:174-198`
 
@@ -2448,6 +2402,8 @@ git commit -m "feat(app): route Euro mode through review screen before START_GAM
 
 ## Phase 1.G — Staff-Pool Lifecycle
 
+**May 15 Codex status:** Implemented directly without new test files. `src/services/euro/staffPool.ts` now owns initial generation, monthly refill, and league-id inference. `INIT_EURO_CAREER` plus legacy `LOAD_GAME` seed 50 staff free agents; `processTurn` refills 5-10 candidates on Euro GM month rollover; `StaffSection`/`StaffSigningModal` consume the generated pool and only fall back to emergency candidates when needed.
+
 ### Task 25: Seed staffFreeAgents at INIT_EURO_CAREER
 
 **Files:**
@@ -2491,7 +2447,7 @@ function generateInitialStaffPool(state: GameState, leagueId: string, count = 50
 }
 ```
 
-- [ ] **Step 2: Update INIT_EURO_CAREER case**
+- [x] **Step 2: Update INIT_EURO_CAREER case**
 
 Inside the existing case body (from Task 12), replace `staffPoolSeeded: false` with `staffPoolSeeded: true` and add the pool generation:
 
@@ -2511,7 +2467,7 @@ return {
 };
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Leave uncommitted for recovery batch**
 
 ```bash
 git add src/store/logic/initialization.ts
@@ -2523,11 +2479,10 @@ git commit -m "feat(store): seed 50-member staff free-agent pool at INIT_EURO_CA
 ### Task 26: Monthly staff-pool refill
 
 **Files:**
-- Create: `src/services/euro/staffPoolRefill.ts`
-- Create: `src/services/euro/__tests__/staffPoolRefill.test.ts`
+- Create: `src/services/euro/staffPool.ts`
 - Modify: wherever the monthly tick is defined (search: `grep -rln "monthlyTick\|onMonthRollover" src/services/`)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Skip new failing test by user request**
 
 ```typescript
 // src/services/euro/__tests__/staffPoolRefill.test.ts
@@ -2561,12 +2516,12 @@ describe('refillStaffPool', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Skip test run**
 
 Run: `npx vitest run src/services/euro/__tests__/staffPoolRefill.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```typescript
 // src/services/euro/staffPoolRefill.ts
@@ -2599,7 +2554,7 @@ export function refillStaffPool(state: GameState, leagueId: string, monthKey: st
 }
 ```
 
-- [ ] **Step 4: Wire into monthly tick**
+- [x] **Step 4: Wire into monthly tick**
 
 Find the monthly tick handler (grep `onMonthRollover` or `MONTHLY_TICK`). Add a call inside it:
 
@@ -2614,10 +2569,10 @@ if (state.userTeamId >= 1000 && state.userTeamId < 9000 && state.leagueStats?.st
 }
 ```
 
-- [ ] **Step 5: Run tests + commit**
+- [x] **Step 5: Run lint; leave uncommitted**
 
-Run: `npx vitest run src/services/euro/__tests__/staffPoolRefill.test.ts`
-Expected: PASS — 2 tests.
+Run: `npm run lint`
+Expected: PASS.
 
 ```bash
 git add src/services/euro/staffPoolRefill.ts src/services/euro/__tests__/staffPoolRefill.test.ts <month-tick-file>
@@ -2632,7 +2587,7 @@ git commit -m "feat(euro): monthly staff-pool refill (5-10 new candidates)"
 - Modify: `src/components/central/view/FrontOffice/StaffSigning/StaffSigningModal.tsx` (extend the `pool` prop handling)
 - Modify: the caller of `StaffSigningModal` (search: `grep -rln "StaffSigningModal" src/components/`)
 
-- [ ] **Step 1: Add last-resort fill inside the modal**
+- [x] **Step 1: Add last-resort fill inside the modal**
 
 Open `StaffSigningModal.tsx`. After the `useState`/`useMemo` block (around line ~80), add:
 
@@ -2670,7 +2625,7 @@ const lastResortFilled = useMemo(() => {
 
 Replace remaining references to `pool` inside the component with `lastResortFilled`.
 
-- [ ] **Step 2: Add an "Emergency Hire" badge in the candidate row**
+- [x] **Step 2: Add a "Limited options" badge in the candidate row**
 
 In the candidate-row rendering, conditionally show:
 
@@ -2682,7 +2637,7 @@ In the candidate-row rendering, conditionally show:
 )}
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Leave uncommitted for recovery batch**
 
 ```bash
 git add src/components/central/view/FrontOffice/StaffSigning/StaffSigningModal.tsx
@@ -2693,13 +2648,14 @@ git commit -m "feat(staff): last-resort generation guarantees >=3 candidates per
 
 ## Phase 1.H — Owner Mechanics
 
+**May 15 Codex status:** Implemented directly without new test files. `evaluateSeasonForOwner` exists, Euro year-end rollover ticks owner patience after the tycoon ledger snapshot, and the existing Euro bankruptcy modal handles both forced club changes and owner cash injections. The implementation reuses `pendingEuroBankruptcy` instead of adding a parallel game-over state.
+
 ### Task 28: evaluateSeasonForOwner pure function
 
 **Files:**
 - Create: `src/services/euro/evaluateSeasonForOwner.ts`
-- Create: `src/services/euro/__tests__/evaluateSeasonForOwner.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Skip new failing test by user request**
 
 ```typescript
 // src/services/euro/__tests__/evaluateSeasonForOwner.test.ts
@@ -2742,12 +2698,12 @@ describe('evaluateSeasonForOwner', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Skip test run**
 
 Run: `npx vitest run src/services/euro/__tests__/evaluateSeasonForOwner.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```typescript
 // src/services/euro/evaluateSeasonForOwner.ts
@@ -2789,10 +2745,10 @@ export function evaluateSeasonForOwner(
 }
 ```
 
-- [ ] **Step 4: Run tests + commit**
+- [x] **Step 4: Run lint; leave uncommitted**
 
-Run: `npx vitest run src/services/euro/__tests__/evaluateSeasonForOwner.test.ts`
-Expected: PASS — 6 tests.
+Run: `npm run lint`
+Expected: PASS.
 
 ```bash
 git add src/services/euro/evaluateSeasonForOwner.ts src/services/euro/__tests__/evaluateSeasonForOwner.test.ts
@@ -2806,11 +2762,11 @@ git commit -m "feat(euro): evaluateSeasonForOwner pure func (3 visions x outcome
 **Files:**
 - Modify: `src/services/seasonRollover.ts` (find the existing year-end pass)
 
-- [ ] **Step 1: Locate the season-rollover entrypoint**
+- [x] **Step 1: Locate the season-rollover entrypoint**
 
 Run: `grep -n "function.*rollover\|export.*rollover\|seasonRollover" src/services/seasonRollover.ts | head -5`. Identify the function that runs after the final game of the season.
 
-- [ ] **Step 2: Add the patience-tick helper at the top of the file**
+- [x] **Step 2: Add the patience-tick helper at the top of the file**
 
 ```typescript
 import { evaluateSeasonForOwner, type SeasonStatsForOwner } from './euro/evaluateSeasonForOwner';
@@ -2839,7 +2795,7 @@ function tickOwnerPatience(team: NBATeam, stats: SeasonStatsForOwner): { trigger
 }
 ```
 
-- [ ] **Step 3: Wire it into the year-end pass**
+- [x] **Step 3: Wire it into the year-end pass**
 
 Inside the rollover function, after season stats are written but before the team-by-team cleanup, add:
 
@@ -2864,7 +2820,7 @@ for (const team of state.teams) {
 }
 ```
 
-- [ ] **Step 4: Add a quick smoke test**
+- [x] **Step 4: Skip new smoke test by user request**
 
 Create `src/services/__tests__/seasonRollover_ownerTick.test.ts`:
 
@@ -2895,10 +2851,10 @@ describe('seasonRollover owner tick', () => {
 });
 ```
 
-- [ ] **Step 5: Run + commit**
+- [x] **Step 5: Run lint; leave uncommitted**
 
-Run: `npx vitest run src/services/__tests__/seasonRollover_ownerTick.test.ts`
-Expected: PASS — 1 test.
+Run: `npm run lint`
+Expected: PASS.
 
 ```bash
 git add src/services/seasonRollover.ts src/services/__tests__/seasonRollover_ownerTick.test.ts
@@ -2912,11 +2868,11 @@ git commit -m "feat(euro): season rollover ticks owner patience + sets pendingOw
 **Files:**
 - Modify: existing Bankruptcy / Game-Over modal component (search: `grep -rln "EuroBankruptcyModal\|GameOver" src/components/`)
 
-- [ ] **Step 1: Locate the existing modal**
+- [x] **Step 1: Locate the existing modal**
 
 Open `src/components/tycoon/EuroBankruptcyModal.tsx` (found earlier in repo). Read the first ~50 lines to understand its prop shape.
 
-- [ ] **Step 2: Add cash-injection flow when triggered by owner-patience**
+- [x] **Step 2: Add cash-injection flow when triggered by owner-patience**
 
 Above the irreversible Game-Over button, add a conditional injection offer. If `team.ownerProfile.wealthTier === 'Billionaire' && !team.ownerProfile.cashInjectionUsedThisSeason`, show:
 
@@ -2945,7 +2901,7 @@ Above the irreversible Game-Over button, add a conditional injection offer. If `
 )}
 ```
 
-- [ ] **Step 3: Add `onAcceptInjection` handler in parent (state-level)**
+- [x] **Step 3: Add owner-injection state update via existing UPDATE_STATE path**
 
 Whoever opens the modal must handle:
 

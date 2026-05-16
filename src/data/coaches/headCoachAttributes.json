@@ -1,0 +1,178 @@
+{
+  "_meta": {
+    "title": "NBA Head Coach Attributes — 2025-26 season baseline",
+    "description": "Curated 15-attribute ratings for current NBA head coaches. Upload to nba-store-data gist as headCoachAttributes.json once verified. Names MUST match the names used in nba2kcoachlist (the canonical NBA2K coach roster) so the lookup in staffService.ts can join on name.",
+    "schema": {
+      "offense": "Offensive scheme + play-calling quality (40-99)",
+      "defense": "Defensive scheme quality (40-99)",
+      "tactics": "In-game adjustments, depth of playbook, X's and O's (40-99)",
+      "development": "Drives skill growth in young players (40-99)",
+      "conditioning": "Quality of conditioning + workload programs (40-99)",
+      "adaptability": "Handles in-series adjustments, scheme switches (40-99)",
+      "determination": "Drive, competitiveness, work ethic (40-99)",
+      "levelOfDiscipline": "Enforces accountability + standards (40-99)",
+      "manManagement": "Locker-room handling, star/role-player balance (40-99)",
+      "motivating": "Gets effort, focus, and intensity from players (40-99)",
+      "physiotherapy": "Filler for coaches — usually mid-range, not their domain",
+      "sportsScience": "Filler for coaches — analytics-leaning HCs higher",
+      "judgingPlayerAbility": "Reads talent on roster + opponents (40-99)",
+      "judgingPlayerPotential": "Identifies which prospects will grow (40-99)",
+      "negotiating": "Filler for coaches — usually mid-range, GM's job"
+    },
+    "notes": [
+      "Assistant coaches stay seeded (buildStaffAttrs) — these curated values only cover head coaches.",
+      "If a head coach is missing from this file, the lookup falls back to a seeded value so no view breaks.",
+      "Refine via Gemini/Claude if any rating feels off — these are reputation-anchored starting points."
+    ]
+  },
+  "Steve Kerr": {
+    "offense": 99, "defense": 80, "tactics": 93, "development": 78, "conditioning": 70,
+    "adaptability": 88, "determination": 90, "levelOfDiscipline": 78, "manManagement": 92, "motivating": 94,
+    "physiotherapy": 60, "sportsScience": 65, "judgingPlayerAbility": 88, "judgingPlayerPotential": 82, "negotiating": 75
+  },
+  "Erik Spoelstra": {
+    "offense": 85, "defense": 95, "tactics": 96, "development": 88, "conditioning": 75,
+    "adaptability": 97, "determination": 98, "levelOfDiscipline": 92, "manManagement": 90, "motivating": 93,
+    "physiotherapy": 65, "sportsScience": 75, "judgingPlayerAbility": 90, "judgingPlayerPotential": 90, "negotiating": 72
+  },
+  "Doc Rivers": {
+    "offense": 75, "defense": 70, "tactics": 58, "development": 70, "conditioning": 65,
+    "adaptability": 65, "determination": 85, "levelOfDiscipline": 68, "manManagement": 88, "motivating": 82,
+    "physiotherapy": 60, "sportsScience": 55, "judgingPlayerAbility": 75, "judgingPlayerPotential": 72, "negotiating": 78
+  },
+  "Nick Nurse": {
+    "offense": 85, "defense": 90, "tactics": 96, "development": 78, "conditioning": 72,
+    "adaptability": 95, "determination": 90, "levelOfDiscipline": 75, "manManagement": 75, "motivating": 78,
+    "physiotherapy": 60, "sportsScience": 72, "judgingPlayerAbility": 85, "judgingPlayerPotential": 82, "negotiating": 72
+  },
+  "Joe Mazzulla": {
+    "offense": 92, "defense": 85, "tactics": 88, "development": 75, "conditioning": 68,
+    "adaptability": 82, "determination": 88, "levelOfDiscipline": 70, "manManagement": 68, "motivating": 78,
+    "physiotherapy": 55, "sportsScience": 80, "judgingPlayerAbility": 80, "judgingPlayerPotential": 78, "negotiating": 65
+  },
+  "Jason Kidd": {
+    "offense": 85, "defense": 80, "tactics": 78, "development": 75, "conditioning": 70,
+    "adaptability": 78, "determination": 85, "levelOfDiscipline": 70, "manManagement": 88, "motivating": 85,
+    "physiotherapy": 60, "sportsScience": 65, "judgingPlayerAbility": 82, "judgingPlayerPotential": 80, "negotiating": 75
+  },
+  "Quin Snyder": {
+    "offense": 92, "defense": 80, "tactics": 92, "development": 80, "conditioning": 70,
+    "adaptability": 85, "determination": 85, "levelOfDiscipline": 85, "manManagement": 75, "motivating": 78,
+    "physiotherapy": 58, "sportsScience": 70, "judgingPlayerAbility": 82, "judgingPlayerPotential": 80, "negotiating": 70
+  },
+  "Tyronn Lue": {
+    "offense": 82, "defense": 85, "tactics": 88, "development": 75, "conditioning": 72,
+    "adaptability": 88, "determination": 90, "levelOfDiscipline": 70, "manManagement": 92, "motivating": 90,
+    "physiotherapy": 60, "sportsScience": 65, "judgingPlayerAbility": 80, "judgingPlayerPotential": 78, "negotiating": 75
+  },
+  "Mark Daigneault": {
+    "offense": 88, "defense": 88, "tactics": 93, "development": 95, "conditioning": 75,
+    "adaptability": 92, "determination": 90, "levelOfDiscipline": 85, "manManagement": 82, "motivating": 85,
+    "physiotherapy": 65, "sportsScience": 82, "judgingPlayerAbility": 90, "judgingPlayerPotential": 95, "negotiating": 72
+  },
+  "Jamahl Mosley": {
+    "offense": 75, "defense": 88, "tactics": 80, "development": 92, "conditioning": 72,
+    "adaptability": 82, "determination": 85, "levelOfDiscipline": 85, "manManagement": 85, "motivating": 85,
+    "physiotherapy": 65, "sportsScience": 72, "judgingPlayerAbility": 85, "judgingPlayerPotential": 88, "negotiating": 70
+  },
+  "Chris Finch": {
+    "offense": 92, "defense": 78, "tactics": 85, "development": 78, "conditioning": 70,
+    "adaptability": 82, "determination": 82, "levelOfDiscipline": 75, "manManagement": 80, "motivating": 78,
+    "physiotherapy": 60, "sportsScience": 78, "judgingPlayerAbility": 82, "judgingPlayerPotential": 78, "negotiating": 70
+  },
+  "Will Hardy": {
+    "offense": 88, "defense": 82, "tactics": 90, "development": 90, "conditioning": 72,
+    "adaptability": 90, "determination": 85, "levelOfDiscipline": 82, "manManagement": 82, "motivating": 82,
+    "physiotherapy": 62, "sportsScience": 78, "judgingPlayerAbility": 85, "judgingPlayerPotential": 88, "negotiating": 72
+  },
+  "Kenny Atkinson": {
+    "offense": 88, "defense": 90, "tactics": 88, "development": 95, "conditioning": 82,
+    "adaptability": 88, "determination": 90, "levelOfDiscipline": 80, "manManagement": 88, "motivating": 88,
+    "physiotherapy": 70, "sportsScience": 82, "judgingPlayerAbility": 90, "judgingPlayerPotential": 92, "negotiating": 72
+  },
+  "Chauncey Billups": {
+    "offense": 72, "defense": 75, "tactics": 68, "development": 75, "conditioning": 70,
+    "adaptability": 72, "determination": 80, "levelOfDiscipline": 68, "manManagement": 90, "motivating": 85,
+    "physiotherapy": 60, "sportsScience": 62, "judgingPlayerAbility": 78, "judgingPlayerPotential": 75, "negotiating": 75
+  },
+  "JJ Redick": {
+    "offense": 85, "defense": 70, "tactics": 75, "development": 72, "conditioning": 65,
+    "adaptability": 78, "determination": 82, "levelOfDiscipline": 70, "manManagement": 78, "motivating": 82,
+    "physiotherapy": 60, "sportsScience": 72, "judgingPlayerAbility": 78, "judgingPlayerPotential": 72, "negotiating": 70
+  },
+  "Ime Udoka": {
+    "offense": 80, "defense": 95, "tactics": 88, "development": 75, "conditioning": 75,
+    "adaptability": 82, "determination": 92, "levelOfDiscipline": 92, "manManagement": 70, "motivating": 82,
+    "physiotherapy": 65, "sportsScience": 72, "judgingPlayerAbility": 82, "judgingPlayerPotential": 78, "negotiating": 72
+  },
+  "Rick Carlisle": {
+    "offense": 85, "defense": 88, "tactics": 95, "development": 78, "conditioning": 75,
+    "adaptability": 85, "determination": 92, "levelOfDiscipline": 92, "manManagement": 78, "motivating": 80,
+    "physiotherapy": 65, "sportsScience": 70, "judgingPlayerAbility": 85, "judgingPlayerPotential": 82, "negotiating": 75
+  },
+  "Mike Brown": {
+    "offense": 75, "defense": 92, "tactics": 85, "development": 78, "conditioning": 72,
+    "adaptability": 78, "determination": 88, "levelOfDiscipline": 85, "manManagement": 78, "motivating": 82,
+    "physiotherapy": 65, "sportsScience": 75, "judgingPlayerAbility": 80, "judgingPlayerPotential": 78, "negotiating": 72
+  },
+  "Billy Donovan": {
+    "offense": 82, "defense": 82, "tactics": 82, "development": 82, "conditioning": 72,
+    "adaptability": 80, "determination": 85, "levelOfDiscipline": 80, "manManagement": 82, "motivating": 82,
+    "physiotherapy": 62, "sportsScience": 72, "judgingPlayerAbility": 82, "judgingPlayerPotential": 80, "negotiating": 72
+  },
+  "Darko Rajaković": {
+    "offense": 80, "defense": 80, "tactics": 85, "development": 88, "conditioning": 72,
+    "adaptability": 85, "determination": 82, "levelOfDiscipline": 78, "manManagement": 80, "motivating": 80,
+    "physiotherapy": 62, "sportsScience": 75, "judgingPlayerAbility": 82, "judgingPlayerPotential": 85, "negotiating": 70
+  },
+  "J.B. Bickerstaff": {
+    "offense": 72, "defense": 85, "tactics": 75, "development": 75, "conditioning": 70,
+    "adaptability": 75, "determination": 82, "levelOfDiscipline": 78, "manManagement": 80, "motivating": 78,
+    "physiotherapy": 60, "sportsScience": 68, "judgingPlayerAbility": 75, "judgingPlayerPotential": 72, "negotiating": 70
+  },
+  "Brian Keefe": {
+    "offense": 70, "defense": 72, "tactics": 72, "development": 82, "conditioning": 68,
+    "adaptability": 75, "determination": 78, "levelOfDiscipline": 72, "manManagement": 78, "motivating": 75,
+    "physiotherapy": 58, "sportsScience": 68, "judgingPlayerAbility": 75, "judgingPlayerPotential": 78, "negotiating": 65
+  },
+  "Charles Lee": {
+    "offense": 78, "defense": 75, "tactics": 75, "development": 80, "conditioning": 68,
+    "adaptability": 78, "determination": 80, "levelOfDiscipline": 75, "manManagement": 78, "motivating": 78,
+    "physiotherapy": 60, "sportsScience": 72, "judgingPlayerAbility": 75, "judgingPlayerPotential": 78, "negotiating": 65
+  },
+  "Jordi Fernández": {
+    "offense": 80, "defense": 82, "tactics": 82, "development": 88, "conditioning": 72,
+    "adaptability": 85, "determination": 82, "levelOfDiscipline": 78, "manManagement": 78, "motivating": 80,
+    "physiotherapy": 62, "sportsScience": 78, "judgingPlayerAbility": 82, "judgingPlayerPotential": 85, "negotiating": 68
+  },
+  "Mitch Johnson": {
+    "offense": 72, "defense": 75, "tactics": 72, "development": 78, "conditioning": 68,
+    "adaptability": 72, "determination": 78, "levelOfDiscipline": 72, "manManagement": 75, "motivating": 75,
+    "physiotherapy": 58, "sportsScience": 68, "judgingPlayerAbility": 75, "judgingPlayerPotential": 78, "negotiating": 65
+  },
+  "Doug Christie": {
+    "offense": 72, "defense": 80, "tactics": 72, "development": 75, "conditioning": 68,
+    "adaptability": 75, "determination": 80, "levelOfDiscipline": 72, "manManagement": 85, "motivating": 82,
+    "physiotherapy": 60, "sportsScience": 65, "judgingPlayerAbility": 78, "judgingPlayerPotential": 75, "negotiating": 70
+  },
+  "Jordan Ott": {
+    "offense": 75, "defense": 75, "tactics": 75, "development": 78, "conditioning": 68,
+    "adaptability": 78, "determination": 80, "levelOfDiscipline": 75, "manManagement": 75, "motivating": 75,
+    "physiotherapy": 60, "sportsScience": 72, "judgingPlayerAbility": 78, "judgingPlayerPotential": 78, "negotiating": 65
+  },
+  "Willie Green": {
+    "offense": 75, "defense": 78, "tactics": 75, "development": 75, "conditioning": 68,
+    "adaptability": 75, "determination": 80, "levelOfDiscipline": 72, "manManagement": 80, "motivating": 80,
+    "physiotherapy": 60, "sportsScience": 68, "judgingPlayerAbility": 78, "judgingPlayerPotential": 75, "negotiating": 68
+  },
+  "David Adelman": {
+    "offense": 80, "defense": 75, "tactics": 78, "development": 75, "conditioning": 68,
+    "adaptability": 75, "determination": 80, "levelOfDiscipline": 72, "manManagement": 78, "motivating": 78,
+    "physiotherapy": 60, "sportsScience": 70, "judgingPlayerAbility": 75, "judgingPlayerPotential": 75, "negotiating": 68
+  },
+  "Tuomas Iisalo": {
+    "offense": 85, "defense": 80, "tactics": 85, "development": 82, "conditioning": 70,
+    "adaptability": 82, "determination": 82, "levelOfDiscipline": 78, "manManagement": 78, "motivating": 80,
+    "physiotherapy": 62, "sportsScience": 75, "judgingPlayerAbility": 80, "judgingPlayerPotential": 82, "negotiating": 68
+  }
+}

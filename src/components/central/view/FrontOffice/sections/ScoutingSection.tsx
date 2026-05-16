@@ -5,7 +5,7 @@ import type { TycoonState } from '../../../../../types/tycoon';
 import { SectionTitle } from '../shared/helpers';
 import { FacilityKpi } from '../shared/FacilityKpi';
 
-export const ScoutingSection: React.FC<{ tycoon: TycoonState; currency: string; onChange: (budget: number) => void }> = ({ tycoon, currency, onChange }) => {
+export const ScoutingSection: React.FC<{ tycoon: TycoonState; currency: string; onChange: (budget: number) => void; locked?: boolean }> = ({ tycoon, currency, onChange, locked = false }) => {
   const investment = tycoon.scoutingInvestment ?? 250_000;
   const quality = Math.max(0, Math.min(1, (investment - 50_000) / (2_500_000 - 50_000)));
   const band = Math.max(2, Math.round(12 - quality * 10));
@@ -21,14 +21,14 @@ export const ScoutingSection: React.FC<{ tycoon: TycoonState; currency: string; 
     <div className="space-y-6">
       <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-4">
         <SectionTitle icon={<Target size={22} />} title="Analytics" subtitle="Tune analytics investment and review data coverage before making roster decisions." />
-        <div className="grid sm:grid-cols-3 gap-3 xl:min-w-[620px]">
+        <div className="grid sm:grid-cols-3 gap-3">
           <FacilityKpi icon={<Search size={22} />} label="Report Coverage" value={`${coverage}%`} sub="Tracked market" />
           <FacilityKpi icon={<Target size={22} />} label="Rating Band" value={`±${band}`} sub="Unknown players" />
           <FacilityKpi icon={<Briefcase size={22} />} label="Annual Spend" value={fmt(investment)} sub="Analytics budget" />
         </div>
       </div>
 
-      <div className="grid xl:grid-cols-[1fr_380px] gap-6">
+      <div className="grid 2xl:grid-cols-[1fr_380px] gap-6">
         <div className="space-y-6">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
             <div className="flex items-center justify-between gap-4">
@@ -49,14 +49,16 @@ export const ScoutingSection: React.FC<{ tycoon: TycoonState; currency: string; 
               step={25_000}
               value={investment}
               onChange={(event) => onChange(Number(event.target.value))}
-              className="mt-7 w-full accent-emerald-400"
+              disabled={locked}
+              className={`mt-7 w-full accent-emerald-400 ${locked ? 'cursor-not-allowed opacity-50' : ''}`}
             />
+            {locked && <div className="mt-3 text-xs font-bold text-amber-300">Locked until next offseason.</div>}
             <div className="mt-2 flex justify-between text-xs text-slate-500">
               <span>{fmt(50_000)}</span><span>{fmt(2_500_000)}</span>
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid lg:grid-cols-2 gap-4">
             {scopes.map(([label, uncertainty, desc]) => (
               <div key={label} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
                 <div className="flex items-center justify-between">

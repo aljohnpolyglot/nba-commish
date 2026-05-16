@@ -3,6 +3,7 @@ import { useGame } from '../store/GameContext';
 import { getDraftLotteryDate, getDraftDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } from '../utils/dateUtils';
 import { DraftEventGateModal } from '../components/modals/DraftEventGateModal';
 import { normalizeDate } from '../utils/helpers';
+import { isNoDraftLeague } from '../services/offseason/offseasonState';
 
 interface DraftEventGateOptions {
   onNavigateToDraftLottery?: () => void;

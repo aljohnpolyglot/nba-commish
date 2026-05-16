@@ -5,6 +5,7 @@ interface JumpReviewScreenProps {
   chosenDate: string;
   gameMode?: 'commissioner' | 'gm';
   leagueType?: 'fictional' | 'modded';
+  moddedLeagueBase?: string;
   onContinue: (assistantGM: boolean) => void;
   onBack: () => void;
 }
@@ -41,6 +42,34 @@ const AUTO_RESOLVED_ITEMS: ReviewItem[] = [
   { date: '2026-01-29', label: '🌟 Shooting Stars',             how: 'Not yet available — auto-simmed if enabled',       status: 'placeholder' },
 ];
 
+const PBA_AUTO_RESOLVED_ITEMS: ReviewItem[] = [
+  { date: '2025-10-05', label: '📅 Phil. Cup Schedule',          how: '22-game round-robin generated for 12 PBA teams',     status: 'live' },
+  { date: '2025-10-05', label: '🏀 Philippine Cup Opening',     how: 'All-Filipino conference — no imports',               status: 'live' },
+  { date: '2025-12-15', label: '🏆 Phil. Cup Playoffs',          how: 'Twice-to-Beat QF → Best-of-7 SF/Finals',           status: 'live' },
+  { date: '2026-02-15', label: '🏅 Phil. Cup Finals',            how: 'Conference champion crowned',                       status: 'live' },
+  { date: '2026-03-06', label: '⭐ All-Star Weekend',            how: 'PBA All-Star Game auto-simulated',                  status: 'live' },
+  { date: '2026-03-11', label: "📅 Comm. Cup Schedule",          how: '22-game round-robin + import search window',        status: 'live' },
+  { date: '2026-07-01', label: "🏆 Comm. Cup Playoffs",          how: 'Twice-to-Beat QF → Best-of-7 SF/Finals',           status: 'live' },
+  { date: '2026-08-25', label: "🏅 Comm. Cup Finals",            how: 'Conference champion crowned',                       status: 'live' },
+  { date: '2026-09-10', label: "📅 Gov. Cup Schedule",           how: "22-game round-robin + import search (≤6'5\")",      status: 'live' },
+  { date: '2026-11-10', label: "🏆 Gov. Cup Playoffs",           how: 'Twice-to-Beat QF → Best-of-7 SF/Finals',           status: 'live' },
+  { date: '2026-12-28', label: '🏅 Season Awards',               how: 'MVP, ROY, Grand Slam check',                       status: 'live' },
+];
+
+const PBA_UPCOMING_ITEMS: UpcomingItem[] = [
+  { date: '2025-10-05', label: '🏀 Philippine Cup Opening',      sublabel: 'All-Filipino conference begins' },
+  { date: '2025-12-15', label: '🏆 Phil. Cup Playoffs',           sublabel: 'Top 8 qualify — Twice-to-Beat QF' },
+  { date: '2026-01-28', label: '🏅 Phil. Cup Finals',             sublabel: 'Best-of-7 championship series' },
+  { date: '2026-03-06', label: '⭐ All-Star Weekend',             sublabel: 'Captain draft format' },
+  { date: '2026-03-11', label: "🔍 Import Search",                sublabel: "Commissioner's Cup — 1 import, no height limit" },
+  { date: '2026-03-11', label: "🏀 Comm. Cup Opening",            sublabel: "Commissioner's Cup begins" },
+  { date: '2026-07-01', label: "🏆 Comm. Cup Playoffs",           sublabel: 'Twice-to-Beat QF' },
+  { date: '2026-09-10', label: "🔍 Import Search (≤6'5\")",       sublabel: "Governors' Cup — height-limited import" },
+  { date: '2026-09-10', label: "🏀 Gov. Cup Opening",             sublabel: "Governors' Cup begins" },
+  { date: '2026-11-10', label: "🏆 Gov. Cup Playoffs",            sublabel: 'Twice-to-Beat QF' },
+  { date: '2026-12-28', label: '🏅 Season Awards',                sublabel: 'MVP, ROY, Grand Slam' },
+];
+
 const UPCOMING_ITEMS: UpcomingItem[] = [
   { date: '2025-08-13', label: '📅 Set Christmas & Global Games',  sublabel: 'Planning window Aug 6-13' },
   { date: '2025-08-06', label: '📺 Broadcasting Deal',             sublabel: 'Default deal active — customize before Opening Night' },
@@ -69,23 +98,28 @@ const formatDate = (iso: string) => {
   return `${months[m - 1]} ${d}, ${y}`;
 };
 
-export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, gameMode, leagueType, onContinue, onBack }) => {
+export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, gameMode, leagueType, moddedLeagueBase, onContinue, onBack }) => {
   const [assistantGM, setAssistantGM] = useState(true);
   const labels = getLeagueLabels(leagueType);
-  const daysSkipped = daysBetween('2025-08-06', chosenDate);
+  const isPba = moddedLeagueBase === 'philippines';
+  const baseDate = isPba ? '2025-10-05' : '2025-08-06';
+  const daysSkipped = daysBetween(baseDate, chosenDate);
   const estSeconds = Math.max(1, Math.ceil(daysSkipped / 25));
   const estGames = Math.round(daysSkipped * 1.2);
 
-  const resolved = AUTO_RESOLVED_ITEMS
+  const autoItems = isPba ? PBA_AUTO_RESOLVED_ITEMS : AUTO_RESOLVED_ITEMS;
+  const upcomingItems = isPba ? PBA_UPCOMING_ITEMS : UPCOMING_ITEMS;
+
+  const resolved = autoItems
     .filter(item => item.date < chosenDate)
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  const upcoming = UPCOMING_ITEMS
+  const upcoming = upcomingItems
     .filter(item => item.date >= chosenDate)
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 6)
     .map(item => ({ ...item, daysAway: daysBetween(chosenDate, item.date) }));
-  const normalizedUpcoming = upcoming.map(item => ({
+  const normalizedUpcoming = isPba ? upcoming : upcoming.map(item => ({
     ...item,
     label: item.label.replace('NBA Cup', labels.cupShort),
   }));

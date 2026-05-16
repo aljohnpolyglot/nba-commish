@@ -1192,6 +1192,16 @@ export interface StaffMember {
   isPlaceholder?: boolean;
   face?: any;
   staffImageId?: number;
+  /** Free-agent pool members: which league's unemployed pool they belong to
+   *  ('endesa', 'euroleague', etc). Lets the Staff signing UI filter
+   *  candidates so user only sees FAs in their own league context. */
+  leagueId?: string;
+  /** Reputation 40-99 — derived OVR for sorting and salary calc. */
+  reputation?: number;
+  /** Stable unique id for FA pool tracking. */
+  id?: string;
+  /** Contract length in years (for hired members in tycoon.staffMembers). */
+  contractYears?: number;
 }
 
 export interface StaffData {
@@ -1617,6 +1627,8 @@ historicalAwards: HistoricalAward[];
   europeMarket?: 'spain';
 
   pendingFAToasts?: { playerName: string; accepted: boolean; winnerTeamName?: string; annualM: number; years: number; rejectionReason?: string }[];
+  /** Resolutions for user-submitted transfer market bids — accepted or rejected by the AI seller. */
+  pendingTransferToasts?: { playerName: string; accepted: boolean; sellerTeamName: string; feeEUR: number; reason?: string }[];
   pendingElimToast?: boolean;
   pendingInjuryToasts?: { playerName: string; injuryType: string; gamesRemaining: number; pos?: string; teamName?: string }[];
   pendingFeatToasts?: { playerName: string; teamName: string; oppName: string; homeScore: number; awayScore: number; isHome: boolean; won: boolean; pts: number; reb: number; ast: number; isOwnTeam: boolean }[];
@@ -1818,9 +1830,13 @@ export type OffseasonChecklistRow =
   | 'transferMarket'
   | 'sponsorRenewals'
   | 'facilityUpgrades'
+  | 'budgetLock'
   | 'preseasonFriendlies'
   | 'hofCeremony'
   | 'trainingCamp'
+  | 'coachingSignings'
+  | 'staffSignings'
+  | 'youthPromotion'
   // PBA Isolated Mode
   | 'pbaDraft'
   | 'pbaLocalFreeAgency'
@@ -1942,6 +1958,7 @@ export type ActionType = 'SET_TRAINING_DAILY_PLAN' | 'SET_TRAINING_NORMAL_DEFAUL
   'SCHEDULE_EXPANSION' | 'ACTIVATE_EXPANSION_NOW' | 'CLEAR_EXPANSION_SCHEDULE' |
   'SET_EXPANSION_PROTECTIONS' | 'APPLY_EXPANSION_REALIGNMENT' |
   'EXPANSION_DRAFT_PICK' | 'UPDATE_TEAM_POP' | 'EXPANSION_DRAFT_COMPLETE' |
+  'PROMOTE_YOUTH' |
   'LIST_PLAYER_FOR_TRANSFER' | 'CANCEL_TRANSFER_LISTING' |
   'SUBMIT_TRANSFER_BID' | 'ACCEPT_TRANSFER_BID' | 'REJECT_TRANSFER_BID' |
   'TICK_TRANSFER_MARKET' | 'LIST_PLAYER_TRANSFER';

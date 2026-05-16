@@ -11,6 +11,7 @@ import { TeamStatsCards } from './TeamStatsCards';
 import { ContractTimeline } from '../../shared/ContractTimeline';
 import { TeamTransactionsTab } from './TransactionsView';
 import { PlayerStatsView } from './PlayerStatsView';
+import { isOnRoster, resolveAnyTeam } from '../../../utils/teamLookup';
 interface TeamDetailViewProps {
   team: NBATeam;
   players: NBAPlayer[];
@@ -29,19 +30,17 @@ export const TeamDetailView: React.FC<TeamDetailViewProps> = ({
   team, players, allTeams, schedule, currentDate, onBack, onContact, onViewBio, onVisit, onGameClick, onTeamClick
 }) => {
   const [activeTab, setActiveTab] = useState<'roster' | 'stats' | 'contracts' | 'transactions' | 'injuries' | 'progression'>('roster');
+  const isNonNBA = team.id >= 100;
 
   const teamPlayers = useMemo(() => {
     return players
-      .filter(p => 
-        p.tid === team.id && 
-        !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')
-      )
+      .filter(p => p.tid === team.id && (isNonNBA ? isOnRoster(p) : !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')))
       .sort((a, b) => {
         const ratingA = convertTo2KRating(a.overallRating, a.ratings?.[a.ratings.length - 1]?.hgt ?? 50, a.ratings?.[a.ratings.length - 1]?.tp);
         const ratingB = convertTo2KRating(b.overallRating, b.ratings?.[b.ratings.length - 1]?.hgt ?? 50, b.ratings?.[b.ratings.length - 1]?.tp);
         return ratingB - ratingA;
       });
-  }, [players, team.id]);
+  }, [players, team.id, isNonNBA]);
 
 const currentSeason = useMemo(() => {
     const date = new Date(currentDate);
@@ -60,10 +59,12 @@ const currentSeason = useMemo(() => {
   }, [teamPlayers, currentSeason]);
 
   const conferenceRank = useMemo(() => {
-    return allTeams
-      .filter(t => t.conference === team.conference)
+    const peers = allTeams
+      .filter(t => t.conference === team.conference);
+    const index = peers
       .sort((a, b) => (b.wins / (b.wins + b.losses || 1)) - (a.wins / (a.wins + a.losses || 1)))
-      .findIndex(t => t.id === team.id) + 1;
+      .findIndex(t => t.id === team.id);
+    return index >= 0 ? index + 1 : null;
   }, [allTeams, team]);
 
   // Percentile-based market size: top 33% = High, middle = Medium, bottom = Low
@@ -92,11 +93,12 @@ const currentSeason = useMemo(() => {
   const opponent = useMemo(() => {
       if (!gameToday) return null;
       const oppId = gameToday.homeTid === team.id ? gameToday.awayTid : gameToday.homeTid;
-      return allTeams.find(t => t.id === oppId);
+      return allTeams.find(t => t.id === oppId) ?? resolveAnyTeam(oppId, allTeams, []);
   }, [gameToday, allTeams, team.id]);
 
 
   const isScheduleRevealed = useMemo(() => {
+    if (isNonNBA) return schedule.some(g => g.homeTid === team.id || g.awayTid === team.id);
     const date = new Date(currentDate);
     const month = date.getMonth() + 1;
     const day = date.getDate();
@@ -104,7 +106,7 @@ const currentSeason = useMemo(() => {
     if (month === 10) return day >= 21;
     if (month > 10 || month < 7) return true;
     return false;
-  }, [currentDate]);
+  }, [currentDate, isNonNBA, schedule, team.id]);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-300 overflow-hidden rounded-[2.5rem] border border-slate-800 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -122,6 +124,7 @@ const currentSeason = useMemo(() => {
           conferenceRank={conferenceRank}
           rosterSize={teamPlayers.length}
           marketTier={marketTier}
+          rankLabel={isNonNBA ? 'League Rank' : 'Conference Rank'}
         />
 
         <div className="bg-slate-900/40 border border-slate-800 p-3 md:p-6 rounded-2xl md:rounded-3xl backdrop-blur-sm">
@@ -247,6 +250,7 @@ const currentSeason = useMemo(() => {
                   player={player} 
                   team={team}
                   onActionClick={onContact} 
+                  hideNbaContractBadges={isNonNBA}
                 />
               ))}
             </div>

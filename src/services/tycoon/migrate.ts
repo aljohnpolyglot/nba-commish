@@ -94,6 +94,7 @@ export function migrateTeamTycoon(team: TycoonHost, currentYear: number): void {
     scoutingInvestment: defaultScoutingInvestmentForTier(tier),
     boardPromises: [],
     staffMembers: [],
+    tierInitHealed: true,
   } as TycoonState;
   // Seed board promises after creation (needs t.cashOnHand etc)
   (team as any).tycoon.boardPromises = seedBoardPromises(currentYear, (team as any).tycoon);
@@ -109,6 +110,44 @@ export function upgradeExistingTycoon(
 
   const name = (team as any).name ?? '';
   const region = (team as any).region ?? '';
+
+  // ── Init-only tier heal ────────────────────────────────────────────
+  // Repairs the original misclassification bug where teams whose names
+  // didn't match the SPAIN_CLUB_TIERS lookup got seeded as Tier D with
+  // 4500-seat arenas and €120K sponsorships — even when they should
+  // have been Tier S/A (Real Madrid, Baskonia Vitoria-Gasteiz, …).
+  //
+  // Runs ONCE per club, gated by tierInitHealed. After the flag is set,
+  // tier movement is owned by gameplay (bankruptcy demotion, EuroLeague
+  // promotion) and this function never touches tier again — even on
+  // subsequent loads. This protects clubs whose tier legitimately
+  // shifted away from the static spec.
+  if (!t.tierInitHealed) {
+    const correctTier = getTierForClub(name || region);
+    // Only heal the unambiguous init bug: saved D-tier vs static spec
+    // saying higher. Other mismatches may be intentional gameplay state.
+    const isInitBug = t.tier === 'D' && correctTier !== 'D' && TIER_BASE[correctTier];
+    if (isInitBug) {
+      t.tier = correctTier;
+      t.sponsorships = seedInitialSponsorships(correctTier, currentYear);
+      if (!t.facilities?.stadium?.upgradePending && t.facilities?.stadium) {
+        (t.facilities.stadium as any).capacity = TIER_BASE[correctTier].stadiumCapacity;
+      }
+      // Bump tier-derived budgets only when they're below the new tier's
+      // floor — preserves any user-tuned higher value already in place.
+      const newScouting = defaultScoutingInvestmentForTier(correctTier);
+      if ((t.scoutingInvestment ?? 0) < newScouting) t.scoutingInvestment = newScouting;
+      const newMedical = defaultMedicalBudgetForTier(correctTier);
+      if ((t.medicalBudget ?? 0) < newMedical) t.medicalBudget = newMedical;
+      if (!t.cashOnHand || t.cashOnHand <= 0) {
+        t.cashOnHand = TIER_BASE[correctTier].startingCash;
+      }
+    }
+    t.tierInitHealed = true;
+  }
+  if (!t.cashOnHand || t.cashOnHand <= 0) {
+    t.cashOnHand = TIER_BASE[t.tier]?.startingCash ?? 2_000_000;
+  }
   if (t.cityPrestige === undefined) t.cityPrestige = getCityPrestige(name || region, t.tier);
   if (t.ticketPriceMultiplier === undefined) t.ticketPriceMultiplier = 1.0;
   if (t.medicalBudget === undefined) t.medicalBudget = defaultMedicalBudgetForTier(t.tier);
@@ -177,4 +216,23 @@ export function migrateAllEuroTeams(state: {
     migrated++;
   }
   return migrated;
+}
+
+/** Heal pass that runs in any UI mode — fixes stale tycoon state on
+ *  external-league teams that were seeded before tier resolution
+ *  matured. Only touches teams that already have a tycoon (no new
+ *  migrations); for fresh seeds use migrateTeamTycoon directly. */
+export function healAllExistingTycoons(state: {
+  teams: NBATeam[];
+  nonNBATeams?: NonNBATeam[];
+  leagueStats: { year: number };
+}): number {
+  let healed = 0;
+  for (const team of [...state.teams, ...(state.nonNBATeams ?? [])]) {
+    if ((team as any).tycoon) {
+      upgradeExistingTycoon(team, state.leagueStats.year);
+      healed++;
+    }
+  }
+  return healed;
 }

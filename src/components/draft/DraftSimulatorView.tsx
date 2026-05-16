@@ -41,6 +41,8 @@ import {
 import { FullDraftTable } from './simulator/FullDraftTable';
 import { CompactTeamNeedsPanel } from './simulator/CompactTeamNeedsPanel';
 import { CompactAdvisorBoardPanel } from './simulator/CompactAdvisorBoardPanel';
+import { isPbaIsolatedMode } from '../../utils/uiMode';
+import { getPbaDraftPool, getPbaDraftOrder, PBA_DRAFT_ROUNDS } from '../../services/pba/draftRules';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -50,6 +52,7 @@ interface DraftSimulatorViewProps {
 
 export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewChange }) => {
   const { state, dispatchAction: dispatch } = useGame();
+  const pbaMode = isPbaIsolatedMode(state);
 
   // Trigger re-render once external bio gist caches are loaded (they hold NBA draft strings)
   const [nonNBACacheVer, setNonNBACacheVer] = useState(0);
@@ -67,10 +70,38 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   // Narrow deps to the bits buildDraftOrderFromState actually reads. A `[state]`
   // dep refires on every dispatch and combines with the persist effect below to
   // produce React #185 (infinite update loop) once the user starts drafting.
-  const computedDraftOrder = useMemo(
-    () => buildDraftOrderFromState(state),
-    [state.leagueStats?.year, state.draftPicks, state.draftLotteryResult, state.teams],
-  );
+  const computedDraftOrder = useMemo(() => {
+    if (isPbaIsolatedMode(state)) {
+      const nonNBA = (state as any).nonNBATeams ?? [];
+      const pbaTeams = nonNBA.filter((t: any) => t.league === 'PBA');
+      const pbaStandings = pbaTeams.map((t: any) => ({
+        tid: t.tid ?? t.id,
+        w: t.won ?? t.w ?? 0,
+        l: t.lost ?? t.l ?? 0,
+      }));
+      const pbaOrder = getPbaDraftOrder(pbaStandings, pbaTeams.map((t: any) => t.tid ?? t.id));
+      const order: DraftOrderTeam[] = [];
+      for (let round = 1; round <= PBA_DRAFT_ROUNDS; round++) {
+        for (const tid of pbaOrder) {
+          const team = pbaTeams.find((t: any) => (t.tid ?? t.id) === tid);
+          if (!team) continue;
+          order.push({
+            ...team,
+            id: tid,
+            name: team.name ?? 'PBA Team',
+            abbrev: team.abbrev ?? '???',
+            _originalTid: tid,
+            _originalAbbrev: team.abbrev ?? '???',
+            _originalName: team.name ?? 'PBA Team',
+            _traded: false,
+            _r2: round === 2,
+          } as any);
+        }
+      }
+      return order;
+    }
+    return buildDraftOrderFromState(state);
+  }, [state.leagueStats?.year, state.draftPicks, state.draftLotteryResult, state.teams, (state as any).nonNBATeams]);
   const savedDraftOrder = (state as any).activeDraftOrder as DraftOrderTeam[] | undefined;
 
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
@@ -191,24 +222,26 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   const leagueYear = getLsYear(state);
   const draftDate = toISODateString(getDraftDate(leagueYear, state.leagueStats));
   const today = normalizeDate(state.date);
-  const isDraftTime = today >= draftDate && !isDraftBlockedByUnresolvedPlayoffs(state);
+  const isDraftTime = pbaMode
+    ? (state.leagueStats as any)?.pbaConferencePhase === 'offseason'
+    : today >= draftDate && !isDraftBlockedByUnresolvedPlayoffs(state);
   // draftComplete is stored as a top-level state field via UPDATE_STATE dispatch
   const isDraftDone = !!(state as any).draftComplete;
 
   // Draft board: undrafted prospects for the CURRENT season's draft class only
   // (BBGM data includes future classes 2027/2028 — filter to leagueYear only)
   const allProspects = useMemo(() => {
-    return state.players
-      .filter(p => {
-        const isProspect = p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect';
-        if (!isProspect) return false;
-        if (EXTERNAL_STATUSES.has(p.status ?? '')) return false;
-        // Only current year's draft class (or prospects with no year set).
-        // Treat draftYear=0 (BBGM historical players) same as a mismatched year.
-        const draftYear = (p as any).draft?.year;
-        if (draftYear != null && Number(draftYear) !== leagueYear) return false;
-        return true;
-      })
+    const basePool = pbaMode
+      ? getPbaDraftPool(state.players)
+      : state.players.filter(p => {
+          const isProspect = p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect';
+          if (!isProspect) return false;
+          if (EXTERNAL_STATUSES.has(p.status ?? '')) return false;
+          const draftYear = (p as any).draft?.year;
+          if (draftYear != null && Number(draftYear) !== leagueYear) return false;
+          return true;
+        });
+    return basePool
       .map(p => {
         const lastRatings = p.ratings?.[p.ratings.length - 1] ?? {};
         const hgt = lastRatings.hgt ?? 50;

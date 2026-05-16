@@ -171,18 +171,23 @@ export function expireOldBids(bids: TransferBid[], currentDate: string): Transfe
 export function syncListingRollups(listings: TransferListing[], bids: TransferBid[]): TransferListing[] {
   return listings.map(l => {
     if (l.status !== 'active') return l;
-    const active = bids.filter(b =>
+    // Card counter includes every received bid that's still in the modal —
+    // active, highest, outbid. Excludes accepted/rejected/withdrawn/expired
+    // (those leave the in-play set). This keeps the card's "(N)" badge in
+    // sync with what the View Bids modal actually renders.
+    const received = bids.filter(b =>
       b.listingId === l.id &&
-      (b.status === 'active' || b.status === 'highest')
+      (b.status === 'active' || b.status === 'highest' || b.status === 'outbid')
     );
-    if (active.length === 0) return { ...l, bidsCount: 0, highestBidEUR: undefined, topBidderTid: undefined };
-    let top = active[0];
-    for (const b of active) if (b.amountEUR > top.amountEUR) top = b;
+    const inPlay = received.filter(b => b.status === 'active' || b.status === 'highest');
+    if (received.length === 0) return { ...l, bidsCount: 0, highestBidEUR: undefined, topBidderTid: undefined };
+    let top = inPlay[0];
+    for (const b of inPlay) if (b.amountEUR > top.amountEUR) top = b;
     return {
       ...l,
-      bidsCount: active.length,
-      highestBidEUR: top.amountEUR,
-      topBidderTid: top.bidderTid,
+      bidsCount: received.length,
+      highestBidEUR: top?.amountEUR,
+      topBidderTid: top?.bidderTid,
     };
   });
 }

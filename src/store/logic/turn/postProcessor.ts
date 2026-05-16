@@ -73,8 +73,11 @@ export const processSimulationResults = (
 
         // Identify game type via schedule lookup
         const schedGame = schedule?.find(g => g.gid === res.gameId);
-        const isPlayoffGame = schedGame?.isPlayoff === true;
-        const isPlayInGame = schedGame?.isPlayIn === true;
+        const competitionPhase = schedGame?.competitionPhase;
+        const isCompetitionPlayIn = competitionPhase === 'play-in';
+        const isCompetitionPlayoff = competitionPhase === 'qf' || competitionPhase === 'sf' || competitionPhase === 'final';
+        const isPlayoffGame = schedGame?.isPlayoff === true || isCompetitionPlayoff;
+        const isPlayInGame = schedGame?.isPlayIn === true || isCompetitionPlayIn;
         const isPreseasonGame = schedGame?.isPreseason === true;
 
         // Route stats: regular → playerStatsMap, playoff → playoffStatsMap, play-in/preseason → skip

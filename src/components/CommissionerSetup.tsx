@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { User, ArrowRight, Crown, ArrowLeft, Settings, ChevronDown, ChevronUp, Bot } from 'lucide-react';
+import { User, ArrowRight, Crown, ArrowLeft, Settings, ChevronDown, ChevronUp, Bot, BarChart2, Banknote, CalendarDays, Dumbbell, Brain, Activity, Crosshair, Search, BarChart, Gem, Hourglass, Eye, Landmark, Shield, Building2, Users, Shirt, Star } from 'lucide-react';
 import { SettingsManager } from '../services/SettingsManager';
 import { INITIAL_LEAGUE_STATS } from '../constants';
 import { getSeasonSimStartDate, toISODateString } from '../utils/dateUtils';
 import { prewarmRoster } from '../services/rosterService';
 import { generateFictionalLeague } from '../services/fictionalLeagueGenerator';
-import { fetchEndesaRoster } from '../services/externalRosterService';
+import { fetchEndesaRoster, fetchPBARoster } from '../services/externalRosterService';
 import { getLeagueLabels } from '../utils/leagueLabels';
 import type { LeagueType, ModdedLeagueBase, EuropeMarket } from './setup/LeagueTypeSelector';
 import { Home as FranchisePicker } from './central/view/TeamOffice/pages/Home';
+import { seedEuroCareer, type EuroCareerSeed } from '../services/euro/careerSeed';
 import type { NBAPlayer, NBATeam, NonNBATeam } from '../types';
+import { MyFace, isRealFaceConfig } from './shared/MyFace';
+import { getCountryFlag } from '../utils/countryFlags';
+import { getStaffImageUrl } from '../utils/staffPortrait';
 
 const SIM_START_DATE = toISODateString(getSeasonSimStartDate(INITIAL_LEAGUE_STATS.year)); // e.g. '2025-08-06'
 // Euro-Isolated leagues (Spain Endesa, etc.) start the season in September.
@@ -40,27 +44,31 @@ interface CommissionerSetupProps {
     moddedLeagueBase?: ModdedLeagueBase;
     europeMarket?: EuropeMarket;
     fictionalLeagueSeed?: number;
+    euroCareerSeed?: EuroCareerSeed;
+    euroCareerLeagueId?: string;
   }) => void;
   onBack: () => void;
 }
 
-type Step = 'mode' | 'name' | 'franchise' | 'timeline' | 'review';
+type Step = 'mode' | 'name' | 'franchise' | 'euroReview' | 'timeline' | 'review';
 
 export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType, moddedLeagueBase, europeMarket, onStart, onBack }) => {
   const [step, setStep] = useState<Step>('mode');
-  // Europe modded saves default to GM (commissioner tooling not built yet).
   const [gameMode, setGameMode] = useState<'commissioner' | 'gm'>(
-    moddedLeagueBase === 'europe' ? 'gm' : 'commissioner'
+    moddedLeagueBase === 'europe' || moddedLeagueBase === 'philippines' ? 'gm' : 'commissioner'
   );
   // Keep undefined for GM mode — the user picks a team post-init via TeamOffice. No more "everyone is Atlanta".
   const [userTeamId, setUserTeamId] = useState<number | undefined>(undefined);
   const [name, setName] = useState('');
   const isEuroSetup = leagueType === 'modded' && moddedLeagueBase === 'europe';
-  const defaultStartDate = isEuroSetup ? EURO_SIM_START_DATE : SIM_START_DATE;
+  const isPbaSetup = leagueType === 'modded' && moddedLeagueBase === 'philippines';
+  const PBA_SIM_START_DATE = `${INITIAL_LEAGUE_STATS.year - 1}-10-05`;
+  const defaultStartDate = isEuroSetup ? EURO_SIM_START_DATE : isPbaSetup ? PBA_SIM_START_DATE : SIM_START_DATE;
   const [chosenDate, setChosenDate] = useState<string>(defaultStartDate);
   const [showSettings, setShowSettings] = useState(true);
   const [settings, setSettings] = useState(() => SettingsManager.getSettings());
   const [fictionalLeagueSeed] = useState(() => Math.floor(Math.random() * 2_147_483_647));
+  const [euroCareerSeed, setEuroCareerSeed] = useState<EuroCareerSeed | null>(null);
   const labels = getLeagueLabels(leagueType);
   const isFictional = leagueType === 'fictional';
   const isSpainEuropeSetup = leagueType === 'modded' && moddedLeagueBase === 'europe' && europeMarket === 'spain';
@@ -89,6 +97,28 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       setRosterLoading(false);
       return;
     }
+    if (isPbaSetup) {
+      fetchPBARoster().then(({ teams, players }) => {
+        if (cancelled) return;
+        const mappedTeams = teams.map((team: NonNBATeam) => ({
+          id: team.tid,
+          tid: team.tid,
+          region: team.region,
+          name: team.name,
+          abbrev: team.abbrev,
+          colors: team.colors,
+          logoUrl: team.imgURL,
+          pop: team.pop,
+          stadiumCapacity: team.stadiumCapacity,
+          wins: 0,
+          losses: 0,
+        })) as unknown as NBATeam[];
+        setRosterTeams(mappedTeams);
+        setRosterPlayers(players);
+        setRosterLoading(false);
+      }).catch(() => { if (!cancelled) setRosterLoading(false); });
+      return;
+    }
     if (isSpainEuropeSetup) {
       fetchEndesaRoster().then(({ teams, players }) => {
         if (cancelled) return;
@@ -100,6 +130,8 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
           abbrev: team.abbrev,
           colors: team.colors,
           logoUrl: team.imgURL,
+          pop: team.pop,
+          stadiumCapacity: team.stadiumCapacity,
           wins: 0,
           losses: 0,
         })) as unknown as NBATeam[];
@@ -116,7 +148,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       setRosterLoading(false);
     }).catch(() => { if (!cancelled) setRosterLoading(false); });
     return () => { cancelled = true; };
-  }, [fictionalLeagueSeed, isSpainEuropeSetup, leagueType]);
+  }, [fictionalLeagueSeed, isSpainEuropeSetup, isPbaSetup, leagueType]);
 
   const updateSetting = <K extends keyof typeof settings>(key: K, value: typeof settings[K]) => {
     const updated = { ...settings, [key]: value };
@@ -131,9 +163,6 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       setStep('franchise');
       return;
     }
-    // Commissioner path. Euro-Isolated leagues bypass the NBA-centric Timeline +
-    // JumpReview screens (no Aug 6 preseason / NBA Cup / Christmas games to skip)
-    // and start the save at the Euro pre-season default (Sept 15).
     if (isEuroSetup) {
       handleStart(defaultStartDate);
       return;
@@ -141,7 +170,23 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
     setStep('timeline');
   };
 
-  const handleStart = (overrideDate?: string, assistantGM?: boolean) => {
+  const buildEuroCareerSeed = (teamId: number): EuroCareerSeed | null => {
+    const team = rosterTeams.find(t => t.id === teamId);
+    if (!team) return null;
+    const nonNBATeams = rosterTeams.map(t => ({
+      tid: t.id,
+      region: t.region,
+      name: t.name,
+      abbrev: t.abbrev,
+      imgURL: t.logoUrl,
+      colors: t.colors,
+      league: 'Endesa',
+    })) as NonNBATeam[];
+    const masterSeed = ((fictionalLeagueSeed ^ Math.imul(teamId || 1, 2654435761)) >>> 0) || 1;
+    return seedEuroCareer(team, { players: rosterPlayers, nonNBATeams }, 'endesa', masterSeed);
+  };
+
+  const handleStart = (overrideDate?: string, assistantGM?: boolean, overrideTeamId?: number, overrideEuroSeed?: EuroCareerSeed | null) => {
     // Always reset to Fast mode when starting a new game
     SettingsManager.updateSettings({ llmPerformance: 1 });
     const nameCase = name.trim()
@@ -156,12 +201,14 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       startDate: date,
       jumpRequired: date > SIM_START_DATE,
       gameMode,
-      userTeamId: gameMode === 'gm' ? userTeamId : undefined,
+      userTeamId: gameMode === 'gm' ? (overrideTeamId ?? userTeamId) : undefined,
       assistantGM: gameMode === 'gm' ? (assistantGM ?? false) : false,
       leagueType,
       moddedLeagueBase: leagueType === 'modded' ? moddedLeagueBase : undefined,
       europeMarket: leagueType === 'modded' ? europeMarket : undefined,
       fictionalLeagueSeed: isFictional ? fictionalLeagueSeed : undefined,
+      euroCareerSeed: overrideEuroSeed ?? undefined,
+      euroCareerLeagueId: overrideEuroSeed ? 'endesa' : undefined,
     });
   };
 
@@ -177,6 +224,8 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
   const handleBack = () => {
     if (step === 'review') {
       setStep('timeline');
+    } else if (step === 'euroReview') {
+      setStep('franchise');
     } else if (step === 'timeline') {
       setStep(gameMode === 'gm' ? 'franchise' : 'name');
     } else if (step === 'franchise') {
@@ -202,18 +251,18 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-2xl">
           <div className="text-center mb-10">
             <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-3">Choose Your Role</h1>
-            <p className="text-slate-400 text-sm">How do you want to experience the {isFictional ? 'league' : moddedLeagueBase === 'europe' ? 'European game' : 'NBA'}?</p>
+            <p className="text-slate-400 text-sm">How do you want to experience the {isFictional ? 'league' : moddedLeagueBase === 'europe' ? 'European game' : moddedLeagueBase === 'philippines' ? 'PBA' : 'NBA'}?</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Commissioner Card — disabled for Europe modded saves (commissioner tooling not built yet for that mode) */}
             <button
               onClick={() => {
-                if (moddedLeagueBase === 'europe') return;
+                if (moddedLeagueBase === 'europe' || moddedLeagueBase === 'philippines') return;
                 setGameMode('commissioner'); setStep('name');
               }}
-              disabled={moddedLeagueBase === 'europe'}
+              disabled={moddedLeagueBase === 'europe' || moddedLeagueBase === 'philippines'}
               className={`group relative p-6 rounded-2xl border-2 transition-all text-left ${
-                moddedLeagueBase === 'europe'
+                moddedLeagueBase === 'europe' || moddedLeagueBase === 'philippines'
                   ? 'border-slate-900 bg-slate-900/30 opacity-50 cursor-not-allowed'
                   : gameMode === 'commissioner'
                     ? 'border-indigo-500 bg-indigo-500/10'
@@ -223,15 +272,15 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
               <div className="flex items-center gap-3 mb-3">
                 <Crown size={24} className="text-indigo-400" />
                 <h3 className="text-xl font-black text-white uppercase tracking-tight">Commissioner</h3>
-                {moddedLeagueBase === 'europe' && (
+                {(moddedLeagueBase === 'europe' || moddedLeagueBase === 'philippines') && (
                   <span className="ml-auto text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded">
                     Coming Soon
                   </span>
                 )}
               </div>
               <p className="text-sm text-slate-400 leading-relaxed">
-                {moddedLeagueBase === 'europe'
-                  ? <>European commissioner mode (custom All-Star, league rules, multi-competition tournaments) is in development. For now, European saves are <span className="text-white font-bold">GM-only</span>.</>
+                {moddedLeagueBase === 'europe' || moddedLeagueBase === 'philippines'
+                  ? <>{moddedLeagueBase === 'philippines' ? 'PBA' : 'European'} commissioner mode is in development. For now, {moddedLeagueBase === 'philippines' ? 'PBA' : 'European'} saves are <span className="text-white font-bold">GM-only</span>.</>
                   : <>Control the <span className="text-white font-bold">entire league</span>. Set rules, suspend players, force trades, manage finances, and shape the narrative.</>
                 }
               </p>
@@ -261,7 +310,9 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
               <div className="mt-4 flex flex-wrap gap-1.5">
                 {(moddedLeagueBase === 'europe'
                   ? ['Trades', 'Free Agency', 'No Draft', 'Roster', 'Your Team']
-                  : ['Trades', 'Free Agency', 'Draft', 'Roster', 'Your Team']
+                  : moddedLeagueBase === 'philippines'
+                    ? ['3 Cups', 'Imports', '4-Point Line', 'Draft', 'Your Team']
+                    : ['Trades', 'Free Agency', 'Draft', 'Roster', 'Your Team']
                 ).map(tag => (
                   <span key={tag} className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded">{tag}</span>
                 ))}
@@ -295,26 +346,262 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
               selectedTid={userTeamId ?? null}
               teams={rosterTeams}
               players={rosterPlayers}
-              title={isSpainEuropeSetup ? 'Pick Your Endesa Club' : undefined}
-              subtitle={isSpainEuropeSetup ? 'Spain setup path. Real Madrid and Barcelona remain selectable here, with Euroleague sister-league support reserved for later phases.' : undefined}
+              title={isSpainEuropeSetup ? 'Pick Your Endesa Club' : isPbaSetup ? 'Pick Your PBA Team' : undefined}
+              subtitle={isSpainEuropeSetup ? 'Spain setup path. Real Madrid and Barcelona remain selectable here, with Euroleague sister-league support reserved for later phases.' : isPbaSetup ? 'Three conferences per season. Philippine Cup, Commissioner\'s Cup, Governors\' Cup.' : undefined}
               highlightedTeamIds={isSpainEuropeSetup ? highlightedSpainTeamIds : undefined}
               highlightedLabel={isSpainEuropeSetup ? 'Euroleague' : undefined}
               onSelectTeam={(teamId) => {
                 setUserTeamId(teamId);
-                // Euro-Isolated GM bypasses Timeline + JumpReview (NBA-centric)
-                // and starts at the Euro pre-season default (Sept 15).
+                if (isPbaSetup) {
+                  setStep('timeline');
+                  return;
+                }
                 if (isEuroSetup) {
-                  // Pass userTeamId via closure — handleStart reads it from state,
-                  // so we need to delay one tick. Easiest: setUserTeamId already
-                  // above triggered re-render, but handleStart in this closure sees
-                  // stale userTeamId. Call setTimeout to land after state flush.
-                  setTimeout(() => handleStart(defaultStartDate), 0);
+                  const seed = buildEuroCareerSeed(teamId);
+                  setEuroCareerSeed(seed);
+                  if (seed) {
+                    setStep('euroReview');
+                  } else {
+                    handleStart(defaultStartDate, false, teamId);
+                  }
                   return;
                 }
                 setStep('timeline');
               }}
             />
           )}
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 'euroReview' && euroCareerSeed && userTeamId != null) {
+    const staff = euroCareerSeed.staff;
+    const teamObj = euroCareerSeed.team;
+    const teamColors = teamObj.colors ?? ['#10b981', '#1e293b'];
+    const stadiumCap = (teamObj as any).stadiumCapacity as number | undefined;
+    const academyLevel = euroCareerSeed.tier === 'Powerhouse' ? 5 : euroCareerSeed.tier === 'Established' ? 4 : euroCareerSeed.tier === 'MidTier' ? 3 : 2;
+
+    const STAFF_ROLE_ICONS: Record<string, React.ReactNode> = {
+      'Head Coach': <Dumbbell size={18} className="text-emerald-400" />,
+      'Assistant Coach': <Users size={18} className="text-emerald-400" />,
+      'Head of Sports Science': <Activity size={18} className="text-emerald-400" />,
+      'Head Physio': <Activity size={18} className="text-emerald-400" />,
+      'Chief Scout': <Search size={18} className="text-emerald-400" />,
+      'Head of Analytics': <BarChart size={18} className="text-emerald-400" />,
+    };
+
+    const SPONSOR_SLOT_ICONS: Record<string, React.ReactNode> = {
+      main: <Landmark size={22} className="text-emerald-400" />,
+      jersey: <Shield size={22} className="text-sky-400" />,
+      arena: <Building2 size={22} className="text-amber-400" />,
+    };
+    const SPONSOR_SLOT_LABELS: Record<string, string> = {
+      main: 'Main Sponsor',
+      jersey: 'Jersey Sponsor',
+      arena: 'Arena Sponsor',
+    };
+    const OWNER_ATTR_ICONS: Record<string, React.ReactNode> = {
+      wealth: <Gem size={16} className="text-emerald-400" />,
+      patience: <Hourglass size={16} className="text-emerald-400" />,
+      vision: <Eye size={16} className="text-emerald-400" />,
+    };
+
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 overflow-y-auto">
+        <button
+          onClick={() => setStep('franchise')}
+          className="fixed top-6 left-6 text-slate-400 hover:text-white flex items-center gap-2 transition-colors z-20 text-sm font-bold uppercase tracking-widest"
+        >
+          <ArrowLeft size={18} /> Back
+        </button>
+        <div className="max-w-[1280px] mx-auto px-5 py-12 md:py-16">
+          {/* ── Header: Logo + Team Name + Chips ── */}
+          <div className="mb-8 flex flex-col md:flex-row md:items-start gap-5">
+            {teamObj.logoUrl && (
+              <img src={teamObj.logoUrl} alt="" className="w-20 h-20 md:w-28 md:h-28 object-contain shrink-0" />
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-400 mb-2">Euro Career Setup</div>
+              <h1 className="text-3xl md:text-5xl font-black text-white leading-tight truncate">{teamObj.region} {teamObj.name}</h1>
+              <p className="mt-2 text-sm text-slate-400 max-w-2xl">Review the starting club profile before the save is created.</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <div className="flex items-center gap-2 rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-2">
+                  <BarChart2 size={16} className="text-slate-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tier</span>
+                  <span className="text-sm font-black text-white">{euroCareerSeed.tier}</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-2">
+                  <Banknote size={16} className="text-emerald-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Starting Budget</span>
+                  <span className="text-sm font-black text-emerald-400">{'€'}{(euroCareerSeed.budget / 1_000_000).toFixed(1)}M</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-2">
+                  <CalendarDays size={16} className="text-slate-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Start Date</span>
+                  <span className="text-sm font-black text-white">July 1</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid lg:grid-cols-[1fr_360px] gap-6">
+            {/* ── Left Column ── */}
+            <div className="space-y-6">
+              {/* Technical Staff */}
+              <section className="rounded-2xl border border-slate-800 bg-slate-900/70 overflow-hidden">
+                <div className="px-5 pt-5 pb-3">
+                  <div className="text-xs font-black uppercase tracking-widest text-slate-400">
+                    Technical Staff
+                    <div className="mt-1 h-0.5 w-10 bg-emerald-500 rounded-full" />
+                  </div>
+                </div>
+                <div className="px-5 pb-4 grid md:grid-cols-2 gap-3">
+                  {staff.map(member => (
+                    <div key={member.position} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                      {/* Portrait */}
+                      <div className="w-14 h-14 shrink-0 rounded-lg bg-slate-800/60 overflow-hidden">
+                        {(() => {
+                          const staffImg = getStaffImageUrl((member as any).staffImageId);
+                          if (staffImg) return <img src={staffImg} alt={member.name} className="w-full h-full object-cover" loading="lazy" />;
+                          if (isRealFaceConfig(member.face)) return <MyFace face={member.face} lazy style={{ width: '100%', height: '100%' }} />;
+                          return <div className="w-full h-full flex items-center justify-center text-slate-600"><User size={24} /></div>;
+                        })()}
+                      </div>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold text-white truncate">{member.name}</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-emerald-400">{member.jobTitle ?? member.position}</div>
+                        <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-400">
+                          <span>{getCountryFlag(member.nationality)}</span>
+                          <span>{member.nationality ?? 'Unknown'}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500">{(member as any).reputation ?? 65}/100 fit</div>
+                      </div>
+                      {/* Role Icon */}
+                      <div className="shrink-0 opacity-60">
+                        {STAFF_ROLE_ICONS[member.jobTitle ?? member.position ?? ''] ?? <User size={18} className="text-slate-600" />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Staff Overview footer */}
+                <div className="border-t border-slate-800 px-5 py-3 flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-bold uppercase tracking-widest">Staff Overview</span>
+                  <span className="flex items-center gap-1.5"><Users size={14} /> {staff.length} Staff Members</span>
+                </div>
+              </section>
+
+              {/* ── Bottom Bar: Club details ── */}
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 px-5 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                <div className="flex items-center gap-2">
+                  <Shirt size={16} className="text-emerald-400" />
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Club Colors</div>
+                    <div className="mt-1 flex items-center gap-1">
+                      {teamColors.slice(0, 3).map((c, i) => (
+                        <span key={i} className="w-3.5 h-3.5 rounded-full border border-slate-700" style={{ background: c }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Building2 size={16} className="text-slate-400" />
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Stadium</div>
+                    <div className="font-bold text-white">{teamObj.region ?? 'Arena'}</div>
+                    {stadiumCap && <div className="text-slate-500">Capacity: {stadiumCap.toLocaleString()}</div>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Crown size={16} className="text-slate-400" />
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Nickname</div>
+                    <div className="font-bold text-white">{teamObj.name}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Star size={16} className="text-amber-400" />
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Youth Facility</div>
+                    <div className="flex gap-0.5 mt-0.5">
+                      {[1,2,3,4,5].map(i => (
+                        <Star key={i} size={12} className={i <= academyLevel ? 'text-amber-400 fill-amber-400' : 'text-slate-700'} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Right Sidebar ── */}
+            <aside className="space-y-6">
+              {/* Owner */}
+              <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Owner</div>
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-16 h-16 rounded-xl bg-slate-800/60 overflow-hidden shrink-0">
+                    {(() => {
+                      const ownerImg = getStaffImageUrl(euroCareerSeed.owner.staffImageId);
+                      if (ownerImg) return <img src={ownerImg} alt={euroCareerSeed.owner.name} className="w-full h-full object-cover" loading="lazy" />;
+                      if (isRealFaceConfig(euroCareerSeed.owner.face)) return <MyFace face={euroCareerSeed.owner.face} lazy style={{ width: '100%', height: '100%' }} />;
+                      return <div className="w-full h-full flex items-center justify-center text-slate-600"><User size={28} /></div>;
+                    })()}
+                  </div>
+                  <div>
+                    <div className="text-lg font-black text-white">{euroCareerSeed.owner.name}</div>
+                    <div className="text-sm text-slate-400 flex items-center gap-1.5">
+                      <span>{getCountryFlag(euroCareerSeed.owner.nationality)}</span>
+                      {euroCareerSeed.owner.nationality}
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-slate-500">{OWNER_ATTR_ICONS.wealth} Wealth</span>
+                    <span className="font-bold text-white">{euroCareerSeed.owner.wealthTier}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-slate-500">{OWNER_ATTR_ICONS.patience} Patience</span>
+                    <span className="font-bold text-white">{euroCareerSeed.owner.patience}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-slate-500">{OWNER_ATTR_ICONS.vision} Vision</span>
+                    <span className="font-bold text-white">{euroCareerSeed.owner.vision}</span>
+                  </div>
+                </div>
+              </section>
+
+              {/* Sponsors */}
+              <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+                <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Sponsors</div>
+                <div className="space-y-3">
+                  {euroCareerSeed.sponsors.length === 0 ? (
+                    <div className="text-sm text-slate-400">Sponsor catalog pending. Slots will be filled by the tycoon layer.</div>
+                  ) : euroCareerSeed.sponsors.map(slot => (
+                    <div key={slot.slotId} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                      <div className="w-10 h-10 rounded-lg bg-slate-800/60 flex items-center justify-center shrink-0">
+                        {SPONSOR_SLOT_ICONS[slot.slotId] ?? <Landmark size={22} className="text-slate-500" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{SPONSOR_SLOT_LABELS[slot.slotId] ?? slot.slotId}</div>
+                        <div className="font-bold text-white truncate">{slot.brand}</div>
+                      </div>
+                      <div className="text-sm font-bold text-emerald-400 shrink-0 whitespace-nowrap">{'€'}{(slot.amountEUR / 1_000_000).toFixed(1)}M / year</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Start Career */}
+              <button
+                onClick={() => handleStart(defaultStartDate, false, userTeamId, euroCareerSeed)}
+                className="w-full h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-3 text-base"
+              >
+                Start Career <ArrowRight size={20} />
+              </button>
+            </aside>
+          </div>
         </div>
       </div>
     );
@@ -327,6 +614,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
         onSelect={handleDateSelected}
         onBack={() => setStep(gameMode === 'gm' ? 'franchise' : 'name')}
         leagueType={leagueType}
+        moddedLeagueBase={moddedLeagueBase}
       />
     );
   }
@@ -337,6 +625,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
         chosenDate={chosenDate}
         gameMode={gameMode}
         leagueType={leagueType}
+        moddedLeagueBase={moddedLeagueBase}
         onContinue={(assistantGM) => handleStart(undefined, assistantGM)}
         onBack={() => setStep('timeline')}
       />

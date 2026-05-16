@@ -135,6 +135,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   const isGM = state.gameMode === 'gm';
   const isOwnTeam = isGM && teamId === state.userTeamId;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const hideNbaContractBadges = isEuroIsolatedMode(state) || teamId >= 100;
 
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const teamColor = team?.colors?.[0] ?? '#552583';
@@ -146,8 +147,8 @@ export function TeamOfficeRosterView({ teamId }: Props) {
 
   const rosterCounts = useMemo(() => {
     const activePlayers = teamPlayers.filter(p => isOnRoster(p) && p.contract);
-    const twoWayCount = activePlayers.filter(p => !!(p as any).twoWay).length;
-    const nonGuaranteedCount = activePlayers.filter(p => !!(p as any).nonGuaranteed).length;
+    const twoWayCount = hideNbaContractBadges ? 0 : activePlayers.filter(p => !!(p as any).twoWay).length;
+    const nonGuaranteedCount = hideNbaContractBadges ? 0 : activePlayers.filter(p => !!(p as any).nonGuaranteed).length;
     const guaranteedCount = Math.max(0, activePlayers.length - twoWayCount - nonGuaranteedCount);
     return {
       total: activePlayers.length,
@@ -155,7 +156,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
       twoWayCount,
       nonGuaranteedCount,
     };
-  }, [teamPlayers]);
+  }, [teamPlayers, hideNbaContractBadges]);
 
   const [sortMode, setSortMode] = useState<SortMode>(
     () => (localStorage.getItem('rosterSortMode') as SortMode | null) ?? 'rating',
@@ -231,13 +232,13 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         ast: stats?.ast ?? 0,
         per: stats?.per ?? 0,
         moodScore,
-        isTwoWay: !!(p as any).twoWay,
-        isNonGuaranteed: !!(p as any).nonGuaranteed,
+        isTwoWay: !hideNbaContractBadges && !!(p as any).twoWay,
+        isNonGuaranteed: !hideNbaContractBadges && !!(p as any).nonGuaranteed,
         isInjured: ((p as any).injury?.gamesRemaining ?? 0) > 0,
         injuryType: (p as any).injury?.type ?? 'Injured',
       };
     });
-  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, teamId]);
+  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, teamId, hideNbaContractBadges]);
 
   const rows = useMemo((): RowData[] => {
     if (sortMode === 'rotation' && team) {

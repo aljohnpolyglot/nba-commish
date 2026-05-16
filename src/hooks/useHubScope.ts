@@ -2,23 +2,28 @@ import { useContext, useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { CompetitionHubLeagueTabContext } from '../components/competition/hubContext';
 import { getTeamsForLeagueTab } from '../utils/euroLeagueDefaults';
-import { isEuroIsolatedMode } from '../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../utils/uiMode';
 
 /**
  * Scope teams/players to the active competition context:
  * - Inside a CompetitionHubLayout: scoped to that hub's competition.
- * - Outside a hub but in Euro isolated mode: scoped to union of all Euro
- *   competitions (Endesa + Euroleague) so standalone Injuries/PlayerStats/etc.
- *   don't leak NBA data.
+ * - PBA isolated mode: scoped to PBA teams (tid 2000-2099).
+ * - Euro isolated mode: scoped to union of all Euro competitions.
  * - Otherwise (NBA / commissioner mode): full NBA pools unchanged.
  */
 export function useHubScope() {
   const { state } = useGame();
   const hubTab = useContext(CompetitionHubLeagueTabContext);
   const euroIsolated = isEuroIsolatedMode(state);
+  const pbaIsolated = isPbaIsolatedMode(state);
 
   const teams = useMemo(() => {
     if (hubTab) return getTeamsForLeagueTab(state as any, hubTab);
+    if (pbaIsolated) {
+      return ((state as any).nonNBATeams ?? [])
+        .filter((t: any) => t.tid >= 2000 && t.tid < 2100)
+        .map((t: any) => ({ ...t, id: t.tid ?? t.id }));
+    }
     if (euroIsolated) {
       const dom = getTeamsForLeagueTab(state as any, 'domestic');
       const con = getTeamsForLeagueTab(state as any, 'continental');
@@ -28,15 +33,15 @@ export function useHubScope() {
     }
     return state.teams;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hubTab, euroIsolated, state.teams, (state as any).nonNBATeams, (state as any).activeCompetitions]);
+  }, [hubTab, euroIsolated, pbaIsolated, state.teams, (state as any).nonNBATeams, (state as any).activeCompetitions]);
 
   const tids = useMemo(() => new Set(teams.map(t => t.id)), [teams]);
 
-  const isScoped = hubTab !== null || euroIsolated;
+  const isScoped = hubTab !== null || euroIsolated || pbaIsolated;
   const players = useMemo(
     () => isScoped ? state.players.filter(p => tids.has(p.tid)) : state.players,
     [isScoped, state.players, tids],
   );
 
-  return { hubTab, teams, tids, players, isScoped, euroIsolated };
+  return { hubTab, teams, tids, players, isScoped, euroIsolated, pbaIsolated };
 }

@@ -77,6 +77,7 @@ export interface AnnualLedger {
     travel: number;
     financeCosts: number; // MVP = 0
     medical?: number;
+    academy?: number;
   };
   profit: number;
   cashOnHandEnd: number;
@@ -184,10 +185,16 @@ export interface TycoonState {
   nextRenewalPenaltyFactor?: number;
   boardPromises?: BoardPromise[];
   medicalBudget?: number;        // EUR/year
+  /** Youth academy spending tier 0-5 (None → World Class). Drives prospect
+   *  spawn quality at the start of each offseason. Costs are billed via
+   *  ACADEMY_BUDGET_TIERS[budget].cost on the bi-weekly cadence run. */
+  academyBudget?: number;        // 0-5 tier index
   travelPreferences?: TravelPreferences;
   scoutingInvestment?: number;   // EUR/year
   cityPrestige?: number;         // 0–1
   ticketPriceMultiplier?: number;
+  budgetLocked?: boolean;
+  budgetLockedYear?: number;
   pendingSponsorReview?: PendingSponsorReview;
   /** Set true when boardConfidence dips below threshold OR cash crashes —
    *  surfaces a UI banner to nudge the user toward corrective action. */
@@ -198,6 +205,12 @@ export interface TycoonState {
   pendingFinanceRecap?: FinanceRecapPending;
   financeRecapSettings?: FinanceRecapSettings;
   playerDramaLog?: PlayerDramaLogEntry[];
+  /** One-shot marker that the init-heal pass has run for this club.
+   *  Once set, tier and tier-derived defaults are NEVER touched by the
+   *  heal again — subsequent tier movement (bankruptcy, ownership change,
+   *  promotion via Euroleague performance) flows through gameplay events
+   *  and should not be reverted by re-loading the save. */
+  tierInitHealed?: boolean;
   staffMembers?: Array<{
     id: string;
     role: string;
@@ -209,6 +222,7 @@ export interface TycoonState {
     hiredYear?: number;
     signingBonus?: number;
     face?: any;
+    staffImageId?: number;
   }>;
 }
 

@@ -3,7 +3,7 @@ import { Landmark, TrendingUp, TrendingDown } from 'lucide-react';
 import { computeAnnualBudget } from '../../../../../services/tycoon/budgetEngine';
 import { computeStarPower } from '../../../../../services/tycoon/starPower';
 import { ALL_SLOTS, type SponsorshipSlot, type TycoonState } from '../../../../../types/tycoon';
-import { LedgerHistoryCard } from '../../../../tycoon/LedgerHistoryCard';
+import { BoardPromisesCard } from './BoardPromisesCard';
 import { SectionTitle } from '../shared/helpers';
 
 const SPONSOR_SLOT_LABELS: Record<SponsorshipSlot, string> = {
@@ -81,14 +81,29 @@ export const AnnualProjectionCard: React.FC<{
   cashOnHand: number;
   currentYear: number;
   starPower: ReturnType<typeof computeStarPower>;
-}> = ({ ledger, fmt, cashOnHand, currentYear, starPower }) => {
+  ledgerHistory?: ReturnType<typeof computeAnnualBudget>[];
+}> = ({ ledger, fmt, cashOnHand, currentYear, starPower, ledgerHistory }) => {
   const totalRevenue = ledger.revenue.matchday + ledger.revenue.sponsorship + ledger.revenue.tv + ledger.revenue.prize;
-  const totalExpenses = ledger.expenses.wages + ledger.expenses.staff + ledger.expenses.facility + ledger.expenses.travel + ledger.expenses.medical + ledger.expenses.financeCosts;
+  const totalExpenses = ledger.expenses.wages + ledger.expenses.staff + ledger.expenses.facility + (ledger.expenses.scouting ?? 0) + ledger.expenses.travel + (ledger.expenses.medical ?? 0) + ledger.expenses.financeCosts;
   const profit = totalRevenue - totalExpenses;
   const cashEnd = cashOnHand + profit;
   const profitable = profit >= 0;
   const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
   const marginPct = Math.max(0, Math.min(100, Math.round(profitMargin)));
+  const prev = ledgerHistory && ledgerHistory.length > 0 ? ledgerHistory[ledgerHistory.length - 1] : null;
+  const prevRevenue = prev ? Object.values(prev.revenue).reduce((s, v) => s + v, 0) : 0;
+  const prevExpenses = prev ? Object.values(prev.expenses).reduce((s, v) => s + v, 0) : 0;
+  const prevProfit = prev ? prev.profit : 0;
+  const yoyDelta = (cur: number, old: number): { text: string; dir: 'up' | 'down' | 'flat' } => {
+    if (!prev || old === 0) return { text: 'First season', dir: 'flat' };
+    const pct = ((cur - old) / Math.abs(old)) * 100;
+    return { text: `vs last season ${pct >= 0 ? '↑' : '↓'} ${Math.abs(pct).toFixed(1)}%`, dir: pct >= 0 ? 'up' : 'down' };
+  };
+  const revDelta = yoyDelta(totalRevenue, prevRevenue);
+  const expDelta = yoyDelta(totalExpenses, prevExpenses);
+  const profitDelta = yoyDelta(profit, prevProfit);
+  const cashDelta = prev ? `vs last year-end ${cashEnd >= prev.cashOnHandEnd ? '↑' : '↓'} ${fmt(Math.abs(cashEnd - prev.cashOnHandEnd))}` : `Starting cash ${fmt(cashOnHand)}`;
+
   const revenueRows = [
     { label: 'Matchday Revenue', value: ledger.revenue.matchday, color: 'emerald' as const },
     { label: 'Sponsorships', value: ledger.revenue.sponsorship, color: 'cyan' as const },
@@ -99,8 +114,9 @@ export const AnnualProjectionCard: React.FC<{
     { label: 'Wages', value: ledger.expenses.wages, color: 'rose' as const },
     { label: 'Staff', value: ledger.expenses.staff, color: 'rose' as const },
     { label: 'Facility Ops', value: ledger.expenses.facility, color: 'orange' as const },
+    { label: 'Scouting & Analytics', value: ledger.expenses.scouting ?? 0, color: 'orange' as const },
     { label: 'Travel', value: ledger.expenses.travel, color: 'amber' as const },
-    { label: 'Medical', value: ledger.expenses.medical, color: 'yellow' as const },
+    { label: 'Medical', value: ledger.expenses.medical ?? 0, color: 'yellow' as const },
     { label: 'Finance Costs', value: ledger.expenses.financeCosts, color: 'yellow' as const },
   ].filter((row) => row.value > 0);
 
@@ -121,10 +137,10 @@ export const AnnualProjectionCard: React.FC<{
           <span className="text-xs text-slate-500">Season {currentYear}-{String(currentYear + 1).slice(-2)}</span>
         </div>
         <div className="grid md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_220px]">
-          <MetricTile label="Total Revenue" value={fmt(totalRevenue)} delta="vs last season ↑ 12.4%" tone="green" />
-          <MetricTile label="Total Expenses" value={fmt(totalExpenses)} delta="vs last season ↑ 7.8%" tone="red" />
-          <MetricTile label="Projected Profit" value={`${profit < 0 ? '-' : ''}${fmt(Math.abs(profit))}`} delta="vs last season ↑ 24.7%" tone={profitable ? 'green' : 'red'} />
-          <MetricTile label="Year-End Cash" value={`${cashEnd < 0 ? '-' : ''}${fmt(Math.abs(cashEnd))}`} delta="vs start ↑ 91.8%" tone={cashEnd >= 0 ? 'gold' : 'red'} />
+          <MetricTile label="Total Revenue" value={fmt(totalRevenue)} delta={revDelta.text} tone="green" />
+          <MetricTile label="Total Expenses" value={fmt(totalExpenses)} delta={expDelta.text} tone="red" />
+          <MetricTile label="Projected Profit" value={`${profit < 0 ? '-' : ''}${fmt(Math.abs(profit))}`} delta={profitDelta.text} tone={profitable ? 'green' : 'red'} />
+          <MetricTile label="Year-End Cash" value={`${cashEnd < 0 ? '-' : ''}${fmt(Math.abs(cashEnd))}`} delta={cashDelta} tone={cashEnd >= 0 ? 'gold' : 'red'} />
           <div className="px-5 py-4 flex flex-col items-center justify-center">
             <div
               className="w-28 h-28 rounded-full flex items-center justify-center"
@@ -242,14 +258,14 @@ export const FinanceSection: React.FC<{
 
       {financeTab === 'overview' && (
         <>
-          <AnnualProjectionCard ledger={ledger} fmt={fmt} cashOnHand={cashOnHand} currentYear={currentYear} starPower={starPower} />
+          <BoardPromisesCard tycoon={tycoon} />
+          <AnnualProjectionCard ledger={ledger} fmt={fmt} cashOnHand={cashOnHand} currentYear={currentYear} starPower={starPower} ledgerHistory={tycoon.ledgerHistory} />
           <div className="grid md:grid-cols-4 gap-3">
             <MetricTile label="Current Revenue" value={fmt(currentRevenue)} delta="Projected" tone="green" />
             <MetricTile label="Current Expenses" value={fmt(currentExpenses)} delta="Projected" tone="red" />
             <MetricTile label="Net Position" value={fmt(ledger.profit)} delta={ledger.profit >= 0 ? 'Profitable' : 'Deficit'} tone={ledger.profit >= 0 ? 'green' : 'red'} />
             <MetricTile label="Cash Runway" value={cashOnHand >= 0 ? 'Stable' : 'Critical'} delta={fmt(cashOnHand)} tone={cashOnHand >= 0 ? 'gold' : 'red'} />
           </div>
-          <LedgerHistoryCard tycoon={tycoon} currency="EUR" />
         </>
       )}
 

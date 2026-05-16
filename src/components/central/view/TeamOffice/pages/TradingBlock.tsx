@@ -17,6 +17,7 @@ import { getCurrentTeamRegularSeasonYears } from '../../../../../utils/playerTen
 import { compareGameDates, getDraftDate, getTradeDeadlineDate, isInPostDeadlinePreFAWindow, toISODateString } from '../../../../../utils/dateUtils';
 import { NBAPlayer, NBATeam } from '../../../../../types';
 import { PlayerBioView } from '../../PlayerBioView';
+import { isNoDraftLeague } from '../../../../../services/offseason/offseasonState';
 
 interface TradingBlockProps {
   teamId: number;
@@ -35,7 +36,9 @@ function ovrText(v: number): string {
 
 export function TradingBlock({ teamId }: TradingBlockProps) {
   const { state, dispatchAction } = useGame();
+  if (state.leagueStats?.tradesAllowed === false) return null;
   const { players, teams, draftPicks } = state;
+  const noDraft = isNoDraftLeague(state.leagueStats as any);
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const lotterySlotByTid = useMemo(
     () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
@@ -510,7 +513,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
               />
 
               {/* Picks section — only in Trading Block column for contending teams */}
-              {editingColumn === 'block' && teamMode === 'contend' && teamPicks.length > 0 && (
+              {editingColumn === 'block' && !noDraft && teamMode === 'contend' && teamPicks.length > 0 && (
                 <div className="mt-6 pt-4 border-t border-slate-800">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-3">Trade Future Picks</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">

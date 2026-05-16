@@ -1,4 +1,4 @@
-import { type LucideIcon, MessageSquare, HandCoins, Gavel, Utensils, Film, Eye, PenTool, AlertTriangle, Zap, UserX, Ban, Syringe, Trophy, Music, BarChart2, ArrowLeftRight } from 'lucide-react';
+import { type LucideIcon, MessageSquare, HandCoins, Gavel, Utensils, Film, Eye, PenTool, AlertTriangle, Zap, UserX, Ban, Syringe, Trophy, Music, BarChart2, ArrowLeftRight, TrendingUp } from 'lucide-react';
 import { NBAPlayer } from '../types';
 
 // ─── Personnel type ───────────────────────────────────────────────────────────
@@ -104,12 +104,15 @@ const ACTIVE_NBA_ONLY: Array<NonNullable<NBAPlayer['status']>> = ['Active'];
 export function isPlayerEligible(
   player: NBAPlayer,
   eligibility: PersonEligibility,
-  context?: { currentYear?: number; userTeamId?: number | null },
+  context?: { currentYear?: number; userTeamId?: number | null; euroIsolated?: boolean },
 ): boolean {
   if (eligibility.staffOnly) return false;
 
   if (eligibility.requireExpiringContract) {
-    const onTeam = player.status === 'Active' && (player.tid ?? -1) >= 0;
+    const activeStatuses = context?.euroIsolated
+      ? ['Active', 'Euroleague', 'Endesa', 'PBA', 'B-League', 'G-League', 'China CBA', 'NBL Australia']
+      : ['Active'];
+    const onTeam = activeStatuses.includes(player.status as any) && (player.tid ?? -1) >= 0;
     if (!onTeam) return false;
     // In GM mode, only surface re-sign for players on the user's own team.
     if (context?.userTeamId != null && player.tid !== context.userTeamId) return false;
@@ -149,7 +152,10 @@ export function isPlayerEligible(
   }
 
   if (eligibility.requireActiveNBA) {
-    if (player.status !== 'Active' || (player.tid ?? -1) < 0) return false;
+    const activeStatuses = context?.euroIsolated
+      ? ['Active', 'Euroleague', 'Endesa', 'PBA', 'B-League', 'G-League', 'China CBA', 'NBL Australia']
+      : ['Active'];
+    if (!activeStatuses.includes(player.status as any) || (player.tid ?? -1) < 0) return false;
     if (eligibility.restrictUserTeamInGM && context?.userTeamId != null && player.tid !== context.userTeamId) return false;
     return true;
   }
@@ -160,6 +166,9 @@ export function isPlayerEligible(
     ];
     // Genuine free agent: tid === -1
     if (player.tid === -1) return true;
+    // In Euro isolated mode, non-NBA tids are active clubs, not "overseas stash"
+    // signable players. Transfers need a dedicated flow, not FA stealing.
+    if (context?.euroIsolated) return false;
     // External-league player whose tid lies in the offset range (>= 100), i.e.
     // not on an active team in the current save (NBA save with Endesa player at
     // tid +5000, etc.). Required for cross-league signings.
@@ -210,6 +219,29 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     hover: 'hover:bg-violet-600',
     eligibility: {
       playerStatuses: ['Active', 'Free Agent', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Retired'],
+      staffTypes: ['coach'],
+    },
+  },
+  {
+    id: 'promote_to_hc',
+    title: 'Promote to Head Coach',
+    description: 'Elevate this assistant to the vacant Head Coach role.',
+    icon: TrendingUp,
+    color: 'bg-amber-500',
+    hover: 'hover:bg-amber-600',
+    eligibility: {
+      staffTypes: ['coach'],
+    },
+  },
+  {
+    id: 'resign_staff',
+    title: 'Extend Contract',
+    description: 'Negotiate a contract extension before this staff member walks.',
+    icon: PenTool,
+    color: 'bg-emerald-500',
+    hover: 'hover:bg-emerald-600',
+    eligibility: {
+      staffTypes: ['coach'],
     },
   },
   {

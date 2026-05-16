@@ -68,8 +68,10 @@ const ROSTER_LEAGUE_STATUSES = new Set([
  * - Commissioner mode (no user team): returns NBA teams.
  * - GM mode, NBA user: returns NBA teams.
  * - GM mode, non-NBA user (e.g. Spain → Real Madrid Endesa): returns all
- *   teams of the user's league (Endesa, Euroleague, …) wrapped in
- *   NBATeam-shape stubs so existing iteration patterns keep working.
+ * - Euro-isolated mode may keep NBA teams in `state.teams` for background
+ *   simulation. In that mode, Euro UI must source active clubs from
+ *   `nonNBATeams`; this helper returns the user's domestic/continental pool
+ *   as NBATeam-shape stubs so old iteration patterns keep working.
  *
  * This is the single helper a GM-mode "browse all teams" picker should
  * call. Standings, Power Rankings, Team Office home grid, schedule team

@@ -31,9 +31,10 @@ function estimateTravelCost(
     '3.0': 3_500, '3.5': 5_000, '4.0': 7_500, '4.5': 11_000, '5.0': 16_000,
   };
   const totalAway = domesticAwayGames + euroleagueAwayGames;
+  const flightGames = Math.max(domesticAwayGames, euroleagueAwayGames);
   return Math.round(
     (hotelPrice[key(prefs.hotel)] ?? 0) * totalAway
-    + (flightPrice[key(prefs.flight)] ?? 0) * euroleagueAwayGames
+    + (flightPrice[key(prefs.flight)] ?? 0) * flightGames
     + (busPrice[key(prefs.bus)] ?? 0) * domesticAwayGames,
   );
 }
@@ -73,29 +74,49 @@ export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayer
   const tb = TIER_BASE[t.tier];
   const success = successMultiplier(ctx);
 
-  const attendancePct = averageAttendancePct(t.tier, success);
+  const ticketMult = Math.max(0.5, Math.min(2.0, t.ticketPriceMultiplier ?? 1));
+  const ticketDemand = Math.max(0.72, Math.min(1.12, 1.06 - (ticketMult - 1) * 0.18));
+  const attendancePct = Math.min(0.99, averageAttendancePct(t.tier, success) * ticketDemand);
   const capacity = (t.facilities?.stadium as any)?.capacity ?? tb.stadiumCapacity;
-  const matchday = Math.round(capacity * attendancePct * tb.ticketPrice * 30);
+  const matchday = Math.round(capacity * attendancePct * tb.ticketPrice * ticketMult * 30);
 
   const slotRev = (slot: 'kit' | 'sleeve' | 'stadium'): number => {
     const s = t.sponsorships[slot];
     if (s) return s.valuePerYear;
     return Math.round(tb.sponsorshipFloor[slot] * 0.5);
   };
-  const sponsorship = slotRev('kit') + slotRev('sleeve') + slotRev('stadium');
+  // Euroleague exposure boosts kit/sleeve/stadium sponsor values — sponsors
+  // pay more when the club's logo gets continental TV minutes.
+  const elSponsorMult = ctx.euroleagueStage === 'final-four' ? 1.45
+                      : ctx.euroleagueStage === 'qf'         ? 1.30
+                      : ctx.euroleagueStage === 'group'      ? 1.20
+                                                             : 1.00;
+  const sponsorship = Math.round((slotRev('kit') + slotRev('sleeve') + slotRev('stadium')) * elSponsorMult);
 
   const prize = (ctx.endesaPrizeEUR ?? 0) + (ctx.euroleaguePrizeEUR ?? 0);
-  const tv = tb.tvRevenue;
+
+  // TV split:
+  //   - Domestic Endesa TV pool — tier-base floor
+  //   - Euroleague TV/market pool when participating. Real life: ~€600K
+  //     base + market-pool bonus, deeper runs earn substantially more.
+  const elTvBonus = ctx.euroleagueStage === 'final-four' ? 4_500_000
+                  : ctx.euroleagueStage === 'qf'         ? 2_800_000
+                  : ctx.euroleagueStage === 'group'      ? 1_400_000
+                                                         : 0;
+  const tv = tb.tvRevenue + elTvBonus;
   const transfer = 0;
 
   const wages = wagesEUR(team, allPlayers);
-  const staff = Math.round(wages * 0.10);
+  const staff = Math.round((t.staffMembers ?? []).reduce((sum, s) => sum + (s.salary ?? 0), 0)) || Math.round(wages * 0.10);
   const facilityLevelSum = (t.facilities?.stadium?.level ?? 1)
     + (t.facilities?.trainingCenter?.level ?? 1)
     + (t.facilities?.academy?.level ?? 1);
   const facility = facilityLevelSum * tb.facilityOpsPerLevel;
-  const scouting = tb.scoutingBudget;
+  const scouting = t.scoutingInvestment ?? tb.scoutingBudget;
   const medical = t.medicalBudget ?? 0;
+  // Academy spending tier → annual EUR cost. Mirror the table in AcademySection.
+  const ACADEMY_COST_BY_TIER = [0, 250_000, 750_000, 1_500_000, 3_000_000, 6_000_000];
+  const academy = ACADEMY_COST_BY_TIER[Math.max(0, Math.min(5, t.academyBudget ?? 0))];
   const travelPrefs = t.travelPreferences;
   const travel = travelPrefs
     ? estimateTravelCost(travelPrefs, 17, ctx.euroleagueAwayGames)
@@ -104,12 +125,12 @@ export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayer
   const financeCosts = cash < 0 ? Math.round(Math.abs(cash) * 0.05) : 0;
 
   const profit = Math.round(matchday + sponsorship + prize + tv + transfer
-               - wages - staff - facility - scouting - travel - medical - financeCosts);
+               - wages - staff - facility - scouting - travel - medical - academy - financeCosts);
 
   return {
     year: ctx.year,
     revenue: { matchday, sponsorship, prize, tv, transfer },
-    expenses: { wages, staff, facility, scouting, travel, medical, financeCosts },
+    expenses: { wages, staff, facility, scouting, travel, medical, academy, financeCosts },
     profit,
     cashOnHandEnd: cash + profit,
     ffpDeficitContribution: Math.min(profit, 0),

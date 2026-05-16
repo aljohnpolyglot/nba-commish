@@ -66,10 +66,19 @@ export const simulateGames = async (
         leagueStats,
         onGame
     );
-    allResults.push(...dayResults);
+    const gameById = new Map(gamesToSimulate.map(g => [g.gid, g]));
+    allResults.push(...dayResults.map(result => {
+        const game = gameById.get(result.gameId);
+        return game?.competitionId
+            ? { ...result, competitionId: game.competitionId, competitionPhase: game.competitionPhase }
+            : result;
+    }));
 
     if (watchedGameResult) {
-        allResults.push(watchedGameResult);
+        const game = gameById.get(watchedGameResult.gameId);
+        allResults.push(game?.competitionId
+            ? { ...watchedGameResult, competitionId: game.competitionId, competitionPhase: game.competitionPhase }
+            : watchedGameResult);
     }
 
     // Update standings

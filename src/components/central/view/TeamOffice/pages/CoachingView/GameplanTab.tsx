@@ -69,6 +69,9 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
   const { state } = useGame();
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const currentYear = state.leagueStats?.year || 2026;
+  const gameLengthMinutes = (state.leagueStats?.quarterLength ?? 12) * (state.leagueStats?.numQuarters ?? 4);
+  const targetMinutes = gameLengthMinutes * 5;
+  const maxPlayerMinutes = gameLengthMinutes;
 
   const isGM = state.gameMode === 'gm';
   const isCommissioner = state.gameMode !== 'gm';
@@ -169,6 +172,9 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       0,
       rot.starMpgTarget,
       false,
+      state.leagueStats?.quarterLength ?? 12,
+      undefined,
+      state.leagueStats?.numQuarters ?? 4,
     );
 
     const inRotationIds = new Set(rot.players.map(p => p.internalId));
@@ -183,7 +189,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       benchPool: bench,
       twoWayIneligible,
     };
-  }, [team, state.players, state.teams, teamId, currentYear, isPlayoffSeason, ptiLevel]);
+  }, [team, state.players, state.teams, state.leagueStats?.quarterLength, state.leagueStats?.numQuarters, teamId, currentYear, isPlayoffSeason, ptiLevel]);
 
   // ── Editable local state (seeded from saved gameplan or computed defaults) ─
   const [starterOrder, setStarterOrder] = useState<string[]>([]);
@@ -217,10 +223,11 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       state.players.filter(p => p.tid === teamId && isOnRoster(p) && (!p.injury || (p.injury.gamesRemaining ?? 0) <= 0))
         .map(p => p.internalId),
     );
+    const healthyRoster = state.players.filter(p => p.tid === teamId && isOnRoster(p) && (!p.injury || (p.injury.gamesRemaining ?? 0) <= 0));
 
     const savedStarters = (saved?.starterIds ?? []).filter(id => onTeamIds.has(id) && healthyIds.has(id));
     const projected = team
-      ? StarterService.getProjectedStarters(team, state.players, currentYear)
+      ? StarterService.getProjectedStarters(team, state.players, currentYear, healthyRoster)
           .slice(0, 5)
           .map(p => p.internalId)
       : [];
@@ -285,29 +292,29 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       const fromIdeal = idealDerived?.[p.internalId];
       // fromIdeal=0 (DNP in Ideal) must fall through to baseMinutes; ?? doesn't skip 0.
       const raw = prior ?? (fromIdeal || undefined) ?? Math.round(baseMinutes[i] ?? 0);
-      seed[p.internalId] = Math.max(0, Math.min(48, raw));
+      seed[p.internalId] = Math.max(0, Math.min(maxPlayerMinutes, raw));
     });
     // Normalize to exactly 240 — saved minuteOverrides from before a trade/signing can
     // sum to 241+ because ghost entries were dropped but rounding wasn't corrected.
     const seedTotal = Object.values(seed).reduce((a, b) => a + b, 0);
-    if (seedTotal > 0 && seedTotal !== 240) {
-      const scale = 240 / seedTotal;
+    if (seedTotal > 0 && seedTotal !== targetMinutes) {
+      const scale = targetMinutes / seedTotal;
       const normalized: Record<string, number> = Object.fromEntries(
-        Object.entries(seed).map(([k, v]) => [k, Math.max(0, Math.min(48, Math.round(v * scale)))]),
+        Object.entries(seed).map(([k, v]) => [k, Math.max(0, Math.min(maxPlayerMinutes, Math.round(v * scale)))]),
       );
-      let diff = 240 - Object.values(normalized).reduce((a, b) => a + b, 0);
+      let diff = targetMinutes - Object.values(normalized).reduce((a, b) => a + b, 0);
       const order = Object.entries(normalized).sort((a, b) => b[1] - a[1]).map(([k]) => k);
       for (let i = 0; diff !== 0 && i < order.length * 2; i++) {
         const k = order[i % order.length];
         const step = diff > 0 ? 1 : -1;
         const n = normalized[k] + step;
-        if (n >= 0 && n <= 48) { normalized[k] = n; diff -= step; }
+        if (n >= 0 && n <= maxPlayerMinutes) { normalized[k] = n; diff -= step; }
       }
       setMinuteOverrides(normalized);
     } else {
       setMinuteOverrides(seed);
     }
-  }, [rotation, baseMinutes, team, state.players, teamId]);
+  }, [rotation, baseMinutes, team, state.players, teamId, currentYear, targetMinutes, maxPlayerMinutes]);
 
   // ── Autosave to gameplanStore whenever the GM/commissioner edits something ─
   const firstRender = useRef(true);
@@ -564,12 +571,12 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
   })();
 
   const totalMinutes = Object.values(minuteOverrides).reduce((a, b) => a + b, 0);
-  const targetMinutes = 240;
   const remaining = targetMinutes - totalMinutes;
 
   const setMins = (id: string, v: number) => {
+    if (!canEdit) return;
     setMinuteOverrides(prev => {
-      const clamped = Math.max(0, Math.min(48, v));
+      const clamped = Math.max(0, Math.min(maxPlayerMinutes, v));
       const current = prev[id] ?? 0;
       if (clamped > current) {
         const othersTotal = Object.entries(prev).reduce(
@@ -583,7 +590,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     });
   };
 
-  // Show a toast (debounced) when the plan drifts off 240 — avoids spamming during slider drags.
+  // Show a toast (debounced) when the plan drifts off target — avoids spamming during slider drags.
   useEffect(() => {
     if (!canEdit || remaining === 0) return;
     const timer = setTimeout(() => pushToast({ type: 'rotation-budget', delta: remaining }), 1500);
@@ -618,7 +625,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;
   }
 
-  // Proportional auto-balance so the 240-min budget is always reachable in one tap.
+  // Proportional auto-balance so the minute budget is always reachable in one tap.
   // Reset to the coach's auto-computed rotation — clears every user edit,
   // then re-seeds from the same Ideal → service chain the initial seed uses.
   // If the user has a locked Ideal, the daily gameplan re-derives from it
@@ -634,8 +641,9 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       state.players.filter(p => p.tid === teamId && isOnRoster(p) && (!p.injury || (p.injury.gamesRemaining ?? 0) <= 0))
         .map(p => p.internalId),
     );
+    const healthyRoster = state.players.filter(p => p.tid === teamId && isOnRoster(p) && (!p.injury || (p.injury.gamesRemaining ?? 0) <= 0));
     const projected = team
-      ? StarterService.getProjectedStarters(team, state.players).slice(0, 5).map(p => p.internalId)
+      ? StarterService.getProjectedStarters(team, state.players, currentYear, healthyRoster).slice(0, 5).map(p => p.internalId)
       : [];
 
     let starters: string[];
@@ -665,14 +673,14 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
       : null;
     rotation.forEach((p, i) => {
       const raw = idealDerived?.[p.internalId] ?? Math.round(baseMinutes[i] ?? 0);
-      seed[p.internalId] = Math.max(0, Math.min(48, raw));
+      seed[p.internalId] = Math.max(0, Math.min(maxPlayerMinutes, raw));
     });
-    // Normalize to exactly 240 — rounding and injured-player drops can leave a 1–3 min gap.
+    // Normalize to exactly the game budget — rounding and injured-player drops can leave a 1–3 min gap.
     const seedTotal = Object.values(seed).reduce((a, b) => a + b, 0);
     if (seedTotal > 0 && seedTotal !== targetMinutes) {
       const scale = targetMinutes / seedTotal;
       const normalized: Record<string, number> = Object.fromEntries(
-        Object.entries(seed).map(([k, v]) => [k, Math.max(0, Math.min(48, Math.round(v * scale)))]),
+        Object.entries(seed).map(([k, v]) => [k, Math.max(0, Math.min(maxPlayerMinutes, Math.round(v * scale)))]),
       );
       let diff = targetMinutes - Object.values(normalized).reduce((a, b) => a + b, 0);
       const order = Object.entries(normalized).sort((a, b) => b[1] - a[1]).map(([k]) => k);
@@ -680,7 +688,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
         const k = order[i % order.length];
         const step = diff > 0 ? 1 : -1;
         const n = normalized[k] + step;
-        if (n >= 0 && n <= 48) { normalized[k] = n; diff -= step; }
+        if (n >= 0 && n <= maxPlayerMinutes) { normalized[k] = n; diff -= step; }
       }
       setMinuteOverrides(normalized);
     } else {
@@ -689,8 +697,8 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     setSelectedId(null);
   };
 
-  // Scales every non-zero allocation toward 240, clamps to [0, 48], then distributes
-  // any rounding delta to the highest-minute players until the sum hits exactly 240.
+  // Scales every non-zero allocation toward the game budget, then distributes
+  // any rounding delta to the highest-minute players until the sum hits exactly.
   const autoDistribute = () => {
     if (!canEdit) return;
     const entries = Object.entries(minuteOverrides);
@@ -711,7 +719,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
     } else {
       const scale = targetMinutes / currentTotal;
       next = Object.fromEntries(
-        entries.map(([k, v]) => [k, Math.max(0, Math.min(48, Math.round(v * scale)))]),
+        entries.map(([k, v]) => [k, Math.max(0, Math.min(maxPlayerMinutes, Math.round(v * scale)))]),
       );
       let diff = targetMinutes - Object.values(next).reduce((a, b) => a + b, 0);
       // Absorb rounding residue on the biggest buckets first so the result looks sane.
@@ -720,7 +728,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
         const k = order[i];
         const step = diff > 0 ? 1 : -1;
         const n = next[k] + step;
-        if (n < 0 || n > 48) continue;
+        if (n < 0 || n > maxPlayerMinutes) continue;
         next[k] = n;
         diff -= step;
       }
@@ -825,7 +833,7 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                 <button
                   onClick={autoDistribute}
                   className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 border border-amber-700/50 hover:border-amber-500 px-2 py-1 rounded font-black uppercase tracking-widest text-[10px] text-amber-300 hover:text-amber-200 transition-colors"
-                  title="Scale all minutes to hit exactly 240"
+                  title={`Scale all minutes to hit exactly ${targetMinutes}`}
                 >
                   <Sparkles className="w-3 h-3" />
                   Distribute
@@ -995,14 +1003,15 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                   <input
                     type="range"
                     min={0}
-                    max={48}
+                    max={maxPlayerMinutes}
                     step={1}
                     value={mins}
                     onChange={e => setMins(p.internalId, +e.target.value)}
                     onClick={e => e.stopPropagation()}
                     onPointerDown={e => e.stopPropagation()}
                     onFocus={noScrollOnFocus}
-                    className="hidden sm:block w-full accent-amber-500 touch-pan-x"
+                    disabled={!canEdit}
+                    className={`hidden sm:block w-full accent-amber-500 touch-pan-x ${canEdit ? '' : 'cursor-not-allowed opacity-60'}`}
                   />
                   <span className="hidden sm:block text-xs font-mono text-slate-200 text-right tabular-nums">
                     {mins}
@@ -1018,13 +1027,14 @@ export function GameplanTab({ teamId }: GameplanTabProps) {
                   <input
                     type="range"
                     min={0}
-                    max={48}
+                    max={maxPlayerMinutes}
                     step={1}
                     value={mins}
                     onChange={e => setMins(p.internalId, +e.target.value)}
                     onPointerDown={e => e.stopPropagation()}
                     onFocus={noScrollOnFocus}
-                    className="flex-1 accent-amber-500 touch-pan-x"
+                    disabled={!canEdit}
+                    className={`flex-1 accent-amber-500 touch-pan-x ${canEdit ? '' : 'cursor-not-allowed opacity-60'}`}
                   />
                   <span className="text-xs font-mono text-slate-200 text-right tabular-nums w-9">
                     {mins}

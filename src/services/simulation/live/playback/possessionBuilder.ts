@@ -32,11 +32,11 @@ export function buildPossessions(
     const qStartGs = getPeriodStartSeconds(q, timingConfig);
     
     let attempts = 0;
-    // Per-quarter natural cap. NBA quarters average ~22-26 possessions; with
-    // ORB-extensions the realistic max is ~32. The old MAX=100 let Q4 grind
-    // 60+ brick attempts under the late-game multipliers, so Q4 felt twice as
-    // dense as Q1-Q3.
-    const MAX_ATTEMPTS = 36;
+    // Total possessions per quarter across BOTH teams. NBA averages ~44-52
+    // (22-26 per team). Cap 36 was per-team-equivalent and starved Q4 → PBP
+    // under-scored vs engine targets → score "jumped" at the buzzer when the
+    // UI snapped from cs/ds (synth) to finalResult (engine).
+    const MAX_ATTEMPTS = 80;
 
     while ((homeScored < homeTarget || awayScored < awayTarget) && attempts < MAX_ATTEMPTS) {
       attempts++;
@@ -88,9 +88,56 @@ export function buildPossessions(
         currentTeam = currentTeam === 'HOME' ? 'AWAY' : 'HOME';
       }
     }
+
+    // Convergence: if the loop bailed before targets were hit (budget gone,
+    // attempt cap reached), synthesize plain MADE buckets to land EXACTLY on
+    // quarterScores. Without this the PBP-final < engine-final and the UI
+    // snaps at FINAL → visible score jump.
+    convergeQuarter('HOME', homeTarget - homeScored, homePool, homeBudgets, possessions, q, () => posId++);
+    convergeQuarter('AWAY', awayTarget - awayScored, awayPool, awayBudgets, possessions, q, () => posId++);
   }
 
   return possessions;
+}
+
+function convergeQuarter(
+  team: TeamId,
+  deficit: number,
+  pool: PlayerPool[],
+  budgets: Map<string, PlayerPool>,
+  possessions: Possession[],
+  quarter: number,
+  nextId: () => number,
+): void {
+  if (deficit <= 0 || pool.length === 0) return;
+  const active = pool.slice(0, 5);
+  let remaining = deficit;
+  let i = 0;
+  while (remaining > 0) {
+    // Prefer 3 when deficit is a multiple of 3, else 2.
+    const useThree = remaining >= 3 && remaining % 3 === 0;
+    const scorer = active[i % active.length];
+    const outcome: PossessionOutcome = useThree ? 'MADE_3' : 'MADE_2';
+    const pts = useThree ? 3 : 2;
+    // Charge the budget so player box-score still aligns with totals.
+    const b = budgets.get(scorer.id);
+    if (b) {
+      if (useThree) b.fg3 = Math.max(0, b.fg3 - 1);
+      else b.fg2 = Math.max(0, b.fg2 - 1);
+    }
+    possessions.push({
+      id: nextId(),
+      team,
+      outcome,
+      quarter,
+      pts,
+      scorer,
+      is3: useThree,
+    } as Possession);
+    remaining -= pts;
+    i++;
+    if (i > 40) break; // safety
+  }
 }
 
 function pickOutcome(

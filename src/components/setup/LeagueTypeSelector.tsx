@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Sparkles, Globe, ArrowLeft, ChevronLeft } from 'lucide-react';
 
 export type LeagueType = 'fictional' | 'modded';
-export type ModdedLeagueBase = 'nba' | 'europe';
+export type ModdedLeagueBase = 'nba' | 'europe' | 'philippines';
 export type EuropeMarket = 'spain';
 
 export interface LeagueSetupSelection {
@@ -53,7 +53,7 @@ export const LeagueTypeSelector: React.FC<LeagueTypeSelectorProps> = ({ onSelect
               className="group relative p-6 rounded-2xl border-2 border-slate-800 bg-slate-900/50 hover:border-red-500 hover:bg-red-500/10 transition-all text-left"
             >
               <div className="flex items-center gap-3 mb-3">
-                <Globe size={24} className="text-red-400" />
+                <span className="text-2xl leading-none">🇪🇸</span>
                 <h3 className="text-xl font-black text-white uppercase tracking-tight">Spain</h3>
                 <span className="ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-red-500/20 text-red-300 rounded">
                   Endesa
@@ -64,29 +64,29 @@ export const LeagueTypeSelector: React.FC<LeagueTypeSelectorProps> = ({ onSelect
               </p>
             </button>
 
-            <div className="relative p-6 rounded-2xl border-2 border-slate-800 bg-slate-900/30 text-left opacity-70">
+            <div className="relative p-6 rounded-2xl border-2 border-slate-800 bg-slate-900/30 text-left opacity-60">
               <div className="flex items-center gap-3 mb-3">
-                <Globe size={24} className="text-blue-400" />
+                <span className="text-2xl leading-none">🇫🇷</span>
                 <h3 className="text-xl font-black text-white uppercase tracking-tight">France</h3>
                 <span className="ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded">
                   Soon
                 </span>
               </div>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Not active in setup yet.
+                Pro A / Betclic Élite setup with ASVEL, Monaco, Paris Basketball. EuroLeague spots, no NBA draft, French player development pipeline.
               </p>
             </div>
 
-            <div className="relative p-6 rounded-2xl border-2 border-slate-800 bg-slate-900/30 text-left opacity-70">
+            <div className="relative p-6 rounded-2xl border-2 border-slate-800 bg-slate-900/30 text-left opacity-60">
               <div className="flex items-center gap-3 mb-3">
-                <Globe size={24} className="text-amber-400" />
+                <span className="text-2xl leading-none">🇩🇪</span>
                 <h3 className="text-xl font-black text-white uppercase tracking-tight">Germany</h3>
                 <span className="ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded">
                   Soon
                 </span>
               </div>
               <p className="text-sm text-slate-400 leading-relaxed">
-                Bayern / Alba path is reserved for the next Europe expansion pass.
+                Basketball Bundesliga with Bayern München, ALBA Berlin, ratiopharm ulm. EuroCup access, German youth talent, no salary cap.
               </p>
             </div>
           </div>
@@ -121,7 +121,7 @@ export const LeagueTypeSelector: React.FC<LeagueTypeSelectorProps> = ({ onSelect
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={() => onSelect({ leagueType: 'modded', moddedLeagueBase: 'nba' })}
               className="group relative p-6 rounded-2xl border-2 border-slate-800 bg-slate-900/50 hover:border-amber-500 hover:bg-amber-500/10 transition-all text-left"
@@ -151,6 +151,22 @@ export const LeagueTypeSelector: React.FC<LeagueTypeSelectorProps> = ({ onSelect
               </div>
               <p className="text-sm text-slate-400 leading-relaxed">
                 Starts with the European no-draft preset: no draft, no draft picks at save creation, groundwork for EuroLeague-first control.
+              </p>
+            </button>
+
+            <button
+              onClick={() => onSelect({ leagueType: 'modded', moddedLeagueBase: 'philippines' })}
+              className="group relative p-6 rounded-2xl border-2 border-slate-800 bg-slate-900/50 hover:border-emerald-500 hover:bg-emerald-500/10 transition-all text-left"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <Globe size={24} className="text-emerald-400" />
+                <h3 className="text-xl font-black text-white uppercase tracking-tight">Philippines</h3>
+                <span className="ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded">
+                  PBA
+                </span>
+              </div>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Three conferences, import decisions, 4-point line. GM-only PBA career mode with real S50 rosters.
               </p>
             </button>
           </div>
@@ -225,7 +241,7 @@ export const LeagueTypeSelector: React.FC<LeagueTypeSelectorProps> = ({ onSelect
               Loads <span className="text-white font-bold">community-maintained real-world data</span> from external sources. Real teams, real players, real contracts. Requires internet.
             </p>
             <div className="mt-4 flex flex-wrap gap-1.5">
-              {['NBA', 'Europe', 'Real Rosters', 'Real Contracts'].map(tag => (
+              {['NBA', 'Europe', 'PBA', 'Real Rosters'].map(tag => (
                 <span key={tag} className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-amber-500/10 text-amber-300 rounded">
                   {tag}
                 </span>

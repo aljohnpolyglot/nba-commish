@@ -11,6 +11,7 @@ import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { format, addDays } from 'date-fns';
 import { getOwnTeamId, normalizeDate } from '../../../utils/helpers';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
 
 interface InjuriesViewProps {
   filteredTeamId?: number;  // pre-filter to a single team (used in TeamDetailView)
@@ -21,7 +22,10 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
   const { state, navigateToTeam, healPlayer, dispatchAction } = useGame();
   const labels = useLeagueLabels();
   const ownTid = getOwnTeamId(state);
-  const { hubTab, teams: scopedTeams, tids: scopedTids, isScoped } = useHubScope();
+  const { hubTab, teams: scopedTeams, tids: scopedTids, isScoped, euroIsolated } = useHubScope();
+  const injuryTitle = hubTab ? 'Injuries' : euroIsolated ? 'Club Injuries' : labels.injuriesTitle;
+  const injurySubtitle = euroIsolated ? 'Current injury report across the selected clubs' : 'Current injury report across the league';
+  const allTeamsLabel = euroIsolated ? 'All Clubs' : 'All Teams';
   const [actionsPlayer, setActionsPlayer] = React.useState<NBAPlayer | null>(null);
   const [selectedTeamId, setSelectedTeamId] = React.useState<number | 'all'>(filteredTeamId ?? 'all');
   const [viewingBioPlayer, setViewingBioPlayer] = React.useState<NBAPlayer | null>(null);
@@ -59,8 +63,8 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
     if (sameDate.length === 0) return null;
     if (oppAbbrev) {
       for (const g of sameDate) {
-        const home = state.teams.find(t => t.id === g.homeTid);
-        const away = state.teams.find(t => t.id === g.awayTid);
+        const home = resolveAnyTeam(g.homeTid, state.teams, state.nonNBATeams ?? []);
+        const away = resolveAnyTeam(g.awayTid, state.teams, state.nonNBATeams ?? []);
         if ((home as any)?.abbrev?.toUpperCase() === oppAbbrev
          || (away as any)?.abbrev?.toUpperCase() === oppAbbrev) return g;
       }
@@ -211,7 +215,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
       let nextGameClause: string | null = null; // e.g. "Friday's game against the Rockets"
       if (nextGame) {
         const oppTid  = nextGame.homeTid === team.id ? nextGame.awayTid : nextGame.homeTid;
-        const oppTeam = state.teams.find(t => t.id === oppTid);
+        const oppTeam = resolveAnyTeam(oppTid, state.teams, state.nonNBATeams ?? []);
         let day = 'the next';
         try { day = `${format(new Date(nextGame.date), 'EEEE')}'s`; } catch {}
         nextGameClause = oppTeam
@@ -298,8 +302,8 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
       )}
       {boxScoreGame && (() => {
         const bsResult = state.boxScores.find((b: any) => b.gameId === boxScoreGame.gid);
-        const homeTeam = state.teams.find(t => t.id === boxScoreGame.homeTid);
-        const awayTeam = state.teams.find(t => t.id === boxScoreGame.awayTid);
+        const homeTeam = resolveAnyTeam(boxScoreGame.homeTid, state.teams, state.nonNBATeams ?? []);
+        const awayTeam = resolveAnyTeam(boxScoreGame.awayTid, state.teams, state.nonNBATeams ?? []);
         if (!homeTeam || !awayTeam) return null;
         return (
           <BoxScoreModal
@@ -317,8 +321,8 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
         {!embedded && (
           <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tight">{hubTab ? 'Injuries' : labels.injuriesTitle}</h2>
-              <p className="text-slate-500 font-medium">Current injury report across the league</p>
+              <h2 className="text-3xl font-black text-white uppercase tracking-tight">{injuryTitle}</h2>
+              <p className="text-slate-500 font-medium">{injurySubtitle}</p>
             </div>
 
             <div className="w-full md:w-64">
@@ -327,8 +331,8 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
                 value={selectedTeamId}
                 onChange={(e) => setSelectedTeamId(e.target.value === 'all' ? 'all' : Number(e.target.value))}
               >
-                <option value="all">All Teams</option>
-                {[...state.teams].sort((a, b) => a.name.localeCompare(b.name)).map(team => (
+                <option value="all">{allTeamsLabel}</option>
+                {[...scopedTeams].sort((a, b) => a.name.localeCompare(b.name)).map(team => (
                   <option key={team.id} value={team.id}>{team.name}</option>
                 ))}
               </select>
@@ -339,7 +343,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
         <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
           {filteredTeamsWithInjuries.length === 0 ? (
             <div className="p-8 text-center text-slate-500">
-              No players are currently injured for the selected team(s).
+              No players are currently injured for the selected {euroIsolated ? 'club(s)' : 'team(s)'}.
             </div>
           ) : (
             <div className="divide-y divide-slate-800/50">

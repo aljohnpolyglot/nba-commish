@@ -19,9 +19,13 @@ export const simulateDayGames = async (state: GameState, watchedGameResult?: any
     // excludes it from actual simulation (via gid filter) but injects the precomputed result into
     // allResults so standings update correctly — no double-count.
     const watchedGameId = watchedGameResult?.gameId;
-    const gamesToday = state.schedule.filter(g =>
-      (!g.played || g.gid === watchedGameId) && normalizeDate(g.date) === normalizedCurrent
-    );
+    const gamesToday = state.schedule.filter(g => {
+      if (g.gid === watchedGameId) return normalizeDate(g.date) === normalizedCurrent;
+      if (g.played) return false;
+      const gameDate = normalizeDate(g.date);
+      if (gameDate === normalizedCurrent) return true;
+      return !!g.competitionId && gameDate < normalizedCurrent;
+    });
 
     // During All-Star break, only simulate All-Star/Rising Stars games (not regular season)
     // Playoff and play-in games are never during All-Star break so they always pass through

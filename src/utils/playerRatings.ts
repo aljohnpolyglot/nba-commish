@@ -156,12 +156,10 @@ export const calculateTeamStrength = (teamId: number, players: Player[], overrid
     const teamPlayers = overridePlayers || players.filter(p => p.tid === teamId && (!p.injury || p.injury.gamesRemaining <= 0)).sort((a,b) => b.overallRating - a.overallRating);
     if(teamPlayers.length === 0) return 40;
 
-    // Quality-aware pool: include players within 20 OVR of the best player (max 10).
-    // This means a deep team with 9 players all at 83+ gets all 9 contributing to
-    // team strength, rather than being arbitrarily cut at 8.
     const star1Ovr = teamPlayers[0].overallRating;
-    const qualityCutoff = Math.max(50, star1Ovr - 20);
-    const qualityPool = teamPlayers.filter(p => p.overallRating >= qualityCutoff).slice(0, 10);
+    const qualityCutoff = Math.max(star1Ovr - 20, 0);
+    let qualityPool = teamPlayers.filter(p => p.overallRating >= qualityCutoff).slice(0, 10);
+    if (qualityPool.length === 0) qualityPool = teamPlayers.slice(0, 10);
 
     // Derive league-avg PER from the full player list for the PER blend below.
     const leaguePERStats = players

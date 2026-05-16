@@ -1,13 +1,19 @@
 import React, { useRef, useState, useCallback, useMemo } from 'react';
-import { getKeyDates, TIMELINE_MIN, TIMELINE_MAX, TIMELINE_DISPLAY_END, ZONE_COLORS, ZONE_LABELS, DateZone, KeyDate } from './keyDates';
+import {
+  getKeyDates, getPbaKeyDates,
+  TIMELINE_MIN, TIMELINE_MAX, TIMELINE_DISPLAY_END,
+  PBA_TIMELINE_MIN, PBA_TIMELINE_MAX, PBA_TIMELINE_DISPLAY_END,
+  ZONE_COLORS, ZONE_LABELS, PBA_ZONE_COLORS, PBA_ZONE_LABELS,
+  DateZone, PbaDateZone, KeyDate,
+} from './keyDates';
 
-// Calendar date-input allows jumping up to 10 seasons ahead; the horizontal track stays 1-season only.
 const INPUT_MAX = '2035-09-30';
 
 interface StartDateTimelineProps {
   onSelect: (date: string) => void;
   onBack: () => void;
   leagueType?: 'fictional' | 'modded';
+  moddedLeagueBase?: 'nba' | 'europe' | 'philippines';
 }
 
 // ─── Date math helpers ────────────────────────────────────────────────────
@@ -26,26 +32,11 @@ const formatDate = (iso: string) => {
   return `${months[m - 1]} ${d}, ${y}`;
 };
 
-const clampDate = (date: string) => {
-  if (date < TIMELINE_MIN) return TIMELINE_MIN;
-  if (date > INPUT_MAX) return INPUT_MAX;
-  return date;
-};
-
-const snapAllStarZone = (date: string): string => {
-  if (date >= '2026-02-13' && date <= '2026-02-16') return '2026-02-13';
-  return date;
-};
-
 // ─── Layout constants ─────────────────────────────────────────────────────
 const TRACK_WIDTH = 1600;
-const TRACK_TOTAL_DAYS = daysBetween(TIMELINE_MIN, TIMELINE_DISPLAY_END);
 
-const dateToX = (iso: string): number =>
-  Math.round((daysBetween(TIMELINE_MIN, iso) / TRACK_TOTAL_DAYS) * TRACK_WIDTH);
-
-// Zone segments for the colored track background
-const ZONE_SEGMENTS: { start: string; end: string; zone: DateZone }[] = [
+// NBA-specific zone segments
+const NBA_ZONE_SEGMENTS: { start: string; end: string; zone: DateZone }[] = [
   { start: '2025-08-06', end: '2025-10-23', zone: 'offseason' },
   { start: '2025-10-24', end: '2026-01-13', zone: 'early' },
   { start: '2026-01-14', end: '2026-02-12', zone: 'mid' },
@@ -54,57 +45,86 @@ const ZONE_SEGMENTS: { start: string; end: string; zone: DateZone }[] = [
   { start: '2026-04-16', end: TIMELINE_DISPLAY_END, zone: 'late' },
 ];
 
-// Month ticks
-const MONTH_TICKS: { date: string; label: string }[] = [
-  { date: '2025-08-01', label: 'AUG' },
-  { date: '2025-09-01', label: 'SEP' },
-  { date: '2025-10-01', label: 'OCT' },
-  { date: '2025-11-01', label: 'NOV' },
-  { date: '2025-12-01', label: 'DEC' },
-  { date: '2026-01-01', label: 'JAN' },
-  { date: '2026-02-01', label: 'FEB' },
-  { date: '2026-03-01', label: 'MAR' },
-  { date: '2026-04-01', label: 'APR' },
-  { date: '2026-05-01', label: 'MAY' },
-  { date: '2026-06-01', label: 'JUN' },
-  { date: '2026-07-01', label: 'JUL' },
+// PBA-specific zone segments — 3 conferences spanning ~15 months
+const PBA_ZONE_SEGMENTS: { start: string; end: string; zone: PbaDateZone }[] = [
+  { start: '2025-10-05', end: '2026-02-28', zone: 'philippineCup' },
+  { start: '2026-03-01', end: '2026-03-10', zone: 'allstar' },
+  { start: '2026-03-11', end: '2026-08-31', zone: 'commissionersCup' },
+  { start: '2026-09-01', end: '2026-12-28', zone: 'governorsCup' },
 ];
 
-// De-duplicate key dates by label+zone so we don't stack identical markers
-export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, onBack, leagueType }) => {
-  const keyDates = useMemo(() => getKeyDates(leagueType), [leagueType]);
+// NBA month ticks
+const NBA_MONTH_TICKS: { date: string; label: string }[] = [
+  { date: '2025-08-01', label: 'AUG' }, { date: '2025-09-01', label: 'SEP' },
+  { date: '2025-10-01', label: 'OCT' }, { date: '2025-11-01', label: 'NOV' },
+  { date: '2025-12-01', label: 'DEC' }, { date: '2026-01-01', label: 'JAN' },
+  { date: '2026-02-01', label: 'FEB' }, { date: '2026-03-01', label: 'MAR' },
+  { date: '2026-04-01', label: 'APR' }, { date: '2026-05-01', label: 'MAY' },
+  { date: '2026-06-01', label: 'JUN' }, { date: '2026-07-01', label: 'JUL' },
+];
+
+// PBA month ticks — Oct 2025 through Jan 2027
+const PBA_MONTH_TICKS: { date: string; label: string }[] = [
+  { date: '2025-10-01', label: 'OCT' }, { date: '2025-11-01', label: 'NOV' },
+  { date: '2025-12-01', label: 'DEC' }, { date: '2026-01-01', label: 'JAN' },
+  { date: '2026-02-01', label: 'FEB' }, { date: '2026-03-01', label: 'MAR' },
+  { date: '2026-04-01', label: 'APR' }, { date: '2026-05-01', label: 'MAY' },
+  { date: '2026-06-01', label: 'JUN' }, { date: '2026-07-01', label: 'JUL' },
+  { date: '2026-08-01', label: 'AUG' }, { date: '2026-09-01', label: 'SEP' },
+  { date: '2026-10-01', label: 'OCT' }, { date: '2026-11-01', label: 'NOV' },
+  { date: '2026-12-01', label: 'DEC' }, { date: '2027-01-01', label: 'JAN' },
+];
+
+export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, onBack, leagueType, moddedLeagueBase }) => {
+  const isPba = moddedLeagueBase === 'philippines';
+  const tlMin = isPba ? PBA_TIMELINE_MIN : TIMELINE_MIN;
+  const tlMax = isPba ? PBA_TIMELINE_MAX : TIMELINE_MAX;
+  const tlDisplayEnd = isPba ? PBA_TIMELINE_DISPLAY_END : TIMELINE_DISPLAY_END;
+  const zoneSegments = isPba ? PBA_ZONE_SEGMENTS : NBA_ZONE_SEGMENTS;
+  const monthTicks = isPba ? PBA_MONTH_TICKS : NBA_MONTH_TICKS;
+  const zoneColors: Record<string, string> = isPba ? PBA_ZONE_COLORS : ZONE_COLORS;
+  const zoneLabels: Record<string, string> = isPba ? PBA_ZONE_LABELS : ZONE_LABELS;
+
+  const trackTotalDays = useMemo(() => daysBetween(tlMin, tlDisplayEnd), [tlMin, tlDisplayEnd]);
+  const dateToX = useCallback((iso: string): number =>
+    Math.round((daysBetween(tlMin, iso) / trackTotalDays) * TRACK_WIDTH), [tlMin, trackTotalDays]);
+
+  const keyDates = useMemo(() => isPba ? getPbaKeyDates() : getKeyDates(leagueType), [isPba, leagueType]);
   const displayMarkers = useMemo(() => keyDates.filter((kd, i, arr) =>
     arr.findIndex(k => k.date === kd.date && k.label === kd.label) === i
   ), [keyDates]);
-  const [selectedDate, setSelectedDate] = useState<string>(TIMELINE_MIN);
+  const [selectedDate, setSelectedDate] = useState<string>(tlMin);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
   const applyDate = useCallback((raw: string) => {
-    const clamped = clampDate(raw);
-    const snapped = snapAllStarZone(clamped);
-    setSelectedDate(snapped);
-  }, []);
+    const clamped = raw < tlMin ? tlMin : raw > INPUT_MAX ? INPUT_MAX : raw;
+    if (!isPba && clamped >= '2026-02-13' && clamped <= '2026-02-16') {
+      setSelectedDate('2026-02-13');
+    } else {
+      setSelectedDate(clamped);
+    }
+  }, [tlMin, isPba]);
 
   const handleTrackClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!trackRef.current) return;
     const rect = trackRef.current.getBoundingClientRect();
     const xRel = e.clientX - rect.left;
     const fraction = xRel / rect.width;
-    const dayOffset = Math.round(fraction * TRACK_TOTAL_DAYS);
-    const clicked = addDays(TIMELINE_MIN, dayOffset);
-    if (clicked > TIMELINE_MAX) return;
+    const dayOffset = Math.round(fraction * trackTotalDays);
+    const clicked = addDays(tlMin, dayOffset);
+    if (clicked > tlMax) return;
     applyDate(clicked);
-  }, [applyDate]);
+  }, [applyDate, trackTotalDays, tlMin, tlMax]);
 
   const handleMarkerClick = useCallback((kd: KeyDate) => {
     if (kd.locked || kd.placeholder) return;
     applyDate(kd.date);
   }, [applyDate]);
 
-  const daysSkipped = daysBetween(TIMELINE_MIN, selectedDate);
+  const daysSkipped = daysBetween(tlMin, selectedDate);
   const estSeconds = Math.max(1, Math.ceil(daysSkipped / 25));
-  const isDay1 = selectedDate === TIMELINE_MIN;
+  const isDay1 = selectedDate === tlMin;
 
   const selectedX = dateToX(selectedDate);
 
@@ -116,10 +136,13 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
 
         {/* Header */}
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-black text-white tracking-tight mb-2">Choose Your Start Date</h2>
+          <h2 className="text-3xl font-black text-white tracking-tight mb-2">
+            {isPba ? 'Choose Your Start Date' : 'Choose Your Start Date'}
+          </h2>
           <p className="text-slate-400 text-sm">
-            Pick any date from the offseason to the end of the regular season.
-            Everything before it gets simulated automatically.
+            {isPba
+              ? 'Pick any date across the 3-conference PBA season. Everything before it gets simulated automatically.'
+              : 'Pick any date from the offseason to the end of the regular season. Everything before it gets simulated automatically.'}
           </p>
         </div>
 
@@ -133,28 +156,28 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
             style={{ width: `${TRACK_WIDTH}px`, height: '220px' }}
           >
             {/* Zone segment backgrounds */}
-            {ZONE_SEGMENTS.map((seg, i) => {
+            {zoneSegments.map((seg, i) => {
               const x1 = dateToX(seg.start);
               const x2 = dateToX(seg.end);
               return (
                 <div
                   key={i}
                   className="absolute top-0 bottom-0 opacity-20"
-                  style={{ left: x1, width: x2 - x1, background: ZONE_COLORS[seg.zone] }}
+                  style={{ left: x1, width: x2 - x1, background: zoneColors[seg.zone] }}
                 />
               );
             })}
 
             {/* Colored track bar */}
             <div className="absolute" style={{ top: '105px', left: 0, right: 0, height: '6px' }}>
-              {ZONE_SEGMENTS.map((seg, i) => {
+              {zoneSegments.map((seg, i) => {
                 const x1 = dateToX(seg.start);
                 const x2 = dateToX(seg.end);
                 return (
                   <div
                     key={i}
                     className="absolute h-full"
-                    style={{ left: x1, width: x2 - x1, background: ZONE_COLORS[seg.zone] }}
+                    style={{ left: x1, width: x2 - x1, background: zoneColors[seg.zone] }}
                   />
                 );
               })}
@@ -176,7 +199,7 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
             </div>
 
             {/* Month ticks */}
-            {MONTH_TICKS.map(mt => {
+            {monthTicks.map(mt => {
               const x = dateToX(mt.date);
               if (x < 0 || x > TRACK_WIDTH) return null;
               return (
@@ -190,7 +213,7 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
             })}
 
             {/* Zone labels */}
-            {ZONE_SEGMENTS.map((seg, i) => {
+            {zoneSegments.map((seg, i) => {
               const x1 = dateToX(seg.start);
               const x2 = dateToX(seg.end);
               const cx = (x1 + x2) / 2;
@@ -203,11 +226,11 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
                     left: cx,
                     top: '156px',
                     transform: 'translateX(-50%)',
-                    color: ZONE_COLORS[seg.zone],
+                    color: zoneColors[seg.zone],
                     opacity: 0.8,
                   }}
                 >
-                  {ZONE_LABELS[seg.zone]}
+                  {zoneLabels[seg.zone]}
                 </div>
               );
             })}
@@ -254,7 +277,7 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
                       top: '102px',
                       width: '8px',
                       height: '8px',
-                      background: isLocked ? '#1e293b' : isPlaceholder ? '#334155' : isSelected ? '#fff' : ZONE_COLORS[kd.zone],
+                      background: isLocked ? '#1e293b' : isPlaceholder ? '#334155' : isSelected ? '#fff' : (zoneColors[kd.zone] ?? '#475569'),
                       border: isPlaceholder ? '1px dashed #64748b' : isSelected ? '2px solid #6366f1' : '1px solid #475569',
                       opacity: isLocked ? 0.3 : isPlaceholder ? 0.5 : 1,
                     }}
@@ -316,7 +339,7 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
             <input
               type="date"
               value={selectedDate}
-              min={TIMELINE_MIN}
+              min={tlMin}
               max={INPUT_MAX}
               onChange={e => applyDate(e.target.value)}
               className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm font-mono focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none"

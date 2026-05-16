@@ -188,12 +188,16 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   const [editingList, setEditingList] = useState<'untouchable' | 'block' | 'targets' | null>(null);
   // ── Sub-tab pill: Trades (existing) | Free Agency (new) ─────────────────
   // Both views share the team banner; only the body switches. Persists per-mount.
-  const [intelTab, setIntelTab] = useState<'trades' | 'fa' | 'expiring'>(state.leagueStats?.tradesAllowed === false ? 'fa' : 'trades');
+  const [intelTab, setIntelTab] = useState<'trades' | 'fa' | 'expiring'>(
+    euroIsolated ? 'expiring' : state.leagueStats?.tradesAllowed === false ? 'fa' : 'trades',
+  );
   const tradesDisabled = state.leagueStats?.tradesAllowed === false;
+  const showFreeAgencyTab = !euroIsolated;
 
   useEffect(() => {
-    if (tradesDisabled && intelTab === 'trades') setIntelTab('fa');
-  }, [tradesDisabled, intelTab]);
+    if (euroIsolated && intelTab === 'fa') setIntelTab('expiring');
+    else if (tradesDisabled && intelTab === 'trades') setIntelTab(showFreeAgencyTab ? 'fa' : 'expiring');
+  }, [euroIsolated, tradesDisabled, showFreeAgencyTab, intelTab]);
 
   // Deep-link from offseason AUFGABEN sidebar — reads pendingTeamOfficeNav
   // .intelTab and applies it once, then clears the slot.
@@ -381,7 +385,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
       <div className="flex border-x border-[#30363d] bg-[#0d1117]">
         {([
           ...(tradesDisabled ? [] : [{ key: 'trades' as const, label: 'Trades' }]),
-          { key: 'fa'       as const, label: 'Free Agency' },
+          ...(showFreeAgencyTab ? [{ key: 'fa' as const, label: 'Free Agency' }] : []),
           { key: 'expiring' as const, label: 'Expiring' },
         ]).map(t => (
           <button
@@ -403,7 +407,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
         <div className="flex-1 border border-[#30363d] border-t-0 rounded-b-lg p-3 bg-[#161b22]/80 backdrop-blur-md min-h-0 overflow-hidden">
           <TeamIntelExpiring teamId={teamId} onPlayerClick={onPlayerClick} />
         </div>
-      ) : intelTab === 'fa' ? (
+      ) : showFreeAgencyTab && intelTab === 'fa' ? (
         <div className="flex-1 border border-[#30363d] border-t-0 rounded-b-lg p-3 bg-[#161b22]/80 backdrop-blur-md min-h-0 overflow-hidden">
           <TeamIntelFreeAgency teamId={teamId} onPlayerClick={onPlayerClick} />
         </div>

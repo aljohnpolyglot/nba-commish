@@ -17,6 +17,7 @@ import { getDisplayPotential } from '../../utils/playerRatings';
 import { getPlayerRealK2 } from '../../data/NBA2kRatings';
 import { useLeagueScaledRatings, LEAGUE_DISPLAY_MULTIPLIERS, applyLeagueDisplayScale } from '../../hooks/useLeagueScaledRatings';
 import { getRealDurability, applyDurabilityToK2 } from '../../utils/durabilityUtils';
+import { formatFuzzedRating, fuzzRatingValue } from '../../utils/scoutingFuzz';
 
 interface PlayerRatingsModalProps {
   player: NBAPlayer;
@@ -476,7 +477,10 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
 
   // Canonical POT — single source of truth across all views.
   const potK2 = getDisplayPotential(player, simYear);
-  const ovrColor = getRatingColor(overall2k);
+  const displayOverall2k = fuzzRatingValue(overall2k, state, player);
+  const displayOverallText = formatFuzzedRating(overall2k, state, player);
+  const displayPotText = formatFuzzedRating(potK2, state, player, 'pot');
+  const ovrColor = getRatingColor(displayOverall2k);
 
   return (
     <AnimatePresence>
@@ -525,17 +529,18 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                   style={{ borderColor: ovrColor, backgroundColor: `${ovrColor}18` }}
                 >
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">OVR</span>
-                  <span className="text-2xl font-black leading-none mt-0.5" style={{ color: ovrColor }}>{overall2k}</span>
+                  <span className="text-2xl font-black leading-none mt-0.5" style={{ color: ovrColor }}>{displayOverallText}</span>
                 </div>
                 {/* POT badge */}
                 {(() => {
-                  const potColor = potK2 >= 90 ? '#3b82f6' : potK2 >= 80 ? '#22c55e' : potK2 >= 70 ? '#eab308' : '#94a3b8';
+                  const potDisplay = fuzzRatingValue(potK2, state, player, 'pot');
+                  const potColor = potDisplay >= 90 ? '#3b82f6' : potDisplay >= 80 ? '#22c55e' : potDisplay >= 70 ? '#eab308' : '#94a3b8';
                   return (
                     <div
                       className="flex-shrink-0 flex flex-col items-center justify-center w-12 h-12 rounded-xl border border-slate-700 bg-slate-800/50 ml-1"
                     >
                       <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest leading-none">POT</span>
-                      <span className="text-lg font-black leading-none mt-0.5" style={{ color: potColor }}>{potK2}</span>
+                      <span className="text-lg font-black leading-none mt-0.5" style={{ color: potColor }}>{displayPotText}</span>
                     </div>
                   );
                 })()}

@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getOwnTeamId } from '../../../utils/helpers';
-import { isEuroIsolatedMode } from '../../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
 import { getTeamFullName } from '../../../utils/teamNames';
 import { selectCompetitionTeamTids } from '../../../services/competition/competitionScheduler';
@@ -46,6 +46,22 @@ export const StandingsView: React.FC = () => {
       away.w += homeWon ? 0 : 1; away.l += homeWon ? 1 : 0; away.pf += b.awayScore; away.pa += b.homeScore;
     });
     return [...acc.values()].sort((a, b) => (b.w * 2 + b.l) - (a.w * 2 + a.l) || b.w - a.w || (b.pf - b.pa) - (a.pf - a.pa));
+  }, [state]);
+
+  const pbaRows = useMemo(() => {
+    if (!isPbaIsolatedMode(state)) return [];
+    const pbaTeams = (state.nonNBATeams ?? []).filter((t: any) => t.tid >= 2000 && t.tid < 2100);
+    const acc = new Map<number, { tid: number; w: number; l: number; pf: number; pa: number }>();
+    pbaTeams.forEach((t: any) => acc.set(t.tid, { tid: t.tid, w: 0, l: 0, pf: 0, pa: 0 }));
+    state.boxScores.forEach(b => {
+      const home = acc.get(b.homeTeamId);
+      const away = acc.get(b.awayTeamId);
+      if (!home || !away) return;
+      const homeWon = b.homeScore > b.awayScore;
+      home.w += homeWon ? 1 : 0; home.l += homeWon ? 0 : 1; home.pf += b.homeScore; home.pa += b.awayScore;
+      away.w += homeWon ? 0 : 1; away.l += homeWon ? 1 : 0; away.pf += b.awayScore; away.pa += b.homeScore;
+    });
+    return [...acc.values()].sort((a, b) => b.w - a.w || a.l - b.l || (b.pf - b.pa) - (a.pf - a.pa));
   }, [state]);
 
   const standingsData = useMemo(() => {
@@ -302,6 +318,46 @@ export const StandingsView: React.FC = () => {
       </div>
     );
   };
+
+  if (isPbaIsolatedMode(state)) {
+    const confLabel = state.leagueStats?.pbaConference === 'commissioners' ? "Commissioner's Cup"
+      : state.leagueStats?.pbaConference === 'governors' ? "Governors' Cup"
+      : 'Philippine Cup';
+    return (
+      <div className="h-full overflow-y-auto p-4 md:p-8 bg-slate-950">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-3xl font-black uppercase tracking-tight text-white mb-2">PBA Standings</h2>
+          <p className="text-sm text-slate-500 mb-6">{confLabel} — Win-Loss record</p>
+          <div className="rounded-2xl border border-slate-800 overflow-hidden bg-slate-950/70">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-900/70 text-[10px] uppercase tracking-widest text-slate-500">
+                <tr><th className="px-4 py-3 text-left">#</th><th className="px-4 py-3 text-left">Team</th><th>W</th><th>L</th><th>PCT</th><th>PF</th><th>PA</th><th>Diff</th></tr>
+              </thead>
+              <tbody>
+                {pbaRows.map((row, index) => {
+                  const team = resolveAnyTeam(row.tid, state.teams, state.nonNBATeams ?? []);
+                  const gp = row.w + row.l;
+                  const pct = gp > 0 ? (row.w / gp).toFixed(3) : '.000';
+                  return (
+                    <tr key={row.tid} className={row.tid === ownTid ? 'border-t border-amber-500/30 bg-amber-500/10 text-white' : 'border-t border-slate-900 text-slate-200'}>
+                      <td className="px-4 py-3 font-black text-slate-500">{index + 1}</td>
+                      <td className="px-4 py-3 font-bold">{getTeamFullName(team)}</td>
+                      <td className="text-center">{row.w}</td>
+                      <td className="text-center">{row.l}</td>
+                      <td className="text-center font-medium">{pct}</td>
+                      <td className="text-center">{row.pf}</td>
+                      <td className="text-center">{row.pa}</td>
+                      <td className="text-center">{row.pf - row.pa}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isEuroIsolatedMode(state)) {
     return (

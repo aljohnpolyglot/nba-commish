@@ -5,6 +5,7 @@ import { Game, NBATeam, NBAPlayer } from '../../types';
 import { useLiveGame } from '../../hooks/useLiveGame';
 import { SettingsManager } from '../../services/SettingsManager';
 import { getTeamForGame, getPlayersForExhibitionTeam } from '../../utils/helpers';
+import { resolveAnyTeam } from '../../utils/teamLookup';
 import { PlayerRatingsModal } from '../modals/PlayerRatingsModal';
 import { useGame } from '../../store/GameContext';
 import {
@@ -55,8 +56,8 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
   const timingConfig = useMemo(() => getGameTimingConfig(state.leagueStats), [state.leagueStats]);
   const fourPointEnabled = isFourPointEnabled(state.leagueStats);
 
-  const homeTeam = useMemo(() => getTeamForGame(game.homeTid, teams), [game.homeTid, teams]);
-  const awayTeam = useMemo(() => getTeamForGame(game.awayTid, teams), [game.awayTid, teams]);
+  const homeTeam = useMemo(() => resolveAnyTeam(game.homeTid, teams, state.nonNBATeams ?? []) ?? getTeamForGame(game.homeTid, teams), [game.homeTid, teams, state.nonNBATeams]);
+  const awayTeam = useMemo(() => resolveAnyTeam(game.awayTid, teams, state.nonNBATeams ?? []) ?? getTeamForGame(game.awayTid, teams), [game.awayTid, teams, state.nonNBATeams]);
 
   const homeOverridePlayers = useMemo(
     () => isExhibition ? getPlayersForExhibitionTeam(game, true, allStar, players) : undefined,
@@ -359,8 +360,15 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-[9px] md:text-[10px] text-gray-400 font-mono mb-0.5 md:mb-1">
-                            {play.isOT ? `OT${play.otNum} ` : ''}{play.time}
+                          <div className="text-[9px] md:text-[10px] text-gray-400 font-mono mb-0.5 md:mb-1 flex items-center gap-1.5">
+                            <span>{play.isOT ? `OT${play.otNum} ` : ''}{play.time}</span>
+                            {typeof play.cs === 'number' && typeof play.ds === 'number' && (
+                              <span className="ml-auto font-bold tracking-wider text-gray-300">
+                                <span className="text-white">{play.ds}</span>
+                                <span className="text-gray-500 mx-0.5">–</span>
+                                <span className="text-yellow-500">{play.cs}</span>
+                              </span>
+                            )}
                           </div>
                           <div className={`text-[11px] md:text-xs leading-snug ${isGameWinner ? 'text-yellow-100 font-bold text-sm' : playColor(play.type)}`}>
                             {play.desc}

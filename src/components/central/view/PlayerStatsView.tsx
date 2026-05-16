@@ -10,6 +10,9 @@ import { getOpeningNightDate } from '../../../utils/dateUtils';
 import { isFourPointEnabled } from '../../../utils/ruleFlags';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 import { matchCheat, triggerCheat } from '../../../utils/debugCheats';
+import { getActiveLeagueTeams, resolveAnyTeam } from '../../../utils/teamLookup';
+import { isEuroIsolatedMode } from '../../../utils/uiMode';
+import { useHubScope } from '../../../hooks/useHubScope';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -443,6 +446,9 @@ interface PlayerStatsViewProps {
 export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFilter }) => {
   const { state, dispatchAction, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
   const ownTid = getOwnTeamId(state);
+  const { teams: scopedTeams, tids: scopedTids, players: scopedPlayers, isScoped, euroIsolated } = useHubScope();
+  const statPlayers = isScoped ? scopedPlayers : state.players;
+  const statTeams = isScoped ? scopedTeams : state.teams;
   const fourPointEnabled = isFourPointEnabled(state.leagueStats);
   // Unified player name-click stack: actions → bio / ratings / sign / waive.
   const quick = usePlayerQuickActions();
@@ -462,9 +468,9 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
 
   const availableSeasons = useMemo(() => {
     const seasons = new Set<number>();
-    state.players.forEach(p => { p.stats?.forEach(s => { if (s.gp > 0) seasons.add(s.season); }); });
+    statPlayers.forEach(p => { p.stats?.forEach(s => { if (s.gp > 0) seasons.add(s.season); }); });
     return Array.from(seasons).sort((a, b) => b - a);
-  }, [state.players]);
+  }, [statPlayers]);
 
   const [season, setSeason] = useState<SeasonMode>(() => availableSeasons[0] ?? state.leagueStats.year);
 
@@ -480,12 +486,24 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
 
   useEffect(() => { setCurrentPage(1); }, [season, phase, statType, teamFilter, searchTerm, sortField, sortOrder]);
 
+  useEffect(() => {
+    if (euroIsolated && phase === 'cup') setPhase('regular');
+  }, [euroIsolated, phase]);
+
   const sortedTeams = useMemo(() =>
-    [...state.teams]
-      .filter(t => t.conference === 'East' || t.conference === 'West')
-      .sort((a, b) => a.abbrev.localeCompare(b.abbrev)),
-    [state.teams]
+    isScoped
+      ? [...scopedTeams].sort((a, b) => (a.abbrev ?? a.name).localeCompare(b.abbrev ?? b.name))
+      : [...state.teams]
+          .filter(t => t.conference === 'East' || t.conference === 'West')
+          .sort((a, b) => a.abbrev.localeCompare(b.abbrev)),
+    [state.teams, scopedTeams, isScoped]
   );
+
+  useEffect(() => {
+    if (teamFilter !== 'all' && !sortedTeams.some(t => t.abbrev === teamFilter)) {
+      setTeamFilter('all');
+    }
+  }, [teamFilter, sortedTeams]);
 
   const openingNightCache = useMemo(() => {
     const cache = new Map<number, number>();
@@ -709,10 +727,11 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       return [aggregateStats([...reg, ...poff])];
     };
 
-    for (const player of state.players) {
+    for (const player of statPlayers) {
       if (!player.name || player.diedYear) continue;
+      if (isScoped && player.tid >= 0 && !scopedTids.has(player.tid)) continue;
 
-      const currentTeam = state.teams.find(t => t.id === player.tid);
+      const currentTeam = resolveAnyTeam(player.tid, state.teams, state.nonNBATeams ?? []);
       const currentTeamAbbrev = currentTeam?.abbrev ?? (player.tid < 0 ? 'FA' : '?');
 
       // Pre-filter by current team ONLY for current season / career views.
@@ -745,7 +764,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
             if (teamFilter !== 'all' && currentTeamAbbrev !== teamFilter) continue;
             result.push(toRow(player, agg, statType, yr, currentTeamAbbrev, age));
           } else {
-            result.push(...historicalTeamRows(stats, player, state.teams, statType, yr, age, teamFilter));
+            result.push(...historicalTeamRows(stats, player, statTeams, statType, yr, age, teamFilter));
           }
         }
       } else {
@@ -757,17 +776,18 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
           if (teamFilter !== 'all' && currentTeamAbbrev !== teamFilter) continue;
           result.push(toRow(player, agg, statType, season as number, currentTeamAbbrev, age));
         } else {
-          result.push(...historicalTeamRows(stats, player, state.teams, statType, season as number, age, teamFilter));
+          result.push(...historicalTeamRows(stats, player, statTeams, statType, season as number, age, teamFilter));
         }
       }
     }
     return result;
-  }, [state.players, state.teams, state.leagueStats.year, season, phase, statType, teamFilter, brefRows, cupStatsByPlayer, currentSeasonStatsByPhase]);
+  }, [statPlayers, statTeams, scopedTids, isScoped, state.teams, state.nonNBATeams, state.leagueStats.year, season, phase, statType, teamFilter, brefRows, cupStatsByPlayer, currentSeasonStatsByPhase]);
 
   // ── Bref career fetch for HOF/retired players with no local stats ──────
   useEffect(() => {
     if (season !== 'career') return;
-    const toFetch = state.players.filter(p =>
+    if (isScoped) return;
+    const toFetch = statPlayers.filter(p =>
       p.name &&
       !p.diedYear &&
       (p.hof || p.status === 'Retired') &&
@@ -789,7 +809,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       setBrefRows(newMap);
       setBrefLoading(false);
     });
-  }, [season, state.players]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [season, statPlayers, isScoped]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Shot location aggregation from box scores ──────────────────────────
   const shotLocMap = useMemo((): Map<string, ShotLocAgg> => {
@@ -1076,7 +1096,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
             <option value="regular">Reg Season</option>
             <option value="playoffs">Playoffs</option>
             <option value="combined">Combined</option>
-            <option value="cup">In-Season Cup</option>
+            {!euroIsolated && <option value="cup">In-Season Cup</option>}
           </select>
 
           {/* Per page */}
@@ -1286,7 +1306,7 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
                   <td
                     className="px-2 py-1.5 text-slate-300 cursor-pointer hover:text-indigo-400 transition-colors whitespace-nowrap"
                     onClick={() => {
-                      const t = state.teams.find(t2 => t2.abbrev === r.teamAbbrev);
+                      const t = statTeams.find(t2 => t2.abbrev === r.teamAbbrev);
                       if (t) navigateToTeam(t.id);
                     }}
                   >

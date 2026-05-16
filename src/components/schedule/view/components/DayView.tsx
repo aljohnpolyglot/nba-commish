@@ -6,6 +6,9 @@ import { getDraftLotteryDate, getDraftDate, getAllStarGameDate, isDraftBlockedBy
 import { AllStarDayView } from './AllStarDayView';
 import { AllStarGameCard } from './AllStarGameCard';
 import { useLeagueLabels } from '../../../../utils/leagueLabels';
+import { CompetitionBadge } from '../../../competition/CompetitionBadge';
+import { isNoDraftLeague } from '../../../../services/offseason/offseasonState';
+import { isEuroIsolatedMode } from '../../../../utils/uiMode';
 
 interface DayViewProps {
   selectedDate: string;
@@ -63,6 +66,8 @@ export const DayView: React.FC<DayViewProps> = ({
   headerSlot,
 }) => {
   const labels = useLeagueLabels();
+  const euroIsolated = isEuroIsolatedMode(state);
+  const noDraft = isNoDraftLeague(state?.leagueStats);
   const stateDateNorm = normalizeDate(state.date);
   const selectedDateNorm = normalizeDate(selectedDate);
   const isActuallyToday = selectedDateNorm === stateDateNorm;
@@ -80,18 +85,18 @@ export const DayView: React.FC<DayViewProps> = ({
   const isAllStarGameDay    = selectedDateNorm === allStarGameStr;
   const isCelebrityGameDay  = selectedDateNorm === allStarFriStr;
 
-  const isAllStarWeekend = isRisingStarsDay || isSaturdayEventsDay || isAllStarGameDay || isCelebrityGameDay;
+  const isAllStarWeekend = !euroIsolated && (isRisingStarsDay || isSaturdayEventsDay || isAllStarGameDay || isCelebrityGameDay);
 
   // Draft calendar events — derived from leagueStats so dates update when scheduler changes
   const draftLotteryDateStr = toISODateString(getDraftLotteryDate(seasonYear, ls));
   const draftDateStr        = toISODateString(getDraftDate(seasonYear, ls));
   const draftBlockedByPlayoffs = isDraftBlockedByUnresolvedPlayoffs(state);
-  const isDraftLotteryDay   = selectedDateNorm === draftLotteryDateStr;
-  const isNBADraftDay       = selectedDateNorm === draftDateStr && !draftBlockedByPlayoffs;
+  const isDraftLotteryDay   = !noDraft && selectedDateNorm === draftLotteryDateStr;
+  const isNBADraftDay       = !noDraft && selectedDateNorm === draftDateStr && !draftBlockedByPlayoffs;
 
   // Season Preview — shows throughout October (training camp → opening night) until dismissed
   const isPreseasonMonth = month === 10;
-  const showSeasonPreviewCard = isPreseasonMonth && !state?.seasonPreviewDismissed && !!state?.seasonHistory?.length;
+  const showSeasonPreviewCard = !euroIsolated && isPreseasonMonth && !state?.seasonPreviewDismissed && !!state?.seasonHistory?.length;
 
   // Non-playoff teams sorted by worst record (for lottery odds display)
   const lotteryTeams = useMemo(() => {
@@ -543,6 +548,7 @@ export const DayView: React.FC<DayViewProps> = ({
                             <span className="text-[8px] font-black uppercase tracking-widest text-amber-300">{labels.cupShort}</span>
                           </span>
                         )}
+                        <CompetitionBadge competitionId={game.competitionId} phase={game.competitionPhase} state={state} />
                       </div>
                       {game.played && (
                         <button
@@ -569,8 +575,13 @@ export const DayView: React.FC<DayViewProps> = ({
                           <div className={`text-[10px] font-bold ${userIsAway ? 'text-indigo-400/80' : 'text-slate-500'}`}>{awayName}</div>
                         </div>
                         {game.played && (
-                          <div className={`text-2xl font-black ${game.awayScore > game.homeScore ? 'text-white' : 'text-slate-700'}`}>
-                            {game.awayScore}
+                          <div className="flex flex-col items-center gap-1">
+                            <div className={`text-2xl font-black ${game.awayScore > game.homeScore ? 'text-white' : 'text-slate-700'}`}>
+                              {game.awayScore}
+                            </div>
+                            <span className={`text-[9px] font-black uppercase tracking-widest ${game.awayScore > game.homeScore ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {game.awayScore > game.homeScore ? 'W' : 'L'}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -601,8 +612,13 @@ export const DayView: React.FC<DayViewProps> = ({
                           <div className={`text-[10px] font-bold ${userIsHome ? 'text-indigo-400/80' : 'text-slate-500'}`}>{homeName}</div>
                         </div>
                         {game.played && (
-                          <div className={`text-2xl font-black ${game.homeScore > game.awayScore ? 'text-white' : 'text-slate-700'}`}>
-                            {game.homeScore}
+                          <div className="flex flex-col items-center gap-1">
+                            <div className={`text-2xl font-black ${game.homeScore > game.awayScore ? 'text-white' : 'text-slate-700'}`}>
+                              {game.homeScore}
+                            </div>
+                            <span className={`text-[9px] font-black uppercase tracking-widest ${game.homeScore > game.awayScore ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {game.homeScore > game.awayScore ? 'W' : 'L'}
+                            </span>
                           </div>
                         )}
                       </div>

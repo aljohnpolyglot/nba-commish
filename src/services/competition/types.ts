@@ -43,6 +43,8 @@ export interface CompetitionPlayoffRoundSpec {
 export interface CompetitionPlayoffFormat {
   rounds: CompetitionPlayoffRoundSpec[];
   finalFormat?: 'best-of' | 'final-four' | 'single-game';
+  /** Top seeds need only 1 win in QF; lower seed needs 2 (PBA format). */
+  qfFormat?: 'twice-to-beat' | 'best-of';
   /** Best-of-N overrides per round, used by competitionResolver when a
    *  competition declares a non-uniform series length (e.g. Endesa QF best-of-3,
    *  SF best-of-5, Final best-of-7). */
@@ -69,4 +71,6 @@ export interface CompetitionSpec {
   prizePool?: CompetitionPrizePool;
   accentColor: string;
   icon?: string;
+  /** PBA: 'none' (All-Filipino), 'one_no_height_limit', 'one_max_6ft5'. */
+  importRule?: 'none' | 'one_no_height_limit' | 'one_max_6ft5';
 }

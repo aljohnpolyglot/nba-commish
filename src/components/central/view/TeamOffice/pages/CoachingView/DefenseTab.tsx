@@ -111,6 +111,8 @@ const getFamiliarityTone = (value: number) => {
 
 export function DefenseTab({ teamId }: DefenseTabProps) {
   const { state } = useGame();
+  // GM-Mode: nur eigene Mannschaft editierbar. Commissioner darf alles.
+  const canEdit = state.gameMode !== 'gm' || teamId === state.userTeamId;
   const [plan, setPlan] = useState<DefenseGameplan>(() => getDefenseGameplan(teamId));
   const [savedFlash, setSavedFlash] = useState(false);
 
@@ -185,6 +187,7 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
     slot: number,
     direction: 1 | -1
   ) => {
+    if (!canEdit) return;
     if (defendersSorted.length === 0) return;
     const ids = defendersSorted.map(p => p.internalId);
     const currentId = list[slot];
@@ -237,6 +240,7 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
     key: K,
     value: DefenderDetail[K]
   ) => {
+    if (!canEdit) return;
     const cur = detailMap[defenderId] ?? DEFAULT_DEFENDER_DETAIL;
     const next: DefenderDetail = { ...cur, [key]: value };
     setDetailMap({ ...detailMap, [defenderId]: next });
@@ -293,6 +297,7 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
   };
 
   const updateRivalPlan = (oppTid: number, patch: Partial<RivalPlan>) => {
+    if (!canEdit) return;
     const cur = rivalPlans[oppTid] ?? { lastEdited: 0 };
     const next: RivalPlan = { ...cur, ...patch, lastEdited: Date.now() };
     setRivalPlans({ ...rivalPlans, [oppTid]: next });
@@ -305,6 +310,7 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
     slot: 'primary' | 'secondary',
     direction: 1 | -1
   ) => {
+    if (!canEdit) return;
     const roster = opponentScorers(oppTid);
     if (roster.length === 0) return;
     const ids = roster.map(p => p.internalId);
@@ -336,6 +342,7 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
   };
 
   const addRivalForTeam = (oppTid: number) => {
+    if (!canEdit) return;
     const roster = opponentScorers(oppTid);
     const top = roster[0];
     if (!top) return;
@@ -352,6 +359,7 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
   };
 
   const removeRivalPlan = (oppTid: number) => {
+    if (!canEdit) return;
     const next = { ...rivalPlans };
     delete next[oppTid];
     setRivalPlans(next);
@@ -377,6 +385,7 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
   };
 
   const handleTemplate = (template: Exclude<DefenseTemplate, 'Custom'>) => {
+    if (!canEdit) return;
     applyDefenseTemplate(teamId, template);
     setPlan(getDefenseGameplan(teamId));
     flashSaved();
@@ -386,6 +395,7 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
     key: K,
     value: DefenseGameplan[K]
   ) => {
+    if (!canEdit) return;
     const next: DefenseGameplan = { ...plan, [key]: value, template: 'Custom' };
     setPlan(next);
     saveDefenseGameplan(teamId, {
@@ -433,6 +443,12 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
 
   return (
     <div className="space-y-5 max-h-[500px] overflow-y-auto pr-2 scrollbar-hide">
+      {!canEdit && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+          <span className="font-bold uppercase tracking-widest text-[10px] mr-2">Read only</span>
+          GM mode — defensive plan can only be edited for your own team.
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Shield size={16} className="text-yellow-500" />

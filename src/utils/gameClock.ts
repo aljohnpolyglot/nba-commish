@@ -12,9 +12,13 @@ const clampPositiveInt = (value: unknown, fallback: number): number => {
 };
 
 export function getGameTimingConfig(leagueStats?: Partial<LeagueStats> | null): GameTimingConfig {
+  // FIBA-Default für Euro-Mode: 10-Min-Quarter wenn nichts explizit gesetzt.
+  // NBA-Default bleibt 12. quarterLength bleibt überschreibbar in beiden Modi.
+  const isEuro = leagueStats?.uiMode === 'euro_isolated';
+  const quarterDefault = isEuro ? 10 : 12;
   return {
     numQuarters: clampPositiveInt(leagueStats?.numQuarters, 4),
-    quarterLengthSeconds: clampPositiveInt(leagueStats?.quarterLength, 12) * 60,
+    quarterLengthSeconds: clampPositiveInt(leagueStats?.quarterLength, quarterDefault) * 60,
     overtimeLengthSeconds: clampPositiveInt(leagueStats?.overtimeDuration, 5) * 60,
   };
 }

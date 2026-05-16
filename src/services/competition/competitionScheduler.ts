@@ -57,6 +57,9 @@ export function selectCompetitionTeamTids(spec: CompetitionSpec, source: Competi
       .map(t => t.tid);
     return capTeamCount(uniqueTids(ranked), spec.teamCount, source.userTeamId);
   }
+  if (spec.teamSelector === 'allPBA') {
+    return capTeamCount(uniqueTids(teams.filter(t => t.league === 'PBA').map(t => t.tid)), spec.teamCount, source.userTeamId);
+  }
   // Fallback: Endesa clubs only. Previously this fell through to "Endesa OR
   // Euroleague" which let Anadolu Efes / Panathinaikos / AEK end up in the
   // Supercopa bracket — never what a domestic Spanish tournament wants.

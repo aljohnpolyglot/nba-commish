@@ -13,8 +13,8 @@ import {
 } from '../../../../../services/tycoon/medicalEngine';
 import { ActivityIcon, SectionTitle } from '../shared/helpers';
 
-export const MedicalSection: React.FC<{ tycoon: TycoonState; currency: string; onMedicalBudgetChange: (budget: number) => void }> =
-  ({ tycoon, currency, onMedicalBudgetChange }) => {
+export const MedicalSection: React.FC<{ tycoon: TycoonState; currency: string; onMedicalBudgetChange: (budget: number) => void; locked?: boolean }> =
+  ({ tycoon, currency, onMedicalBudgetChange, locked = false }) => {
   const budget = tycoon.medicalBudget ?? 0;
   const quality = medicalQuality(budget);
   const qualityPct = Math.round(quality * 100);
@@ -48,63 +48,49 @@ export const MedicalSection: React.FC<{ tycoon: TycoonState; currency: string; o
   const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
   return (
     <div className="space-y-6">
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <SectionTitle icon={<HeartPulse size={24} />} title="Medical & Recovery" subtitle="Invest in your medical department to reduce injuries and speed up recovery." />
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 min-w-[280px]">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
           <div className="text-xs font-black uppercase tracking-widest text-slate-500">Annual Budget</div>
           <div className="text-4xl font-black text-white mt-1 tabular-nums">{fmt(budget)}</div>
           <div className="mt-2 inline-flex rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-black text-emerald-300">Active Investment</div>
         </div>
       </div>
 
-      <div className="grid xl:grid-cols-[1fr_370px] gap-6">
+      <div className="grid 2xl:grid-cols-[1fr_340px] gap-6">
         <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 overflow-hidden">
-            <div className="grid lg:grid-cols-[260px_1fr]">
-              <div className="p-6">
-                <div className="text-xs font-black uppercase tracking-widest text-slate-400">Staff Quality</div>
-                <div
-                  className="mt-6 w-44 h-44 rounded-full mx-auto flex items-center justify-center"
-                  style={{ background: `conic-gradient(#74d66f ${qualityPct * 3.6}deg, #1e293b 0deg)` }}
-                >
-                  <div className="w-32 h-32 rounded-full bg-slate-950 border border-slate-800 flex flex-col items-center justify-center">
-                    <div className="text-5xl font-black text-white tabular-nums">{qualityPct}</div>
-                    <div className="text-lg text-slate-500">/100</div>
-                  </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Staff Quality</div>
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+              <div
+                className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-full flex items-center justify-center"
+                style={{ background: `conic-gradient(#74d66f ${qualityPct * 3.6}deg, #1e293b 0deg)` }}
+              >
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-950 border border-slate-800 flex flex-col items-center justify-center">
+                  <div className="text-2xl sm:text-3xl font-black text-white tabular-nums">{qualityPct}</div>
+                  <div className="text-xs sm:text-sm text-slate-500">/100</div>
                 </div>
               </div>
-              <div className="relative p-6 min-h-[260px] flex flex-col justify-center overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_40%,rgba(59,130,246,0.22),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.2),rgba(15,23,42,0.95))]" />
-                <div className="absolute right-8 top-8 w-48 h-28 rounded-2xl border border-slate-700 bg-slate-950/70 shadow-2xl shadow-blue-950/30">
-                  <div className="h-full grid grid-cols-3 gap-2 p-3">
-                    <div className="rounded-lg bg-blue-400/20 border border-blue-300/20" />
-                    <div className="rounded-lg bg-slate-800 border border-slate-700" />
-                    <div className="rounded-lg bg-rose-400/20 border border-rose-300/20" />
-                    <div className="col-span-3 h-4 rounded bg-slate-800 mt-3" />
-                    <div className="col-span-2 h-4 rounded bg-slate-800" />
-                  </div>
+              <div className="flex-1 min-w-0 w-full">
+                <div className="text-lg sm:text-xl font-black text-emerald-300">{medicalQualityLabel(quality).split(' — ')[0]}</div>
+                <p className="text-sm text-slate-400 mt-1">{medicalQualityLabel(quality).split(' — ')[1] ?? 'Medical standards are improving.'}</p>
+                <div className="mt-4 h-2.5 rounded-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 relative">
+                  <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-white shadow-lg" style={{ left: `calc(${qualityPct}% - 8px)` }} />
                 </div>
-                <div className="relative max-w-md">
-                  <div className="text-4xl font-black text-emerald-300">{medicalQualityLabel(quality).split(' — ')[0]}</div>
-                  <p className="text-lg text-slate-300 mt-4">{medicalQualityLabel(quality).split(' — ')[1] ?? 'Medical standards are improving.'}</p>
-                  <div className="mt-8 h-3 rounded-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 relative">
-                    <div className="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white shadow-lg" style={{ left: `calc(${qualityPct}% - 10px)` }} />
-                  </div>
-                  <div className="flex justify-between text-xs text-slate-500 mt-2"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
-                </div>
+                <div className="flex justify-between text-[10px] text-slate-500 mt-1"><span>0</span><span>50</span><span>100</span></div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+          <div className="@container rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Impact on Squad</div>
-            <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 @[480px]:grid-cols-3 @[640px]:grid-cols-5 gap-3">
               {getImpactStats(quality).map((stat) => (
-                <div key={stat.label} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-center">
+                <div key={stat.label} className="min-w-0 rounded-xl border border-slate-800 bg-slate-950/70 p-3 sm:p-4 text-center">
                   <div className={`${stat.value >= 0 ? 'text-emerald-300' : 'text-rose-300'} flex justify-center`}>{impactIcon[stat.label]}</div>
-                  <div className="mt-3 text-xs font-black uppercase tracking-widest text-slate-400">{stat.label}</div>
-                  <div className={`mt-2 text-3xl font-black ${stat.value >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{stat.value > 0 ? '+' : ''}{stat.value}%</div>
-                  <div className="text-xs text-slate-500 mt-2">{stat.prose}</div>
+                  <div className="mt-2 sm:mt-3 text-[10px] sm:text-xs font-black uppercase tracking-wide text-slate-400 leading-tight break-words">{stat.label}</div>
+                  <div className={`mt-1 sm:mt-2 text-xl sm:text-3xl font-black ${stat.value >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{stat.value > 0 ? '+' : ''}{stat.value}%</div>
+                  <div className="text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-2 leading-tight">{stat.prose}</div>
                 </div>
               ))}
             </div>
@@ -119,12 +105,14 @@ export const MedicalSection: React.FC<{ tycoon: TycoonState; currency: string; o
               step={50_000}
               value={Math.min(MEDICAL_BUDGET_MAX_EUR, Math.max(MEDICAL_BUDGET_MIN_EUR, budget))}
               onChange={(e) => onMedicalBudgetChange(parseInt(e.target.value, 10))}
-              className="w-full accent-rose-400"
+              disabled={locked}
+              className={`w-full accent-rose-400 ${locked ? 'cursor-not-allowed opacity-50' : ''}`}
             />
-            <div className="grid grid-cols-3 mt-4 text-sm">
-              <div><div className="text-slate-400">{fmt(MEDICAL_BUDGET_MIN_EUR)}</div><div className="text-xs text-slate-500">Skeleton</div></div>
-              <div className="text-center"><div className="text-rose-300 font-black">{fmt(budget)}</div><div className="text-xs text-slate-500">Current Budget</div></div>
-              <div className="text-right"><div className="text-slate-400">{fmt(MEDICAL_BUDGET_MAX_EUR)}</div><div className="text-xs text-slate-500">World Class</div></div>
+            {locked && <div className="mt-3 text-xs font-bold text-amber-300">Locked until next offseason.</div>}
+            <div className="grid grid-cols-3 mt-4 text-xs sm:text-sm">
+              <div><div className="text-slate-400 truncate">{fmt(MEDICAL_BUDGET_MIN_EUR)}</div><div className="text-[10px] sm:text-xs text-slate-500">Skeleton</div></div>
+              <div className="text-center"><div className="text-rose-300 font-black truncate">{fmt(budget)}</div><div className="text-[10px] sm:text-xs text-slate-500">Current</div></div>
+              <div className="text-right"><div className="text-slate-400 truncate">{fmt(MEDICAL_BUDGET_MAX_EUR)}</div><div className="text-[10px] sm:text-xs text-slate-500">World Class</div></div>
             </div>
             <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-400">
               Investment covers medical staff, physios, sport scientists, recovery equipment, diagnostics, and rehabilitation programs.

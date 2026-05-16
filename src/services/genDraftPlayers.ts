@@ -372,6 +372,10 @@ function generateProspect(year: number, rng: () => number, nameData: NameData, p
   const nonHgtAttrs = attrs.filter(a => a !== 'hgt');
   const ovrSum = nonHgtAttrs.reduce((sum, a) => sum + (ratings[a] || 0), 0);
   ratings.ovr = Math.round(ovrSum / nonHgtAttrs.length + randomNormal(0, 2.5)());
+  // Global -4 BBGM OVR rebalance — generated prospects (College + foreign paths)
+  // were trending too strong vs the imported BBGM roster (real NBA + Euro draftees).
+  // Floor at 25 so we don't accidentally manufacture sub-MLE rookies.
+  ratings.ovr = Math.max(25, ratings.ovr - 4);
 
   // ── Fix 3: Per-league OVR cap (non-College paths) ───────────────────────────
   const pathOvrCap = PATH_OVR_CAP[path];

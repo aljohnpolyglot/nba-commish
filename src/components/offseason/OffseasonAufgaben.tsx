@@ -12,9 +12,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCircle2, Circle, ChevronRight, FastForward, Sparkles, ListChecks, X, FileSignature, Bot, CheckCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Circle, ChevronRight, FastForward, Sparkles, ListChecks, X, FileSignature, Bot, CheckCircle, AlertTriangle, GraduationCap } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
+import { convertTo2KRating, normalizeDate, computeAge } from '../../utils/helpers';
 import { getDraftDate, getDraftLotteryDate, getTrainingCampDate, getCurrentOffseasonFAMoratoriumEnd, parseGameDate, toISODateString } from '../../utils/dateUtils';
 import {
   OFFSEASON_ROW_LABELS,
@@ -24,14 +24,18 @@ import {
   isChecklistComplete,
 } from '../../services/offseason/offseasonState';
 import type { OffseasonChecklistRow, OffseasonRowStatus, NBAPlayer, Tab } from '../../types';
+import type { SponsorshipSlot } from '../../types/tycoon';
 import { TeamOptionGateModal } from '../modals/TeamOptionGateModal';
 import { SponsorshipNegotiationModal } from '../tycoon/SponsorshipNegotiationModal';
 import RetiredPlayersReviewModal from './views/RetiredPlayersReviewView';
 import HOFCeremonyModal from './views/HOFCeremonyView';
 import { useExpiringResignGate } from '../../hooks/useExpiringResignGate';
 import { getOffseasonState, computeDraftSeasonYear, computeUpcomingSeasonYear } from '../../services/offseason/offseasonState';
+import { isInTransferWindow } from '../../utils/transferWindow';
 import { PlayerProtectionModal } from '../expansion/PlayerProtectionModal';
 import { ExpansionDraftView } from '../expansion/ExpansionDraftView';
+import { YouthPromotionPanel } from '../central/view/FrontOffice/sections/AcademySection';
+import { AnnualBudgetReviewModal, type AnnualBudgetReviewValues } from '../tycoon/AnnualBudgetReviewModal';
 
 type OffseasonConfirmSpec = {
   eyebrow: string;
@@ -105,8 +109,12 @@ function useCalendarRowSignals() {
 export const OffseasonPhaseBadge: React.FC = () => {
   const { state } = useGame();
   const signals = useCalendarRowSignals();
+  const visibleRows = React.useMemo(
+    () => getVisibleOffseasonRows(state.leagueStats, null, state.date),
+    [state.leagueStats, state.date],
+  );
   if (!state.offseasonChecklist) return null;
-  const currentRow = firstUnfinishedRow(state.offseasonChecklist, signals);
+  const currentRow = firstUnfinishedRow(state.offseasonChecklist, signals, visibleRows);
   const phaseLabel = currentRow ? OFFSEASON_ROW_LABELS[currentRow] : 'Ready for next season';
   const isFA = currentRow === 'freeAgency';
   const tagSuffix = isFA && state.faTagCounter
@@ -133,16 +141,25 @@ interface NextActionButtonProps {
 export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ setCurrentView }) => {
   const { state, dispatchAction } = useGame();
   const signals = useCalendarRowSignals();
+  const visibleRows = React.useMemo(
+    () => getVisibleOffseasonRows(state.leagueStats, null, state.date),
+    [state.leagueStats, state.date],
+  );
   if (!state.offseasonChecklist) return null;
-  const currentRow = firstUnfinishedRow(state.offseasonChecklist, signals);
-  const allDone = isChecklistComplete(state.offseasonChecklist);
+  const currentRow = firstUnfinishedRow(state.offseasonChecklist, signals, visibleRows);
+  const allDone = isChecklistComplete(state.offseasonChecklist, visibleRows);
+  const isPba = state.leagueStats?.uiMode === 'pba_isolated';
 
   const handleAdvanceSeason = () => {
     dispatchAction({ type: 'OFFSEASON_EXIT' } as any);
-    setCurrentView((state.leagueStats?.uiMode === 'euro_isolated' ? 'Schedule' : 'NBA Central') as Tab);
+    const target = isPba ? 'PBA Hub' : state.leagueStats?.uiMode === 'euro_isolated' ? 'Schedule' : 'NBA Central';
+    setCurrentView(target as Tab);
   };
 
   if (allDone || !currentRow) {
+    const exitLabel = isPba
+      ? ((state.leagueStats as any)?.pbaConference === 'governors' ? 'Enter New Season' : 'Enter Next Conference')
+      : 'Enter Preseason';
     return (
       <button
         onClick={handleAdvanceSeason}
@@ -150,7 +167,7 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
         className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-black text-xs uppercase tracking-widest transition-colors"
       >
         <Sparkles size={14} />
-        Enter Preseason
+        {exitLabel}
       </button>
     );
   }
@@ -172,9 +189,21 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
     transferMarket:   'Open Transfer Market',
     sponsorRenewals:  'Review Sponsors',
     facilityUpgrades: 'Review Facilities',
+    budgetLock: 'Review Budget',
+    coachingSignings: 'Review Coaching',
+    staffSignings: 'Review Support Staff',
+    youthPromotion: 'Review Academy',
     preseasonFriendlies: 'Review Friendlies',
     hofCeremony:      'Attend Ceremony',
     trainingCamp:     'Open Training Camp',
+    pbaDraft:         'Run PBA Draft',
+    pbaLocalFreeAgency: 'Enter Free Agency',
+    pbaImportSearch:  'Search Imports',
+    pbaImportDecision: 'Decide Import',
+    pbaMuseSelection: 'Choose Muse',
+    pbaOpeningCeremony: 'Watch Opening',
+    pbaAllStarWeekend: 'All-Star Weekend',
+    pbaConferenceAwards: 'View Awards',
   };
   const label = labelForRow[currentRow];
 
@@ -310,12 +339,13 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const checklist = state.offseasonChecklist;
   const userTeam = React.useMemo(
-    () => state.teams.find((t: any) => (t.id ?? t.tid) === state.userTeamId),
-    [state.teams, state.userTeamId],
+    () => state.teams.find((t: any) => (t.id ?? t.tid) === state.userTeamId)
+      ?? (state.nonNBATeams ?? []).find((t: any) => (t.id ?? t.tid) === state.userTeamId),
+    [state.teams, state.nonNBATeams, state.userTeamId],
   );
   const visibleRows = React.useMemo(
     () => getVisibleOffseasonRows(state.leagueStats, userTeam as any, state.date),
-    [state.leagueStats, userTeam],
+    [state.leagueStats, userTeam, state.date],
   );
 
   // Sponsor-renewal status: how many of the 3 slots are expired right now?
@@ -324,6 +354,71 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     if (!s) return 0;
     return (['kit', 'sleeve', 'stadium'] as const).reduce((n, k) => n + (s[k] === null ? 1 : 0), 0);
   }, [userTeam]);
+
+  // Staff-signing status: count OPEN positions per group. A role is open when
+  // it's in firedStaffRoles OR has no signed member at all. Expiring (1-year-
+  // left) contracts are NOT counted as open — the user can re-sign during
+  // next offseason. Auto-done fires when openCount === 0 for the group.
+  const COACHING_ROLES = ['Head Coach', 'Assistant Coach', 'Assistant Coach 2', 'Assistant Coach 3'];
+  const SUPPORT_ROLES = ['Head of Sports Science', 'Head Physio', 'Player Development Coach', 'Chief Scout', 'Head of Analytics'];
+  const openByGroup = React.useMemo(() => {
+    const members: any[] = (userTeam as any)?.tycoon?.staffMembers ?? [];
+    const fired: string[] = (userTeam as any)?.tycoon?.firedStaffRoles ?? [];
+    const teamName: string | undefined = (userTeam as any)?.name;
+    const hcCoachExists = (state.staff?.coaches ?? []).some(
+      (s: any) => s.team === teamName,
+    );
+    const isOpen = (role: string) => {
+      if (fired.includes(role)) return true;
+      if (members.some(m => m.role === role)) return false;
+      // Head Coach can also be sourced from state.staff.coaches (Euro saves
+      // seed the HC there without a tycoon.staffMembers entry).
+      if (role === 'Head Coach' && hcCoachExists) return false;
+      return true;
+    };
+    return {
+      coaching: COACHING_ROLES.filter(isOpen).length,
+      support: SUPPORT_ROLES.filter(isOpen).length,
+    };
+  }, [userTeam, state.staff?.coaches]);
+  const expiringCoachCount = openByGroup.coaching;
+  const expiringStaffCount = openByGroup.support;
+
+  // Auto-complete coaching/staff signings when nothing is expiring or vacant
+  // in scope. Also fires from 'pending' so a Euro offseason whose roster is
+  // already fully staffed for multiple years doesn't surface a no-op task.
+  React.useEffect(() => {
+    const checklist = state.offseasonChecklist as any;
+    if (!checklist) return;
+    const unresolved = (s: string) => s === 'pending' || s === 'in-progress';
+    if (unresolved(checklist.coachingSignings) && expiringCoachCount === 0) {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'coachingSignings' } } as any);
+    }
+    if (unresolved(checklist.staffSignings) && expiringStaffCount === 0) {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'staffSignings' } } as any);
+    }
+  }, [expiringCoachCount, expiringStaffCount, state.offseasonChecklist?.coachingSignings, state.offseasonChecklist?.staffSignings]);
+
+  // Euro parallel rows: Transfer Market + Sponsor Renewals + Facility Upgrades
+  // are all simultaneously openable — don't wait for the previous one to finish.
+  const isEuroMode = state.leagueStats?.uiMode === 'euro_isolated';
+  const EURO_PARALLEL_ROWS = new Set<OffseasonChecklistRow>(['transferMarket', 'sponsorRenewals', 'facilityUpgrades']);
+
+  // Transfer window day counter (like FA Day X/Y)
+  const tmWindowCounter = React.useMemo(() => {
+    if (!isEuroMode || !checklist || checklist.transferMarket === 'done' || checklist.transferMarket === 'skipped') return null;
+    const ws = isInTransferWindow(state.date, state.leagueStats);
+    if (!ws.open || !ws.currentClose) return null;
+    const todayIso = typeof state.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(state.date)
+      ? state.date
+      : new Date(state.date ?? '').toISOString().slice(0, 10);
+    const closeIso = ws.currentClose.toISOString().slice(0, 10);
+    const msPerDay = 86_400_000;
+    const daysLeft = Math.max(0, Math.round((new Date(closeIso).getTime() - new Date(todayIso).getTime()) / msPerDay));
+    const total = ws.window === 'summer' ? 92 : 31;
+    const current = Math.max(1, total - daysLeft + 1);
+    return { current, total };
+  }, [isEuroMode, state.date, state.leagueStats, checklist?.transferMarket]);
   const confirmActionRef = useRef<(() => void) | null>(null);
   // GM-Mode Expansion-Modals — mountable direkt aus der Sidebar, weil im GM
   // die Actions-Tab nicht existiert und Navigation dorthin ins Leere führt.
@@ -484,7 +579,10 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     if (noQOCandidates && isUnresolved(checklist.qualifyingOffers)) {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'qualifyingOffers' } } as any);
     }
-  }, [lotteryDone, draftDone, rookieContractsDone, noPendingTeamOptions, trainingCampDone, noQOCandidates, checklist?.draftLottery, checklist?.draft, checklist?.rookieContracts, checklist?.options, checklist?.trainingCamp, checklist?.qualifyingOffers]);
+    if (draftDone && isUnresolved(checklist.pbaDraft)) {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'pbaDraft' } } as any);
+    }
+  }, [lotteryDone, draftDone, rookieContractsDone, noPendingTeamOptions, trainingCampDone, noQOCandidates, checklist?.draftLottery, checklist?.draft, checklist?.rookieContracts, checklist?.options, checklist?.trainingCamp, checklist?.qualifyingOffers, checklist?.pbaDraft]);
 
   // Expansion-Draft Future-Year-Trigger: ein Schedule mit `year === ls.year`
   // aktiviert die Row beim Erreichen des Jahres (auch wenn das Schedule schon
@@ -512,7 +610,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
 
   if (!checklist) return null;
 
-  const currentRow = firstUnfinishedRow(checklist, sidebarSignals);
+  const currentRow = firstUnfinishedRow(checklist, sidebarSignals, visibleRows);
   // Options modal — opens when user clicks "Enter" on the options row.
   // Reuses the existing TeamOptionGateModal which is already wired into
   // PlayButton's guards; this is a second mount-point for offseason flow.
@@ -525,6 +623,8 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   const [declinedIds, setDeclinedIds] = useState<Set<string>>(new Set());
   // Qualifying Offer modal — opens when user clicks "Enter" on the QO row.
   const [qoModalOpen, setQoModalOpen] = useState(false);
+  const [youthPromotionOpen, setYouthPromotionOpen] = useState(false);
+  const [budgetReviewOpen, setBudgetReviewOpen] = useState(false);
   const [qoSubmittedIds, setQoSubmittedIds] = useState<Set<string>>(new Set());
   const [qoSkippedIds, setQoSkippedIds] = useState<Set<string>>(new Set());
   const [autoResolveConfirmOpen, setAutoResolveConfirmOpen] = useState(false);
@@ -592,6 +692,29 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   const closeStepConfirm = () => {
     confirmActionRef.current = null;
     setStepConfirm(null);
+  };
+
+  const hasTransferMarketEngagement = (): boolean => {
+    const userTid = state.userTeamId;
+    if (userTid == null) return false;
+    const hasListing = (state.transferListings ?? []).some((l: any) => l.sellerTid === userTid);
+    const hasBid = (state.transferBids ?? []).some((b: any) => b.sellerTid === userTid || b.bidderTid === userTid);
+    const hasActivity = (state.transferActivity ?? []).some((a: any) => a.fromTid === userTid || a.toTid === userTid);
+    return hasListing || hasBid || hasActivity;
+  };
+
+  const handleMarkTransferMarketDone = () => {
+    const engaged = hasTransferMarketEngagement();
+    openStepConfirm({
+      eyebrow: 'Transfer Window',
+      title: 'Mark Transfer Market Complete',
+      body: engaged
+        ? 'This marks the transfer-market review complete and moves the offseason checklist to the next task.'
+        : 'No user listings, bids, accepted transfers, or release-clause activity were found for your club. Mark the transfer market complete anyway?',
+      confirmLabel: 'Mark Done',
+    }, () => {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'transferMarket' } } as any);
+    });
   };
 
   const getStepConfirmSpec = (row: OffseasonChecklistRow, status: OffseasonRowStatus): OffseasonConfirmSpec => {
@@ -667,6 +790,13 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           body: 'This opens the free agency flow and may initialize the day counter if it has not started yet.',
           confirmLabel: resume ? 'Resume Free Agency' : 'Enter Free Agency',
         };
+      case 'transferMarket':
+        return {
+          eyebrow: 'Transfer Window',
+          title: resume ? 'Resume Transfer Market' : 'Open Transfer Market',
+          body: 'This opens the Euro transfer window for listings, bids, release clauses, and unattached-player review before camp.',
+          confirmLabel: resume ? 'Resume Market' : 'Open Market',
+        };
       case 'trainingCamp':
         return {
           eyebrow: 'Offseason Flow',
@@ -680,9 +810,15 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           if (!s) return [] as string[];
           return (['kit', 'sleeve', 'stadium'] as const).filter(k => s[k] === null);
         })();
-        const slotList = expiredSlots.length === 0
-          ? 'no slots'
-          : expiredSlots.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
+        if (expiredSlots.length === 0) {
+          return {
+            eyebrow: 'Front Office',
+            title: 'Sponsorship Review',
+            body: 'All 3 core sponsors are active — no renewals needed this offseason. You can review deals anytime in the Front Office.',
+            confirmLabel: 'Continue',
+          };
+        }
+        const slotList = expiredSlots.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
         return {
           eyebrow: 'Front Office',
           title: 'Sponsorship Renewals',
@@ -694,16 +830,118 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         return {
           eyebrow: 'Front Office',
           title: 'Facility Review',
-          body: 'Facility upgrades unlock in a future slice. For now you can review your current setup and skip.',
-          confirmLabel: 'Skip For Now',
+          body: 'Open the facilities desk to review upgrades before players report.',
+          confirmLabel: 'Open Facilities',
+        };
+      case 'budgetLock':
+        return {
+          eyebrow: 'Front Office',
+          title: 'Annual Budget Review',
+          body: 'Finalize next season\'s ticketing, travel, medical, scouting, and academy operating budgets after staff payroll is known.',
+          confirmLabel: 'Open Review',
         };
       case 'preseasonFriendlies':
         return {
           eyebrow: 'Offseason Flow',
           title: 'Preseason Friendlies',
-          body: 'Review and skip preseason friendly slots.',
-          confirmLabel: 'Skip',
+          body: 'Open the schedule desk to review preseason and friendly slots before camp.',
+          confirmLabel: 'Open Schedule',
         };
+      case 'youthPromotion':
+        return {
+          eyebrow: 'Youth Academy',
+          title: resume ? 'Resume Youth Promotion' : 'Open Youth Promotion',
+          body: 'Decide which academy prospects earn a senior roster spot. Promote A/A+ talents now if you have an open slot, or leave them another year to develop.',
+          confirmLabel: resume ? 'Resume Promotion' : 'Open Academy',
+        };
+      case 'pbaDraft':
+        return {
+          eyebrow: 'PBA Offseason',
+          title: resume ? 'Resume PBA Draft' : 'Enter PBA Draft',
+          body: 'Select your rookies from the pool of Filipino draft prospects.',
+          confirmLabel: resume ? 'Resume Draft' : 'Enter Draft',
+        };
+      case 'pbaLocalFreeAgency':
+        return {
+          eyebrow: 'PBA Offseason',
+          title: resume ? 'Resume Local Free Agency' : 'Enter Local Free Agency',
+          body: 'Sign local Filipino free agents before the new conference begins.',
+          confirmLabel: resume ? 'Resume Signings' : 'Enter Free Agency',
+        };
+      case 'pbaImportSearch':
+        return {
+          eyebrow: 'Conference Break',
+          title: resume ? 'Resume Import Search' : 'Search for Imports',
+          body: 'Browse the free agent pool for a conference import player.',
+          confirmLabel: resume ? 'Resume Search' : 'Open Free Agents',
+        };
+      case 'pbaImportDecision':
+        return {
+          eyebrow: 'Conference Break',
+          title: 'Finalize Import Decision',
+          body: 'Confirm your import signing or proceed without one.',
+          confirmLabel: 'Continue',
+        };
+      case 'pbaOpeningCeremony':
+        return {
+          eyebrow: 'Conference Break',
+          title: 'Opening Ceremony',
+          body: 'Watch the conference opening ceremony and team parade.',
+          confirmLabel: 'Watch Ceremony',
+        };
+      case 'pbaMuseSelection':
+        return {
+          eyebrow: 'PBA Offseason',
+          title: 'Muse Selection',
+          body: 'Choose your team muse for the conference opening.',
+          confirmLabel: 'Select Muse',
+        };
+      case 'pbaAllStarWeekend':
+        return {
+          eyebrow: 'PBA Events',
+          title: 'All-Star Weekend',
+          body: 'Enjoy the PBA All-Star Weekend festivities.',
+          confirmLabel: 'Watch Event',
+        };
+      case 'pbaConferenceAwards':
+        return {
+          eyebrow: 'Conference End',
+          title: 'Conference Awards',
+          body: 'Review conference awards and the champion.',
+          confirmLabel: 'View Awards',
+        };
+      case 'coachingSignings': {
+        if (expiringCoachCount === 0) {
+          return {
+            eyebrow: 'Coaching Staff',
+            title: 'Coaching Signings',
+            body: 'No coaching contracts are expiring this offseason. Fire a coach to open a position, then return here.',
+            confirmLabel: 'Continue',
+          };
+        }
+        return {
+          eyebrow: 'Coaching Staff',
+          title: resume ? 'Resume Coaching Signings' : 'Coaching Signings',
+          body: `${expiringCoachCount} coaching role${expiringCoachCount === 1 ? '' : 's'} open or expiring. Head coaches typically sign in May–June, right after the season ends.`,
+          confirmLabel: resume ? 'Resume' : 'Review Coaching',
+        };
+      }
+      case 'staffSignings': {
+        if (expiringStaffCount === 0) {
+          return {
+            eyebrow: 'Support Staff',
+            title: 'Support Staff Signings',
+            body: 'No support contracts are expiring this offseason. Fire a staff member to open a position, then return here.',
+            confirmLabel: 'Continue',
+          };
+        }
+        return {
+          eyebrow: 'Support Staff',
+          title: resume ? 'Resume Support Signings' : 'Support Staff Signings',
+          body: `${expiringStaffCount} support role${expiringStaffCount === 1 ? '' : 's'} open or expiring. Sports science, physio, scouting, and analytics staff sign in July–August before camp.`,
+          confirmLabel: resume ? 'Resume' : 'Review Staff',
+        };
+      }
     }
   };
 
@@ -751,7 +989,74 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
       return;
     }
+    if (row === 'coachingSignings') {
+      if (expiringCoachCount === 0) {
+        openStepConfirm(
+          {
+            eyebrow: 'Coaching Staff',
+            title: 'Coaching Signings',
+            body: 'No coaching contracts are expiring this offseason. Fire a coach to open a position, then return here.',
+            confirmLabel: 'Continue',
+          },
+          () => {
+            dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'coachingSignings' } } as any);
+          },
+        );
+        return;
+      }
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
+    if (row === 'staffSignings') {
+      if (expiringStaffCount === 0) {
+        openStepConfirm(
+          {
+            eyebrow: 'Support Staff',
+            title: 'Support Staff Signings',
+            body: 'No support contracts are expiring this offseason. Fire a staff member to open a position, then return here.',
+            confirmLabel: 'Continue',
+          },
+          () => {
+            dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'staffSignings' } } as any);
+          },
+        );
+        return;
+      }
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
+    if (row === 'youthPromotion') {
+      setYouthPromotionOpen(true);
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
+    if (row === 'budgetLock') {
+      setBudgetReviewOpen(true);
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
     if (row === 'sponsorRenewals') {
+      // Only auto-complete when (a) no expiring sponsors AND (b) every typed slot
+      // (kit/sleeve/back/shorts/training/court/stadium/practice) is filled. Endorsement
+      // placeholders are not counted. An empty slot forces the user to enter the flow
+      // and either renegotiate, find replacement, or browse the open market.
+      const sponsorships = (userTeam as any)?.tycoon?.sponsorships ?? {};
+      const TYPED_SLOTS: SponsorshipSlot[] = ['kit', 'sleeve', 'back', 'shorts', 'training', 'court', 'stadium', 'practice'];
+      const emptySlotCount = TYPED_SLOTS.filter((s) => !sponsorships[s]).length;
+      if (expiredSponsorCount === 0 && emptySlotCount === 0) {
+        openStepConfirm(
+          {
+            eyebrow: 'Front Office',
+            title: 'Sponsorship Review',
+            body: 'All sponsorship slots are active and not up for renewal. You can review deals anytime in the Front Office.',
+            confirmLabel: 'Continue',
+          },
+          () => {
+            dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'sponsorRenewals' } } as any);
+          },
+        );
+        return;
+      }
       setSponsorModalOpen(true);
       dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
       return;
@@ -766,11 +1071,6 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
       return;
     }
-    if (row === 'facilityUpgrades' || row === 'preseasonFriendlies') {
-      // MVP: no dedicated UI yet — auto-complete so user can advance through the phase.
-      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any);
-      return;
-    }
     if (row === 'freeAgency') {
       // Enter FA: deep-link to TeamIntel → Free Agency dashboard, then
       // auto-skip moratorium silently to Tag 1/13. ADVANCE_FA_TAG with
@@ -783,6 +1083,11 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       if ((state.faTagCounter ?? 0) === 0) {
         dispatchAction({ type: 'OFFSEASON_ADVANCE_FA_TAG' } as any);
       }
+      return;
+    }
+    // PBA null-tab rows — auto-complete on Enter (flavor-only for MVP)
+    if (row === 'pbaImportDecision' || row === 'pbaMuseSelection' || row === 'pbaOpeningCeremony' || row === 'pbaAllStarWeekend' || row === 'pbaConferenceAwards') {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any);
       return;
     }
     // Calendar-anchored phases: advance to the event date if we're before it
@@ -972,16 +1277,21 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
 
       <ol className="space-y-1.5">
         {visibleRows.map(row => {
-          const status = checklist[row];
+          const status = checklist[row] ?? 'pending';
           const isCurrent = row === currentRow;
           const isResolved = status === 'done' || status === 'skipped';
+          // Euro parallel rows expand even when not the currentRow
+          const isParallel = isEuroMode && EURO_PARALLEL_ROWS.has(row) && !isResolved;
+          const isExpanded = isCurrent || isParallel;
           return (
             <li
               key={row}
               className={`rounded-xl px-3 py-2.5 flex flex-col gap-1 transition-colors ${
                 isCurrent
                   ? 'bg-amber-500/10 border border-amber-500/40'
-                  : 'bg-slate-900/40 border border-slate-800/60'
+                  : isParallel
+                    ? 'bg-sky-500/5 border border-sky-500/20'
+                    : 'bg-slate-900/40 border border-slate-800/60'
               }`}
             >
               <div className="flex items-center justify-between gap-2">
@@ -1004,13 +1314,22 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
                       Engaged
                     </span>
                   )}
-                  {row === 'sponsorRenewals' && expiredSponsorCount > 0 && !isResolved && (
-                    <span
-                      title={`${expiredSponsorCount} sponsorship slot${expiredSponsorCount === 1 ? '' : 's'} expired and waiting for negotiation`}
-                      className="text-[8px] uppercase tracking-widest font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded"
-                    >
-                      {expiredSponsorCount}/3
-                    </span>
+                  {row === 'sponsorRenewals' && !isResolved && (
+                    expiredSponsorCount > 0 ? (
+                      <span
+                        title={`${expiredSponsorCount} sponsorship slot${expiredSponsorCount === 1 ? '' : 's'} expired and waiting for negotiation`}
+                        className="text-[8px] uppercase tracking-widest font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded"
+                      >
+                        {expiredSponsorCount}/3
+                      </span>
+                    ) : (
+                      <span
+                        title="All sponsors active — no renewals needed"
+                        className="text-[8px] uppercase tracking-widest font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded"
+                      >
+                        Active
+                      </span>
+                    )
                   )}
                   {STATUS_LABEL[status] && (
                     <span className="text-[8px] uppercase tracking-widest font-bold text-slate-500 shrink-0">
@@ -1020,11 +1339,21 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
                 </div>
               </div>
 
-              {isCurrent && (
+              {isExpanded && (
                 <>
                   <p className="text-[10px] text-slate-400 leading-snug">
                     {OFFSEASON_ROW_DESCRIPTIONS[row]}
                   </p>
+                  {/* Transfer Window day counter */}
+                  {row === 'transferMarket' && tmWindowCounter && (
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-sky-400">Transfer Window Day</span>
+                      <span className="text-[9px] font-black text-white">{tmWindowCounter.current}/{tmWindowCounter.total}</span>
+                      <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="h-full bg-sky-400 rounded-full" style={{ width: `${(tmWindowCounter.current / tmWindowCounter.total) * 100}%` }} />
+                      </div>
+                    </div>
+                  )}
                   <div className="flex gap-2 mt-1">
                     {!isResolved && (
                       <button
@@ -1035,6 +1364,15 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
                         className="flex-1 px-2 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] uppercase tracking-widest transition-colors"
                       >
                         {status === 'in-progress' ? 'Resume' : 'Enter'}
+                      </button>
+                    )}
+                    {(row === 'transferMarket' || row === 'sponsorRenewals' || row === 'facilityUpgrades') && !isResolved && (
+                      <button
+                        onClick={() => dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any)}
+                        title="Mark complete without making changes."
+                        className="flex-1 px-2 py-1 rounded-md bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 font-bold text-[10px] uppercase tracking-widest transition-colors"
+                      >
+                        Mark Done
                       </button>
                     )}
                   </div>
@@ -1048,27 +1386,31 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       {/* Auto-resolve all — placed BELOW the row list (away from the mobile
           sheet's X close button up top) to prevent misclicks. Hidden once
           everything is already resolved. */}
-      {!isChecklistComplete(checklist) && (
+      {!isChecklistComplete(checklist, visibleRows) && (
         <button
           onClick={handleAutoResolveAll}
           title="Advance through the remaining offseason phases and land on opening night."
           className="w-full mt-4 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-600/80 hover:bg-amber-500 text-white font-black text-[10px] uppercase tracking-widest transition-colors"
         >
           <FastForward size={12} />
-          Sim to Opening Night
+          {state.leagueStats?.uiMode === 'pba_isolated' ? 'Skip Remaining Tasks' : 'Sim to Opening Night'}
         </button>
       )}
 
       {/* All-done banner + prominent advance CTA. Replaces the auto-resolve
           button once everything is checked off — at that point the only
           thing left is to drop into the new season. */}
-      {isChecklistComplete(checklist) && (
+      {isChecklistComplete(checklist, visibleRows) && (
         <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2">
           <p className="text-[11px] font-black uppercase tracking-widest text-emerald-300">
-            Offseason Complete
+            {state.leagueStats?.uiMode === 'pba_isolated' ? 'Tasks Complete' : 'Offseason Complete'}
           </p>
           <p className="text-[10px] text-emerald-200/80 leading-snug">
-            All tasks resolved. Drop into preseason and start the new season.
+            {state.leagueStats?.uiMode === 'pba_isolated'
+              ? ((state.leagueStats as any)?.pbaConference === 'governors'
+                ? 'All tasks resolved. Start the new PBA season.'
+                : 'All tasks resolved. Enter the next conference.')
+              : 'All tasks resolved. Drop into preseason and start the new season.'}
           </p>
           <button
             onClick={() => {
@@ -1077,7 +1419,9 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
             className="w-full mt-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[10px] uppercase tracking-widest transition-colors"
           >
             <Sparkles size={12} />
-            Enter Preseason
+            {state.leagueStats?.uiMode === 'pba_isolated'
+              ? ((state.leagueStats as any)?.pbaConference === 'governors' ? 'Enter New Season' : 'Enter Next Conference')
+              : 'Enter Preseason'}
           </button>
         </div>
       )}
@@ -1121,6 +1465,58 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         }}
       />
 
+      <AnnualBudgetReviewModal
+        open={budgetReviewOpen}
+        team={userTeam as any}
+        players={state.players ?? []}
+        currentYear={state.leagueStats?.year ?? new Date().getFullYear()}
+        currency={state.leagueStats?.currency ?? 'EUR'}
+        onClose={() => setBudgetReviewOpen(false)}
+        onFinalize={(values: AnnualBudgetReviewValues) => {
+          dispatchAction({
+            type: 'UPDATE_STATE',
+            payload: {
+              teams: state.teams.map((team: any) => {
+                const tid = team.id ?? team.tid;
+                if (tid !== state.userTeamId || !team.tycoon) return team;
+                return {
+                  ...team,
+                  tycoon: {
+                    ...team.tycoon,
+                    ticketPriceMultiplier: values.ticketPriceMultiplier,
+                    travelPreferences: values.travelPreferences,
+                    medicalBudget: values.medicalBudget,
+                    scoutingInvestment: values.scoutingInvestment,
+                    academyBudget: values.academyBudget,
+                    budgetLocked: true,
+                    budgetLockedYear: state.leagueStats?.year ?? new Date().getFullYear(),
+                  },
+                };
+              }),
+              nonNBATeams: (state.nonNBATeams ?? []).map((team: any) => {
+                const tid = team.id ?? team.tid;
+                if (tid !== state.userTeamId || !team.tycoon) return team;
+                return {
+                  ...team,
+                  tycoon: {
+                    ...team.tycoon,
+                    ticketPriceMultiplier: values.ticketPriceMultiplier,
+                    travelPreferences: values.travelPreferences,
+                    medicalBudget: values.medicalBudget,
+                    scoutingInvestment: values.scoutingInvestment,
+                    academyBudget: values.academyBudget,
+                    budgetLocked: true,
+                    budgetLockedYear: state.leagueStats?.year ?? new Date().getFullYear(),
+                  },
+                };
+              }),
+            },
+          } as any);
+          setBudgetReviewOpen(false);
+          dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'budgetLock' } } as any);
+        }}
+      />
+
       {/* Existing TeamOptionGateModal — second mount-point for offseason flow.
           Same modal PlayButton uses for date-blocking guard, here surfaced as
           a phase entry. */}
@@ -1156,6 +1552,78 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         onAssistant={handleQoAssistantAll}
         onDismiss={handleQoDismiss}
       />
+
+      {/* Youth Promotion modal — opens from the youthPromotion offseason row.
+          Shows academy prospects (ages 15-19 on user's team) with K2 OVR/POT.
+          Promoting moves them onto the senior roster (regular tid signing flow)
+          and any prospect kept stays for another year of academy development. */}
+      {youthPromotionOpen && (() => {
+        const userTeam = state.teams.find((t: any) => (t.id ?? t.tid) === state.userTeamId)
+          ?? (state.nonNBATeams ?? []).find((t: any) => (t.id ?? t.tid) === state.userTeamId);
+        const simYear = lsYearOf(state);
+        const seniorRosterSize = (state.players ?? []).filter((p: any) =>
+          p.tid === state.userTeamId && computeAge(p, simYear) > 19
+        ).length;
+        const youthPlayers = (state.players ?? [])
+          .filter((p: any) => {
+            if (p.tid !== state.userTeamId) return false;
+            const age = computeAge(p, simYear);
+            return age >= 15 && age <= 19;
+          })
+          .map((p: any) => {
+            const r = Array.isArray(p.ratings) ? p.ratings[p.ratings.length - 1] : null;
+            const bbgmOvr = p.overallRating ?? r?.ovr ?? 45;
+            const bbgmPot = p.pot ?? r?.pot ?? 55;
+            return {
+              id: p.pid ?? p.internalId ?? p.id,
+              name: p.name ?? `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim(),
+              pos: p.pos ?? r?.pos ?? '?',
+              age: computeAge(p, simYear),
+              ovr: convertTo2KRating(bbgmOvr, r?.hgt ?? 50, r?.tp),
+              pot: convertTo2KRating(bbgmPot, r?.hgt ?? 50, r?.tp),
+              face: p.face,
+              imgURL: p.imgURL,
+            };
+          })
+          .sort((a: any, b: any) => b.pot - a.pot);
+        const close = () => {
+          setYouthPromotionOpen(false);
+          dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'youthPromotion' } } as any);
+        };
+        return createPortal(
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={close} />
+            <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto scrollbar-hide bg-slate-900 rounded-2xl border border-slate-700 p-6">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <GraduationCap size={22} className="text-emerald-400" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.35em] text-emerald-300">Offseason · Youth Promotion</p>
+                    <h2 className="text-lg font-black text-white uppercase tracking-tight mt-1">{(userTeam as any)?.name ?? 'Academy'} Promotion Window</h2>
+                  </div>
+                </div>
+                <button onClick={close} className="text-slate-400 hover:text-white p-1">
+                  <X size={20} />
+                </button>
+              </div>
+              <YouthPromotionPanel
+                youthPlayers={youthPlayers}
+                slotsAvailable={Math.max(0, 15 - seniorRosterSize)}
+                seniorRosterSize={seniorRosterSize}
+                maxRosterSize={15}
+                onPromote={(ids) => {
+                  dispatchAction({
+                    type: 'PROMOTE_YOUTH',
+                    payload: { playerIds: ids, teamId: state.userTeamId },
+                  } as any);
+                  close();
+                }}
+              />
+            </div>
+          </div>,
+          document.body,
+        );
+      })()}
       {stepConfirm && createPortal(
         <div className="fixed inset-0 z-[121] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={closeStepConfirm} />
@@ -1196,17 +1664,32 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={() => setAutoResolveConfirmOpen(false)} />
           <div className="relative w-full max-w-lg rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
-              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-300 mb-2">Offseason Flow</p>
-              <h2 className="text-xl font-black uppercase tracking-tight text-white">Sim to Opening Night</h2>
+              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-300 mb-2">
+                {state.leagueStats?.uiMode === 'pba_isolated' ? 'Conference Break' : 'Offseason Flow'}
+              </p>
+              <h2 className="text-xl font-black uppercase tracking-tight text-white">
+                {state.leagueStats?.uiMode === 'pba_isolated' ? 'Skip Remaining Tasks' : 'Sim to Opening Night'}
+              </h2>
             </div>
             <div className="p-5 space-y-4">
               <p className="text-sm text-slate-300 leading-relaxed">
-                This advances the remaining offseason phases in order and lands on opening night with the new season ready to start.
+                {state.leagueStats?.uiMode === 'pba_isolated'
+                  ? 'This skips remaining tasks and advances to the next conference.'
+                  : 'This advances the remaining offseason phases in order and lands on opening night with the new season ready to start.'}
               </p>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2 text-sm text-slate-400">
-                <p>• free agency, training camp, and late offseason cleanup continue automatically</p>
-                <p>• in GM mode, AI keeps hands off your user-team roster decisions</p>
-                <p>• roster compliance still has to be satisfied before the season can proceed</p>
+                {state.leagueStats?.uiMode === 'pba_isolated' ? (
+                  <>
+                    <p>• remaining tasks are auto-completed</p>
+                    <p>• games begin immediately in the next conference</p>
+                  </>
+                ) : (
+                  <>
+                    <p>• free agency, training camp, and late offseason cleanup continue automatically</p>
+                    <p>• in GM mode, AI keeps hands off your user-team roster decisions</p>
+                    <p>• roster compliance still has to be satisfied before the season can proceed</p>
+                  </>
+                )}
               </div>
               <div className="flex gap-3">
                 <button
@@ -1222,7 +1705,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
                   }}
                   className="flex-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs py-3 transition-colors"
                 >
-                  Sim to Opening Night
+                  {state.leagueStats?.uiMode === 'pba_isolated' ? 'Skip All' : 'Sim to Opening Night'}
                 </button>
               </div>
             </div>
@@ -1618,6 +2101,81 @@ export const OffseasonFATagFooter: React.FC = () => {
   );
 };
 
+// ─── Transfer Market footer — Euro-only sticky "Sim Day" bar ───────────────
+// Mirrors OffseasonFATagFooter. Shows during Euro offseason while the
+// transferMarket row is pending/in-progress and the window is open. Advances
+// one calendar day per click, which triggers the daily transferMarketTicker
+// inside simulationHandler (AI bids, accepts, expiries).
+
+export const OffseasonTransferMarketFooter: React.FC = () => {
+  const { state, dispatchAction } = useGame();
+  if (!state.offseasonChecklist) return null;
+  if (state.leagueStats?.uiMode !== 'euro_isolated') return null;
+  const status = state.offseasonChecklist.transferMarket;
+  if (status !== 'pending' && status !== 'in-progress') return null;
+  if (!state.date) return null;
+
+  const ws = isInTransferWindow(state.date, state.leagueStats);
+  if (!ws.open || !ws.currentClose) return null;
+  const todayIso = typeof state.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(state.date)
+    ? state.date
+    : new Date(state.date as any).toISOString().slice(0, 10);
+  const closeIso = ws.currentClose.toISOString().slice(0, 10);
+  const msPerDay = 86_400_000;
+  const daysLeft = Math.max(0, Math.round((new Date(closeIso).getTime() - new Date(todayIso).getTime()) / msPerDay));
+  const total = ws.window === 'summer' ? 92 : 31;
+  const current = Math.max(1, total - daysLeft + 1);
+  const isLast = daysLeft <= 0;
+
+  const handleSimDay = () => {
+    dispatchAction({ type: 'ADVANCE_DAY' } as any);
+  };
+  const handleComplete = () => {
+    dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'transferMarket' } } as any);
+  };
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-[170] flex items-center justify-center pointer-events-none px-4 pb-3">
+      <div className="pointer-events-auto flex items-center gap-3 px-4 py-2 rounded-2xl bg-slate-950/95 border border-sky-500/40 shadow-2xl backdrop-blur-md">
+        <div className="flex flex-col leading-none">
+          <span className="text-[8px] font-black uppercase tracking-[0.2em] text-sky-300/80">
+            Transfer Window
+          </span>
+          <span className="text-sm font-black text-white tabular-nums uppercase tracking-tight">
+            Day {current}/{total}
+          </span>
+        </div>
+        <button
+          onClick={handleSimDay}
+          disabled={state.isProcessing || isLast}
+          title="Advance one day — AI clubs evaluate listings, place bids, accept offers."
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-colors ${
+            state.isProcessing || isLast
+              ? 'bg-slate-800 text-slate-600 cursor-not-allowed'
+              : 'bg-sky-500 hover:bg-sky-400 text-black'
+          }`}
+        >
+          <FastForward size={12} />
+          Sim Day
+        </button>
+        <button
+          onClick={handleComplete}
+          disabled={state.isProcessing}
+          title="Mark transfer market complete and continue with the offseason."
+          className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-colors border ${
+            state.isProcessing
+              ? 'bg-slate-800 text-slate-600 border-slate-700 cursor-not-allowed'
+              : 'bg-emerald-600/20 hover:bg-emerald-500/30 text-emerald-200 border-emerald-500/40'
+          }`}
+        >
+          <CheckCircle size={12} />
+          Mark Done
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ─── Training Camp footer ──────────────────────────────────────────────────
 // Shows while trainingCamp row is pending/in-progress. Auto-hides once the
 // calendar advances past camp start (the sidebar effect fires OFFSEASON_COMPLETE_PHASE).
@@ -1625,6 +2183,7 @@ export const OffseasonFATagFooter: React.FC = () => {
 export const OffseasonTrainingCampFooter: React.FC = () => {
   const { state, dispatchAction } = useGame();
   if (!state.offseasonChecklist) return null;
+  if (state.leagueStats?.uiMode === 'euro_isolated') return null;
   const status = state.offseasonChecklist.trainingCamp;
   if (status !== 'pending' && status !== 'in-progress') return null;
 

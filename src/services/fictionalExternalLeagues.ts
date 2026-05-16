@@ -9,26 +9,11 @@
 // (cap math, FA pipeline, scouting views) treats them as it would real fetched
 // data. No deep career history — just current-season ratings + minimal stats.
 
-import type { NBAPlayer } from '../types';
+import type { NBAPlayer, NonNBATeam } from '../types';
 import { generateDraftClassForGame } from './genDraftPlayers';
 import { getNameData } from '../data/nameDataFetcher';
 import { EUROLEAGUE_TEAMS, ENDESA_TEAMS, NBL_TEAMS, BLEAGUE_TEAMS } from '../genplayersconstants';
 import type { Player } from '../genplayersconstants';
-
-// NonNBATeam is the shape the rest of the codebase expects.
-interface NonNBATeam {
-  tid: number;
-  cid?: number;
-  did?: number;
-  region?: string;
-  name: string;
-  abbrev?: string;
-  pop?: number;
-  stadiumCapacity?: number;
-  imgURL?: string;
-  colors?: string[];
-  league: string;
-}
 
 interface LeagueResult {
   players: NBAPlayer[];
@@ -171,7 +156,10 @@ function makeTeamsFromObject(
       region,
       name,
       abbrev,
+      cid: 0,
+      did: 0,
       pop: 0.5 + Math.random() * 2,
+      stadiumCapacity: 8_000,
       league,
     };
   });
@@ -187,7 +175,10 @@ function makeTeamsFromList(
     region: t.region,
     name: `${t.region} ${t.name}`,
     abbrev: t.abbrev,
+    cid: 0,
+    did: 0,
     pop: 0.5 + Math.random() * 2,
+    stadiumCapacity: 8_000,
     league,
   }));
 }

@@ -225,6 +225,23 @@ function findLastCompetitionRegularDate(state: any, competitionId?: string): str
   ));
 }
 
+function competitionRegularComplete(state: any, competitionId: string): boolean {
+  return !(state.schedule ?? []).some((g: any) =>
+    g.competitionId === competitionId &&
+    !g.played &&
+    isCompetitionRegularPhase(g)
+  );
+}
+
+function competitionRoundDate(state: any, seasonYear: number, competitionId: string, phases: string[], edge: 'start' | 'end'): string | null {
+  const spec = (state.activeCompetitions ?? []).find((c: any) => c.id === competitionId);
+  const round = spec?.playoffFormat?.rounds?.find((r: any) => phases.includes(r.phase));
+  const date = round?.[edge];
+  if (!date) return null;
+  const year = date.month >= 9 ? seasonYear - 1 : seasonYear;
+  return `${year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
+}
+
 function pushFutureOption(options: PlayOption[], norm: string, label: string, date: string | null, action: (date: string) => void) {
   if (date && date > norm && !options.some(opt => opt.label === label)) {
     options.push({ label, action: () => action(date) });
@@ -338,12 +355,35 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
       ));
       const endesaRegularEnd = findLastCompetitionRegularDate(state, 'endesa');
       const euroleagueRegularEnd = findLastCompetitionRegularDate(state, 'euroleague');
-      const euroleaguePlayInStart = findFirstCompetitionDate(state, 'euroleague', ['play-in']);
-      const euroleagueQfStart = findFirstCompetitionDate(state, 'euroleague', ['qf']);
-      const euroleagueFinalFourStart = findFirstCompetitionDate(state, 'euroleague', ['sf', 'final']);
-      const euroleagueSeasonEnd = findLastCompetitionDate(state, 'euroleague');
-      const endesaSeasonEnd = findLastCompetitionDate(state, 'endesa');
-      const allCompetitionEnd = findLastCompetitionDate(state);
+      const endesaRegularIsComplete = competitionRegularComplete(state, 'endesa');
+      const euroleagueRegularIsComplete = competitionRegularComplete(state, 'euroleague');
+      const endesaQfSpecStart = endesaRegularIsComplete
+        ? competitionRoundDate(state, seasonYear, 'endesa', ['qf', 'quarterfinals'], 'start')
+        : null;
+      const euroleagueQfSpecStart = euroleagueRegularIsComplete
+        ? competitionRoundDate(state, seasonYear, 'euroleague', ['qf', 'quarterfinals'], 'start')
+        : null;
+      const euroleagueFinalFourSpecStart = euroleagueRegularIsComplete
+        ? competitionRoundDate(state, seasonYear, 'euroleague', ['sf', 'semifinals', 'final-four'], 'start')
+        : null;
+      const euroleagueFinalSpecEnd = euroleagueRegularIsComplete
+        ? competitionRoundDate(state, seasonYear, 'euroleague', ['final', 'final-four'], 'end')
+        : null;
+      const endesaFinalSpecEnd = endesaRegularIsComplete
+        ? competitionRoundDate(state, seasonYear, 'endesa', ['final'], 'end')
+        : null;
+      const euroleaguePlayInStart = findFirstCompetitionDate(state, 'euroleague', ['play-in'])
+        ?? (euroleagueQfSpecStart ? addDays(euroleagueQfSpecStart, -8) : null);
+      const euroleagueQfStart = findFirstCompetitionDate(state, 'euroleague', ['qf']) ?? euroleagueQfSpecStart;
+      const euroleagueFinalFourStart = findFirstCompetitionDate(state, 'euroleague', ['sf', 'final']) ?? euroleagueFinalFourSpecStart;
+      const euroleagueSeasonEnd = findLastCompetitionDate(state, 'euroleague') ?? euroleagueFinalSpecEnd;
+      const endesaPlayoffStart = findFirstCompetitionDate(state, 'endesa', ['qf']) ?? endesaQfSpecStart;
+      const endesaSeasonEnd = findLastCompetitionDate(state, 'endesa') ?? endesaFinalSpecEnd;
+      const userInEuroleague = state.gameMode === 'gm' && (state.nonNBATeams ?? []).some((t: any) => t.league === 'Euroleague' && t.tid === state.userTeamId);
+      const allCompetitionEnd = [findLastCompetitionDate(state), userInEuroleague ? euroleagueSeasonEnd : null, endesaSeasonEnd]
+        .filter((date): date is string => !!date)
+        .sort()
+        .at(-1) ?? null;
       const trainingCampStr = toISODateString(getTrainingCampDate(seasonYear, ls));
 
       const opts: PlayOption[] = [
@@ -358,6 +398,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
       }
       pushFutureOption(opts, norm, 'Through EuroLeague regular season', euroleagueRegularEnd, simThrough);
       pushFutureOption(opts, norm, 'Through Liga Endesa regular season', endesaRegularEnd, simThrough);
+      pushFutureOption(opts, norm, 'Until Liga Endesa playoffs', endesaPlayoffStart, simToDate);
       pushFutureOption(opts, norm, 'Until EuroLeague play-in', euroleaguePlayInStart, simToDate);
       pushFutureOption(opts, norm, 'Until EuroLeague playoffs', euroleagueQfStart, simToDate);
       pushFutureOption(opts, norm, 'Until EuroLeague Final Four', euroleagueFinalFourStart, simToDate);
@@ -374,7 +415,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
     const draftStr           = toISODateString(getDraftDate(seasonYear, ls));
     const faStartStr         = toISODateString(getCurrentOffseasonEffectiveFAStart(`${norm}T00:00:00Z`, ls, state.schedule));
     const faMoratoriumEndStr = toISODateString(getCurrentOffseasonFAMoratoriumEnd(`${norm}T00:00:00Z`, ls, state.schedule));
-    const openingNightStr    = findFirstRegularSeasonDate(state) ?? toISODateString(getOpeningNightDate(seasonYear));
+    const openingNightStr    = findFirstRegularSeasonDate(state) ?? toISODateString(getOpeningNightDate(seasonYear, ls, state.schedule as any));
     // Land Thursday (1 day before Rising Stars Friday) so the user sees All-Star
     // weekend BEFORE any of its events trigger.
     const allStarStr         = toISODateString(addDaysToDate(getAllStarWeekendStartDate(seasonYear, ls), -1));
@@ -609,7 +650,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
           { label: 'One month',       action: () => simToDate(addDays(norm, 30)) },
           { label: 'Until training camp', action: () => simToDate(preseasonStr) },
         );
-        const nextSeasonOpening = toISODateString(getOpeningNightDate(seasonYear));
+        const nextSeasonOpening = toISODateString(getOpeningNightDate(seasonYear, ls, state.schedule as any));
         if (nextSeasonOpening > norm) {
           // stopBefore: true — land on opening night with games unplayed.
           opts.push({ label: 'Through preseason', action: () => simToDate(nextSeasonOpening) });

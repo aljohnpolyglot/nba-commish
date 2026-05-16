@@ -506,6 +506,13 @@ function deriveCollege(league: string, isYouth: boolean, team: any, country: str
  * Generate a single external-league NBAPlayer with correct nationality-matched bio.
  * `country` controls the name pool and born.loc — must be set for 1:1 replacement.
  */
+// Youth academy investment tier (0-5) → OVR/POT bonus for prospects spawned
+// at THIS team. 0 = team isn't investing → slightly below-average spawns.
+// 5 = world-class academy → meaningfully stronger prospects. Caps applied
+// after the standard ovrCap so this never breaks league-wide ceilings.
+const ACADEMY_TIER_OVR_BONUS: Record<number, number> = { 0: -3, 1: -1, 2: 0, 3: 2, 4: 4, 5: 6 };
+const ACADEMY_TIER_POT_BONUS: Record<number, number> = { 0: -3, 1: -1, 2: 0, 3: 3, 4: 6, 5: 9 };
+
 function spawnExternalPlayer(opts: {
   league: string;
   targetAge: number;
@@ -518,6 +525,12 @@ function spawnExternalPlayer(opts: {
   country: string; // explicit nationality — drives names, face race, born.loc
 }): NBAPlayer | null {
   const { league, targetAge, year, rngBase, tid, team, salaryCap, isYouth, country } = opts;
+  // Read the team's academy investment — only matters for youth spawns. AI
+  // teams may not have a tycoon block (PBA/CBA placeholder), default to 2
+  // (Standard) so existing balance is preserved.
+  const academyBudget: number = isYouth
+    ? Math.max(0, Math.min(5, team?.tycoon?.academyBudget ?? 2))
+    : 2;
 
   try {
     const nameData = getNameData();
@@ -555,10 +568,19 @@ function spawnExternalPlayer(opts: {
     }
     targetOvr = Math.max(25, Math.min(ovrCap, targetOvr - GENERATED_EXTERNAL_OVR_NERF));
 
+    // Apply academy investment bonus AFTER the league cap, but still clamp
+    // so a tier-5 academy can't push prospects past the league's own ceiling.
+    if (isYouth) {
+      targetOvr = Math.max(25, Math.min(ovrCap, targetOvr + (ACADEMY_TIER_OVR_BONUS[academyBudget] ?? 0)));
+    }
+
     // POT: youth has more room to grow (Fix 3 — youth POT stays high even with OVR cap)
     const potCap = isYouth ? ovrCap + 8 : ovrCap + 4;
     const potGap = Math.max(0, potCap - targetOvr);
-    const targetPot = Math.min(potCap, targetOvr + Math.round(seededRandom(rngBase + '_pot') * potGap));
+    let targetPot = Math.min(potCap, targetOvr + Math.round(seededRandom(rngBase + '_pot') * potGap));
+    if (isYouth) {
+      targetPot = Math.max(targetOvr, Math.min(potCap + 4, targetPot + (ACADEMY_TIER_POT_BONUS[academyBudget] ?? 0)));
+    }
 
     // ── Fix 4 + 5: Height ceiling + country multiplier ──────────────────────
     const baseHgt: number = (base as any).hgt ?? 78; // bio inches from generator

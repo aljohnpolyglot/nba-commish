@@ -1,8 +1,18 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowLeft, Award, Briefcase, Star, X } from 'lucide-react';
 import { formatCurrencyWithCode } from '../../../../../utils/helpers';
+import { deterministicStaffImageId } from '../../../../../utils/staffPortrait';
+import { getCountryFlag } from '../../../../../utils/countryFlags';
+import { getNameData } from '../../../../../data/nameDataFetcher';
 import { FacilityKpi } from '../shared/FacilityKpi';
 import { SliderRow } from '../shared/SliderRow';
+import {
+  buildDisplayAttributes,
+  buildStaffAttrs,
+  computeStaffOverall,
+  seedForStaff,
+  ROLE_DISPLAY_KEYS,
+} from '../../../../../services/staff/displayAttributes';
 
 export type StaffCandidate = {
   id: string;
@@ -14,18 +24,19 @@ export type StaffCandidate = {
   rating: number;
   years: number;
   face: any;
+  staffImageId?: number;
   attributes: Array<[string, number]>;
 };
 
 type WizardStep = 'candidates' | 'offer' | 'review';
 
-const ROLE_FOCUS_TAGS: Record<string, string[]> = {
-  'Head Coach':            ['Tactics', 'Man Management', 'Motivating', 'Adaptability'],
-  'Assistant Coach':       ['Player Drills', 'Opponent Prep', 'Defense', 'Development'],
-  'Head of Sports Science':['Conditioning', 'Load Control', 'Recovery', 'Biomechanics'],
-  'Head Physio':           ['Physiotherapy', 'Rehab Speed', 'Diagnostics', 'Prevention'],
-  'Chief Scout':           ['Ability Judging', 'Potential Judging', 'Market Reads', 'Network'],
-  'Head of Analytics':     ['Data Models', 'Video Tools', 'Opponent Models', 'Reporting'],
+/** Focus tag labels for the candidate-list summary line. Derived from the
+ *  shared ROLE_DISPLAY_KEYS so the strings here always match what the card
+ *  and signing-modal Key Attributes section render. */
+const focusTagsFor = (role: string): string[] => {
+  const baseRole = role.replace(/ \d+$/, '');
+  const keys = ROLE_DISPLAY_KEYS[baseRole] ?? ROLE_DISPLAY_KEYS['Head Coach'];
+  return keys.slice(0, 4).map(([, label]) => label);
 };
 
 const StepperPill: React.FC<{ index: number; label: string; status: 'done' | 'current' | 'todo' }> = ({ index, label, status }) => (
@@ -70,20 +81,61 @@ export const StaffSigningModal: React.FC<{
   roleFocus: string;
   onClose: () => void;
   onSign: (hire: any) => void;
-  renderPortrait: (face: any, initials: string, size?: string) => React.ReactNode;
-}> = ({ selectedRole, pool, onClose, onSign, renderPortrait }) => {
+  renderPortrait: (face: any, initials: string, size?: string, staffImageId?: number) => React.ReactNode;
+  /** Currency for salary display. NBA mode passes 'USD', Euro passes 'EUR'. */
+  currency?: string;
+  /** Country pool the emergency fallback uses when the real FA list is thin.
+   *  NBA mode passes ['USA']; Euro mode keeps the multi-country mix. Without
+   *  this, a Mavs GM saw Edgar Hernández-Sonseca pop up as a Dev Coach. */
+  emergencyCountries?: string[];
+}> = ({ selectedRole, pool, onClose, onSign, renderPortrait, currency = 'EUR', emergencyCountries }) => {
+  const candidatePool = useMemo(() => {
+    if (pool.length >= 3) return pool;
+    const nameData = getNameData() as any;
+    const countries = emergencyCountries ?? ['Spain', 'France', 'Italy', 'Serbia', 'Greece', 'Turkey'];
+    const needed = 3 - pool.length;
+    const emergency: StaffCandidate[] = [];
+    for (let i = 0; i < needed; i++) {
+      const country = countries[(selectedRole.length + i) % countries.length];
+      const countryData = nameData.countries?.[country] ?? nameData.countries?.USA;
+      const firsts = Object.keys(countryData?.first ?? {});
+      const lasts = Object.keys(countryData?.last ?? {});
+      const first = firsts[(selectedRole.length + i * 7) % Math.max(1, firsts.length)] ?? 'Interim';
+      const last = lasts[(selectedRole.length * 3 + i * 11) % Math.max(1, lasts.length)] ?? 'Candidate';
+      const fullName = `${first} ${last}`;
+      // Same seed pipeline as the FA pool so emergency candidates also show a
+      // role-weighted overall consistent with the card and ratings modal.
+      const seed = seedForStaff({ name: fullName, reputation: 54 + i * 3 });
+      const attrsFull = buildStaffAttrs(seed);
+      const rating = computeStaffOverall(selectedRole, attrsFull);
+      emergency.push({
+        id: `emergency-${selectedRole}-${i}`,
+        role: selectedRole,
+        name: fullName,
+        nationality: country,
+        flag: getCountryFlag(country),
+        salary: 180_000 + i * 40_000,
+        rating,
+        years: 1,
+        face: undefined,
+        staffImageId: deterministicStaffImageId(fullName),
+        attributes: buildDisplayAttributes(selectedRole, seed),
+      });
+    }
+    return [...pool, ...emergency];
+  }, [pool, selectedRole]);
   const [step, setStep] = useState<WizardStep>('candidates');
-  const [selectedId, setSelectedId] = useState<string>(pool[0]?.id ?? '');
+  const [selectedId, setSelectedId] = useState<string>(candidatePool[0]?.id ?? '');
   const [sortKey, setSortKey] = useState<'overall' | 'salary-asc' | 'salary-desc' | 'years'>('overall');
   const sortedPool = useMemo(() => {
-    const arr = [...pool];
+    const arr = [...candidatePool];
     if (sortKey === 'overall')      arr.sort((a, b) => b.rating - a.rating);
     if (sortKey === 'salary-asc')   arr.sort((a, b) => a.salary - b.salary);
     if (sortKey === 'salary-desc')  arr.sort((a, b) => b.salary - a.salary);
     if (sortKey === 'years')        arr.sort((a, b) => b.years - a.years);
     return arr;
-  }, [pool, sortKey]);
-  const candidate = pool.find((c) => c.id === selectedId) ?? pool[0];
+  }, [candidatePool, sortKey]);
+  const candidate = candidatePool.find((c) => c.id === selectedId) ?? candidatePool[0];
 
   const [salary, setSalary] = useState(candidate?.salary ?? 500_000);
   const [years, setYears] = useState(2);
@@ -105,7 +157,7 @@ export const StaffSigningModal: React.FC<{
     );
   }
 
-  const focusTags = ROLE_FOCUS_TAGS[selectedRole] ?? [];
+  const focusTags = focusTagsFor(selectedRole);
 
   return (
     <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md p-4 md:p-8 overflow-y-auto">
@@ -141,7 +193,7 @@ export const StaffSigningModal: React.FC<{
             </div>
             <div className="text-right">
               <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pool</div>
-              <div className="text-sm font-black text-slate-200 tabular-nums">{pool.length} candidates</div>
+              <div className="text-sm font-black text-slate-200 tabular-nums">{candidatePool.length} candidates</div>
             </div>
           </div>
         </div>
@@ -176,15 +228,22 @@ export const StaffSigningModal: React.FC<{
                       active ? 'border-amber-400/60 bg-amber-400/10 ring-1 ring-amber-400/40' : 'border-slate-800 bg-slate-900/60 hover:border-slate-600'
                     }`}
                   >
-                    {renderPortrait(c.face, c.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-16 h-20')}
+                    {renderPortrait(c.face, c.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-16 h-20', c.staffImageId)}
                     <div className="flex-1 min-w-0">
                       <div className="text-base font-black text-white truncate">{c.name}</div>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-violet-300 mt-0.5">{c.role}</div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-violet-300">{c.role}</div>
+                        {c.id.startsWith('emergency-') && (
+                          <span className="text-[9px] uppercase tracking-wider text-rose-300 bg-rose-900/40 px-1.5 py-0.5 rounded">
+                            Limited options
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">{c.flag} {c.nationality}</div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <OvrRing value={c.rating} />
-                      <div className="text-[11px] font-black text-emerald-300 tabular-nums">{formatCurrencyWithCode(c.salary, 'EUR', false)}</div>
+                      <div className="text-[11px] font-black text-emerald-300 tabular-nums">{formatCurrencyWithCode(c.salary, currency, false)}</div>
                       <div className="text-[10px] text-slate-500">{c.years} yrs exp</div>
                     </div>
                   </button>
@@ -209,7 +268,7 @@ export const StaffSigningModal: React.FC<{
             <main className="p-6">
               <div className="grid lg:grid-cols-[220px_1fr] gap-6">
                 <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 flex justify-center">
-                  {renderPortrait(candidate.face, candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-44 h-56')}
+                  {renderPortrait(candidate.face, candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-44 h-56', candidate.staffImageId)}
                 </div>
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-[0.35em] text-violet-300">{candidate.role}</div>
@@ -217,7 +276,7 @@ export const StaffSigningModal: React.FC<{
                   <p className="text-sm text-slate-400 mt-2">{candidate.flag} {candidate.nationality} · {candidate.years} years experience · Strong fit for {selectedRole}.</p>
                   <div className="mt-5 grid sm:grid-cols-3 gap-3">
                     <FacilityKpi icon={<Award size={20} />} label="Reputation" value={`${candidate.rating}/100`} sub="Market profile" />
-                    <FacilityKpi icon={<Briefcase size={20} />} label="Current Ask" value={formatCurrencyWithCode(candidate.salary, 'EUR', false)} sub="Annual salary" />
+                    <FacilityKpi icon={<Briefcase size={20} />} label="Current Ask" value={formatCurrencyWithCode(candidate.salary, currency, false)} sub="Annual salary" />
                     <FacilityKpi icon={<Star size={20} />} label="Interest" value="High" sub="Would join now" />
                   </div>
                 </div>
@@ -245,9 +304,9 @@ export const StaffSigningModal: React.FC<{
                 <div className="text-xs font-black uppercase tracking-widest text-violet-300">Negotiation Package</div>
                 <p className="text-sm text-slate-400 mt-2">Tune the offer. Strength compares against the current ask.</p>
               </div>
-              <SliderRow label="Annual Salary" value={salary} min={200_000} max={3_000_000} step={50_000} onChange={setSalary} formatter={(v) => formatCurrencyWithCode(v, 'EUR', false)} />
+              <SliderRow label="Annual Salary" value={salary} min={200_000} max={3_000_000} step={50_000} onChange={setSalary} formatter={(v) => formatCurrencyWithCode(v, currency, false)} />
               <SliderRow label="Contract Length" value={years} min={1} max={4} step={1} onChange={setYears} formatter={(v) => `${v} years`} />
-              <SliderRow label="Signing Bonus" value={bonus} min={0} max={900_000} step={25_000} onChange={setBonus} formatter={(v) => formatCurrencyWithCode(v, 'EUR', false)} />
+              <SliderRow label="Signing Bonus" value={bonus} min={0} max={900_000} step={25_000} onChange={setBonus} formatter={(v) => formatCurrencyWithCode(v, currency, false)} />
               {(() => {
                 const effectiveAnnual = salary + (bonus / Math.max(1, years));
                 const ratio = candidate.salary > 0 ? effectiveAnnual / candidate.salary : 1;
@@ -268,8 +327,8 @@ export const StaffSigningModal: React.FC<{
                     <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
                       <div className="text-xs font-black uppercase tracking-widest text-slate-500">Package Preview</div>
                       <div className="mt-3 space-y-2 text-sm">
-                        <div className="flex justify-between"><span className="text-slate-400">Annual</span><span className="font-black text-white">{formatCurrencyWithCode(salary, 'EUR', false)}</span></div>
-                        <div className="flex justify-between"><span className="text-slate-400">Total commitment</span><span className="font-black text-white">{formatCurrencyWithCode(salary * years + bonus, 'EUR', false)}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400">Annual</span><span className="font-black text-white">{formatCurrencyWithCode(salary, currency, false)}</span></div>
+                        <div className="flex justify-between"><span className="text-slate-400">Total commitment</span><span className="font-black text-white">{formatCurrencyWithCode(salary * years + bonus, currency, false)}</span></div>
                         <div>
                           <div className="flex justify-between mb-1">
                             <span className="text-slate-400">Offer Strength</span>
@@ -309,20 +368,20 @@ export const StaffSigningModal: React.FC<{
                 {decision.accepted ? 'Offer Accepted' : 'Offer Rejected'}
               </div>
               <div className="flex justify-center mb-4">
-                {renderPortrait(candidate.face, candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-28 h-36')}
+                {renderPortrait(candidate.face, candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-28 h-36', candidate.staffImageId)}
               </div>
               <h3 className="text-3xl font-black tracking-tight mb-3">{candidate.name}</h3>
               <p className="text-sm text-slate-300 leading-relaxed mb-5 max-w-md mx-auto">
                 {decision.accepted
-                  ? `"${formatCurrencyWithCode(decision.salary, 'EUR', false)} per year for ${decision.years} year${decision.years === 1 ? '' : 's'} works. I'm in — looking forward to getting started."`
+                  ? `"${formatCurrencyWithCode(decision.salary, currency, false)} per year for ${decision.years} year${decision.years === 1 ? '' : 's'} works. I'm in — looking forward to getting started."`
                   : decision.ratio < 0.7
                     ? `"That offer is well below what I'm worth. I'll be looking elsewhere — don't waste my time again."`
                     : `"It's close, but not quite there. Come back with a stronger offer if you really want me."`}
               </p>
               <div className="rounded-lg bg-slate-950/70 border border-slate-800 p-4 mb-6 text-xs text-slate-400 max-w-sm mx-auto">
-                <div className="flex justify-between"><span>Salary</span><span className="text-white font-bold">{formatCurrencyWithCode(decision.salary, 'EUR', false)}</span></div>
+                <div className="flex justify-between"><span>Salary</span><span className="text-white font-bold">{formatCurrencyWithCode(decision.salary, currency, false)}</span></div>
                 <div className="flex justify-between mt-1"><span>Term</span><span className="text-white font-bold">{decision.years} year{decision.years === 1 ? '' : 's'}</span></div>
-                <div className="flex justify-between mt-1"><span>Bonus</span><span className="text-white font-bold">{formatCurrencyWithCode(decision.bonus, 'EUR', false)}</span></div>
+                <div className="flex justify-between mt-1"><span>Bonus</span><span className="text-white font-bold">{formatCurrencyWithCode(decision.bonus, currency, false)}</span></div>
                 <div className="flex justify-between mt-1 pt-1 border-t border-slate-800"><span>vs. ask</span><span className={`font-black ${decision.accepted ? 'text-emerald-300' : 'text-rose-300'}`}>{Math.round(decision.ratio * 100)}%</span></div>
               </div>
               <div className="flex gap-3 max-w-sm mx-auto">

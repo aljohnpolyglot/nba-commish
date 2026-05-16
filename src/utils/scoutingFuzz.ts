@@ -29,7 +29,6 @@ export function fuzzRatingValue(value: number, state: GameState, player?: NBAPla
 }
 
 export function formatFuzzedRating(value: number, state: GameState, player?: NBAPlayer | null, salt = 'ovr'): string {
-  const band = getScoutingFuzzBand(state, player);
   const fuzzed = fuzzRatingValue(value, state, player, salt);
-  return band ? `~${fuzzed}` : String(fuzzed);
+  return String(fuzzed);
 }

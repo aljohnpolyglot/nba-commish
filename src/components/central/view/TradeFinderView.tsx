@@ -33,6 +33,7 @@ import { PlayerHoverCard } from '../../shared/PlayerHoverCard';
 import { PlayerHoverCardK2 } from '../../shared/PlayerHoverCardK2';
 import { isFranchiseLifer } from '../../../utils/playerTenure';
 import { AwardService } from '../../../services/logic/AwardService';
+import { isPbaIsolatedMode } from '../../../utils/uiMode';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -540,8 +541,20 @@ export const OfferCard: React.FC<{
 
 export const TradeFinderView: React.FC = () => {
   const { state, dispatchAction } = useGame();
-  const { players, teams, draftPicks } = state;
+  const { players: allPlayers, teams: nbaTeams, draftPicks } = state;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+
+  const pbaMode = isPbaIsolatedMode(state);
+  const teams = useMemo(() => {
+    if (!pbaMode) return nbaTeams;
+    return ((state as any).nonNBATeams ?? [])
+      .filter((t: any) => t.tid >= 2000 && t.tid < 2100)
+      .map((t: any) => ({ ...t, id: t.tid }) as NBATeam);
+  }, [pbaMode, nbaTeams, (state as any).nonNBATeams]);
+  const players = useMemo(() => {
+    if (!pbaMode) return allPlayers;
+    return allPlayers.filter(p => p.tid >= 2000 && p.tid < 2100);
+  }, [pbaMode, allPlayers]);
 
   const isGM = state.gameMode === 'gm';
   const [selectedTid, setSelectedTid] = useState<number>(isGM && state.userTeamId != null ? state.userTeamId : (teams[0]?.id ?? 0));

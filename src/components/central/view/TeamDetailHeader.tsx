@@ -4,6 +4,7 @@ import { ArrowLeft, Plane } from 'lucide-react';
 import { NBATeam, Game, NBAPlayer } from '../../../types';
 import { calculateTeamStrength } from '../../../utils/playerRatings';
 import { useGame } from '../../../store/GameContext';
+import { isOnRoster } from '../../../utils/teamLookup';
 
 interface TeamDetailHeaderProps {
   team: NBATeam;
@@ -26,6 +27,11 @@ export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
 }) => {
   const { state } = useGame();
   const isGM = state.gameMode === 'gm';
+  const isNonNBA = team.id >= 100;
+  const teamPlayers = players.filter(p => p.tid === team.id && (isNonNBA ? isOnRoster(p) : true));
+  const rawStrength = calculateTeamStrength(team.id, teamPlayers.length > 0 ? teamPlayers : players);
+  const strength = Number.isFinite(rawStrength) ? rawStrength : 40;
+  const leagueLabel = isNonNBA ? team.conference : `${team.conference}ern Conf`;
   return (
     <div className="p-4 md:p-10 border-b border-slate-800 bg-slate-900/50 flex flex-col md:flex-row items-start md:items-center justify-between backdrop-blur-md gap-4">
       <div className="flex items-center gap-4 md:gap-6">
@@ -42,7 +48,7 @@ export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
           <div>
             <h2 className="text-xl md:text-3xl font-black text-white tracking-tighter uppercase">{team.name}</h2>
             <div className="flex items-center gap-2 md:gap-3 mt-1 flex-wrap">
-              <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] bg-indigo-500/10 px-2 py-1 rounded-lg">{team.conference}ern Conf</span>
+              <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] bg-indigo-500/10 px-2 py-1 rounded-lg">{leagueLabel}</span>
               <div className="w-1 h-1 rounded-full bg-slate-700 hidden md:block"></div>
               <span className="text-xs font-bold text-slate-500">{team.wins}W - {team.losses}L</span>
             </div>
@@ -81,7 +87,7 @@ export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Strength</span>
 
             <span className="text-lg md:text-xl font-black text-indigo-400 tracking-tighter">
-                {calculateTeamStrength(team.id, players)}
+                {strength}
             </span>
          </div>
       </div>

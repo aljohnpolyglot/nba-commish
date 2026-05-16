@@ -6,6 +6,7 @@ import { getPlayerImage } from './bioCache';
 import { PERSON_ACTION_DEFS, isPlayerEligible } from '../../../data/personActionDefs';
 import { useGame } from '../../../store/GameContext';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
+import { isEuroIsolatedMode } from '../../../utils/uiMode';
 
 interface PlayerActionsModalProps {
   player: NBAPlayer;
@@ -43,10 +44,12 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
   const isInjured = (player as any)?.injury?.gamesRemaining > 0;
   const currentYear = state.leagueStats?.year ?? new Date().getUTCFullYear();
   const userTeamId = isGM ? state.userTeamId ?? null : null;
+  const euroIsolated = isEuroIsolatedMode(state);
   const actions = MODAL_ACTION_IDS
     .map(id => PERSON_ACTION_DEFS.find(def => def.id === id))
     .filter((def): def is NonNullable<typeof def> => !!def)
-    .filter(def => isPlayerEligible(player, def.eligibility, { currentYear, userTeamId }))
+    .filter(def => isPlayerEligible(player, def.eligibility, { currentYear, userTeamId, euroIsolated }))
+    .filter(def => !(euroIsolated && def.id === 'trade_player'))
     .filter(def => !isGM || !GM_HIDDEN_ACTIONS.has(def.id));
 
   const faMarket = state.faBidding?.markets?.find(

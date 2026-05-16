@@ -16,7 +16,8 @@ import { EuroBankruptcyModal } from './components/tycoon/EuroBankruptcyModal';
 import { FinanceRecapModal } from './components/tycoon/FinanceRecapModal';
 import { PressConferenceModal } from './components/tycoon/PressConferenceModal';
 import { isEuroIsolatedMode } from './utils/uiMode';
-import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet, OffseasonFATagFooter, OffseasonTrainingCampFooter } from './components/offseason/OffseasonAufgaben';
+import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet, OffseasonFATagFooter, OffseasonTrainingCampFooter, OffseasonTransferMarketFooter } from './components/offseason/OffseasonAufgaben';
+import { TransferResolutionModal } from './components/transferMarket/EuroTransferMarketView';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
 import { LeagueTypeSelector, type LeagueType, type ModdedLeagueBase, type EuropeMarket } from './components/setup/LeagueTypeSelector';
 import { useLeagueLabels } from './utils/leagueLabels';
@@ -189,9 +190,26 @@ function GameLayout() {
     if (setupPhase === 'commish' && leagueType) {
       return <CommissionerSetup
         leagueType={leagueType}
-        onStart={(payload) => {
+        onStart={async (payload) => {
+          const { euroCareerSeed, euroCareerLeagueId, ...startPayload } = payload as any;
           setSetupPhase(null);
-          dispatchAction({ type: 'START_GAME', payload });
+          await dispatchAction({ type: 'START_GAME', payload: startPayload });
+          if (euroCareerSeed && startPayload.userTeamId != null) {
+            await dispatchAction({
+              type: 'INIT_EURO_CAREER',
+              payload: {
+                teamId: startPayload.userTeamId,
+                leagueId: euroCareerLeagueId ?? 'endesa',
+                seed: euroCareerSeed,
+              },
+            });
+          }
+          if (startPayload.moddedLeagueBase === 'philippines' && startPayload.userTeamId != null) {
+            await dispatchAction({
+              type: 'INIT_PBA_CAREER',
+              payload: { teamId: startPayload.userTeamId },
+            });
+          }
         }}
         onBack={() => setSetupPhase('leagueType')}
         moddedLeagueBase={moddedLeagueBase}
@@ -307,7 +325,11 @@ function GameLayout() {
         {isEuroIsolatedMode(state) && <TycoonEventToast />}
         <OffseasonAufgabenMobileSheet />
         <OffseasonFATagFooter />
-        <OffseasonTrainingCampFooter />
+        <OffseasonTransferMarketFooter />
+        <TransferResolutionModal />
+        {/* OffseasonTrainingCampFooter removed — the floating "Trim to 15"
+            bar nagged the user even when the training-camp pool allows 20.
+            The same action lives in the offseason rail; no need to duplicate. */}
         {state.lastOutcome && state.gameMode !== 'gm' && !state.isProcessing && <OutcomeView />}
       </main>
     </div>

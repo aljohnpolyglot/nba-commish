@@ -18,3 +18,12 @@ export function deterministicStaffImageId(name: string): number {
   }
   return (Math.abs(hash) % MAX_STAFF_IMAGE) + 1;
 }
+
+/** Single source of truth for portrait resolution. Existing ID wins; otherwise
+ *  hash the name. Never returns null and never returns random — same person
+ *  always gets the same portrait across modal/card/save/reload. */
+export function resolveStaffImageId(person: { staffImageId?: number | null; name?: string | null }): number {
+  const id = person.staffImageId;
+  if (typeof id === 'number' && id >= 1 && id <= MAX_STAFF_IMAGE) return id;
+  return deterministicStaffImageId(person.name ?? '');
+}

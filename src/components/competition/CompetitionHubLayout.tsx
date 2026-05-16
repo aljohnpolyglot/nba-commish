@@ -15,6 +15,11 @@ import { TeamStatsView } from '../team-stats/TeamStatsView';
 import { AwardRacesView } from '../view/AwardRacesView';
 import { CompetitionHistoryView } from './CompetitionHistoryView';
 import { CompetitionHubLeagueTabContext } from './hubContext';
+import { LeagueFinancesPanel } from '../finances/LeagueFinancesPanel';
+import type { FinanceTeamLike } from '../finances/LeagueFinancesPanel';
+import { selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
+import { resolveAnyTeam } from '../../utils/teamLookup';
+import { EXTERNAL_CURRENCY } from '../../constants';
 
 interface Props {
   specId: 'euroleague' | 'endesa';
@@ -37,12 +42,36 @@ export const CompetitionHubLayout: React.FC<Props> = ({ specId, onViewChange }) 
     setViewState(next);
   };
 
+  const renderFinances = () => {
+    if (!spec) {
+      return <div className="p-6 text-slate-400 text-sm">Competition not active.</div>;
+    }
+    const tids = selectCompetitionTeamTids(spec, state as any);
+    const teams: FinanceTeamLike[] = tids
+      .map(tid => resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []))
+      .filter((team): team is NonNullable<typeof team> => team !== null);
+    // Pick currency: Endesa/Euroleague both EUR; fall back to spec.id mapping.
+    const curKey = specId === 'endesa' ? 'Endesa' : 'Euroleague';
+    const symbol = EXTERNAL_CURRENCY[curKey]?.symbol ?? '€';
+    return (
+      <LeagueFinancesPanel
+        teams={teams}
+        players={state.players ?? []}
+        displayName={spec.displayName}
+        shortName={spec.shortName}
+        currencySymbol={symbol}
+        seasonYear={state.leagueStats?.year ?? new Date().getFullYear()}
+      />
+    );
+  };
+
   const renderMain = () => {
     switch (view) {
       case 'bracket':         return <CompetitionBracketView specId={specId} />;
       case 'standings':       return <CompetitionView specId={specId} />;
       case 'central':         return <CompetitionCentralView specId={specId} />;
       case 'team-history':    return <TeamHistoryView />;
+      case 'finances':        return renderFinances();
       case 'player-stats':    return <PlayerStatsView />;
       case 'player-ratings':  return <PlayerRatingsView />;
       case 'team-stats':      return <TeamStatsView />;

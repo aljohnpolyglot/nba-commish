@@ -20,8 +20,17 @@ import { isRfaMatchingEnabled } from '../utils/ruleFlags';
 import { computeTradeEligibleDate } from '../utils/signingMoratorium';
 import { daysBetweenGameDates, getGameDateParts, getTrainingCampDate, parseGameDate } from '../utils/dateUtils';
 import { getOffseasonState, logOffseasonDrift } from './offseason/offseasonState';
+import { projectYearEndCash, computeAnnualBudget } from './tycoon/budgetEngine';
 
-const DEFAULT_MAX_ROSTER = 15;
+// Mode-aware roster fallback used only when leagueStats has no explicit
+// maxStandardPlayersPerTeam / maxPlayersPerTeam value. Keep the NBA-15
+// default for legacy saves but honour FIBA/ACB/EuroLeague reality (12)
+// when the save's uiMode is euro_isolated. Setup defaults in constants
+// usually populate the explicit values, so this fallback rarely fires —
+// it exists for stale saves that predate the euro defaults.
+function defaultMaxRoster(leagueStats: { uiMode?: string | null } | undefined): number {
+  return leagueStats?.uiMode === 'euro_isolated' ? 12 : 15;
+}
 // Guaranteed contracts should not be waived immediately after signing. The old
 // 30-day guard let 31-60 day sign-and-waive churn book dead money; 60 days
 // covers the common Oct/Nov fringe-signing cycle without blocking season-long
@@ -487,7 +496,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
     );
 
   // Pass 1/4 always cap at 15; slots 16–21 belong to Pass 2 (2W) and Pass 3 (NG).
-  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? state.leagueStats.maxPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
+  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? state.leagueStats.maxPlayersPerTeam ?? defaultMaxRoster(state.leagueStats);
 
   // Track MLE spend within this round so a team can't double-spend before state updates
   const localMleUsed = new Map<number, { type: MleType; usedUSD: number }>();
@@ -498,6 +507,60 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
 
   // Helper: record a signing into results + remove from pool
   const rfaEnabled = isRfaMatchingEnabled(state.leagueStats);
+  const aiSigningWouldBankrupt = (
+    team: NBATeam,
+    offer: { salaryUSD: number },
+  ): boolean => {
+    if ((state.leagueStats as any)?.uiMode !== 'euro_isolated' || !(team as any).tycoon) return false;
+    const roundSpendEUR = results
+      .filter(r => r.teamId === team.id)
+      .reduce((sum, r) => sum + r.salaryUSD, 0);
+    const projected = projectYearEndCash(team, {
+      year: state.leagueStats.year,
+      endesaFinishPosition: (team as any).lastEndesaFinish ?? 9,
+      euroleagueStage: (team as any).lastEuroleagueStage ?? 'none',
+      euroleagueAwayGames: (team as any).lastEuroAwayGames ?? 0,
+      endesaPrizeEUR: 0,
+      euroleaguePrizeEUR: 0,
+    }, roundSpendEUR + offer.salaryUSD, state.players);
+    return projected < 0;
+  };
+
+  // Wage-discipline guard for euro-mode AI: an owner won't approve a deal
+  // that pushes wages over a tier-aware fraction of projected revenue,
+  // even if cash reserves still cover the loss. Hard cap = 75% of revenue
+  // (clubs spending more than that historically face FFP/board pressure).
+  // Tightens to 60% after two losing seasons (Owner Patience proxy).
+  const aiSigningExceedsWageCap = (
+    team: NBATeam,
+    offer: { salaryUSD: number },
+  ): boolean => {
+    if ((state.leagueStats as any)?.uiMode !== 'euro_isolated' || !(team as any).tycoon) return false;
+    const tycoon = (team as any).tycoon;
+    const ledger = computeAnnualBudget(team, {
+      year: state.leagueStats.year,
+      endesaFinishPosition: (team as any).lastEndesaFinish ?? 9,
+      euroleagueStage: (team as any).lastEuroleagueStage ?? 'none',
+      euroleagueAwayGames: (team as any).lastEuroAwayGames ?? 0,
+      endesaPrizeEUR: 0,
+      euroleaguePrizeEUR: 0,
+    }, state.players);
+    const projectedRevenue = (ledger.revenue.matchday ?? 0)
+                           + (ledger.revenue.sponsorship ?? 0)
+                           + (ledger.revenue.tv ?? 0)
+                           + (ledger.revenue.prize ?? 0);
+    if (projectedRevenue <= 0) return false; // no signal — let cash gate decide
+    const roundSpendEUR = results
+      .filter(r => r.teamId === team.id)
+      .reduce((sum, r) => sum + r.salaryUSD, 0);
+    const currentWages = (ledger.expenses.wages ?? 0);
+    const projectedWages = currentWages + roundSpendEUR + offer.salaryUSD;
+    // Lossy seasons in last two ledger entries → tighter cap.
+    const recent = (tycoon.ledgerHistory ?? []).slice(-2);
+    const lossStreak = recent.length >= 2 && recent.every((l: any) => (l?.profit ?? 0) < 0);
+    const wageRatioCap = lossStreak ? 0.60 : 0.75;
+    return projectedWages / projectedRevenue > wageRatioCap;
+  };
 
   const signPlayer = (
     player: NBAPlayer,
@@ -555,6 +618,12 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
     }
     if (isUserTeam(finalTeam.id)) {
       console.warn('[AI-FA] SKIPPING user team fill');
+      return;
+    }
+    if (aiSigningWouldBankrupt(finalTeam, offer)) {
+      return;
+    }
+    if (aiSigningExceedsWageCap(finalTeam, offer)) {
       return;
     }
 
@@ -1204,7 +1273,7 @@ function isRecentlySignedWithinGrace(player: NBAPlayer, currentDate: string | un
 
 export function autoTrimOversizedRosters(state: GameState, month?: number, day?: number): WaiverResult[] {
   const userTeamId = (state.gameMode === 'gm') ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
-  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
+  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? defaultMaxRoster(state.leagueStats);
   const maxTrainingCamp = state.leagueStats.maxTrainingCampRoster ?? 21;
   const maxTwoWay = state.leagueStats.maxTwoWayPlayersPerTeam ?? 3;
   const salaryCapUSD = state.leagueStats.salaryCap ?? 140_000_000;
@@ -1504,7 +1573,7 @@ export interface PromotionResult {
 
 export function autoPromoteTwoWayExcess(state: GameState, month?: number): PromotionResult[] {
   const userTeamId = (state.gameMode === 'gm') ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
-  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
+  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? defaultMaxRoster(state.leagueStats);
   const maxTwoWay = (state.leagueStats as any).twoWayContractsEnabled === false
     ? 0
     : (state.leagueStats.maxTwoWayPlayersPerTeam ?? 3);
@@ -1941,7 +2010,7 @@ export function runAIBirdRightsResigns(state: GameState): BirdRightsResignResult
   const currentYear = state.leagueStats.year;
   const userTeamId = resolveUserTeamId(state);
   const thresholds = getCapThresholds(state.leagueStats as any);
-  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
+  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? defaultMaxRoster(state.leagueStats);
   const marketPendingIds = getActiveFAMarketPlayerIds(state);
   const results: BirdRightsResignResult[] = [];
   // Track per-team re-signs so a single team doesn't blow its roster on one pass
@@ -2085,7 +2154,7 @@ export function runAIMleUpgradeSwaps(
 
   const thresholds   = getCapThresholds(state.leagueStats as any);
   const currentYear  = state.leagueStats.year;
-  const maxStandard  = state.leagueStats.maxStandardPlayersPerTeam ?? DEFAULT_MAX_ROSTER;
+  const maxStandard  = state.leagueStats.maxStandardPlayersPerTeam ?? defaultMaxRoster(state.leagueStats);
   const minSalaryUSD = getMinSalaryUSD(state.leagueStats);
   const marketPendingIds = getActiveFAMarketPlayerIds(state);
 

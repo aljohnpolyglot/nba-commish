@@ -30,6 +30,7 @@ import { getSimulationDayCount, isInstantTransactionAction, isSimulationTickActi
 import { isNbaCupEnabled } from '../../utils/ruleFlags';
 import { applyTradeToPlayer } from '../../utils/playerBirdRights';
 import { applyEuroTycoonDailyOps } from '../../services/tycoon/euroTycoonOps';
+import { inferEuroStaffLeagueId, ensureStaffPoolDepth } from '../../services/euro/staffPool';
 
 export { handleStartGame, handleAnnounceChange };
 
@@ -955,6 +956,23 @@ export const processTurn = async (
     }
     // Keep all bets — pagination in the UI handles large lists
     const prunedBets = betResolution.updatedBets;
+    const previousMonthKey = normalizeDate(state.date).slice(0, 7);
+    const finalMonthKey = normalizedFinalDate.slice(0, 7);
+    const shouldRefillStaffPool =
+        daysToAdvance > 0 &&
+        previousMonthKey !== finalMonthKey &&
+        state.gameMode === 'gm' &&
+        !!state.leagueStats?.staffPoolSeeded &&
+        state.userTeamId >= 1000 &&
+        state.userTeamId < 9000;
+    // Monthly tick: top up to min 10 per position for the user's league.
+    // Idempotent — positions already at or above the floor get no additions.
+    const staffPoolAfterMonthlyRefill = shouldRefillStaffPool
+        ? ensureStaffPoolDepth(
+            { ...state, players: updatedPlayers, nonNBATeams: (stateWithSim as any).nonNBATeams ?? state.nonNBATeams } as GameState,
+            inferEuroStaffLeagueId(state.userTeamId),
+          ).staffFreeAgents
+        : state.staffFreeAgents;
 
     // ── Draft Lottery & Draft Auto-Fire ──────────────────────────────────────
     // autoRunLottery / autoRunDraft only fire inside lazySimRunner's event loop.
@@ -1260,9 +1278,18 @@ export const processTurn = async (
         pendingRecoveryToasts: stateWithSim.pendingRecoveryToasts,
         pendingOptionToasts: stateWithSim.pendingOptionToasts,
         faBidding: stateWithSim.faBidding,
+        staffFreeAgents: staffPoolAfterMonthlyRefill,
         pendingFAToasts: stateWithSim.pendingFAToasts,
         pendingRFAOfferSheets: (stateWithSim as any).pendingRFAOfferSheets,
         pendingRFAMatchResolutions: (stateWithSim as any).pendingRFAMatchResolutions,
+        // Euro Transfer Market — the ticker mutates these inside simulationHandler
+        // but the return whitelist gates what reaches setState. Without this
+        // line, daysLeft decrement and AI accepts/rejects compute correctly
+        // but get thrown away on merge.
+        transferListings: stateWithSim.transferListings,
+        transferBids: stateWithSim.transferBids,
+        transferActivity: stateWithSim.transferActivity,
+        pendingTransferToasts: (stateWithSim as any).pendingTransferToasts,
         simCurrentDate: undefined,
     };
 };

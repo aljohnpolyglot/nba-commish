@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { calculateTeamStrength } from '../../utils/playerRatings';
 import { getActiveLeagueTeams, isOnRoster, resolveAnyTeam } from '../../utils/teamLookup';
+import { getTeamFullName } from '../../utils/teamNames';
 
 interface Props {
   onSelectTeam: (teamId: number) => void;
@@ -40,7 +41,7 @@ export const TrainingFranchisePicker: React.FC<Props> = ({ onSelectTeam }) => {
 
   const renderRow = (entry: typeof teamData[number]) => {
     const { team, roster, ovr, planCount } = entry;
-    const fullName = team.region && !team.name.includes(team.region) ? `${team.region} ${team.name}` : team.name;
+    const fullName = getTeamFullName(team);
     return (
       <button
         key={team.id}
@@ -138,9 +139,7 @@ export const TrainingFranchisePicker: React.FC<Props> = ({ onSelectTeam }) => {
               </div>
               <div className="flex-1 min-w-0 relative z-10">
                 <div className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white truncate">
-                  {userTeam.region && !userTeam.name.includes(userTeam.region)
-                    ? `${userTeam.region} ${userTeam.name}`
-                    : userTeam.name}
+                  {getTeamFullName(userTeam)}
                 </div>
                 <div className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 tabular-nums flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <span>{userTeam.wins}-{userTeam.losses}</span>

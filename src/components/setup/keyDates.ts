@@ -5,7 +5,7 @@ export interface KeyDate {
   label: string;
   sublabel?: string;
   icon: string;
-  zone: DateZone;
+  zone: DateZone | PbaDateZone;
   locked?: boolean;
   placeholder?: boolean;
   placeholderLabel?: string;
@@ -52,10 +52,48 @@ export function getKeyDates(leagueType?: 'fictional' | 'modded'): KeyDate[] {
 export const KEY_DATES: KeyDate[] = getKeyDates('modded');
 
 export const TIMELINE_MIN = '2025-08-06';
-export const TIMELINE_MAX = '2026-06-29';  // Timeline slider shows season 1 only
+export const TIMELINE_MAX = '2026-06-29';
 export const TIMELINE_DISPLAY_END = '2026-07-10';
-// For multi-season jumps: user types date manually in the date input below the timeline.
-// The lazy sim handles unlimited forward jumps — no timeline slider needed for 2027+.
+
+export const PBA_TIMELINE_MIN = '2025-10-05';
+export const PBA_TIMELINE_MAX = '2026-12-28';
+export const PBA_TIMELINE_DISPLAY_END = '2027-01-10';
+
+export type PbaDateZone = 'philippineCup' | 'allstar' | 'commissionersCup' | 'governorsCup' | 'offseason';
+
+export function getPbaKeyDates(): KeyDate[] {
+  return [
+    { date: '2025-10-05', label: 'Phil. Cup Opening',   sublabel: 'All-Filipino conference begins',              icon: '🏀', zone: 'philippineCup' },
+    { date: '2025-12-15', label: 'Phil. Cup Playoffs',   sublabel: 'Twice-to-beat quarterfinals',                 icon: '🏆', zone: 'philippineCup' },
+    { date: '2026-01-28', label: 'Phil. Cup Finals',     sublabel: 'Best-of-7 championship series',               icon: '🏆', zone: 'philippineCup' },
+    { date: '2026-03-06', label: 'All-Star Weekend',     sublabel: 'Captain draft, 3-point contest, main event',  icon: '⭐', zone: 'allstar' },
+    { date: '2026-03-11', label: 'Comm. Cup Opening',    sublabel: '1 import per team, no height limit',          icon: '🏀', zone: 'commissionersCup' },
+    { date: '2026-03-11', label: 'Import Search',        sublabel: 'Sign your conference import',                  icon: '🔍', zone: 'commissionersCup', placeholder: true, placeholderLabel: 'Import Search — auto-resolved on jump' },
+    { date: '2026-07-01', label: 'Comm. Cup Playoffs',   sublabel: 'Twice-to-beat quarterfinals',                 icon: '🏆', zone: 'commissionersCup' },
+    { date: '2026-08-08', label: 'Comm. Cup Finals',     sublabel: 'Best-of-7 championship series',               icon: '🏆', zone: 'commissionersCup' },
+    { date: '2026-09-10', label: 'Gov. Cup Opening',     sublabel: '1 import, max 6\'5" height limit',            icon: '🏀', zone: 'governorsCup' },
+    { date: '2026-09-10', label: 'Import Search (6\'5")', sublabel: 'Height-restricted import signing',           icon: '🔍', zone: 'governorsCup', placeholder: true, placeholderLabel: 'Import Search — auto-resolved on jump' },
+    { date: '2026-11-10', label: 'Gov. Cup Playoffs',    sublabel: 'Twice-to-beat quarterfinals',                 icon: '🏆', zone: 'governorsCup' },
+    { date: '2026-12-14', label: 'Gov. Cup Finals',      sublabel: 'Best-of-7 championship series',               icon: '🏆', zone: 'governorsCup' },
+    { date: '2026-12-28', label: 'Season Awards',        sublabel: 'MVP, Mythical Team, Grand Slam check',        icon: '🎖️', zone: 'governorsCup' },
+  ];
+}
+
+export const PBA_ZONE_COLORS: Record<PbaDateZone, string> = {
+  philippineCup:    '#1B4D3E',
+  allstar:          '#854d0e',
+  commissionersCup: '#C41E3A',
+  governorsCup:     '#B8860B',
+  offseason:        '#334155',
+};
+
+export const PBA_ZONE_LABELS: Record<PbaDateZone, string> = {
+  philippineCup:    'Philippine Cup',
+  allstar:          'All-Star',
+  commissionersCup: "Commissioner's Cup",
+  governorsCup:     "Governors' Cup",
+  offseason:        'Offseason',
+};
 
 export const ZONE_COLORS: Record<DateZone, string> = {
   offseason: '#334155',

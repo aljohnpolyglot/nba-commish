@@ -3,6 +3,8 @@ import { Handshake } from 'lucide-react';
 import type { TycoonState, SponsorshipSlot } from '../../types/tycoon';
 import { formatCurrencyWithCode } from '../../utils/helpers';
 import { HelpIconPopover } from './HelpIconPopover';
+import { SponsorLogo } from './SponsorLogo';
+import { getBrandMeta } from '../../data/sponsorCatalogFetcher';
 
 interface Props {
   tycoon: TycoonState;
@@ -57,10 +59,13 @@ export const SponsorshipCard: React.FC<Props> = ({ tycoon, currency, onNegotiate
                 </button>
               </div>
               {s ? (
-                <>
-                  <p className="text-sm font-bold text-white">{s.sponsor}</p>
-                  <p className="text-xs text-slate-400">{fmt(s.valuePerYear)}/yr · <span className={s.yearsRemaining === 1 ? 'text-amber-300' : 'text-slate-400'}>{s.yearsRemaining}y left</span></p>
-                </>
+                <div className="flex items-center gap-2.5">
+                  <SponsorLogo name={s.sponsor} meta={getBrandMeta('spain', s.sponsor)} industry={s.industry ?? 'generic'} size={36} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-white truncate">{s.sponsor}</p>
+                    <p className="text-xs text-slate-400">{fmt(s.valuePerYear)}/yr · <span className={s.yearsRemaining === 1 ? 'text-amber-300' : 'text-slate-400'}>{s.yearsRemaining}y left</span></p>
+                  </div>
+                </div>
               ) : (
                 <>
                   <p className="text-sm font-bold text-amber-300">Default Fallback</p>

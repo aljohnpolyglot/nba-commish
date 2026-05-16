@@ -258,6 +258,14 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'Front Office Facilities' as Tab,      label: 'Facilities',        icon: Hammer },
       ],
     }] : []),
+    // NBA GM mode gets ONLY the Staff entry (signings / fires / personnel
+    // actions) — no Finances / Sponsorships / Facilities, those are euro-only.
+    ...(isGM && !euroIsolated && !pbaIsolated ? [{
+      label: 'Front Office',
+      items: [
+        { id: 'Front Office Staff' as Tab, label: 'Staff', icon: IdCard },
+      ],
+    }] : []),
     ...(!isGM ? [{
       label: 'Seasonal',
       items: [

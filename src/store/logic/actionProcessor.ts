@@ -12,6 +12,7 @@ import { handleSignFreeAgent, handleSuspendPlayer, handleSabotagePlayer, handleD
 import { handleInvitePerformance, handleGlobalGames, handleRigLottery, handleHypnotize, handleHypnoticBroadcast, handleVisitNonNbaTeam, handleTravel, handleInviteDinner } from './actions/eventActions';
 import { handleGoToClub } from './actions/clubActions';
 import { handleEndorseHof } from './actions/hofActions';
+import { resolveAnyTeam } from '../../utils/teamLookup';
 
 export const processAction = async (stateWithSim: GameState, action: UserAction, executiveTradeTransactionRef: { current: any }, simResults: any[] = [], daysToSimulate: number = 1) => {
     let result;
@@ -270,8 +271,8 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
 
         if (action.payload?.watchedGameResult) {
             const r = action.payload.watchedGameResult;
-            const homeTeam = stateWithSim.teams.find(t => t.id === r.homeTeamId);
-            const awayTeam = stateWithSim.teams.find(t => t.id === r.awayTeamId);
+            const homeTeam = resolveAnyTeam(r.homeTeamId, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
+            const awayTeam = resolveAnyTeam(r.awayTeamId, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
             const winner = r.winnerId === r.homeTeamId ? homeTeam?.name : awayTeam?.name;
             storySeeds.push(
                 `IMPORTANT: The Commissioner attended tonight's game in person — ` +
@@ -286,8 +287,8 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
         for (const gameRes of simResults) {
             if (gameRes.fight) {
                 const f = gameRes.fight;
-                const homeTeam = stateWithSim.teams.find(t => t.id === gameRes.homeTeamId);
-                const awayTeam = stateWithSim.teams.find(t => t.id === gameRes.awayTeamId);
+                const homeTeam = resolveAnyTeam(gameRes.homeTeamId, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
+                const awayTeam = resolveAnyTeam(gameRes.awayTeamId, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
                 const matchup = `${awayTeam?.name ?? 'Away'} @ ${homeTeam?.name ?? 'Home'}`;
 
                 if (f.severity === 'scuffle') {

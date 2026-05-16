@@ -16,18 +16,23 @@ export type PersonnelActionType =
   | 'fine'
   | 'dinner'
   | 'movie'
-  | 'suspension';
+  | 'suspension'
+  | 'view_ratings'
+  | 'fire'
+  | 'promote_to_hc'
+  | 'resign_staff';
 
 interface PersonnelActionsModalProps {
   person: Personnel | null;
   isOpen: boolean;
   onClose: () => void;
   onActionSelect: (actionType: PersonnelActionType) => void;
+  filterActions?: PersonnelActionType[];
 }
 
 // Ordered list of actions shown in this modal.
 const MODAL_ACTION_IDS: PersonnelActionType[] = [
-  'view_bio', 'contact', 'bribe', 'fine', 'dinner', 'movie', 'suspension',
+  'resign_staff', 'view_ratings', 'promote_to_hc', 'view_bio', 'contact', 'bribe', 'fine', 'dinner', 'movie', 'suspension', 'fire',
 ];
 
 // ─────────────────────────────────────────────────────────────────
@@ -39,10 +44,12 @@ export const PersonnelActionsModal: React.FC<PersonnelActionsModalProps> = ({
   isOpen,
   onClose,
   onActionSelect,
+  filterActions,
 }) => {
   if (!person) return null;
 
   const actions = MODAL_ACTION_IDS
+    .filter(id => !filterActions || filterActions.includes(id))
     .map(id => PERSON_ACTION_DEFS.find(def => def.id === id))
     .filter((def): def is NonNullable<typeof def> => !!def)
     .filter(def => isPersonnelEligible(person.type as StaffType, def.eligibility));

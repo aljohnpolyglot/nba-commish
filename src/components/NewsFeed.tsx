@@ -13,18 +13,19 @@ import { enrichNewsWithPhoto } from '../services/social/photoEnricher';
 import type { GamePhotoInfo } from '../services/social/photoEnricher';
 import type { NBAPlayer } from '../types';
 import { getPlayerImage } from './central/view/bioCache';
+import { resolveAnyTeam } from '../utils/teamLookup';
 
 // ─── Build gameLookup from boxScores + teams ───────────────────────────────────
 
 function buildGameLookup(
   boxScores: any[],
-  teams: any[]
+  teams: any[],
+  nonNBATeams: any[]
 ): Map<number, GamePhotoInfo> {
-  const teamById = new Map(teams.map((t: any) => [t.id, t]));
   const lookup = new Map<number, GamePhotoInfo>();
   for (const game of boxScores) {
-    const homeTeam = teamById.get(game.homeTeamId);
-    const awayTeam = teamById.get(game.awayTeamId);
+    const homeTeam = resolveAnyTeam(game.homeTeamId, teams, nonNBATeams);
+    const awayTeam = resolveAnyTeam(game.awayTeamId, teams, nonNBATeams);
     if (!homeTeam || !awayTeam) continue;
     const allStats = [...(game.homeStats || []), ...(game.awayStats || [])];
     const topPlayers = allStats
@@ -180,8 +181,8 @@ export const NewsFeed: React.FC = () => {
   const enrichingRef = useRef(new Set<string>());
 
   const gameLookup = useMemo(
-    () => buildGameLookup(state.boxScores || [], state.teams || []),
-    [state.boxScores, state.teams]
+    () => buildGameLookup(state.boxScores || [], state.teams || [], state.nonNBATeams || []),
+    [state.boxScores, state.teams, state.nonNBATeams]
   );
 
   const allArticles = useMemo<NewsItem[]>(() => {

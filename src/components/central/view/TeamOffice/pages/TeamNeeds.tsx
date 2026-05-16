@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { NBAPlayer } from '../../../../../types';
+import { getActiveLeagueTeams, isOnRoster } from '../../../../../utils/teamLookup';
 
 interface TeamNeedsProps {
   teamId: number;
@@ -32,7 +33,7 @@ const getPlayerCategoryScores = (p: NBAPlayer) => {
 
 export function TeamNeeds({ teamId }: TeamNeedsProps) {
   const { state } = useGame();
-  const allActive = (state.players || []).filter(p => p.tid >= 0 && p.status === 'Active');
+  const allActive = (state.players || []).filter(p => p.tid >= 0 && isOnRoster(p));
   const teamPlayers = allActive.filter(p => p.tid === teamId);
   const currentYear = state.leagueStats?.year;
 

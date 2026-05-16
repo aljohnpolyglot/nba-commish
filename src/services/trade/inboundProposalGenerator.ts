@@ -105,6 +105,7 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
     teamOutlooks, proposedDate, classStrengthByYear, lotterySlotByTid, powerRanks,
     isPostDeadlinePreFA = false, recentlySignedLockMs, mvpRank, leagueStats,
   } = input;
+  if ((leagueStats as any)?.tradesAllowed === false) return [];
   const tradablePickWindow = (leagueStats as any)?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
   const stepienEnabled = (leagueStats as any)?.stepienRuleEnabled !== false;
   const tvCtx = mvpRank ? { leaguePerAvg: 15, isRegularSeason: false, mvpRank } : undefined;

@@ -19,6 +19,8 @@ export interface MockClub {
   league: string;
   flag: string;
   colorHex: string;
+  /** Team logo URL — preferred over the colored-circle abbrev when present. */
+  logoUrl?: string;
 }
 
 export interface MockPlayer {
@@ -40,6 +42,7 @@ export interface MockPlayer {
 
 export interface InboxBid {
   id: string;
+  listingId: string;
   player: MockPlayer;
   bidder: MockClub;
   bidType: BidType;
@@ -120,14 +123,14 @@ const PLAYERS: Record<string, MockPlayer> = {
 // ── Mock fixtures ────────────────────────────────────────────────────────────
 
 export const MOCK_INBOX_BIDS: InboxBid[] = [
-  { id: 'b1', player: PLAYERS.cardenas, bidder: CLUBS.BAR, bidType: 'Transfer',      amountEUR: 2_800_000, pctVsAsking: 20,  expiresInDays: 5, status: 'Highest Bid', receivedDate: '15 Jul' },
-  { id: 'b2', player: PLAYERS.martinez, bidder: CLUBS.VLC, bidType: 'Transfer',      amountEUR: 2_600_000, pctVsAsking: 8,   expiresInDays: 4, status: 'Active',      receivedDate: '14 Jul' },
-  { id: 'b3', player: PLAYERS.ndiaye,   bidder: CLUBS.ASM, bidType: 'Transfer',      amountEUR: 2_100_000, pctVsAsking: -12, expiresInDays: 2, status: 'Outbid',      receivedDate: '13 Jul' },
-  { id: 'b4', player: PLAYERS.stoja,    bidder: CLUBS.MIL, bidType: 'Buyout',        amountEUR: 1_800_000, pctVsAsking: 0,   expiresInDays: 6, status: 'Active',      receivedDate: '15 Jul' },
-  { id: 'b5', player: PLAYERS.yurin,    bidder: CLUBS.PAN, bidType: 'Transfer',      amountEUR: 2_200_000, pctVsAsking: -4,  expiresInDays: 3, status: 'Active',      receivedDate: '14 Jul' },
-  { id: 'b6', player: PLAYERS.vilim,    bidder: CLUBS.OLY, bidType: 'Loan',          amountEUR: 400_000,   pctVsAsking: 0,   expiresInDays: 7, status: 'Active',      receivedDate: '15 Jul' },
-  { id: 'b7', player: PLAYERS.kostic,   bidder: CLUBS.FNB, bidType: 'Release Clause',amountEUR: 6_000_000, pctVsAsking: 100, expiresInDays: 1, status: 'Highest Bid', receivedDate: '15 Jul' },
-  { id: 'b8', player: PLAYERS.almanza,  bidder: CLUBS.HOU, bidType: 'Buyout',        amountEUR: 900_000,   pctVsAsking: -25, expiresInDays: 2, status: 'Rejected',    receivedDate: '12 Jul' },
+  { id: 'b1', listingId: 'l1', player: PLAYERS.cardenas, bidder: CLUBS.BAR, bidType: 'Transfer',      amountEUR: 2_800_000, pctVsAsking: 20,  expiresInDays: 5, status: 'Highest Bid', receivedDate: '15 Jul' },
+  { id: 'b2', listingId: 'l2', player: PLAYERS.martinez, bidder: CLUBS.VLC, bidType: 'Transfer',      amountEUR: 2_600_000, pctVsAsking: 8,   expiresInDays: 4, status: 'Active',      receivedDate: '14 Jul' },
+  { id: 'b3', listingId: 'l3', player: PLAYERS.ndiaye,   bidder: CLUBS.ASM, bidType: 'Transfer',      amountEUR: 2_100_000, pctVsAsking: -12, expiresInDays: 2, status: 'Outbid',      receivedDate: '13 Jul' },
+  { id: 'b4', listingId: 'l1', player: PLAYERS.stoja,    bidder: CLUBS.MIL, bidType: 'Buyout',        amountEUR: 1_800_000, pctVsAsking: 0,   expiresInDays: 6, status: 'Active',      receivedDate: '15 Jul' },
+  { id: 'b5', listingId: 'l2', player: PLAYERS.yurin,    bidder: CLUBS.PAN, bidType: 'Transfer',      amountEUR: 2_200_000, pctVsAsking: -4,  expiresInDays: 3, status: 'Active',      receivedDate: '14 Jul' },
+  { id: 'b6', listingId: 'l3', player: PLAYERS.vilim,    bidder: CLUBS.OLY, bidType: 'Loan',          amountEUR: 400_000,   pctVsAsking: 0,   expiresInDays: 7, status: 'Active',      receivedDate: '15 Jul' },
+  { id: 'b7', listingId: 'l4', player: PLAYERS.kostic,   bidder: CLUBS.FNB, bidType: 'Release Clause',amountEUR: 6_000_000, pctVsAsking: 100, expiresInDays: 1, status: 'Highest Bid', receivedDate: '15 Jul' },
+  { id: 'b8', listingId: 'l4', player: PLAYERS.almanza,  bidder: CLUBS.HOU, bidType: 'Buyout',        amountEUR: 900_000,   pctVsAsking: -25, expiresInDays: 2, status: 'Rejected',    receivedDate: '12 Jul' },
 ];
 
 export const MOCK_MY_LISTINGS: MyListing[] = [

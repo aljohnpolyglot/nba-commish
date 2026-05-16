@@ -4,6 +4,31 @@
 
 ---
 
+## 🆕 PLANNED — Youth Academy → NBA Draft Declaration (Euro-Mode bridge)
+
+**Idee:** Euro-Youth-Spieler (15-19 auf User-Team) "deklarieren" sich für den NBA Draft, sobald sie eligible werden. Reale Vorlage: Luka Dončić verlässt Real Madrid für den 2018 Draft. Aufgabe im Offseason zeigt nur, wenn 1+ Spieler eligibility erreicht.
+
+### Recherche-Notizen (gemacht 2026-05-15)
+- **Draft-Eligibility-Regel** liegt in `leagueStats.draftEligibilityRule`. Default `'one_and_done'` (Mindestalter 19). Andere: `prep_to_pro` (17+), `hardship`, `pre_1970s`.
+- **100-Player-Cap** ist `TARGET_CLASS_SIZE` in `src/services/draftClassFiller.ts:20`. Filler läuft bei Init + jedem Season-Rollover und füllt 4 Jahre (current + next 3) auf 100 pro Klasse auf. Erkennung: `p.tid === -2 && p.draft.year >= currentYear`.
+- **Wann passiert es:** Rollover läuft Mitte Juni (nach Finals). Wenn der Youth-Spieler im aktuellen Offseason "declared", landet er bei `tid = -2` mit `draft.year = currentYear + 1` (also nächstes Jahr Draft). User-Frage "ist das beim Rollover, also nächster Jahr Draft?" → **Ja.** Declaration ist eine Aktion *in der aktuellen Offseason*, der Draft selbst läuft erst nächstes Jahr Juni.
+- **Wo Youth lebt:** `AcademySection` filtert `players.filter(p => p.tid === userTeamId && computeAge(p) >= 15 && <= 19)`. Nach Declaration → `tid = -2`, raus von der Team-Roster, rein in den Prospect-Pool.
+
+### Geplante Implementation
+- **Detection-Hook** in `OffseasonAufgaben.tsx`: zähle Players mit `tid === userTeamId && age === 19 (oder eligibility-rule-Threshold) && status === 'Active'` für aktuelles Euro-Team. Wenn `>= 1` → Row `draftDeclarations` 'pending' sichtbar; sonst `skipped`.
+- **Neuer OffseasonChecklistRow** `'draftDeclarations'`, eingehängt **NACH** `youthPromotion` (Promotion entscheidet erst, ob Spieler in Senior-Squad rückt; Declaration kommt danach für die, die nicht promotet wurden ODER trotz Promotion in NBA wollen).
+- **Modal in Sidebar** (Pattern wie `YouthPromotionPanel`): Liste der eligible Players mit Portrait, Age, OVR/POT (K2), Recommendation ("NBA Caliber", "Good Prospect"). Pro Spieler 2 Buttons: **Declare** (→ tid=-2, draft.year=nextYear, status='Draft Prospect') oder **Stay One More Year** (bleibt auf Team-Roster für eine weitere Saison).
+- **100-Cap-Check**: vor jedem Declare prüfen `count(tid=-2, draft.year=nextYear) < 100`. Falls voll: Button disabled + Hinweis "Draft class is full this year — try again next offseason." `draftClassFiller` muss beim nächsten Rollover-Run die deklarierten Spieler korrekt mitzählen (tut er bereits, da Counter nur `tid === -2` braucht).
+- **Spawn-Pipeline-Adjust**: `draftClassFiller.ensureDraftClasses` subtrahiert deklarierte Spieler vom Need-Count automatisch (current logic: `need = 100 - have`; have inkludiert nun auch declared Euros).
+- **AI-Auto-Declare** für nicht-User-Teams: GMs entscheiden basierend auf POT-Threshold + Roster-Position. Liegt in `runAIDraftDeclarations` (neu in `services/AIDraftDeclarationHandler.ts`).
+
+### Offene Fragen (vor Coding klären)
+- Soll User-Team-Player **automatisch** declared werden wenn 100-Cap noch nicht erreicht und Recommendation = "NBA Caliber"? Oder immer manuell?
+- Was passiert mit `contractYears` und `salary` beim Declare? Free-Agent-Status für den Spieler bis er gedraftet wird, oder fix beendet?
+- Soll die Row in NBA-Mode auch sichtbar sein (NBA-Team mit Youth-Academy)? Wenn User-Team NBA ist, brauchen sie keine "declare" — der Spieler ist ja schon im System.
+
+---
+
 ## 🟡 IN PROGRESS — Sponsor Portfolio Polish (May 14, 2026, paused mid-Task-10)
 
 **Spec:** `docs/superpowers/specs/2026-05-14-sponsor-portfolio-polish-design.md`
@@ -57,22 +82,42 @@
 - **T5** `f5e0fab` + `f70ee14` `src/services/euro/nationalityPool.ts` + tests — `buildCoachNationalityPool(state, leagueId)` mit TID-range filter (endesa 5000-5100 etc), top-15 countries weighted, FALLBACK_POOL, cache mit `${leagueId}-${players.length}-${sample}` key. 3 Tests pass. **Plan-Drift dokumentiert:** Plan-Prosa nannte `<30` als Fallback-Schwelle, aber Plan-Test 1 erwartet Filter-Result bei 3 Matches — Implementer wählte `< 1` (Test gewinnt), Inline-Kommentar erklärt warum.
 
 ### 🟡 Where we left off
-- **Task 6 cancelled mid-flight (background agent stopped).** Kein Commit. Sub-agent's last status: `staffFallback.ts` Edits noch nicht applied (Type-Check zeigte unrelated tsconfig-Probleme in anderen Files, nicht in der zu modifizierenden Datei). Beim Wiederaufnehmen: Task 6 Implementer neu dispatchen.
+- **Worktree continuation (May 15, Codex):** Tasks 6-13 and 25-30 are now implemented in the worktree, not committed.
+  - T6 `src/services/staff/staffFallback.ts`: placeholder Coach/GM generators accept optional dynamic nationality pools; generated non-NBA staff uses `buildCoachNationalityPool`.
+  - T7 `src/services/euro/tierBudgetSeed.ts`: deterministic tier/budget seeder added.
+  - T8 `src/services/euro/staffSeed.ts`: deterministic six-role staff seeder added (HC/AC/Sports Science/Physio/Scout/Analytics), tier affects reputation.
+  - T9 `src/services/euro/ownerSeed.ts`: deterministic owner profile seeder added; tier biases wealth/vision/patience, runtime counters start clean.
+  - T10 `src/services/euro/sponsorSeed.ts`: sponsor review seed slots wired to `sponsorCatalogFetcher` when catalog is loaded; returns pending/empty before load.
+  - T11 `src/services/euro/careerSeed.ts`: career setup orchestrator combines tier/budget, staff, owner, sponsors, rerolls, and manual overrides.
+  - T12 `src/types.ts` + `src/store/GameContext.tsx`: `INIT_EURO_CAREER` writes owner profile, tier, starting budget, six staff, seeded sponsors, setup memo, user team, and July 1 Euro start date into the save.
+  - T13 `src/store/GameContext.tsx`: `LOAD_GAME` heals legacy Euro GM saves missing `autoOwnerSeeded` by deterministically restoring owner/staff/setup sponsor state and marking the seed flag.
+  - Setup wiring `src/components/CommissionerSetup.tsx` + `src/App.tsx`: Endesa franchise pick now opens a minimal Euro Career Setup review, then starts the save and dispatches `INIT_EURO_CAREER`. This is the functional wiring path; the polished standalone card/edit-modal pass remains deferred.
+  - T25 `src/services/euro/staffPool.ts` + `src/store/GameContext.tsx`: Euro setup and legacy LOAD_GAME heal now seed a 50-person `staffFreeAgents` pool and mark `staffPoolSeeded`.
+  - T26 `src/store/logic/gameLogic.ts`: crossing a calendar month in Euro GM mode refills the generated staff pool with 5-10 new candidates.
+  - T27 `src/components/central/view/FrontOffice/sections/StaffSection.tsx`, `StaffSigningModal.tsx`, `FrontOfficeView.tsx`: staff signing uses generated `state.staffFreeAgents`, removes hired staff from the pool, and has a low-rated emergency fallback if a role has fewer than 3 candidates.
+  - T28 `src/services/euro/evaluateSeasonForOwner.ts`: owner season outcome evaluator added for WinNow/Frugal/Develop visions.
+  - T29 `src/services/logic/seasonRollover.ts`: Euro year-end ledger now ticks owner patience for NBA and non-NBA Euro clubs; user-team owner patience failure routes through the existing Euro game-over modal.
+  - T30 `src/components/tycoon/EuroBankruptcyModal.tsx`: modal now includes non-NBA Euro takeover candidates and offers owner cash injections when wealth/cooldown rules allow.
+  - Verification mode adjusted per user request: no new test files going forward; previously added T7-T11 test files were removed. Use `npm run lint`, `npm run build`, and in-app Euro setup/manual checks.
+  - Verification so far: `npm run lint` PASS after Euro setup/staff/owner wiring and the May 15 Transfer Market/Gameplan recovery patch.
+  - Drive-by Euro leak fix: Team Intel Euro mode defaults to `Expiring` and hides the Free Agency board; Transfer Market now renders/listings only for real rostered seller players.
+  - May 15 recovery fix: Euro Tasks now include `Transfer Market`, sponsor renewals, facility upgrades, preseason friendlies, and training camp in the checklist order; NBA-only FA/draft/HOF rows are skipped, July 1 starts on Transfer Market, Training Camp stays later, and transfer-window settings are force-enabled on setup/load.
+  - May 15 recovery fix: Coaching profile reads generated staff `careerStartYear`/`bornYear`/`nationality`, and Gameplan uses Euro roster-aware starter seeding plus FIBA `200` minute budget instead of NBA `240`.
 
 ### 📋 Offen (Phase 1 tracker — TaskList #6–#32)
 - **1.A** Types + Infra (T1–T4) — **✓ DONE**
-- **1.B** Nationality Pool (T5–T6) — **T5 done**, **T6 staffFallback dynamic pool — Pending (cancelled mid-dispatch)**
-- **1.C** Seed Generators (T7–T11): tierBudget, staff×6, owner, sponsor, careerSeed orchestrator — Pending
-- **1.D** Reducer + LOAD_GAME (T12–T13): INIT_EURO_CAREER + heal — Pending
-- **1.E** Review UI (T14–T23): SectionGroup + 4 Cards + EuroSetupReviewScreen + 4 Edit-Modals — Pending
-- **1.F** App wiring (T24): App.tsx `euroReview` phase — Pending
-- **1.G** Staff-Pool (T25–T27): seed staffFreeAgents @ INIT, monthly refill, last-resort in modal — Pending
-- **1.H** Owner Mechanics (T28–T30): evaluateSeasonForOwner, seasonRollover patience tick, cash-injection modal — Pending
+- **1.B** Nationality Pool (T5–T6) — **T5 done**, **T6 done in worktree (uncommitted)**
+- **1.C** Seed Generators (T7–T11): **T7/T8/T9/T10/T11 done in worktree (uncommitted)**
+- **1.D** Reducer + LOAD_GAME (T12–T13): **T12/T13 done in worktree (uncommitted)**
+- **1.E** Review UI (T14–T23): minimal inline review is wired; standalone SectionGroup/cards/edit modals pending
+- **1.F** App wiring (T24): functional setup → review → START_GAME → INIT_EURO_CAREER path done in worktree; standalone `euroReview` phase shape pending
+- **1.G** Staff-Pool (T25–T27): **T25/T26/T27 done in worktree (uncommitted)**
+- **1.H** Owner Mechanics (T28–T30): **T28/T29/T30 done in worktree (uncommitted)**
 - **1.I** Smoke (T31–T32): migration snapshot test + manual QA — Pending
 - Final code review — Pending
 
 ### Plan adaptations done
-- Task 12 reducer sets `state.gameDate = YYYY-07-01` (real ACB summer window) — see [[feedback_euro_game_start_date]]
+- Task 12 dispatcher case sets `state.date = Jul 1, {seasonYear - 1}` (real ACB summer window) because this app stores display dates in `GameState.date`, not `gameDate/currentDate`.
 - Tasks 4 + 10 use parallel agent's `sponsorCatalogFetcher.pickSponsorName(league, tier, slot)` instead of obsolete stub
 - Task 5 threshold: `< 1` (Test gewinnt über Plan-Prosa `<30`). Real-world equivalent — Endesa-Save hat ~200 Spieler, Fallback feuert nie in Produktion.
 - Task 3 TycoonTier: reused statt redeclared.

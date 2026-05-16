@@ -90,6 +90,17 @@ export const CompetitionView: React.FC<{ specId: string }> = ({ specId }) => {
   if (spec.prizePool?.semi) prizeItems.push(['Semifinalist', spec.prizePool.semi]);
   if (spec.prizePool?.qf) prizeItems.push(['Quarterfinalist', spec.prizePool.qf]);
 
+  const knockoutSeeds = specId === 'euroleague'
+    ? rows.slice(0, 8)
+    : specId === 'endesa'
+      ? rows.slice(0, 8)
+      : rows.slice(0, spec.teamCount ?? 8);
+  const qfPairings = knockoutSeeds.slice(0, 4).map((topSeed, index) => ({
+    high: topSeed,
+    low: knockoutSeeds[knockoutSeeds.length - 1 - index],
+  })).filter(pair => pair.high && pair.low && pair.high.tid !== pair.low.tid);
+  const playInRows = specId === 'euroleague' ? rows.slice(6, 10) : [];
+
   const recentResults = [...playedGames]
     .sort((a, b) => String(b.date).localeCompare(String(a.date)))
     .slice(0, 5);
@@ -174,6 +185,48 @@ export const CompetitionView: React.FC<{ specId: string }> = ({ specId }) => {
         </div>
 
         <div className="space-y-6">
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-800 text-xs font-black uppercase tracking-widest text-slate-400">If Season Ended Today</div>
+            <div className="p-4 space-y-3">
+              {playInRows.length > 0 && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-widest text-amber-300 mb-2">Play-In Line</div>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
+                    {playInRows.map((row, index) => {
+                      const team = resolveAnyTeam(row.tid, state.teams, state.nonNBATeams ?? []);
+                      return <div key={row.tid} className="rounded-lg bg-black/30 px-2 py-1.5 font-bold">{index + 7}. {getTeamFullName(team)}</div>;
+                    })}
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  {specId === 'euroleague' ? 'Quarterfinal Projection' : 'Playoff Projection'}
+                </div>
+                {qfPairings.map((pair, index) => {
+                  const high = resolveAnyTeam(pair.high.tid, state.teams, state.nonNBATeams ?? []);
+                  const low = resolveAnyTeam(pair.low.tid, state.teams, state.nonNBATeams ?? []);
+                  const round = spec.playoffFormat?.qfBest ?? spec.playoffFormat?.finalBest ?? 1;
+                  return (
+                    <div key={`${pair.high.tid}-${pair.low.tid}`} className="rounded-xl border border-slate-800 bg-black/30 p-3">
+                      <div className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-1">Series {index + 1} - Best of {round}</div>
+                      <div className="flex items-center justify-between gap-3 text-sm font-bold text-white">
+                        <span>{getTeamFullName(high)}</span>
+                        <span className="text-slate-600 text-xs">vs</span>
+                        <span className="text-right">{getTeamFullName(low)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {qfPairings.length === 0 && (
+                  <div className="rounded-xl border border-slate-800 bg-black/30 p-4 text-sm text-slate-500">
+                    Projection appears once the competition has enough clubs.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {prizeItems.length > 0 && (
             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-800 text-xs font-black uppercase tracking-widest text-slate-400">Prize Pool</div>

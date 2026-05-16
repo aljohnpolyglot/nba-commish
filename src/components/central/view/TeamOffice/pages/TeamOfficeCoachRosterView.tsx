@@ -9,6 +9,7 @@ import { computeMoodScore } from '../../../../../utils/mood/moodScore';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
 import type { NBAPlayer } from '../../../../../types';
 import { isOnRoster, resolveAnyTeam } from '../../../../../utils/teamLookup';
+import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -88,6 +89,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
   const { state } = useGame();
   const quick = usePlayerQuickActions();
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const hideNbaContractBadges = isEuroIsolatedMode(state) || teamId >= 100;
 
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const teamColor = team?.colors?.[0] ?? '#1a1a2e';
@@ -158,13 +160,13 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
         ast: stats?.ast ?? 0,
         per: stats?.per ?? 0,
         moodScore,
-        isTwoWay: !!(p as any).twoWay,
-        isNonGuaranteed: !!(p as any).nonGuaranteed,
+        isTwoWay: !hideNbaContractBadges && !!(p as any).twoWay,
+        isNonGuaranteed: !hideNbaContractBadges && !!(p as any).nonGuaranteed,
         posRankVal: posRank(p.pos),
         isStarter: starterIds.has(p.internalId),
       };
     });
-  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, teamId]);
+  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, teamId, hideNbaContractBadges]);
 
   const rows = useMemo((): RowData[] => {
     if (starterOrder) {

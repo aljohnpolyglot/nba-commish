@@ -23,6 +23,7 @@ import { useDraftEventGate } from '../../../hooks/useDraftEventGate';
 import { GameSimulatorScreen } from '../../shared/GameSimulatorScreen';
 import { WatchGamePreviewModal } from '../../modals/WatchGamePreviewModal';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
 
 export const NBACentral: React.FC = () => {
   const { state, dispatchAction, selectedTeamId, setSelectedTeamId, healPlayer } = useGame();
@@ -65,7 +66,9 @@ export const NBACentral: React.FC = () => {
   const eastTeams = filteredTeams.filter(t => t.conference === 'East');
   const westTeams = filteredTeams.filter(t => t.conference === 'West');
 
-  const selectedTeam = selectedTeamId !== null ? teamService.getTeamById(selectedTeamId) : undefined;
+  const selectedTeam = selectedTeamId !== null
+    ? resolveAnyTeam(selectedTeamId, state.teams, state.nonNBATeams ?? []) ?? undefined
+    : undefined;
   
   const seasonPhase = useMemo(() => getSeasonPhase(state), [state.schedule, state.date, state.teams]);
   // Banner only during true preseason (before Oct 24, no prior history). Offseason hides it.
@@ -132,7 +135,7 @@ export const NBACentral: React.FC = () => {
       return;
     }
 
-    // Sign / re-sign / waive → delegated to the shared hook.
+// Sign / re-sign / waive → delegated to the shared hook.
     if (quick.handle(selectedPlayerForActions, actionType)) {
       setSelectedPlayerForActions(null);
       return;

@@ -18,6 +18,7 @@ import type { NBATeam } from '../../types';
 import { DEFAULT_GM_ATTRIBUTES, type GMAttributes } from './gmAttributes';
 import { buildCoachNationalityPool, type NationalityPoolEntry } from '../euro/nationalityPool';
 import { getNameData } from '../../data/nameDataFetcher';
+import { deterministicStaffImageId } from '../../utils/staffPortrait';
 
 export interface PlaceholderGM {
   name: string;
@@ -26,6 +27,7 @@ export interface PlaceholderGM {
   nationality?: string;
   attributes: GMAttributes;
   playerPortraitUrl: string;
+  staffImageId: number;
   isPlaceholder: true;
   face?: any;
 }
@@ -39,6 +41,7 @@ export interface PlaceholderCoach {
   born?: { year: number; loc?: string };
   contractExp?: number;
   startSeason?: string;
+  staffImageId: number;
   // Coach attribute shape mirrors the gist data — minimal subset here so
   // CoachingView can render. Consumers needing specific fields should add
   // them with sensible defaults rather than reading raw from the gist.
@@ -133,6 +136,7 @@ export function makePlaceholderGM(
       spending:         jitter(DEFAULT_GM_ATTRIBUTES.spending,         seed >> 9),
     },
     playerPortraitUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e293b&color=FDB927&size=256&bold=true`,
+    staffImageId: deterministicStaffImageId(name),
     isPlaceholder: true,
   };
 }
@@ -147,8 +151,9 @@ export function makePlaceholderCoach(
   const bornYear = 1963 + ((seed >> 4) % 28);
   const nationality = resolveNationality(team, seed, opts);
   const startYear = currentYear - yearsWithTeam;
+  const name = pickNameFromSeed(nationality, seed);
   return {
-    name: pickNameFromSeed(nationality, seed),
+    name,
     position: 'Head Coach',
     team: fmtTeamLabel(team),
     nationality,
@@ -157,6 +162,7 @@ export function makePlaceholderCoach(
     contractExp: currentYear + Math.max(1, 4 - Math.min(3, yearsWithTeam)),
     startSeason: `${startYear}-${String(startYear + 1).slice(2)}`,
     reputation: 60,
+    staffImageId: deterministicStaffImageId(name),
     isPlaceholder: true,
   };
 }

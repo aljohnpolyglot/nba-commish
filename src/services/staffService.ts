@@ -14,7 +14,7 @@ const COACH_WORKER =
 
 const COACH_IMAGES: Record<string, string> = {};
 
-const OWNER_IMAGES: Record<string, string> = {
+export const OWNER_IMAGES: Record<string, string> = {
   'Tony Ressler':    'https://imageio.forbes.com/specials-images/imageserve/59d5204431358e542c035670/0x0.jpg?format=jpg&crop=1053,1053,x164,y65,safe&height=416&width=416&fit=bounds',
   'Marc Lore':       'https://imageio.forbes.com/specials-images/imageserve/61685375d087090f4887090f/0x0.jpg?format=jpg&crop=1000,1000,x0,y0,safe&height=416&width=416&fit=bounds',
   'Steve Ballmer':   'https://imageio.forbes.com/specials-images/imageserve/62d6f03769e31b54d502512c/0x0.jpg?format=jpg&crop=1000,1000,x0,y0,safe&height=416&width=416&fit=bounds',
@@ -146,6 +146,7 @@ const COACH_PHOTOS_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/60f
 const COACHES_BIO_URL = "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbacoachesbio";
 const NBA2K_COACH_LIST_URL = "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nba2kcoachlist";
 const COACH_CONTRACTS_URL = "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbacoachescontract";
+const COACH_RATINGS_URL = "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbacoachesratings";
 
 export interface CoachData {
   staff: string;
@@ -193,10 +194,29 @@ export interface CoachContractData {
   history: CoachContractHistory[];
 }
 
+/** Per-coach 15-attribute rating record. Mirrors the StaffAttributes type but
+ *  kept structurally typed here to avoid a circular import from TeamTraining. */
+export interface CoachAttributes {
+  offense: number; defense: number; tactics: number; development: number;
+  conditioning: number; adaptability: number; determination: number;
+  levelOfDiscipline: number; manManagement: number; motivating: number;
+  physiotherapy: number; sportsScience: number;
+  judgingPlayerAbility: number; judgingPlayerPotential: number; negotiating: number;
+}
+
+export interface CoachRatingsEntry {
+  name: string;
+  role: string;
+  team: string | null;
+  source: 'curated' | 'seeded';
+  attributes: CoachAttributes;
+}
+
 let _coachPhotos: Record<string, string> = {};
 let _coachBios: CoachData[] = [];
 let _nba2kCoaches: NBA2KCoachData[] = [];
 let _coachContracts: CoachContractData[] = [];
+let _coachRatings: CoachRatingsEntry[] = [];
 let _coachDataFetched = false;
 
 function normalizeName(name: string): string {
@@ -207,8 +227,9 @@ function normalizeName(name: string): string {
 export const fetchCoachData = async (): Promise<void> => {
   if (_coachDataFetched) return;
   try {
-    const [photosRes, biosRes, nba2kRes, contractsRes] = await Promise.all([
-      fetch(COACH_PHOTOS_GIST), fetch(COACHES_BIO_URL), fetch(NBA2K_COACH_LIST_URL), fetch(COACH_CONTRACTS_URL),
+    const [photosRes, biosRes, nba2kRes, contractsRes, ratingsRes] = await Promise.all([
+      fetch(COACH_PHOTOS_GIST), fetch(COACHES_BIO_URL), fetch(NBA2K_COACH_LIST_URL),
+      fetch(COACH_CONTRACTS_URL), fetch(COACH_RATINGS_URL),
     ]);
     if (photosRes.ok) {
       const rawPhotos = await photosRes.json();
@@ -218,6 +239,7 @@ export const fetchCoachData = async (): Promise<void> => {
     if (biosRes.ok) _coachBios = await biosRes.json();
     if (nba2kRes.ok) _nba2kCoaches = await nba2kRes.json();
     if (contractsRes.ok) _coachContracts = await contractsRes.json();
+    if (ratingsRes.ok) _coachRatings = await ratingsRes.json();
     _coachDataFetched = true;
   } catch (e) {
     console.error('[CoachData] fetch failed', e);
@@ -230,6 +252,15 @@ export const getAllCoaches = (): CoachData[] => _coachBios;
 export const getNBA2KCoach = (name: string): NBA2KCoachData | undefined => _nba2kCoaches.find(c => normalizeName(c.name) === normalizeName(name));
 export const getTeamStaff = (teamName: string): NBA2KCoachData[] => _nba2kCoaches.filter(c => c.team === teamName);
 export const getCoachContract = (name: string): CoachContractData | undefined => _coachContracts.find(c => normalizeName(c.name) === normalizeName(name));
+
+/** Returns the 15 staff attributes for a coach (HC or AC). Curated HC values
+ *  take precedence; ACs fall back to seeded values baked into the gist.
+ *  Returns null when the name isn't in the ratings file — callers can then
+ *  fall back to displayAttributes.buildStaffAttrs(seed). */
+export const getCoachRatings = (name: string): CoachRatingsEntry | undefined =>
+  _coachRatings.find(c => normalizeName(c.name) === normalizeName(name));
+
+export const getAllCoachRatings = (): CoachRatingsEntry[] => _coachRatings;
 
 // ── Main export ────────────────────────────────────────────────────────────────
 

@@ -14,6 +14,7 @@ import { DraftScouting } from './pages/DraftScouting';
 import { TeamOfficeDepthChartTab } from './pages/TeamOfficeDepthChartTab';
 import { resolveAnyTeam } from '../../../../utils/teamLookup';
 import { isNoDraftLeague } from '../../../../services/offseason/offseasonState';
+import { isEuroIsolatedMode } from '../../../../utils/uiMode';
 
 type OfficeTab = 'home' | 'gm' | 'depth' | 'intel' | 'needs' | 'trading' | 'picks' | 'scouting';
 
@@ -31,11 +32,16 @@ export function TeamOfficeView() {
   const { state, dispatchAction } = useGame();
   const isGM = state.gameMode === 'gm';
   const noDraft = isNoDraftLeague(state.leagueStats as any);
+  const euroIsolated = isEuroIsolatedMode(state);
   // GM mode: default to user's team but can still browse other teams
   const [currentTeamId, setCurrentTeamId] = useState<number | null>(isGM && state.userTeamId != null ? state.userTeamId : null);
   const [activeTab, setActiveTab] = useState<OfficeTab>(isGM && state.userTeamId != null ? 'gm' : 'home');
   const [selectedPlayer, setSelectedPlayer] = useState<NBAPlayer | null>(null);
-  const visibleTabs = noDraft ? TABS.filter(tab => tab.id !== 'picks' && tab.id !== 'scouting') : TABS;
+  const visibleTabs = TABS.filter(tab => {
+    if (noDraft && (tab.id === 'picks' || tab.id === 'scouting')) return false;
+    if (euroIsolated && tab.id === 'trading') return false;
+    return true;
+  });
 
   // ── Deep-link from offseason AUFGABEN sidebar ────────────────────────
   // Reads the transient pendingTeamOfficeNav slot, applies the requested
@@ -52,6 +58,10 @@ export function TeamOfficeView() {
       payload: { pendingTeamOfficeNav: nav.intelTab ? { intelTab: nav.intelTab } : undefined },
     } as any);
   }, [state.pendingTeamOfficeNav?.tab]);
+
+  useEffect(() => {
+    if (euroIsolated && activeTab === 'trading') setActiveTab('intel');
+  }, [euroIsolated, activeTab]);
 
   // resolveAnyTeam handles NBA + non-NBA (tid >= 100) so a EuroLeague/Endesa
   // GM save lands in the correct team header instead of falling back to Home.

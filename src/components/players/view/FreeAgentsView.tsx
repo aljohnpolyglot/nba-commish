@@ -17,6 +17,7 @@ import { formatGameDateShort, getCurrentOffseasonFAMoratoriumEnd, getGameDatePar
 import { calcPot2K } from '../../../services/trade/tradeValueEngine';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import type { NBAPlayer } from '../../../types';
+import { isEuroIsolatedMode, isNonNbaIsolatedMode } from '../../../utils/uiMode';
 
 const MARKET_POOLS_FULL = [
   { id: 'all', label: 'All Available', icon: Globe },
@@ -36,6 +37,10 @@ const MARKET_POOLS_FICTIONAL = [
   { id: 'nba', label: 'Free Agents', icon: Briefcase },
 ];
 
+const MARKET_POOLS_EURO = [
+  { id: 'all', label: 'All Available', icon: Globe },
+];
+
 const POSITIONS = ['All', 'PG', 'SG', 'SF', 'PF', 'C'];
 
 export const FreeAgentsView: React.FC = () => {
@@ -43,11 +48,13 @@ export const FreeAgentsView: React.FC = () => {
   const currencyCode = getLeagueCurrencyCode(state.leagueStats);
   const isGM = state.gameMode === 'gm';
   const isFictional = state.leagueType === 'fictional';
-  const MARKET_POOLS = state.leagueType === 'fictional' ? MARKET_POOLS_FICTIONAL : MARKET_POOLS_FULL;
+  const euroIsolated = isEuroIsolatedMode(state);
+  const nonNbaIsolated = isNonNbaIsolatedMode(state);
+  const MARKET_POOLS = nonNbaIsolated ? MARKET_POOLS_EURO : state.leagueType === 'fictional' ? MARKET_POOLS_FICTIONAL : MARKET_POOLS_FULL;
   const [viewMode, setViewMode] = useState<'available' | 'upcoming'>('available');
   const [searchTerm, setSearchTerm] = useState('');
   // GM defaults to NBA pool (they mostly care about NBA FAs); commissioner sees the whole market.
-  const [selectedPool, setSelectedPool] = useState<string>(isGM ? 'nba' : 'all');
+  const [selectedPool, setSelectedPool] = useState<string>(nonNbaIsolated ? 'all' : isGM ? 'nba' : 'all');
   const [selectedPosition, setSelectedPosition] = useState('All');
   const [sortBy, setSortBy] = useState<'ovr' | 'pot' | 'age' | 'name'>('ovr');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -74,6 +81,13 @@ export const FreeAgentsView: React.FC = () => {
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [offseasonBlockOpen, setOffseasonBlockOpen] = useState(false);
 
+  useEffect(() => {
+    if (!nonNbaIsolated) return;
+    setViewMode('available');
+    setSelectedPool('all');
+    setSelectedTeamId(null);
+  }, [euroIsolated]);
+
   const gameDateParts = state.date ? getGameDateParts(state.date) : null;
   const seasonYear = state.leagueStats?.year ?? gameDateParts?.year ?? new Date().getFullYear();
   const simMonth = gameDateParts?.month ?? 0;
@@ -86,12 +100,13 @@ export const FreeAgentsView: React.FC = () => {
   const [showFaHeadsUp, setShowFaHeadsUp] = useState(false);
 
   useEffect(() => {
+    if (nonNbaIsolated) return;
     if (!isMoratoriumActive) return;
     try {
       if (window.localStorage.getItem(faHeadsUpKey)) return;
     } catch {}
     setShowFaHeadsUp(true);
-  }, [faHeadsUpKey, isMoratoriumActive]);
+  }, [faHeadsUpKey, isMoratoriumActive, euroIsolated]);
 
   const dismissFaHeadsUp = () => {
     try {
@@ -116,6 +131,7 @@ export const FreeAgentsView: React.FC = () => {
     return state.players.filter(p => {
       if (p.status === 'Retired' || p.hof || p.tid === -100) return false;
       if (p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect') return false;
+      if (nonNbaIsolated && (p.tid ?? -1) >= 0) return false;
 
       const isInternational = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '');
       const isNBAFreeAgent = p.tid === -1 || p.status === 'Free Agent';
@@ -128,7 +144,7 @@ export const FreeAgentsView: React.FC = () => {
 
       return true;
     });
-  }, [state.players, seasonYear]);
+  }, [state.players, seasonYear, nonNbaIsolated]);
 
   // Upcoming FAs: any on-roster player (NBA or overseas club) whose contract expires soon.
   // Includes: (a) contract ends this season, OR (b) final year is a player/team option — either side can walk.
@@ -156,8 +172,8 @@ export const FreeAgentsView: React.FC = () => {
   const userRosterSlots = useMemo(() => {
     if (!isGM || state.userTeamId == null) return null;
     const roster = state.players.filter(p => p.tid === state.userTeamId);
-    const twoWayCount = roster.filter(p => (p as any).twoWay).length;
-    const ngCount = roster.filter(p => !!(p as any).nonGuaranteed && !(p as any).twoWay).length;
+    const twoWayCount = nonNbaIsolated ? 0 : roster.filter(p => (p as any).twoWay).length;
+    const ngCount = nonNbaIsolated ? 0 : roster.filter(p => !!(p as any).nonGuaranteed && !(p as any).twoWay).length;
     const standardCount = roster.length - twoWayCount;
     // Training camp (Jul 1 – Oct 21): standard cap expands to 21 (shared pool).
     // Otherwise regular-season 15-man cap. Without this, mid-camp display reads
@@ -194,7 +210,7 @@ export const FreeAgentsView: React.FC = () => {
       mleAvailable: (mle?.available as number) ?? 0,
       mleType: (mle?.type as string | null) ?? null,
     };
-  }, [isGM, state.userTeamId, state.players, state.leagueStats, state.teams, state.date]);
+  }, [isGM, state.userTeamId, state.players, state.leagueStats, state.teams, state.date, nonNbaIsolated]);
 
   // All unique countries from the current pool (available OR upcoming)
   const allCountries = useMemo(() => {
@@ -499,16 +515,18 @@ export const FreeAgentsView: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-lg sm:text-3xl font-black text-white uppercase tracking-tight leading-tight">
-                {viewMode === 'upcoming' ? 'Upcoming Free Agents' : 'Free Agent Market'}
+                {nonNbaIsolated ? 'Free Agents' : viewMode === 'upcoming' ? 'Upcoming Free Agents' : 'Free Agent Market'}
               </h1>
               <p className="hidden sm:block text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1 font-medium">
-                {viewMode === 'upcoming'
+                {nonNbaIsolated
+                  ? 'Browse unattached players available to sign.'
+                  : viewMode === 'upcoming'
                   ? 'Players on the last year of their deal — re-sign before they hit the market.'
                   : 'Browse and interact with available players.'}
               </p>
             </div>
             {/* Desktop-only upper-right controls */}
-            <div className="hidden sm:flex items-center gap-3 shrink-0">
+            {!nonNbaIsolated && <div className="hidden sm:flex items-center gap-3 shrink-0">
               <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
                 <button
                   onClick={() => setViewMode('available')}
@@ -539,11 +557,11 @@ export const FreeAgentsView: React.FC = () => {
                   Sim Day
                 </button>
               )}
-            </div>
+            </div>}
           </div>
 
           {/* Mobile-only toggle — full-width segmented row below title */}
-          <div className="sm:hidden flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
+          {!nonNbaIsolated && <div className="sm:hidden flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
             <button
               onClick={() => setViewMode('available')}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
@@ -562,10 +580,10 @@ export const FreeAgentsView: React.FC = () => {
               <Hourglass size={12} />
               Upcoming
             </button>
-          </div>
+          </div>}
 
           {/* Sim Day button — mobile header */}
-          {isFreeAgencySeason && (
+          {!nonNbaIsolated && isFreeAgencySeason && (
             <button
               onClick={handleSimDayClick}
               disabled={state.isProcessing}
@@ -577,19 +595,23 @@ export const FreeAgentsView: React.FC = () => {
           )}
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-6 text-[11px] sm:text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-              <span className="text-slate-400 font-medium">{nbaFreeAgents} {isFictional ? 'Free Agents' : 'NBA Free Agents'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-              <span className="text-slate-400 font-medium">{internationalPlayers} International</span>
-            </div>
+            {!nonNbaIsolated && (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                  <span className="text-slate-400 font-medium">{nbaFreeAgents} {isFictional ? 'Free Agents' : 'NBA Free Agents'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                  <span className="text-slate-400 font-medium">{internationalPlayers} International</span>
+                </div>
+              </>
+            )}
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
               <span className="text-slate-400 font-medium">{freeAgents.length} Total Available</span>
             </div>
-            {userRosterSlots && (
+            {!nonNbaIsolated && userRosterSlots && (
               <>
                 {userRosterSlots.isTrainingCamp && (
                   <div className="flex items-center gap-2">
@@ -611,15 +633,17 @@ export const FreeAgentsView: React.FC = () => {
                     Guaranteed {userRosterSlots.guaranteedCount}/{userRosterSlots.maxGuaranteed}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
-                    userRosterSlots.twoWayLeft === 0
-                      ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-                      : 'bg-violet-500/10 border-violet-500/30 text-violet-300'
-                  }`}>
-                    Two-Way {userRosterSlots.twoWayCount}/{userRosterSlots.maxTwoWay}
-                  </span>
-                </div>
+                {!nonNbaIsolated && (
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                      userRosterSlots.twoWayLeft === 0
+                        ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                        : 'bg-violet-500/10 border-violet-500/30 text-violet-300'
+                    }`}>
+                      Two-Way {userRosterSlots.twoWayCount}/{userRosterSlots.maxTwoWay}
+                    </span>
+                  </div>
+                )}
                 {userRosterSlots.ngCount > 0 && (
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border bg-amber-500/10 border-amber-500/30 text-amber-300">

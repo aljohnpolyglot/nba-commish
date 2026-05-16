@@ -13,6 +13,7 @@ import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickAction
 import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import type { NBAPlayer } from '../../../../../types';
 import { isOnRoster, resolveAnyTeam } from '../../../../../utils/teamLookup';
+import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -114,6 +115,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
   const isGM = state.gameMode === 'gm';
   const isOwnTeam = isGM && teamId === state.userTeamId;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const hideNbaContractBadges = isEuroIsolatedMode(state) || teamId >= 100;
 
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const gamesPlayed = (team?.wins ?? 0) + (team?.losses ?? 0);
@@ -173,11 +175,11 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
         resignScore: resign?.score ?? null,
         yearsLeft,
         isExpiring: yearsLeft === 0,
-        isTwoWay: !!(p as any).twoWay,
-        isNonGuaranteed: !!(p as any).nonGuaranteed,
+        isTwoWay: !hideNbaContractBadges && !!(p as any).twoWay,
+        isNonGuaranteed: !hideNbaContractBadges && !!(p as any).nonGuaranteed,
       };
     });
-  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, teamWinPct]);
+  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, teamWinPct, hideNbaContractBadges]);
 
   const rows = useMemo((): RowData[] => {
     const filtered = allRows.filter(r => {

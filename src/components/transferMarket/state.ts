@@ -11,10 +11,10 @@
 
 import React, { createContext, useContext, useMemo } from 'react';
 import { useGame } from '../../store/GameContext';
-import { resolveAnyTeam } from '../../utils/teamLookup';
+import { isOnRoster, resolveAnyTeam } from '../../utils/teamLookup';
 import { getTeamFullName } from '../../utils/teamNames';
 import { isInTransferWindow } from '../../utils/transferWindow';
-import { convertTo2KRating } from '../../utils/helpers';
+import { convertTo2KRating, computeAge } from '../../utils/helpers';
 import { getFlagForLoc } from '../../utils/countryFlags';
 import {
   estimatePlayerValueEUR,
@@ -71,7 +71,7 @@ function ratingFromPlayer(p: NBAPlayer): { ovr: number; pot: number } {
 }
 
 function toMockPlayer(p: NBAPlayer, currentYear: number): MockPlayer {
-  const age = p.born?.year ? currentYear - p.born.year : (p.age ?? 25);
+  const age = computeAge(p, currentYear);
   const { ovr, pot } = ratingFromPlayer(p);
   const contractExp = p.contract?.exp ?? currentYear + 1;
   const annualUSDK = p.contract?.amount ?? 0;
@@ -98,8 +98,19 @@ function teamColorHex(team: any): string {
 }
 
 function teamLeagueLabel(team: any, state: GameState): string {
-  if ((team?.tid ?? team?.id ?? -1) >= 1000 && (team?.tid ?? team?.id ?? -1) < 2000) return 'Euroleague';
-  if ((team?.tid ?? team?.id ?? -1) >= 5000 && (team?.tid ?? team?.id ?? -1) < 6000) return 'Liga Endesa';
+  // Read league from the TID offset registry first so cross-league teams
+  // (WNBA, PBA, CBA, etc.) get the right label instead of falling back to
+  // the active uiMode and rendering "Liga Endesa" for a Minnesota Lynx team.
+  const tid = (team?.tid ?? team?.id ?? -1) as number;
+  if (tid >= 1000 && tid < 2000) return 'Euroleague';
+  if (tid >= 2000 && tid < 3000) return 'PBA';
+  if (tid >= 3000 && tid < 4000) return 'WNBA';
+  if (tid >= 4000 && tid < 5000) return 'B-League';
+  if (tid >= 5000 && tid < 6000) return 'Liga Endesa';
+  if (tid >= 6000 && tid < 7000) return 'G-League';
+  if (tid >= 7000 && tid < 8000) return 'CBA';
+  if (tid >= 8000 && tid < 9000) return 'NBL';
+  if (tid >= 0 && tid < 100) return 'NBA';
   return state.leagueStats?.uiMode === 'euro_isolated' ? 'Liga Endesa' : 'NBA';
 }
 
@@ -112,6 +123,7 @@ function toMockClub(team: any, state: GameState): MockClub {
     league: teamLeagueLabel(team, state),
     flag: flagFor(team?.region),
     colorHex: teamColorHex(team),
+    logoUrl: team?.imgURL ?? team?.logoUrl ?? team?.imgURLSmall ?? undefined,
   };
 }
 
@@ -240,9 +252,13 @@ export function useTransferMarketData(): TransferMarketData {
     for (const p of state.players ?? []) playerById.set(p.internalId, p);
 
     const findTeam = (tid: number): any => resolveTeamAnywhere(state, tid);
+    const isRosteredListing = (l: TransferListing): boolean => {
+      const player = playerById.get(l.playerId);
+      return !!player && l.sellerTid >= 0 && player.tid === l.sellerTid && isOnRoster(player);
+    };
 
     const myListings: MyListing[] = allListings
-      .filter(l => l.sellerTid === userTid && l.status === 'active')
+      .filter(l => l.sellerTid === userTid && l.status === 'active' && isRosteredListing(l))
       .map(l => {
         const player = playerById.get(l.playerId);
         return {
@@ -261,7 +277,12 @@ export function useTransferMarketData(): TransferMarketData {
       });
 
     const inboxBids: InboxBid[] = allBids
-      .filter(b => b.sellerTid === userTid && (b.status === 'active' || b.status === 'highest' || b.status === 'rejected' || b.status === 'accepted' || b.status === 'outbid'))
+      .filter(b => {
+        if (b.sellerTid !== userTid) return false;
+        if (!(b.status === 'active' || b.status === 'highest' || b.status === 'rejected' || b.status === 'accepted' || b.status === 'outbid')) return false;
+        const listing = allListings.find(l => l.id === b.listingId);
+        return listing ? isRosteredListing(listing) : false;
+      })
       .map(b => {
         const player = playerById.get(b.playerId);
         const bidder = findTeam(b.bidderTid);
@@ -270,6 +291,7 @@ export function useTransferMarketData(): TransferMarketData {
         const pct = ask > 0 ? Math.round(((b.amountEUR - ask) / ask) * 100) : 0;
         return {
           id: b.id,
+          listingId: b.listingId,
           player: player ? toMockPlayer(player, currentYear) : {
             id: b.playerId, name: '—', age: 25, position: 'SF', ovr: 60, pot: 65,
             nationality: '—', flag: '🌐', contractYearsLeft: 1, annualWageEUR: 0,
@@ -285,7 +307,7 @@ export function useTransferMarketData(): TransferMarketData {
       });
 
     const browseListings: BrowseListing[] = allListings
-      .filter(l => l.sellerTid !== userTid && l.status === 'active')
+      .filter(l => l.sellerTid !== userTid && l.status === 'active' && isRosteredListing(l))
       .map(l => {
         const player = playerById.get(l.playerId);
         const club = findTeam(l.sellerTid);
@@ -305,7 +327,7 @@ export function useTransferMarketData(): TransferMarketData {
 
     // Clauses — derived from rostered players that have a release clause stored.
     const clauses: ReleaseClause[] = (state.players ?? [])
-      .filter((p: NBAPlayer) => p.tid === userTid && (p as any).releaseClauseEUR)
+      .filter((p: NBAPlayer) => p.tid === userTid && isOnRoster(p) && (p as any).releaseClauseEUR)
       .map((p: NBAPlayer) => ({
         id: `c-${p.internalId}`,
         player: toMockPlayer(p, currentYear),

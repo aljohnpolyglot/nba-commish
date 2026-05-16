@@ -561,6 +561,62 @@ export const EURO_ISOLATED_DEFAULTS: Partial<LeagueStats> = {
   rookieRestrictedFreeAgentEligibility: false,
   rookieContractCapException: false,
   r2ContractsNonGuaranteed: false,
+  // ACB + EuroLeague roster reality (most clubs play both, so the
+  // ceiling is set by EuroLeague's simultaneous registration cap):
+  //   - EuroLeague: max 16 registered at any one time, 12–15 dressed
+  //     per game (over a season up to 20 distinct players can rotate
+  //     through the 16-slot register, U21s exempt)
+  //   - Liga Endesa: ~15-player season squad, 10–12 declared per game,
+  //     min 10 to start
+  minPlayersPerTeam: 10,
+  maxPlayersPerTeam: 16,
+  maxStandardPlayersPerTeam: 15,
+};
+
+export const PBA_ISOLATED_DEFAULTS: Partial<import('./types').LeagueStats> = {
+  uiMode: 'pba_isolated',
+  currency: 'PHP',
+  tradesAllowed: true,
+  draftType: 'pba_draft',
+  pbaConference: 'philippine',
+  pbaConferencePhase: 'setup',
+  fourPointLine: true,
+  fourPointLineDistance: 27,
+  quarterLength: 12,
+  numQuarters: 4,
+  shotClockEnabled: true,
+  shotClockValue: 24,
+  foulOutLimit: 6,
+  overtimeEnabled: true,
+  overtimeDuration: 5,
+  maxPlayersPerTeam: 15,
+  maxStandardPlayersPerTeam: 15,
+  twoWayContractsEnabled: false,
+  maxTwoWayPlayersPerTeam: 0,
+  salaryCapEnabled: false,
+  salaryCapType: 'none',
+  luxuryTaxEnabled: false,
+  apronsEnabled: false,
+  minimumPayrollEnabled: false,
+  rookieScaleType: 'none',
+  rookieContractLength: 2,
+  rookieTeamOptionsEnabled: false,
+  rookieRestrictedFreeAgentEligibility: false,
+  tradeMatchingRatioUnder: 0,
+  stepienRuleEnabled: false,
+  tradableDraftPickSeasons: 2,
+  allStarGameEnabled: true,
+  transferMarket: {
+    enabled: false,
+    summerStart: '',
+    summerEnd: '',
+    winterStart: '',
+    winterEnd: '',
+    auctionDays: 0,
+    tierGating: false,
+    bidderPool: 'all',
+    releaseClauseDefaultMult: 0,
+  },
 };
 
 /** Re-signing probability: chance player stays in same league at contract expiry */

@@ -4,6 +4,9 @@ import { GameState, UserAction, Tab, Bet, BetLeg, NBAPlayer } from '../types';
 import { processTurn, handleStartGame, handleAnnounceChange } from './logic/gameLogic';
 import { useGameActions } from './useGameActions';
 import { migrateAllEuroTeams } from '../services/tycoon/migrate';
+import { seedEuroCareer, type EuroCareerSeed } from '../services/euro/careerSeed';
+import { ensureStaffPoolDepth } from '../services/euro/staffPool';
+import { mapSetupTierToTycoonTier } from '../utils/tierMapping';
 import { initialState } from './initialState';
 import { sendChatMessage } from '../services/llm/llm';
 import { prefetchPlayerBio } from '../components/central/view/bioCache';
@@ -26,6 +29,7 @@ import { applyCupAwardsToPlayers } from '../services/nbaCup/awards';
 import { defaultAwardSettings } from '../services/awards/AwardEngine';
 import { computeRookieSalaryUSD } from '../utils/rookieContractUtils';
 import { generateAIBids, isPlausibleActiveMarket, MAX_FA_MARKET_DECISION_WINDOW_DAYS } from '../services/freeAgencyBidding';
+import { tickTransferMarket } from '../services/transfer/transferMarketTicker';
 import { setAssistantGMActive } from '../services/assistantGMFlag';
 import { getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, getDraftDate, getTrainingCampDate, parseGameDate, toISODateString } from '../utils/dateUtils';
 import { clearWaiverMarkers, hasLiveContractAfterWaive, stripLiveContractAfterWaive } from '../utils/contractCleanup';
@@ -33,6 +37,10 @@ import { repairBirdRightsForLoadedPlayer } from '../utils/playerBirdRights';
 import { resolveAnyTeam } from '../utils/teamLookup';
 import {
   defaultOffseasonChecklist,
+  initialEuroOffseasonChecklist,
+  initialPbaChecklist,
+  initialPbaInterConferenceChecklist,
+  initialPbaEndOfSeasonChecklist,
   initialPreseasonChecklist,
   setRowStatus,
   OFFSEASON_ROW_TAB,
@@ -42,6 +50,44 @@ import {
 } from '../services/offseason/offseasonState';
 import type { OffseasonChecklist, OffseasonChecklistRow } from '../types';
 import { SEED_2029_TEAMS, SEED_2029_YEAR, SEED_2029_SETTINGS, ZENGM_2029_REALIGNMENT } from '../data/expansion2029';
+import { EURO_ISOLATED_DEFAULTS, PBA_ISOLATED_DEFAULTS } from '../constants';
+import { isPbaIsolatedMode } from '../utils/uiMode';
+import { generateForCompetition, selectCompetitionTeamTids } from '../services/competition/competitionScheduler';
+import { PBA_COMPETITIONS } from '../data/templates/philippines/competitions';
+
+const EURO_SETUP_SPONSOR_SLOT: Record<string, 'kit' | 'sleeve' | 'stadium'> = {
+  main: 'kit',
+  jersey: 'sleeve',
+  arena: 'stadium',
+};
+
+const EURO_TRANSFER_MARKET_DEFAULTS = EURO_ISOLATED_DEFAULTS.transferMarket as NonNullable<GameState['leagueStats']['transferMarket']>;
+
+function getClubId(team: any): number | undefined {
+  return team?.tid ?? team?.id;
+}
+
+function getClubLabel(team: any): string {
+  if (!team) return 'Euro Club';
+  if (team.region && team.name && !String(team.name).includes(String(team.region))) {
+    return `${team.region} ${team.name}`;
+  }
+  return team.name ?? team.abbrev ?? 'Euro Club';
+}
+
+function buildSetupSponsorships(seed: EuroCareerSeed, signedYear: number) {
+  return seed.sponsors.reduce((acc, slot) => {
+    const tycoonSlot = EURO_SETUP_SPONSOR_SLOT[slot.slotId];
+    if (!tycoonSlot) return acc;
+    acc[tycoonSlot] = {
+      sponsor: slot.brand,
+      valuePerYear: slot.amountEUR,
+      yearsRemaining: slot.years,
+      signedYear,
+    };
+    return acc;
+  }, {} as Record<'kit' | 'sleeve' | 'stadium', any>);
+}
 
 interface GameContextType {
   state: GameState;
@@ -198,10 +244,13 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       pastTrainingCampOpen = !!todayStr && !!campStr && todayStr >= campStr;
       forceGate = !noDraftLeague && !!todayStr && !!draftStr && todayStr >= draftStr && !state.draftComplete && !pastTrainingCampOpen;
     } catch {}
+    const isEuroIsolated = state.leagueStats?.uiMode === 'euro_isolated';
     if (inOffseason && !hasChecklist && (!userManuallyExited || isRealOffseasonNow || forceGate)) {
-      const checklist = isInitialFirstSeason && !isRealOffseasonNow
-        ? initialPreseasonChecklist()
-        : defaultOffseasonChecklist(state.leagueStats);
+      const checklist = isEuroIsolated && isInitialFirstSeason && !isRealOffseasonNow
+        ? initialEuroOffseasonChecklist()
+        : isInitialFirstSeason && !isRealOffseasonNow
+          ? initialPreseasonChecklist()
+          : defaultOffseasonChecklist(state.leagueStats);
       setState(prev => ({ ...prev, offseasonChecklist: checklist }));
     } else if (inOffseason && hasChecklist && pastTrainingCampOpen && !isRealOffseasonNow) {
       // Stale-save recovery: checklist exists in the camp window with
@@ -274,13 +323,14 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       // only Training Camp is actionable. Detect by: any non-trainingCamp row
       // still 'pending' (initial mode marks them all 'skipped').
       const c = state.offseasonChecklist!;
-      const needsMigration =
-        c.draftLottery === 'pending' || c.options === 'pending' ||
-        c.qualifyingOffers === 'pending' || c.myFAs === 'pending' ||
-        c.draft === 'pending' || c.rookieContracts === 'pending' ||
-        c.freeAgency === 'pending';
+      const needsMigration = isEuroIsolated
+        ? c.freeAgency === 'pending' || c.trainingCamp === 'in-progress'
+        : c.draftLottery === 'pending' || c.options === 'pending' ||
+          c.qualifyingOffers === 'pending' || c.myFAs === 'pending' ||
+          c.draft === 'pending' || c.rookieContracts === 'pending' ||
+          c.freeAgency === 'pending';
       if (needsMigration) {
-        setState(prev => ({ ...prev, offseasonChecklist: initialPreseasonChecklist() }));
+        setState(prev => ({ ...prev, offseasonChecklist: isEuroIsolated ? initialEuroOffseasonChecklist() : initialPreseasonChecklist() }));
       }
     } else if (isFullyInSeason && hasChecklist) {
       setState(prev => ({
@@ -290,7 +340,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         pendingOfferDecisions: [],
       }));
     }
-  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist, state.playoffs, state.draftComplete, state.draftLotteryResult, state.offseasonExitedYear, state.leagueStats?.year, state.leagueStats?.draftType, state.seasonHistory]);
+  }, [state.isDataLoaded, state.gameMode, state.date, state.offseasonChecklist, state.playoffs, state.draftComplete, state.draftLotteryResult, state.offseasonExitedYear, state.leagueStats?.year, state.leagueStats?.draftType, state.leagueStats?.uiMode, state.seasonHistory]);
 
   // ── Auto-2029-Expansion-Seed (BBGM Real-Player-Mode Default) ─────────────
   // Setzt einmalig pro Save ein Seattle-+Vegas-Schedule für Saison 2029, sobald
@@ -1238,6 +1288,11 @@ const actions = useGameActions(setState, () => stateRef.current);
         }
       }
 
+      let healedStaff = loaded.staff;
+      let healedNonNBATeams = loaded.nonNBATeams ?? [];
+      let healedEuroSetupSeed = (loaded as any).euroSetupSeed;
+      let healedStaffFreeAgents = loaded.staffFreeAgents ?? [];
+
       // Euro-Isolated cleanup pass: strip NBA-specific contract flags from players
       // whose status is Endesa/EuroLeague/etc. and who sit on the active roster.
       // Two-way + non-guaranteed are NBA constructs and the auto-detection above
@@ -1255,7 +1310,7 @@ const actions = useGameActions(setState, () => stateRef.current);
 
       let healedUserTeamId = loaded.userTeamId;
       if (migratedLeagueStats?.uiMode === 'euro_isolated' && loaded.gameMode === 'gm') {
-        const nonNBATeams = loaded.nonNBATeams ?? [];
+        const nonNBATeams = healedNonNBATeams;
         const pointsAtEuroClub = nonNBATeams.some((t: any) => t.tid === healedUserTeamId);
         if (!pointsAtEuroClub) {
           const seededTeamId = (loaded as any).euroSetupSeed?.teamId;
@@ -1275,7 +1330,7 @@ const actions = useGameActions(setState, () => stateRef.current);
       if (migratedLeagueStats?.uiMode === 'euro_isolated') {
         const migrated = migrateAllEuroTeams({
           teams: teamsWithFreshTraining as any,
-          nonNBATeams: loaded.nonNBATeams ?? [],
+          nonNBATeams: healedNonNBATeams,
           leagueStats: migratedLeagueStats as any,
         });
         if (migrated > 0) console.log(`[LOAD_GAME] [tycoon] migrated ${migrated} teams to tycoon state`);
@@ -1289,6 +1344,157 @@ const actions = useGameActions(setState, () => stateRef.current);
           (migratedLeagueStats as any).quarterLength = 10;
           (migratedLeagueStats as any).numQuarters = 4;
         }
+        (migratedLeagueStats as any).transferMarket = {
+          ...EURO_TRANSFER_MARKET_DEFAULTS,
+          ...((migratedLeagueStats as any).transferMarket ?? {}),
+          enabled: true,
+        };
+        if (healedOffseasonChecklist && loaded.gameMode === 'gm' && !(loaded.seasonHistory?.length > 0)) {
+          const c = healedOffseasonChecklist;
+          if (c.freeAgency === 'pending' || c.trainingCamp === 'in-progress' || c.transferMarket !== 'done') {
+            healedOffseasonChecklist = {
+              ...initialEuroOffseasonChecklist(),
+              transferMarket: c.transferMarket === 'done' || c.transferMarket === 'in-progress' ? c.transferMarket : 'pending',
+              sponsorRenewals: c.sponsorRenewals === 'done' || c.sponsorRenewals === 'in-progress' ? c.sponsorRenewals : 'pending',
+              facilityUpgrades: c.facilityUpgrades === 'done' || c.facilityUpgrades === 'in-progress' ? c.facilityUpgrades : 'pending',
+              budgetLock: c.budgetLock === 'done' || c.budgetLock === 'in-progress' ? c.budgetLock : 'pending',
+              preseasonFriendlies: c.preseasonFriendlies === 'done' || c.preseasonFriendlies === 'in-progress' ? c.preseasonFriendlies : 'pending',
+              trainingCamp: c.trainingCamp === 'done' ? 'done' : 'pending',
+            };
+          }
+        }
+
+        const needsOwnerHeal = loaded.gameMode === 'gm' && !(migratedLeagueStats as any).autoOwnerSeeded;
+        if (needsOwnerHeal) {
+          const teamId = (healedEuroSetupSeed as any)?.teamId ?? healedUserTeamId;
+          const targetTeam =
+            healedNonNBATeams.find((t: any) => getClubId(t) === teamId) ??
+            teamsWithFreshTraining.find((t: any) => getClubId(t) === teamId);
+          if (targetTeam) {
+            const teamName = getClubLabel(targetTeam);
+            const leagueId = String((targetTeam as any).league ?? 'endesa').toLowerCase().includes('euro')
+              ? 'euroleague'
+              : 'endesa';
+            const masterSeed = (healedEuroSetupSeed as any)?.masterSeed
+              ?? (((teamId || 1) * 2654435761) ^ ((migratedLeagueStats as any).year || 2026)) >>> 0;
+            const seed = seedEuroCareer(
+              { ...(targetTeam as any), id: getClubId(targetTeam), logoUrl: (targetTeam as any).logoUrl ?? (targetTeam as any).imgURL } as any,
+              { players: loaded.players ?? [], nonNBATeams: healedNonNBATeams },
+              leagueId,
+              masterSeed || 1,
+            );
+            const signedYear = ((migratedLeagueStats as any).year ?? 2026) - 1;
+            const seededSponsorships = buildSetupSponsorships(seed, signedYear);
+            const teamStaff = seed.staff.map((member, index) => ({
+              ...member,
+              team: teamName,
+              teamLogoUrl: (targetTeam as any)?.logoUrl ?? (targetTeam as any)?.imgURL ?? member.teamLogoUrl,
+              isPlaceholder: true,
+              reputation: (member as any).reputation ?? 65,
+              id: `euro-setup-${teamId}-${member.position ?? member.jobTitle ?? index}`,
+            }));
+            const ownerStaff = {
+              name: seed.owner.name,
+              team: teamName,
+              position: 'Owner',
+              jobTitle: 'Owner',
+              playerPortraitUrl: (targetTeam as any)?.logoUrl ?? (targetTeam as any)?.imgURL,
+              teamLogoUrl: (targetTeam as any)?.logoUrl ?? (targetTeam as any)?.imgURL,
+              nationality: seed.owner.nationality,
+              face: seed.owner.face,
+              isPlaceholder: true,
+            };
+            const tycoonStaff = teamStaff.map((member, index) => ({
+              id: `staff-${teamId}-${member.position ?? index}`,
+              role: member.position ?? member.jobTitle ?? 'Staff',
+              name: member.name,
+              nationality: member.nationality,
+              salary: Math.round((450_000 + (((member as any).reputation ?? 65) * 10_000)) / 10_000) * 10_000,
+              contractYears: Math.max(1, 4 - Math.min(3, member.yearsWithTeam ?? 1)),
+              rating: (member as any).reputation ?? 65,
+              hiredYear: signedYear,
+              face: member.face,
+            }));
+            const applySetup = (team: any) => {
+              if (getClubId(team) !== teamId) return team;
+              const existingTycoon = team.tycoon ?? {};
+              return {
+                ...team,
+                ownerProfile: seed.owner,
+                startingTier: seed.tier,
+                startingBudget: seed.budget,
+                tycoon: {
+                  ...existingTycoon,
+                  tier: existingTycoon.tier ?? mapSetupTierToTycoonTier(seed.tier),
+                  cashOnHand: seed.budget,
+                  sponsorships: {
+                    ...(existingTycoon.sponsorships ?? {}),
+                    ...seededSponsorships,
+                  },
+                  staffMembers: tycoonStaff,
+                },
+              };
+            };
+            teamsWithFreshTraining = teamsWithFreshTraining.map(applySetup);
+            healedNonNBATeams = healedNonNBATeams.map(applySetup);
+            healedStaff = {
+              owners: [
+                ...(healedStaff?.owners ?? []).filter(s => s.team !== teamName && s.team !== (targetTeam as any)?.name),
+                ownerStaff,
+              ],
+              gms: healedStaff?.gms ?? [],
+              coaches: [
+                ...(healedStaff?.coaches ?? []).filter(s => s.team !== teamName && s.team !== (targetTeam as any)?.name),
+                ...teamStaff,
+              ],
+              leagueOffice: healedStaff?.leagueOffice ?? [],
+              referees: healedStaff?.referees,
+            };
+            healedEuroSetupSeed = {
+              teamId,
+              leagueId,
+              masterSeed: seed.masterSeed,
+              manualOverrides: (healedEuroSetupSeed as any)?.manualOverrides ?? {},
+            };
+            (migratedLeagueStats as any).autoOwnerSeeded = true;
+            console.log(`[LOAD_GAME] [euro] healed owner/staff setup for ${teamName}`);
+          }
+        }
+        if (loaded.gameMode === 'gm' && !(migratedLeagueStats as any).staffPoolSeeded) {
+          const teamId = (healedEuroSetupSeed as any)?.teamId ?? healedUserTeamId;
+          // NBA tids are 0-99, Euroleague 1000-1099, Endesa 5000-5099. Default
+          // to 'nba' when the team sits in the NBA range — this is what makes
+          // the NBA GM mode get its own FA pool instead of seeing Spanish FAs.
+          const leagueId = (healedEuroSetupSeed as any)?.leagueId
+            ?? (teamId >= 1000 && teamId < 1100 ? 'euroleague'
+              : (teamId >= 5000 && teamId < 5100 ? 'endesa'
+              : 'nba'));
+          // ensureStaffPoolDepth tops up to MIN_FA_DEPTH_PER_POSITION (10) per
+          // role so the user's signing modal always has real candidates to
+          // pick from, never falls back to render-time random generation.
+          const seededState = ensureStaffPoolDepth(
+            { players: loaded.players ?? [], nonNBATeams: healedNonNBATeams, teams: teamsWithFreshTraining ?? [], staffFreeAgents: [], saveId: loaded.saveId } as any,
+            leagueId,
+          );
+          healedStaffFreeAgents = seededState.staffFreeAgents ?? [];
+          (migratedLeagueStats as any).staffPoolSeeded = true;
+          console.log(`[LOAD_GAME] seeded ${healedStaffFreeAgents.length} staff free agents (min 10/position) for league=${leagueId}`);
+        }
+      }
+
+      // NBA GM mode also needs a staff FA pool — same min-depth logic, but
+      // sources from state.teams instead of nonNBATeams and uses leagueId='nba'.
+      // Runs outside the euro_isolated guard so plain NBA GM saves get it too.
+      if (loaded.gameMode === 'gm'
+        && migratedLeagueStats?.uiMode !== 'euro_isolated'
+        && !(migratedLeagueStats as any).staffPoolSeeded) {
+        const seededState = ensureStaffPoolDepth(
+          { players: loaded.players ?? [], nonNBATeams: healedNonNBATeams, teams: teamsWithFreshTraining ?? [], staffFreeAgents: [], saveId: loaded.saveId } as any,
+          'nba',
+        );
+        healedStaffFreeAgents = seededState.staffFreeAgents ?? [];
+        (migratedLeagueStats as any).staffPoolSeeded = true;
+        console.log(`[LOAD_GAME] [nba] seeded ${healedStaffFreeAgents.length} staff free agents (min 10/position)`);
       }
 
       setState({
@@ -1296,9 +1502,13 @@ const actions = useGameActions(setState, () => stateRef.current);
         ...loaded,
         leagueStats: migratedLeagueStats,
         userTeamId: healedUserTeamId,
+        nonNBATeams: healedNonNBATeams,
         schedule: healedSchedule,
         players: playersWithAISetup,
         teams: teamsWithFreshTraining as any,
+        staff: healedStaff,
+        staffFreeAgents: healedStaffFreeAgents,
+        euroSetupSeed: healedEuroSetupSeed,
         history: cleanedHistory,
         faBidding: { markets: cleanedFAMarkets },
         followedHandles: healedFollowedHandles ?? initialState.followedHandles,
@@ -1330,6 +1540,23 @@ const actions = useGameActions(setState, () => stateRef.current);
       // Auto-navigate to the right view so user lands where the action lives.
       const target = OFFSEASON_ROW_TAB[row];
       if (target) setCurrentView(target);
+      return;
+    }
+
+    if (action.type === 'PROMOTE_YOUTH') {
+      const { playerIds, teamId } = action.payload as { playerIds: any[]; teamId: number };
+      const idSet = new Set(playerIds);
+      setState(prev => ({
+        ...prev,
+        players: prev.players.map((p: any) => {
+          const pid = p.pid ?? p.internalId ?? p.id;
+          if (!idSet.has(pid)) return p;
+          if (p.tid !== teamId) return p;
+          // Flag the player as graduated from the academy. Real contract +
+          // senior-roster logic gets wired in the spawn pipeline (Punkt 4).
+          return { ...p, promotedFromAcademy: true, status: p.status ?? 'Active' };
+        }),
+      }));
       return;
     }
 
@@ -1640,6 +1867,233 @@ const actions = useGameActions(setState, () => stateRef.current);
       return;
     }
 
+    // ── Transfer Market actions ────────────────────────────────────────
+    if (action.type === 'LIST_PLAYER_FOR_TRANSFER') {
+      const { playerId, sellerTid, askingEUR, durationDays } = action.payload as any;
+      const days = durationDays ?? 7;
+      const today = stateRef.current.date ?? new Date().toISOString().slice(0, 10);
+      const newListing: import('../types').TransferListing = {
+        id: `tl-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        playerId,
+        sellerTid,
+        askingEUR,
+        bidsCount: 0,
+        totalDays: days,
+        daysLeft: days,
+        createdDate: today,
+        status: 'active',
+      };
+      // Fire AI bids immediately on listing day — clubs evaluate the same day.
+      const stateWithListing = {
+        ...stateRef.current,
+        transferListings: [...(stateRef.current.transferListings ?? []), newListing],
+      };
+      const tickResult = tickTransferMarket(stateWithListing);
+      setState(prev => ({
+        ...prev,
+        transferListings: tickResult.transferListings,
+        transferBids: tickResult.transferBids,
+        transferActivity: tickResult.transferActivity,
+        players: tickResult.players,
+        teams: tickResult.teams,
+        nonNBATeams: tickResult.nonNBATeams,
+        ...(tickResult.historyEntries.length > 0 ? {
+          history: [...(prev.history ?? []), ...tickResult.historyEntries] as any,
+        } : {}),
+        ...(tickResult.userBidResolutions.length > 0 ? {
+          pendingTransferToasts: [
+            ...(prev.pendingTransferToasts ?? []),
+            ...tickResult.userBidResolutions,
+          ],
+        } : {}),
+      }));
+      return;
+    }
+    if (action.type === 'CANCEL_TRANSFER_LISTING') {
+      const { listingId } = action.payload as any;
+      setState(prev => ({
+        ...prev,
+        transferListings: (prev.transferListings ?? []).map(l =>
+          l.id === listingId ? { ...l, status: 'cancelled' as const } : l
+        ),
+      }));
+      return;
+    }
+    if (action.type === 'SUBMIT_TRANSFER_BID') {
+      const p = action.payload as any;
+      const today = stateRef.current.date ?? new Date().toISOString().slice(0, 10);
+      const validDays = p.validDays ?? 3;
+      const expDate = (() => {
+        const d = new Date(today);
+        d.setUTCDate(d.getUTCDate() + validDays);
+        return d.toISOString().slice(0, 10);
+      })();
+      const newBid: import('../types').TransferBid = {
+        id: `tb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        listingId: p.listingId,
+        playerId: p.playerId,
+        bidderTid: p.bidderTid ?? stateRef.current.userTeamId ?? 0,
+        sellerTid: p.sellerTid,
+        bidType: p.bidType ?? 'transfer',
+        amountEUR: p.amountEUR,
+        expiresDate: expDate,
+        receivedDate: today,
+        status: 'active',
+      };
+      setState(prev => {
+        const bidderTid = newBid.bidderTid;
+        const bidderTeam = (prev.teams ?? []).find((t: any) => (t.id ?? t.tid) === bidderTid)
+          ?? (prev.nonNBATeams ?? []).find((t: any) => (t.id ?? t.tid) === bidderTid);
+        const bidderCash = (bidderTeam as any)?.tycoon?.cashOnHand ?? 0;
+        if (bidderCash < newBid.amountEUR) {
+          const player = (prev.players ?? []).find(pl => pl.internalId === newBid.playerId);
+          const sellerTeam = (prev.teams ?? []).find((t: any) => (t.id ?? t.tid) === newBid.sellerTid)
+            ?? (prev.nonNBATeams ?? []).find((t: any) => (t.id ?? t.tid) === newBid.sellerTid);
+          return {
+            ...prev,
+            pendingTransferToasts: [
+              ...(prev.pendingTransferToasts ?? []),
+              {
+                playerName: player?.name ?? 'Player',
+                accepted: false,
+                sellerTeamName: (sellerTeam as any)?.name ?? 'Selling club',
+                feeEUR: newBid.amountEUR,
+                reason: 'No cash for this transfer.',
+              },
+            ],
+          };
+        }
+        const listings = (prev.transferListings ?? []).map(l => {
+          if (l.id !== p.listingId) return l;
+          const isHighest = !l.highestBidEUR || p.amountEUR > l.highestBidEUR;
+          return {
+            ...l,
+            bidsCount: l.bidsCount + 1,
+            ...(isHighest ? { highestBidEUR: p.amountEUR, topBidderTid: newBid.bidderTid } : {}),
+          };
+        });
+        const withBid = { ...prev, transferListings: listings, transferBids: [...(prev.transferBids ?? []), newBid] };
+        // Same-day AI evaluation: lowballs get rejected immediately; meeting
+        // ask can trigger an accept. Keeps user feedback instant instead of
+        // making them sim a day to find out the seller laughed at €0.5M.
+        const tickResult = tickTransferMarket(withBid);
+        return {
+          ...withBid,
+          transferListings: tickResult.transferListings,
+          transferBids: tickResult.transferBids,
+          transferActivity: tickResult.transferActivity,
+          players: tickResult.players,
+          teams: tickResult.teams,
+          nonNBATeams: tickResult.nonNBATeams,
+          ...(tickResult.historyEntries.length > 0 ? {
+            history: [...(prev.history ?? []), ...tickResult.historyEntries] as any,
+          } : {}),
+          ...(tickResult.userBidResolutions.length > 0 ? {
+            pendingTransferToasts: [
+              ...(prev.pendingTransferToasts ?? []),
+              ...tickResult.userBidResolutions,
+            ],
+          } : {}),
+        };
+      });
+      return;
+    }
+    if (action.type === 'ACCEPT_TRANSFER_BID') {
+      const { bidId } = action.payload as any;
+      setState(prev => {
+        const bid = (prev.transferBids ?? []).find(b => b.id === bidId);
+        if (!bid) return prev;
+        const bids = (prev.transferBids ?? []).map(b =>
+          b.id === bidId ? { ...b, status: 'accepted' as const }
+          : b.listingId === bid.listingId && b.status === 'active' ? { ...b, status: 'withdrawn' as const } : b
+        );
+        const listings = (prev.transferListings ?? []).map(l =>
+          l.id === bid.listingId ? { ...l, status: 'sold' as const } : l
+        );
+        const player = (prev.players ?? []).find(p => p.internalId === bid.playerId);
+        // Normalize date for transferActivity to ISO (formatShortDate expects
+        // it) — otherwise "Mon DD, YYYY" produced by the sim renders as
+        // "Invalid Date" in the Market Activity sidebar.
+        const rawDate = prev.date ?? new Date().toISOString().slice(0, 10);
+        const today = /^\d{4}-\d{2}-\d{2}$/.test(rawDate)
+          ? rawDate
+          : (() => {
+              const d = new Date(rawDate);
+              return Number.isNaN(d.getTime())
+                ? new Date().toISOString().slice(0, 10)
+                : d.toISOString().slice(0, 10);
+            })();
+        const activity = [...(prev.transferActivity ?? []), {
+          id: `ta-${Date.now()}`,
+          date: today,
+          fromTid: bid.sellerTid,
+          toTid: bid.bidderTid,
+          playerId: bid.playerId,
+          playerName: player?.name ?? '?',
+          feeEUR: bid.amountEUR,
+          bidType: bid.bidType,
+        }];
+        const players = (prev.players ?? []).map(p =>
+          p.internalId === bid.playerId ? { ...p, tid: bid.bidderTid } : p
+        );
+        // Push a TransactionsView history entry so the new "Transfer" type
+        // shows up in the League Transactions / Team Transactions feeds.
+        const sellerTeam = (prev.teams ?? []).find(t => t.id === bid.sellerTid)
+          ?? (prev.nonNBATeams ?? []).find((t: any) => (t.tid ?? t.id) === bid.sellerTid);
+        const buyerTeam = (prev.teams ?? []).find(t => t.id === bid.bidderTid)
+          ?? (prev.nonNBATeams ?? []).find((t: any) => (t.tid ?? t.id) === bid.bidderTid);
+        const feeM = (bid.amountEUR / 1_000_000).toFixed(bid.amountEUR >= 10_000_000 ? 1 : 2).replace(/\.?0+$/, '');
+        // Tag league so the TransactionsView filter (Endesa/Euroleague) doesn't
+        // hide these entries when the user's domestic league is selected.
+        const sellerTidNum = bid.sellerTid;
+        // Match TransactionsView EXTERNAL_LEAGUES filter strings.
+        const league =
+          sellerTidNum >= 1000 && sellerTidNum < 2000 ? 'Euroleague'
+          : sellerTidNum >= 5000 && sellerTidNum < 6000 ? 'Endesa'
+          : undefined;
+        const history = [...(prev.history ?? []), {
+          text: `${player?.name ?? '—'} transferred from ${(sellerTeam as any)?.name ?? '—'} to ${(buyerTeam as any)?.name ?? '—'} for €${feeM}M`,
+          date: prev.date,
+          type: 'Transfer',
+          playerIds: player ? [player.internalId] : [],
+          tid: bid.bidderTid,
+          ...(league ? { league } : {}),
+        }] as any;
+        const adjustCash = (teams: any[]) => teams.map((team: any) => {
+          const tid = team.id ?? team.tid;
+          if (!team.tycoon) return team;
+          if (tid === bid.sellerTid) {
+            return { ...team, tycoon: { ...team.tycoon, cashOnHand: Math.round((team.tycoon.cashOnHand ?? 0) + bid.amountEUR) } };
+          }
+          if (tid === bid.bidderTid) {
+            return { ...team, tycoon: { ...team.tycoon, cashOnHand: Math.round((team.tycoon.cashOnHand ?? 0) - bid.amountEUR) } };
+          }
+          return team;
+        });
+        return {
+          ...prev,
+          transferBids: bids,
+          transferListings: listings,
+          transferActivity: activity,
+          players,
+          history,
+          teams: adjustCash(prev.teams ?? []),
+          nonNBATeams: adjustCash((prev as any).nonNBATeams ?? []),
+        };
+      });
+      return;
+    }
+    if (action.type === 'REJECT_TRANSFER_BID') {
+      const { bidId } = action.payload as any;
+      setState(prev => ({
+        ...prev,
+        transferBids: (prev.transferBids ?? []).map(b =>
+          b.id === bidId ? { ...b, status: 'rejected' as const } : b
+        ),
+      }));
+      return;
+    }
+
     // ── Auto-resolve every remaining phase via assistantGM lazy sim ─────
     // Single button at the top of AUFGABEN. Skips straight to opening
     // night using the existing lazy-sim path with assistantGM=true so
@@ -1691,16 +2145,60 @@ const actions = useGameActions(setState, () => stateRef.current);
     }
 
     if (action.type === 'OFFSEASON_EXIT') {
+      // ── PBA mini-offseason exit — advance to next conference ──────────
+      if (isPbaIsolatedMode(stateRef.current)) {
+        const ls = stateRef.current.leagueStats as any;
+        const current: import('../services/pba/conferenceTransition').PbaConference = ls?.pbaConference ?? 'philippine';
+        const { getNextConference, generateNextConferenceSchedule, clearConferenceImports, getConferenceStartDate } = require('../services/pba/conferenceTransition');
+        const next = getNextConference(current);
+        if (!next) {
+          // End of season → advance year, generate Phil Cup schedule
+          const nextYear = (ls?.year ?? new Date().getFullYear()) + 1;
+          const philSpec = PBA_COMPETITIONS[0];
+          const source = { nonNBATeams: stateRef.current.nonNBATeams as any, userTeamId: stateRef.current.userTeamId };
+          const tids = selectCompetitionTeamTids(philSpec, source);
+          const start = new Date(Date.UTC(nextYear - 1, philSpec.seasonStart.month - 1, philSpec.seasonStart.day));
+          const newGames = generateForCompetition(philSpec, tids.map((tid: number) => ({ tid })), start, 800_000);
+          const cleaned = clearConferenceImports(stateRef.current.players, current);
+          setState(prev => ({
+            ...prev,
+            players: cleaned,
+            leagueStats: {
+              ...prev.leagueStats,
+              year: nextYear,
+              pbaConference: 'philippine',
+              pbaConferencePhase: 'regularSeason',
+            },
+            date: `Oct 5, ${nextYear - 1}`,
+            schedule: [...(prev.schedule ?? []), ...newGames],
+            offseasonChecklist: undefined,
+          }));
+        } else {
+          // Inter-conference → generate next conference schedule
+          const newGames = generateNextConferenceSchedule(stateRef.current, next);
+          const cleaned = clearConferenceImports(stateRef.current.players, current);
+          const startDate = getConferenceStartDate(next, ls?.year ?? new Date().getFullYear());
+          setState(prev => ({
+            ...prev,
+            players: cleaned,
+            leagueStats: {
+              ...prev.leagueStats,
+              pbaConference: next,
+              pbaConferencePhase: 'regularSeason',
+            },
+            date: startDate,
+            schedule: [...(prev.schedule ?? []), ...newGames],
+            offseasonChecklist: undefined,
+          }));
+        }
+        return;
+      }
+
+      // ── Standard NBA/Euro offseason exit ──────────────────────────────
       // Advance to the first scheduled preseason game — same logic as the
       // PlayButton's "Until preseason games" option. Falls back to Oct 1
       // when no preseason games are in state.schedule yet (pre-schedule-
       // generation dead window, Jul–Sep).
-      //
-      // assistantGM is OFF by default: a manual "Enter Preseason" click
-      // from a GM who finished their offseason work must not let the AI
-      // trade their roster behind their back during the Sep→Oct sim
-      // window. OFFSEASON_AUTO_RESOLVE_ALL passes assistantGM=true to opt
-      // in — that's the path where the user explicitly delegated.
       const useAssistantGM = !!(action.payload as any)?.assistantGM;
       const ls = stateRef.current.leagueStats as any;
       const lsYear: number = ls?.year ?? new Date().getFullYear();
@@ -1720,10 +2218,6 @@ const actions = useGameActions(setState, () => stateRef.current);
           payload: { targetDate: target, stopBefore: true, assistantGM: useAssistantGM },
         } as any);
       }
-      // Stamp the CALENDAR year (not lsYear) so the auto-init useEffect
-      // doesn't immediately re-create the checklist within this offseason
-      // cycle, but DOES re-trigger when the next post-Finals offseason
-      // begins in the following calendar year (different cYear).
       const exitCYear = stateRef.current.date ? new Date(stateRef.current.date).getUTCFullYear() : 0;
       setState(prev => ({
         ...prev,
@@ -2154,6 +2648,207 @@ const actions = useGameActions(setState, () => stateRef.current);
           return prev;
         });
         return;
+      } else if (action.type === 'INIT_PBA_CAREER') {
+        const { teamId } = action.payload as { teamId: number };
+        setState(prev => {
+          const seasonYear = prev.leagueStats?.year ?? new Date().getFullYear() + 1;
+          const signedYear = seasonYear - 1;
+          const pbaStartDate = `Oct 5, ${signedYear}`;
+
+          // Generate Philippine Cup schedule
+          const philCupSpec = PBA_COMPETITIONS[0];
+          const source = { nonNBATeams: prev.nonNBATeams as any, userTeamId: teamId };
+          const tids = selectCompetitionTeamTids(philCupSpec, source);
+          const philCupStart = new Date(Date.UTC(signedYear, philCupSpec.seasonStart.month - 1, philCupSpec.seasonStart.day));
+          const philCupGames = generateForCompetition(philCupSpec, tids.map(tid => ({ tid })), philCupStart, 800_000);
+          const existingSchedule = prev.schedule ?? [];
+
+          return {
+            ...prev,
+            leagueStats: {
+              ...prev.leagueStats,
+              ...PBA_ISOLATED_DEFAULTS,
+              moddedLeagueBase: 'philippines',
+              pbaConference: 'philippine',
+              pbaConferencePhase: 'regularSeason',
+            },
+            userTeamId: teamId,
+            date: pbaStartDate,
+            schedule: [...existingSchedule, ...philCupGames],
+            offseasonChecklist: initialPbaChecklist(),
+            isProcessing: false,
+          };
+        });
+        return;
+      } else if (action.type === 'ADVANCE_PBA_CONFERENCE') {
+        setState(prev => {
+          const ls = prev.leagueStats as any;
+          const current: import('../services/pba/conferenceTransition').PbaConference = ls?.pbaConference ?? 'philippine';
+          const { getNextConference } = require('../services/pba/conferenceTransition');
+          const next = getNextConference(current);
+          if (!next) {
+            // End of season — mini-offseason before new year
+            return {
+              ...prev,
+              leagueStats: {
+                ...prev.leagueStats,
+                pbaConferencePhase: 'offseason',
+              },
+              offseasonChecklist: initialPbaEndOfSeasonChecklist(),
+            };
+          }
+          // Inter-conference mini-offseason
+          return {
+            ...prev,
+            leagueStats: {
+              ...prev.leagueStats,
+              pbaConferencePhase: 'offseason',
+            },
+            offseasonChecklist: initialPbaInterConferenceChecklist(),
+          };
+        });
+        return;
+      } else if (action.type === 'RECORD_PBA_CHAMPION') {
+        const { conference, teamId, teamName } = action.payload as { conference: string; teamId: number; teamName: string };
+        setState(prev => {
+          const ls = prev.leagueStats as any;
+          const season = ls?.year ?? new Date().getFullYear();
+          const existing: any[] = ls?.pbaConferenceChampions ?? [];
+          return {
+            ...prev,
+            leagueStats: {
+              ...prev.leagueStats,
+              pbaConferenceChampions: [...existing, { season, conference, teamId, teamName }],
+              pbaConferencePhase: 'complete',
+            },
+          };
+        });
+        return;
+      } else if (action.type === 'INIT_EURO_CAREER') {
+        const { teamId, leagueId, seed } = action.payload as { teamId: number; leagueId: string; seed: EuroCareerSeed };
+        setState(prev => {
+          const seasonYear = prev.leagueStats?.year ?? new Date().getFullYear() + 1;
+          const signedYear = seasonYear - 1;
+          const euroStartDate = new Date(Date.UTC(signedYear, 6, 1)).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          });
+          const teamFromState =
+            prev.teams.find(t => getClubId(t) === teamId) ??
+            (prev.nonNBATeams ?? []).find(t => getClubId(t) === teamId) ??
+            seed.team;
+          const teamName = getClubLabel(teamFromState);
+          const seededSponsorships = buildSetupSponsorships(seed, signedYear);
+          const teamStaff = seed.staff.map((member, index) => ({
+            ...member,
+            team: teamName,
+            teamLogoUrl: (teamFromState as any)?.logoUrl ?? (teamFromState as any)?.imgURL ?? member.teamLogoUrl,
+            isPlaceholder: true,
+            reputation: (member as any).reputation ?? 65,
+            id: `euro-setup-${teamId}-${member.position ?? member.jobTitle ?? index}`,
+          }));
+          const ownerStaff = {
+            name: seed.owner.name,
+            team: teamName,
+            position: 'Owner',
+            jobTitle: 'Owner',
+            playerPortraitUrl: (teamFromState as any)?.logoUrl ?? (teamFromState as any)?.imgURL,
+            teamLogoUrl: (teamFromState as any)?.logoUrl ?? (teamFromState as any)?.imgURL,
+            nationality: seed.owner.nationality,
+            face: seed.owner.face,
+            isPlaceholder: true,
+          };
+          const tycoonStaff = teamStaff.map((member, index) => ({
+            id: `staff-${teamId}-${member.position ?? index}`,
+            role: member.position ?? member.jobTitle ?? 'Staff',
+            name: member.name,
+            nationality: member.nationality,
+            salary: Math.round((450_000 + (((member as any).reputation ?? 65) * 10_000)) / 10_000) * 10_000,
+            contractYears: Math.max(1, 4 - Math.min(3, member.yearsWithTeam ?? 1)),
+            rating: (member as any).reputation ?? 65,
+            hiredYear: signedYear,
+            face: member.face,
+          }));
+
+          const teams = prev.teams.map(t => ({ ...t }));
+          const nonNBATeams = (prev.nonNBATeams ?? []).map(t => ({ ...t }));
+          // Per-position depth-guaranteed pool (min 10 per role per league).
+          // Single source of truth for staff FAs — UI reads straight from this.
+          const stockedPool = ensureStaffPoolDepth(
+            { players: prev.players, nonNBATeams: nonNBATeams as any, staffFreeAgents: [], saveId: prev.saveId } as any,
+            leagueId,
+          );
+          const initialStaffPool = stockedPool.staffFreeAgents ?? [];
+          migrateAllEuroTeams({
+            teams,
+            nonNBATeams,
+            leagueStats: { ...(prev.leagueStats as any), uiMode: 'euro_isolated', year: seasonYear },
+          });
+
+          const applySetup = (team: any) => {
+            if (getClubId(team) !== teamId) return team;
+            const existingTycoon = team.tycoon ?? {};
+            return {
+              ...team,
+              ownerProfile: seed.owner,
+              startingTier: seed.tier,
+              startingBudget: seed.budget,
+              tycoon: {
+                ...existingTycoon,
+                tier: existingTycoon.tier ?? mapSetupTierToTycoonTier(seed.tier),
+                cashOnHand: seed.budget,
+                sponsorships: {
+                  ...(existingTycoon.sponsorships ?? {}),
+                  ...seededSponsorships,
+                },
+                staffMembers: tycoonStaff,
+              },
+            };
+          };
+
+          return {
+            ...prev,
+            teams: teams.map(applySetup),
+            nonNBATeams: nonNBATeams.map(applySetup),
+            staff: {
+              owners: [
+                ...(prev.staff?.owners ?? []).filter(s => s.team !== teamName && s.team !== (teamFromState as any)?.name),
+                ownerStaff,
+              ],
+              gms: prev.staff?.gms ?? [],
+              coaches: [
+                ...(prev.staff?.coaches ?? []).filter(s => s.team !== teamName && s.team !== (teamFromState as any)?.name),
+                ...teamStaff,
+              ],
+              leagueOffice: prev.staff?.leagueOffice ?? [],
+              referees: prev.staff?.referees,
+            },
+            staffFreeAgents: initialStaffPool,
+            euroSetupSeed: {
+              teamId,
+              leagueId,
+              masterSeed: seed.masterSeed,
+              manualOverrides: seed.manualOverrides as unknown as Record<string, unknown>,
+            },
+            leagueStats: {
+              ...prev.leagueStats,
+              ...EURO_ISOLATED_DEFAULTS,
+              transferMarket: {
+                ...EURO_TRANSFER_MARKET_DEFAULTS,
+                ...(prev.leagueStats?.transferMarket ?? {}),
+                enabled: true,
+              },
+              autoOwnerSeeded: true,
+              staffPoolSeeded: true,
+            },
+            userTeamId: teamId,
+            date: euroStartDate,
+            offseasonChecklist: initialEuroOffseasonChecklist(),
+            isProcessing: false,
+          };
+        });
+        return;
       } else if (action.type === 'ANNOUNCE_CHANGE') {
         newStatePatch = await handleAnnounceChange(state, action.payload);
       } else if (action.type === 'UPDATE_RULES') {
@@ -2580,8 +3275,13 @@ const actions = useGameActions(setState, () => stateRef.current);
         Promise.all([
           staffMod.getStaffData(state.players, teamNameMap),
           coachesMod.fetchCoachData(),
+          // Pulls nba2kcoachlist + nbacoachesbio + nbacoachescontract + the new
+          // nbacoachesratings gist so getCoachRatings / getNBA2KCoach / getTeamStaff
+          // are populated before any UI tries to read them. Without this the
+          // Staff card falls back to seeded attrs (Udoka 71/78/71 instead of 88/80/95).
+          staffMod.fetchCoachData(),
           import('../services/staff/staffFallback'),
-        ]).then(([staff, _, fallbackMod]) => {
+        ]).then(([staff, _photos, _coaches, fallbackMod]) => {
           // Append synthetic staff for non-NBA clubs (Endesa, Euroleague, …)
           // so CoachingView / TeamIntel / etc. don't show "Unknown Coach".
           const nonNba = fallbackMod.generatePlaceholderNonNBAStaff(state);

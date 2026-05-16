@@ -19,6 +19,8 @@ import { getTeamMascot } from '../../../utils/helpers';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { JerseyRetirementModal } from '../../modals/JerseyRetirementModal';
 import type { Tab } from '../../../types';
+import { getActiveLeagueTeams, resolveAnyTeam } from '../../../utils/teamLookup';
+import { isEuroIsolatedMode } from '../../../utils/uiMode';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cross-view handoff: LeagueHistoryView calls requestTeamHistoryFor(tid, from)
@@ -84,6 +86,7 @@ interface TeamHistoryViewProps {
 export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }) => {
   const { state } = useGame();
   const isFictional = state.leagueType === 'fictional';
+  const euroIsolated = isEuroIsolatedMode(state);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(() => {
     const t = _pendingTeamHistoryTid;
     _pendingTeamHistoryTid = null;
@@ -123,7 +126,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   };
   const selectedTeam = selectedTeamId === NBA_HUB_ID
     ? NBA_HUB_TEAM
-    : (selectedTeamId != null ? state.teams.find(t => t.id === selectedTeamId) ?? null : null);
+    : (selectedTeamId != null ? resolveAnyTeam(selectedTeamId, state.teams, state.nonNBATeams ?? []) ?? null : null);
   const isNBAHub = selectedTeamId === NBA_HUB_ID;
 
   // ── Live career totals for active sim players ─────────────────────────────
@@ -178,7 +181,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   // ── Load external data when team changes ──────────────────────────────────
   useEffect(() => {
     if (!selectedTeam) return;
-    if (isFictional) {
+    if (isFictional || euroIsolated || selectedTeam.id >= 100) {
       setRegularRecords([]);
       setPlayoffRecords([]);
       setCareerLeaders([]);
@@ -208,7 +211,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
       .catch(e => { if (!cancelled) setExternalError(String(e)); })
       .finally(() => { if (!cancelled) setExternalLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedTeamId, selectedTeam, isFictional]);
+  }, [selectedTeamId, selectedTeam, isFictional, euroIsolated]);
 
   // ── Top players scoring ───────────────────────────────────────────────────
   const topPlayers = useMemo(() => {
@@ -418,12 +421,13 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   // ── Filtered teams for list ────────────────────────────────────────────────
   const filteredTeams = useMemo(() => {
     const q = searchTerm.toLowerCase();
-    return state.teams.filter(t =>
+    const sourceTeams = euroIsolated ? getActiveLeagueTeams(state) : state.teams;
+    return sourceTeams.filter(t =>
       t.name.toLowerCase().includes(q) ||
       (t.region ?? '').toLowerCase().includes(q) ||
       t.abbrev.toLowerCase().includes(q),
     );
-  }, [state.teams, searchTerm]);
+  }, [state, euroIsolated, searchTerm]);
 
   const quick = usePlayerQuickActions();
   const isGM = state.gameMode === 'gm';
@@ -456,31 +460,32 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
               />
             </div>
           </div>
-          {/* League hub featured card */}
-          <motion.button
-            whileHover={{ y: -3, scale: 1.005 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => { setSelectedTeamId(NBA_HUB_ID); setActiveTab('overview'); setExpandedLeaders({}); setExpandedRecords({}); }}
-            className="w-full mb-6 bg-gradient-to-r from-[#1D428A]/20 to-[#C8102E]/20 border border-[#1D428A]/40 rounded-2xl p-5 text-left overflow-hidden relative group"
-          >
-            <div className="flex items-center gap-4">
-              {isFictional ? (
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1D428A]/30 to-[#C8102E]/30 border border-zinc-700 flex items-center justify-center">
-                  <Trophy className="w-6 h-6 text-zinc-200" />
+          {!euroIsolated && (
+            <motion.button
+              whileHover={{ y: -3, scale: 1.005 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => { setSelectedTeamId(NBA_HUB_ID); setActiveTab('overview'); setExpandedLeaders({}); setExpandedRecords({}); }}
+              className="w-full mb-6 bg-gradient-to-r from-[#1D428A]/20 to-[#C8102E]/20 border border-[#1D428A]/40 rounded-2xl p-5 text-left overflow-hidden relative group"
+            >
+              <div className="flex items-center gap-4">
+                {isFictional ? (
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1D428A]/30 to-[#C8102E]/30 border border-zinc-700 flex items-center justify-center">
+                    <Trophy className="w-6 h-6 text-zinc-200" />
+                  </div>
+                ) : (
+                  <img src="https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg" alt="NBA" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
+                )}
+                <div>
+                  <div className="text-xs font-black uppercase tracking-tight">
+                    <span className="text-zinc-400">{isFictional ? 'Fictional Basketball ' : 'National Basketball '}</span>
+                    <span className="text-[#C8102E]">Association</span>
+                  </div>
+                  <div className="text-[10px] text-zinc-500 font-mono uppercase mt-0.5">League-Wide Records & All-Time Leaders</div>
                 </div>
-              ) : (
-                <img src="https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg" alt="NBA" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
-              )}
-              <div>
-                <div className="text-xs font-black uppercase tracking-tight">
-                  <span className="text-zinc-400">{isFictional ? 'Fictional Basketball ' : 'National Basketball '}</span>
-                  <span className="text-[#C8102E]">Association</span>
-                </div>
-                <div className="text-[10px] text-zinc-500 font-mono uppercase mt-0.5">League-Wide Records & All-Time Leaders</div>
+                <ChevronRight className="ml-auto w-4 h-4 text-[#1D428A] opacity-60 group-hover:opacity-100 transition-opacity" />
               </div>
-              <ChevronRight className="ml-auto w-4 h-4 text-[#1D428A] opacity-60 group-hover:opacity-100 transition-opacity" />
-            </div>
-          </motion.button>
+            </motion.button>
+          )}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {filteredTeams.map(team => {
               const ac = getBestAccentColor(team.colors, team.name);

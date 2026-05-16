@@ -8,6 +8,8 @@ import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 import { isPlausibleActiveMarket } from '../../../services/freeAgencyBidding';
 import { formatFuzzedRating } from '../../../utils/scoutingFuzz';
+import { isNonNbaIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
+import { isFilipino } from '../../../services/pba/importManager';
 
 const LEAGUE_LOGOS: Record<string, string> = {
   PBA: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/93/Philippine_Basketball_Association_logo.svg/200px-Philippine_Basketball_Association_logo.svg.png',
@@ -26,6 +28,9 @@ interface FreeAgentCardProps {
 
 export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeams = [], onClick, onViewOffers }) => {
   const { state } = useGame();
+  const nonNbaIsolated = isNonNbaIsolatedMode(state);
+  const pbaMode = isPbaIsolatedMode(state);
+  const showImportBadge = pbaMode && !isFilipino(player);
   const simYear = state.leagueStats?.year ?? new Date().getFullYear();
   const age = player.born?.year ? simYear - player.born.year : player.age || 0;
   const ovr = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
@@ -40,7 +45,7 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
     ? state.teams.find(t => t.id === player.tid) ?? null
     : null;
   const teamLogo = nbaTeam?.logoUrl || nonNBATeam?.imgURL || null;
-  const leagueLogo = !nbaTeam && player.status ? LEAGUE_LOGOS[player.status] || null : null;
+  const leagueLogo = !nonNbaIsolated && !nbaTeam && player.status ? LEAGUE_LOGOS[player.status] || null : null;
 
   let orgLabel = 'Free Agent';
   if (nbaTeam) {
@@ -51,7 +56,7 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
     orgLabel = nonNBATeam.region
       ? `${nonNBATeam.region} ${nonNBATeam.name}`.trim()
       : nonNBATeam.name;
-  } else if (['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
+  } else if (!nonNbaIsolated && ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
     orgLabel = player.status!;
   }
 
@@ -121,6 +126,11 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">{player.pos}</span>
               <span className="text-[10px] text-slate-600">•</span>
               <span className="text-[10px] font-bold text-slate-500">{age}y</span>
+              {showImportBadge && (
+                <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border text-orange-400 bg-orange-500/10 border-orange-500/30">
+                  Import
+                </span>
+              )}
               {optionChip && (
                 <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border ${optionChip.color}`}>
                   {optionChip.label}

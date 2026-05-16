@@ -2,6 +2,7 @@ import { GameState, NonNBATeam, NewsItem, DraftPick, NBACupState } from '../../t
 import { computeRookieSalaryUSD } from '../../utils/rookieContractUtils';
 import { normalizeTeamJerseyNumbers, pickJerseyNumber } from '../../utils/jerseyUtils';
 import { generateSchedule } from '../gameScheduler';
+import { generateForCompetition, selectCompetitionTeamTids } from '../competition/competitionScheduler';
 import { drawCupGroups } from '../nbaCup/drawGroups';
 import { injectCupGroupGames } from '../nbaCup/scheduleInjector';
 import { AwardService } from './AwardService';
@@ -93,6 +94,14 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
     cupGroups.length > 0 ? cupGroups : undefined,
     state.saveId,
   );
+  if (state.activeCompetitions?.length) {
+    const compGames = state.activeCompetitions.flatMap((spec, index) => {
+      const teams = selectCompetitionTeamTids(spec, state).map(tid => ({ tid }));
+      const start = new Date(`${state.leagueStats.year - 1}-${String(spec.seasonStart.month).padStart(2, '0')}-${String(spec.seasonStart.day).padStart(2, '0')}T00:00:00Z`);
+      return generateForCompetition(spec, teams, start, 700_000 + index * 50_000);
+    });
+    schedule = [...schedule, ...compGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }
   if (intlPreseasonGames.length > 0) {
     // Re-gid intl games to start after the freshly generated schedule's max gid
     // so they never collide with regular/preseason game gids (which start from 0)

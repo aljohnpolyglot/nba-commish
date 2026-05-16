@@ -15,6 +15,7 @@ import { WatchGamePreviewModal } from '../../modals/WatchGamePreviewModal';
 import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import { useDraftEventGate } from '../../../hooks/useDraftEventGate';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 
 // Sub-components
 import { AllStarDayView } from './components/AllStarDayView';
@@ -79,9 +80,12 @@ export const ScheduleView: React.FC = () => {
     setCalendarMonth(new Date(state.date));
   }, [state.date, state.day]);
 
+  const pbaIsolated = isPbaIsolatedMode(state);
   const gamesForSelectedDate = useMemo(() => {
-    return state.schedule.filter(g => normalizeDate(g.date) === normalizeDate(selectedDate));
-  }, [state.schedule, selectedDate]);
+    const byDate = state.schedule.filter(g => normalizeDate(g.date) === normalizeDate(selectedDate));
+    if (pbaIsolated) return byDate.filter(g => g.homeTid >= 2000 && g.homeTid < 2100);
+    return byDate;
+  }, [state.schedule, selectedDate, pbaIsolated]);
 
   // Roster compliance gate — shared hook covers every sim advancement path.
   const rosterGate = useRosterComplianceGate();
