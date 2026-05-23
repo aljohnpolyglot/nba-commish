@@ -42,6 +42,15 @@ const focusTagsFor = (role: string): string[] => {
   return keys.slice(0, 4).map(([, label]) => label);
 };
 
+const NAME_POOL_COUNTRY_ALIASES: Record<string, string> = {
+  American: 'USA',
+  Spanish: 'Spain',
+};
+
+function resolveNamePoolCountry(country: string): string {
+  return NAME_POOL_COUNTRY_ALIASES[country] ?? country;
+}
+
 const StepperPill: React.FC<{ index: number; label: string; status: 'done' | 'current' | 'todo' }> = ({ index, label, status }) => (
   <div className="flex items-center gap-2">
     <div className={`flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-black ${
@@ -103,7 +112,7 @@ export const StaffSigningModal: React.FC<{
     const emergency: StaffCandidate[] = [];
     for (let i = 0; i < needed; i++) {
       const country = countries[(selectedRole.length + i) % countries.length];
-      const countryData = nameData.countries?.[country] ?? nameData.countries?.USA;
+      const countryData = nameData.countries?.[resolveNamePoolCountry(country)] ?? nameData.countries?.USA;
       const firsts = Object.keys(countryData?.first ?? {});
       const lasts = Object.keys(countryData?.last ?? {});
       const first = firsts[(selectedRole.length + i * 7) % Math.max(1, firsts.length)] ?? 'Interim';

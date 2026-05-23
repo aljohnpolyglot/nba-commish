@@ -45,6 +45,8 @@ const LAST_NAMES = [
   'Reed', 'Simmons', 'Stewart', 'Turner', 'Wallace', 'Watkins', 'Williams',
 ];
 
+const DEFAULT_NBA_STAFF_NATIONALITY = 'American';
+
 function hashSeed(key: string): number {
   let h = 2166136261;
   for (let i = 0; i < key.length; i++) {
@@ -152,7 +154,7 @@ function buildStaffMember(
     id: `nba-real-staff-${role.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${raw.name.replace(/[^a-zA-Z0-9]+/g, '-')}`,
     role,
     name: raw.name,
-    nationality: raw.nationality ?? 'USA',
+    nationality: raw.nationality ?? DEFAULT_NBA_STAFF_NATIONALITY,
     salary: getStaffMarketSalary(undefined, role, rating, {
       externalSalary: contract?.annualSalary ?? null,
       yearsExperience: career.yearsExperience,
@@ -220,7 +222,7 @@ function buildSupportStaffForTeam(team: NBATeam, currentYear: number): StaffMemb
       team: teamName,
       position: role,
       jobTitle: role,
-      nationality: 'USA',
+      nationality: DEFAULT_NBA_STAFF_NATIONALITY,
       salary: getStaffMarketSalary(tier, role, rating, {
         yearsExperience: career.yearsExperience,
         yearsWithTeam: career.yearsWithTeam,
@@ -253,7 +255,7 @@ export function buildGeneratedNBAStaffForRole(team: NBATeam, role: string, curre
     team: teamName,
     position: role,
     jobTitle: role,
-    nationality: 'USA',
+    nationality: DEFAULT_NBA_STAFF_NATIONALITY,
     salary: getStaffMarketSalary(tier, role, rating, {
       yearsExperience: career.yearsExperience,
       yearsWithTeam: career.yearsWithTeam,

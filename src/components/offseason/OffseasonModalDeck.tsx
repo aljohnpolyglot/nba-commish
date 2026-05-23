@@ -89,14 +89,14 @@ export const OffseasonAutoResolveConfirmModal: React.FC<{
             {isPba ? 'Conference Break' : 'Summer Checklist'}
           </p>
           <h2 className="text-xl font-black uppercase tracking-tight text-white">
-            {isPba ? 'Skip Remaining Tasks' : 'Sim to Opening Night'}
+            {isPba ? 'Skip Remaining Tasks' : 'Sim to Preseason'}
           </h2>
         </div>
         <div className="p-5 space-y-4">
           <p className="text-sm text-slate-300 leading-relaxed">
             {isPba
               ? 'This skips remaining tasks and advances to the next conference.'
-              : 'This advances the remaining offseason phases in order and lands on opening night with the new season ready to start.'}
+              : 'This advances the remaining offseason phases in order and lands in preseason with the new season ready to start.'}
           </p>
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2 text-sm text-slate-400">
             {isPba ? (
@@ -123,7 +123,7 @@ export const OffseasonAutoResolveConfirmModal: React.FC<{
               onClick={onConfirm}
               className="flex-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs py-3 transition-colors"
             >
-              {isPba ? 'Skip All' : 'Sim to Opening Night'}
+              {isPba ? 'Skip All' : 'Sim to Preseason'}
             </button>
           </div>
         </div>

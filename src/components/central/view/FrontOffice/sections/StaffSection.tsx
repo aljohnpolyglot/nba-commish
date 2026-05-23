@@ -8,7 +8,7 @@ import { makePlaceholderCoach, makePlaceholderGM } from '../../../../../services
 import { MyFace, isRealFaceConfig } from '../../../../shared/MyFace';
 import { getStaffImageUrl, deterministicStaffImageId, resolveStaffImageId } from '../../../../../utils/staffPortrait';
 import { inferEuroStaffLeagueId } from '../../../../../services/euro/staffPool';
-import { getNBA2KCoach, getTeamStaff, getCoachContractSnapshot, getStaffCareerSnapshot, OWNER_IMAGES } from '../../../../../services/staffService';
+import { fetchCoachData, getCoachBio, getNBA2KCoach, getTeamStaff, getCoachContractSnapshot, getStaffCareerSnapshot, OWNER_IMAGES } from '../../../../../services/staffService';
 import { ensureStaffPhotoData, resolveCoachPortrait, resolveStaffPortrait, useStaffPhotoStore } from '../../../../../store/staffPhotoStore';
 import { StaffSigningModal, type StaffCandidate } from '../StaffSigning/StaffSigningModal';
 import { getStaffMarketSalary, getStaffRoleBaseSalary, normalizeStaffSalary, type StaffMarket } from '../../../../../services/tycoon/economyScale';
@@ -42,10 +42,18 @@ export const StaffSection: React.FC<{
   const [actionPerson, setActionPerson] = useState<{ role: string; person: any; years: number; salary: number } | null>(null);
   const [ratingsPerson, setRatingsPerson] = useState<{ role: string; person: any; years: number; salary: number } | null>(null);
   const [resignPool, setResignPool] = useState<any[] | null>(null);
+  const [, setCoachDataVersion] = useState(0);
   const staffPhotoVersion = useStaffPhotoStore(s => s.version);
   void staffPhotoVersion;
   React.useEffect(() => {
     ensureStaffPhotoData();
+    let cancelled = false;
+    void fetchCoachData().then(() => {
+      if (!cancelled) setCoachDataVersion(v => v + 1);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
   const firedRoles: string[] = (team.tycoon?.firedStaffRoles ?? []);
   const tycoonTier = team.tycoon?.tier;
@@ -79,6 +87,33 @@ export const StaffSection: React.FC<{
   const owner = (state.staff?.owners ?? []).find((s: any) => s.team === team.name || s.team === teamName);
   const persistentStaff = new Map<string, any>((team.tycoon?.staffMembers ?? []).map((s: any) => [s.role, s]));
   const getStaffFace = (person: any) => isRealFaceConfig(person?.face) ? person.face : undefined;
+  const hydrateStaffPerson = (person: any, role: string) => {
+    if (!person) return person;
+    const name = person.name;
+    const baseRole = role.replace(/ \d+$/, '');
+    const isCoachRole = baseRole.includes('Coach');
+    if (!isCoachRole) return person;
+    const bio = name ? getCoachBio(name) : undefined;
+    const nba2k = name ? getNBA2KCoach(name) : undefined;
+    const contract = name ? getCoachContractSnapshot(name, currentYear) : null;
+    const career = getStaffCareerSnapshot({
+      ...person,
+      careerStartYear: person?.careerStartYear ?? bio?.startSeason ?? nba2k?.coaching_career,
+      born: person?.born ?? bio?.birthDate ?? undefined,
+      age: person?.age ?? nba2k?.age ?? undefined,
+    }, currentYear);
+    return {
+      ...person,
+      nationality: person?.nationality ?? nba2k?.nationality ?? bio?.nationality ?? person?.born?.loc ?? 'Unknown',
+      yearsWithTeam: person?.yearsWithTeam ?? career.yearsWithTeam,
+      hiredYear: person?.hiredYear ?? career.hiredYear ?? (career.yearsWithTeam > 0 ? currentYear - career.yearsWithTeam : undefined),
+      careerStartYear: person?.careerStartYear ?? career.careerStartYear ?? undefined,
+      bornYear: person?.bornYear ?? career.bornYear ?? undefined,
+      contractYears: person?.contractYears ?? contract?.yearsLeft ?? undefined,
+      contractExp: person?.contractExp ?? contract?.endYear ?? undefined,
+      salary: person?.salary ?? contract?.annualSalary ?? undefined,
+    };
+  };
   // buildDisplayAttributes/buildStaffAttrs imported from shared module —
   // single source of truth across StaffSection / Signing modal / Ratings modal.
   const buildAttributes = buildDisplayAttributes;
@@ -101,7 +136,7 @@ export const StaffSection: React.FC<{
     const career = getStaffCareerSnapshot(c, currentYear);
     return {
       name: c.name,
-      nationality: c.nationality ?? 'USA',
+      nationality: c.nationality ?? 'American',
       position: c.position,
       playerPortraitUrl: resolveCoachPhoto(c.name, undefined),
       staffImageId: deterministicStaffImageId(c.name),
@@ -170,17 +205,19 @@ export const StaffSection: React.FC<{
     { role: 'Head of Analytics', person: resolvePerson('Head of Analytics', null), group: 'Scouting & Analytics', focus: 'Shot profile, lineup data, and opponent models', salary: getStaffRoleBaseSalary(tycoonTier, 'Head of Analytics', staffMarket), years: persistentStaff.get('Head of Analytics')?.contractYears ?? 0 },
   ];
   const rolesWithLiveSalaries = roles.map(item => {
+    const person = item.person ? hydrateStaffPerson(item.person, item.role) : item.person;
     const persisted = persistentStaff.get(item.role);
-    const salary = item.person
+    const years = persisted?.contractYears ?? person?.contractYears ?? item.years;
+    const salary = person
       ? normalizeStaffSalary(
         tycoonTier,
         item.role,
-        persisted?.salary ?? item.person?.salary ?? item.salary,
-        persisted?.rating ?? item.person?.rating,
-        { market: staffMarket, ...getSalaryContext(item.person, persisted) },
+        persisted?.salary ?? person?.salary ?? item.salary,
+        persisted?.rating ?? person?.rating,
+        { market: staffMarket, ...getSalaryContext(person, persisted) },
       )
       : item.salary;
-    return { ...item, salary };
+    return { ...item, person, years, salary };
   });
   const filledRoles = rolesWithLiveSalaries.filter((r) => r.person).length;
   const openRoleCount = rolesWithLiveSalaries.filter((r) => !r.person).length;
@@ -206,7 +243,12 @@ export const StaffSection: React.FC<{
           if (member.leagueId && member.leagueId !== userLeagueId) return false;
           if (userLeagueId === 'nba') {
             const nationality = String(member.nationality ?? '').toLowerCase();
-            return !nationality || nationality === 'usa' || nationality === 'united states';
+            return !nationality
+              || nationality === 'usa'
+              || nationality === 'united states'
+              || nationality === 'american'
+              || nationality === 'spain'
+              || nationality === 'spanish';
           }
           return true;
         })
@@ -215,8 +257,8 @@ export const StaffSection: React.FC<{
           // the attributes the modal shows here are the SAME attributes that
           // the card and ratings-modal will render after hire.
           const seed = seedForStaff(member);
-          const attrsFull = buildStaffAttrs(seed);
-          const rating = computeStaffOverall(r.role, attrsFull);
+          const attrs = attrsForCoach(member.name, seed);
+          const rating = computeStaffOverall(r.role, attrs);
           const career = getStaffCareerSnapshot(member, currentYear);
           const baseSalary = normalizeStaffSalary(
             tycoonTier,
@@ -241,7 +283,7 @@ export const StaffSection: React.FC<{
             face: member.face,
             staffImageId: resolveStaffImageId(member),
             playerPortraitUrl: member.playerPortraitUrl,
-            attributes: buildAttributes(r.role, seed),
+            attributes: buildAttributes(r.role, seed, member.name),
           };
         })
         .sort((a: StaffCandidate, b: StaffCandidate) => b.rating - a.rating)
@@ -298,7 +340,7 @@ export const StaffSection: React.FC<{
                   const displayKeys = ROLE_DISPLAY_KEYS[baseRole] ?? ROLE_DISPLAY_KEYS['Head Coach'];
                   const attrs: Array<[string, number]> = personAttrs
                     ? displayKeys.map(([k, label]) => [label, personAttrs[k]])
-                    : buildAttributes(item.role, personSeed);
+                    : buildAttributes(item.role, personSeed, item.person?.name);
                   const initials = item.person?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) ?? '+';
                   const rating = personAttrs ? computeStaffOverall(item.role, personAttrs) : 0;
                   const face = getStaffFace(item.person);
@@ -338,6 +380,11 @@ export const StaffSection: React.FC<{
                             <div className="min-w-0">
                               <div className="text-sm font-black text-white truncate">{item.person?.name}</div>
                               <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">{item.role}</div>
+                              {Number(item.years) <= 0 && (
+                                <div className="mt-1 inline-flex rounded border border-rose-400/40 bg-rose-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-rose-300">
+                                  Renewal Due
+                                </div>
+                              )}
                             </div>
                             <div className="w-11 h-11 rounded-full border border-emerald-400/40 bg-emerald-400/10 text-emerald-300 flex items-center justify-center text-sm font-black">
                               {rating}
@@ -357,7 +404,7 @@ export const StaffSection: React.FC<{
                         ))}
                       </div>
                       <div className="mt-4 flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
-                        <span className="text-slate-500">{formatYearsLeftLabel(item.years)}</span>
+                        <span className={Number(item.years) <= 0 ? 'text-rose-300' : 'text-slate-500'}>{formatYearsLeftLabel(item.years)}</span>
                         <span className="text-slate-400">{formatCurrencyWithCode(item.salary, currency, false)}/yr</span>
                       </div>
                     </button>
@@ -470,11 +517,11 @@ export const StaffSection: React.FC<{
           currency={currency}
           market={staffMarket}
           mode={signingMode}
-          // NBA tids (0-99) → USA-only emergency pool. Spaniards/Frenchmen as
+          // NBA tids (0-99) → American-only emergency pool. Spaniards/Frenchmen as
           // "limited options" candidates for a Mavs GM was the bug.
           emergencyCountries={(() => {
             const tid = team.id ?? team.tid;
-            if (tid >= 0 && tid < 100) return ['USA'];
+            if (tid >= 0 && tid < 100) return ['American'];
             if (tid >= 1000 && tid < 1100) return ['Spain', 'France', 'Italy', 'Serbia', 'Greece', 'Turkey'];
             return undefined;
           })()}
@@ -532,7 +579,8 @@ export const StaffSection: React.FC<{
               else if (action === 'resign_staff') {
                 const baseRole = role.replace(/ \d+$/, '');
                 const career = getStaffCareerSnapshot(member ?? person, currentYear);
-                const rating = Math.min(95, (member?.rating ?? 72) + 1);
+                const attrs = attrsForCoach(person?.name, seedForStaff(member ?? person));
+                const rating = computeStaffOverall(role, attrs);
                 const baseSalary = getStaffMarketSalary(
                   tycoonTier,
                   role,
@@ -559,9 +607,13 @@ export const StaffSection: React.FC<{
                     savedPortrait: person?.playerPortraitUrl,
                     staffImageId: person?.staffImageId,
                   }),
-                  attributes: buildAttributes(baseRole, rating + 3),
+                  attributes: buildAttributes(baseRole, seedForStaff(member ?? person), person?.name),
                 };
-                setResignPool([resignCandidate]);
+                const replacementPool = candidatePool.get(role) ?? [];
+                const mergedPool = [resignCandidate, ...replacementPool.filter(candidate =>
+                  candidate.name !== resignCandidate.name && candidate.id !== resignCandidate.id
+                )];
+                setResignPool(mergedPool);
                 setSelectedRole(role);
                 setSigningMode('extension');
                 setActionPerson(null);

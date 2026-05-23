@@ -18,6 +18,14 @@ import {
     resolveStatmuseMedia,
 } from './statmuseShared';
 
+function getContextStats(ctx: Parameters<NonNullable<SocialTemplate['condition']>>[0]) {
+    if (ctx.stats) return ctx.stats;
+    const playerId = ctx.player?.internalId;
+    if (!playerId) return null;
+    return [...(ctx.game?.homeStats ?? []), ...(ctx.game?.awayStats ?? [])]
+        .find(stat => stat.playerId === playerId) ?? null;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SPECIFIC TEMPLATES — each fires only when the story is genuinely there
 // ─────────────────────────────────────────────────────────────────────────────
@@ -153,10 +161,17 @@ export const STATMUSE_TEMPLATES: SocialTemplate[] = [
         priority: 98,
         type: 'statline',
         condition: (ctx) =>
-            !!(ctx.game?.gameWinner?.isWalkoff &&
+            !!(getContextStats(ctx) &&
+               ctx.game?.gameWinner?.isWalkoff &&
                ctx.game?.gameWinner?.playerId === ctx.player?.internalId),
         resolve: (_, ctx) => {
-            const s  = ctx.stats;
+            const s = getContextStats(ctx);
+            if (!s) {
+                return {
+                    content: `${ctx.player?.name ?? 'Unknown'} hit the buzzer beater.`,
+                    ...resolveStatmuseMedia(ctx),
+                };
+            }
             const gw = ctx.game.gameWinner;
             const shotLabel =
                 gw?.shotType === 'clutch_3' ? 'game-winning three'

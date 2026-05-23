@@ -416,6 +416,7 @@ export const processSimulationResults = (
                 const team = teamById.get(p.tid);
                 const travel = getTeamTravelGameplayEffects(team as any);
                 const totalAwayMinutes = awayMinutesPlayed.get(p.internalId) || 0;
+                if (totalAwayMinutes <= 0) return changed ? updated : p;
                 const averageAwayMinutes = totalAwayMinutes / awayTrips;
                 const fatigueLoad = 0.45 + Math.min(1.15, averageAwayMinutes / 28);
                 const fatigueGain = fatigueLoad * awayTrips * travel.roadTripFatigueDelta;

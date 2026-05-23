@@ -406,6 +406,8 @@ export function tickPlayerFatigue(
   if (!plan) {
     // No training scheduled (offseason / FA / trade deadline / Sunday). Strong recovery.
     delta = -5.0;
+  } else if ((player.trainingIntensity ?? 'Normal') === 'Rest') {
+    delta = -3.0;
   } else if (plan.paradigm === 'Recovery') {
     delta = -4.0;
   } else {

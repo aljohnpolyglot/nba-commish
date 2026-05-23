@@ -21,6 +21,11 @@ export {
 
 const STRENGTH_DEBUFF_AMOUNTS = { heavy: 5, moderate: 3, mild: 1 } as const;
 
+type TeamStrengthContext = {
+    leaguePERAvg: number;
+    teamPlayersByTeam: Map<number, Player[]>;
+};
+
 export function getTrainingFatigueRatingMultiplier(player: Pick<Player, 'trainingFatigue'> | any): number {
     const fatigue = Math.max(0, Math.min(100, Number(player?.trainingFatigue ?? 0)));
     return Math.max(0.85, 1 - fatigue / 200);
@@ -46,20 +51,57 @@ const teamStrengthCache = new Map<string, number>();
 
 export const clearTeamStrengthCache = () => teamStrengthCache.clear();
 
-export const calculateTeamStrength = (teamId: number, players: Player[], overridePlayers?: Player[]): number => {
-    // Only cache if not using override players
-    const injuryFingerprint = !overridePlayers
-      ? players.filter(p => p.tid === teamId && p.injury && p.injury.gamesRemaining > 0).map(p => p.internalId).sort().join(',')
-      : '';
-    const fatigueFingerprint = !overridePlayers
-      ? players.filter(p => p.tid === teamId && (p.trainingFatigue ?? 0) > 0).map(p => `${p.internalId}:${Math.round(p.trainingFatigue ?? 0)}`).sort().join(',')
-      : '';
-    const cacheKey = !overridePlayers ? `${teamId}-${players.length}-${players[0]?.internalId}-${injuryFingerprint}-${fatigueFingerprint}` : null;
+function computeLeaguePERAvg(players: Player[]): number {
+    let totalPer = 0;
+    let count = 0;
+    for (const player of players) {
+        for (const season of player.stats ?? []) {
+            if (season.playoffs || (season.gp ?? 0) <= 0) continue;
+            const per = season.per ?? 0;
+            if (per <= 0) continue;
+            totalPer += per;
+            count += 1;
+        }
+    }
+    return count > 0 ? totalPer / count : 15;
+}
+
+export function buildTeamStrengthContext(players: Player[]): TeamStrengthContext {
+    const teamPlayersByTeam = new Map<number, Player[]>();
+    for (const player of players) {
+        if (player.tid < 0 || (player.injury?.gamesRemaining ?? 0) > 0) continue;
+        const existing = teamPlayersByTeam.get(player.tid);
+        if (existing) existing.push(player);
+        else teamPlayersByTeam.set(player.tid, [player]);
+    }
+    for (const teamPlayers of teamPlayersByTeam.values()) {
+        teamPlayers.sort((a, b) => b.overallRating - a.overallRating);
+    }
+    return {
+        leaguePERAvg: computeLeaguePERAvg(players),
+        teamPlayersByTeam,
+    };
+}
+
+export const calculateTeamStrength = (
+    teamId: number,
+    players: Player[],
+    overridePlayers?: Player[],
+    context?: TeamStrengthContext,
+): number => {
+    const teamPlayers = overridePlayers
+        ? [...overridePlayers].sort((a, b) => b.overallRating - a.overallRating)
+        : (context?.teamPlayersByTeam.get(teamId) ?? players
+            .filter(p => p.tid === teamId && (!p.injury || p.injury.gamesRemaining <= 0))
+            .sort((a, b) => b.overallRating - a.overallRating));
+
+    const cacheKey = !overridePlayers
+        ? `${teamId}-${teamPlayers.map(p => `${p.internalId}:${p.overallRating}:${Math.round(p.trainingFatigue ?? 0)}`).join('|')}`
+        : null;
     if (cacheKey && teamStrengthCache.has(cacheKey)) {
         return teamStrengthCache.get(cacheKey)!;
     }
 
-    const teamPlayers = overridePlayers || players.filter(p => p.tid === teamId && (!p.injury || p.injury.gamesRemaining <= 0)).sort((a,b) => b.overallRating - a.overallRating);
     if(teamPlayers.length === 0) return 40;
 
     const star1Ovr = teamPlayers[0].overallRating;
@@ -67,13 +109,7 @@ export const calculateTeamStrength = (teamId: number, players: Player[], overrid
     let qualityPool = teamPlayers.filter(p => p.overallRating >= qualityCutoff).slice(0, 10);
     if (qualityPool.length === 0) qualityPool = teamPlayers.slice(0, 10);
 
-    // Derive league-avg PER from the full player list for the PER blend below.
-    const leaguePERStats = players
-      .flatMap(p => (p.stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0))
-      .filter((s: any) => (s.per ?? 0) > 0);
-    const leaguePERAvg = leaguePERStats.length > 0
-      ? leaguePERStats.reduce((a: number, s: any) => a + (s.per as number), 0) / leaguePERStats.length
-      : 15;
+    const leaguePERAvg = context?.leaguePERAvg ?? computeLeaguePERAvg(players);
 
     const top8_2k = qualityPool.map(p => {
         const r = p.ratings?.[p.ratings.length - 1];

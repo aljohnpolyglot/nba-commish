@@ -52,7 +52,7 @@ async function callGroq(keys, body) {
       return { res, provider: "groq" };
     }
 
-    if (res.status === 429 || res.status === 403 || res.status >= 500) {
+    if (res.status === 402 || res.status === 403 || res.status === 429 || res.status >= 500) {
       console.warn(`[ChatWorker] Groq key #${i + 1} returned ${res.status} — trying next`);
       continue;
     }
@@ -82,7 +82,7 @@ async function callTogether(keys, body) {
       return { res, provider: "together" };
     }
 
-    if (res.status === 429 || res.status >= 500) {
+    if (res.status === 402 || res.status === 429 || res.status >= 500) {
       console.warn(`[ChatWorker] Together key #${i + 1} returned ${res.status} — trying next`);
       continue;
     }
@@ -108,7 +108,7 @@ async function callTogetherImage(keys, body) {
       console.log(`[ChatWorker] ✅ Together image key #${i + 1} succeeded`);
       return { res, provider: "together-image" };
     }
-    if (res.status === 429 || res.status >= 500) {
+    if (res.status === 402 || res.status === 429 || res.status >= 500) {
       console.warn(`[ChatWorker] Together image key #${i + 1} returned ${res.status} — trying next`);
       continue;
     }

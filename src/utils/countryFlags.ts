@@ -4,7 +4,7 @@
 
 const FLAGS: Record<string, string> = {
   // Europe
-  Spain: '🇪🇸', France: '🇫🇷', Germany: '🇩🇪', Italy: '🇮🇹', Greece: '🇬🇷',
+  Spain: '🇪🇸', Spanish: '🇪🇸', France: '🇫🇷', Germany: '🇩🇪', Italy: '🇮🇹', Greece: '🇬🇷',
   Turkey: '🇹🇷', Serbia: '🇷🇸', Croatia: '🇭🇷', Slovenia: '🇸🇮', Lithuania: '🇱🇹',
   Latvia: '🇱🇻', Estonia: '🇪🇪', Russia: '🇷🇺', Poland: '🇵🇱', Ukraine: '🇺🇦',
   Belarus: '🇧🇾', 'Czech Republic': '🇨🇿', Czechia: '🇨🇿', Slovakia: '🇸🇰',
@@ -18,7 +18,7 @@ const FLAGS: Record<string, string> = {
   Israel: '🇮🇱', Monaco: '🇲🇨', Georgia: '🇬🇪', Armenia: '🇦🇲', Azerbaijan: '🇦🇿',
 
   // Americas
-  USA: '🇺🇸', 'United States': '🇺🇸', America: '🇺🇸',
+  USA: '🇺🇸', 'United States': '🇺🇸', America: '🇺🇸', American: '🇺🇸',
   Canada: '🇨🇦', Mexico: '🇲🇽', Argentina: '🇦🇷', Brazil: '🇧🇷', Chile: '🇨🇱',
   Uruguay: '🇺🇾', Venezuela: '🇻🇪', Colombia: '🇨🇴', Peru: '🇵🇪',
   'Dominican Republic': '🇩🇴', Jamaica: '🇯🇲', 'Puerto Rico': '🇵🇷',

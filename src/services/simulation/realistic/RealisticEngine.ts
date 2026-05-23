@@ -32,6 +32,16 @@ interface PrepResult {
   isEuroClubGame: boolean;
 }
 
+function perfNow(): number {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+}
+
+function perfMs(start: number): number {
+  return Math.round((perfNow() - start) * 10) / 10;
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -143,6 +153,7 @@ function applyAdvanced(stats: PlayerGameStats[], adv: any[]): void {
 }
 
 export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
+  const totalStart = perfNow();
   const homeKnobs = args.homeKnobs ?? KNOBS_DEFAULT;
   const awayKnobs = args.awayKnobs ?? KNOBS_DEFAULT;
   const season = args.date ? parseInt(args.date.split('-')[0], 10) : new Date().getFullYear();
@@ -150,8 +161,10 @@ export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
   const quarterLen = Math.max(1, ((homeKnobs.quarterLength ?? 12) + (awayKnobs.quarterLength ?? 12)) / 2);
   const overtimeLength = Math.max(1, ((homeKnobs.overtimeDuration ?? 5) + (awayKnobs.overtimeDuration ?? 5)) / 2);
 
+  const prepStart = perfNow();
   const home = prepareUnit(args.homeTeam, args.players, args.homeOverridePlayers, season, homeKnobs, 0);
   const away = prepareUnit(args.awayTeam, args.players, args.awayOverridePlayers, season, awayKnobs, 0);
+  const prepMsValue = perfMs(prepStart);
 
   if (home.rotation.length < 5 || away.rotation.length < 5) {
     // Insufficient roster — caller should fall back. We surface a synthetic score-tied throwaway.
@@ -166,6 +179,7 @@ export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
   applyHooks(home, away2KDef.overallDef);
   applyHooks(away, home2KDef.overallDef);
 
+  const loopStart = perfNow();
   const acc = new BoxAccumulator();
   acc.registerRoster(home.rotation, 5);
   acc.registerRoster(away.rotation, 5);
@@ -208,7 +222,9 @@ export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
     quarterScoresHome.push(r.homeScore);
     quarterScoresAway.push(r.awayScore);
   }
+  const loopMsValue = perfMs(loopStart);
 
+  const tailStart = perfNow();
   const highLeverageGame = !!homeKnobs.isPlayoffs || !!awayKnobs.isPlayoffs || !!args.isEliminationGame;
   const homeCoaching = getTeamCoachingGameplayEffects(args.homeTeam as any);
   const awayCoaching = getTeamCoachingGameplayEffects(args.awayTeam as any);
@@ -374,6 +390,21 @@ export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
     args.awayTeam.id,
     gamePlayers,
   );
+
+  const tailMsValue = perfMs(tailStart);
+
+  console.log('[SIM_REALISTIC_PERF]', {
+    gameId: args.gameId,
+    home: args.homeTeam.abbrev ?? args.homeTeam.name,
+    away: args.awayTeam.abbrev ?? args.awayTeam.name,
+    prepMs: prepMsValue,
+    loopMs: loopMsValue,
+    tailMs: tailMsValue,
+    otCount,
+    homeRotation: home.rotation.length,
+    awayRotation: away.rotation.length,
+    totalMs: perfMs(totalStart),
+  });
 
   return {
     gameId: args.gameId,

@@ -27,6 +27,8 @@
     ?? "https://nba-chat-worker.mogatas-princealjohn-05082003.workers.dev/";
   // Model used for all chat/interaction calls (routed to Groq)
   const GROQ_CHAT_MODEL = "llama-3.3-70b-versatile";
+  const WORKER_COOLDOWN_MS = 5 * 60 * 1000;
+  const workerCooldownUntil = new Map<string, number>();
 
   // Gemini cascade tiers for non-chat calls
   const MODEL_TIERS: Record<1 | 2 | 3, string[]> = {
@@ -61,6 +63,16 @@
   function wrapText(text: string): GenerateContentResponse {
     return { text } as GenerateContentResponse;
   }
+
+  function isWorkerCoolingDown(key: string): boolean {
+    return (workerCooldownUntil.get(key) ?? 0) > Date.now();
+  }
+
+function markWorkerCooldown(key: string, status: number): void {
+  if (status === 429 || status === 503) {
+    workerCooldownUntil.set(key, Date.now() + WORKER_COOLDOWN_MS);
+  }
+}
 
   function buildMockResponse(params: GenerateContentParameters): GenerateContentResponse {
     const isJson = params.config?.responseMimeType === "application/json";
@@ -112,6 +124,9 @@
     model: string = GROQ_CHAT_MODEL,
     label: string = "chat"
   ): Promise<GenerateContentResponse> {
+    if (isWorkerCoolingDown("groq")) {
+      throw new Error("Groq Worker cooling down after upstream failure");
+    }
     const messages = geminiToOpenAIMessages(params);
     const isJson = params.config?.responseMimeType === "application/json";
 
@@ -131,8 +146,9 @@
     });
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(`Groq Worker ${response.status}: ${JSON.stringify(err)}`);
+      const errText = await response.text().catch(() => "");
+      markWorkerCooldown("groq", response.status);
+      throw new Error(`Groq Worker ${response.status}: ${errText.slice(0, 200)}`);
     }
 
     const data = await response.json();
@@ -145,6 +161,9 @@
   // ── Route B: Gemini Worker ────────────────────────────────────────────────────
   async function callViaGeminiWorker(params: GenerateContentParameters): Promise<GenerateContentResponse> {
     const model = params.model ?? "gemini-2.5-flash";
+    if (isWorkerCoolingDown("gemini-worker")) {
+      throw new Error("Gemini Worker cooling down after upstream failure");
+    }
 
     let normalizedContents: any[];
     if (typeof params.contents === "string") {
@@ -182,8 +201,9 @@
     });
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      throw new Error(`Gemini Worker ${response.status}: ${JSON.stringify(err)}`);
+      const errText = await response.text().catch(() => "");
+      markWorkerCooldown("gemini-worker", response.status);
+      throw new Error(`Gemini Worker ${response.status}: ${errText.slice(0, 200)}`);
     }
 
     const data = await response.json();

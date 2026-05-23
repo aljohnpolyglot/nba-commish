@@ -62,6 +62,8 @@ export function createHandleEnter({
   simToDateIfBefore,
 }: Args) {
   const handleEnter = (row: OffseasonChecklistRow) => {
+    const transferMarketResolved =
+      state.offseasonChecklist?.transferMarket === 'done' || state.offseasonChecklist?.transferMarket === 'skipped';
     if (row === 'expansionDraft' && state.gameMode === 'gm') {
       dispatchAction({ type: 'APPLY_EXPANSION_REALIGNMENT' } as any);
       setExpansionProtectOpen(true);
@@ -118,6 +120,7 @@ export function createHandleEnter({
       return;
     }
     if (row === 'budgetLock') {
+      if (isEuroMode && !transferMarketResolved) return;
       setBudgetReviewOpen(true);
       dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
       return;

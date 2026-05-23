@@ -62,6 +62,27 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
   const phase = getSimPhase(state);
   const phaseLabel = isEuro ? getEuroPhaseLabel(state, seasonYear) : getPhaseLabel(phase, seasonYear, calYear);
   const isCommissioner = state.gameMode !== 'gm';
+  const euroCompetitionState = useMemo(() => ({
+    activeCompetitions: state.activeCompetitions,
+    leagueStats: state.leagueStats,
+    userTeamId: state.userTeamId,
+    gameMode: state.gameMode,
+    teams: state.teams,
+    nonNBATeams: state.nonNBATeams,
+    schedule: state.schedule,
+    boxScores: state.boxScores,
+    clubAliasMap: (state as any).clubAliasMap,
+  }), [
+    state.activeCompetitions,
+    state.leagueStats,
+    state.userTeamId,
+    state.gameMode,
+    state.teams,
+    state.nonNBATeams,
+    state.schedule,
+    state.boxScores,
+    (state as any).clubAliasMap,
+  ]);
 
   const draftGate = useDraftEventGate({
     onNavigateToDraftLottery: () => setCurrentView('Draft Lottery' as Tab),
@@ -128,10 +149,13 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
 
   const options: PlayOption[] = useMemo(() => {
     if (isEuro) {
-      const userCanSeeEuroleague = userQualifiesForContinental(state as any);
+      const userCanSeeEuroleague = userQualifiesForContinental(euroCompetitionState as any);
       const competitionState = userCanSeeEuroleague
-        ? state
-        : { ...state, schedule: (state.schedule ?? []).filter((game: any) => game.competitionId !== 'euroleague') };
+        ? euroCompetitionState
+        : {
+            ...euroCompetitionState,
+            schedule: (state.schedule ?? []).filter((game: any) => game.competitionId !== 'euroleague'),
+          };
       const firstFixture = findFirstCompetitionDate(competitionState);
       const nextFixture = minScheduledDate((competitionState.schedule ?? []).filter((game: any) =>
         game.competitionId && !game.played && normalizeDate(game.date) > norm,
@@ -413,7 +437,29 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
       default:
         return [{ label: 'One day', action: simDay }];
     }
-  }, [currentView, isCommissioner, isEuro, ls, navigate, noDraft, norm, phase, seasonYear, simDay, simDraftToEnd, simThrough, simToDate, state, calYear]);
+  }, [
+    currentView,
+    isCommissioner,
+    isEuro,
+    ls,
+    navigate,
+    noDraft,
+    norm,
+    phase,
+    seasonYear,
+    simDay,
+    simDraftToEnd,
+    simThrough,
+    simToDate,
+    calYear,
+    euroCompetitionState,
+    state.schedule,
+    state.players,
+    state.faBidding?.markets,
+    state.day,
+    state.playoffs,
+    state.draftComplete,
+  ]);
 
   useEffect(() => {
     const clickHandler = (event: MouseEvent) => {

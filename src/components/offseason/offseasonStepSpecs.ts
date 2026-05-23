@@ -113,8 +113,8 @@ export function getOffseasonStepConfirmSpec({
       return {
         eyebrow: 'Summer Checklist',
         title: resume ? 'Resume Training Camp' : 'Open Training Camp',
-        body: 'This moves you into training camp. Continue only if you want to work on camp decisions now.',
-        confirmLabel: resume ? 'Resume Camp' : 'Open Camp',
+        body: 'This moves you into training camp. Continue only if you want to work on camp decisions now. If you want to skip camp instead, use Sim to Preseason.',
+        confirmLabel: resume ? 'Resume Training Camp' : 'Open Training Camp',
       };
     case 'sponsorRenewals':
       if (dueSponsorSlotLabels.length === 0) {

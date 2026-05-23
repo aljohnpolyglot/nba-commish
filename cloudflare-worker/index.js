@@ -64,7 +64,7 @@ async function callGeminiWithRotation(keys, model, body) {
 
     const status = response.status;
 
-    if (status === 429 || (status >= 500 && status < 600)) {
+    if (status === 402 || status === 429 || (status >= 500 && status < 600)) {
       console.warn(`[Worker] Gemini key #${i + 1} returned ${status} — trying next...`);
       continue;
     }
@@ -155,7 +155,7 @@ async function callTogetherPrimary(togetherKeys, geminiBody, corsHeaders, modelT
       });
     }
 
-    if (res.status === 429 || res.status >= 500) {
+    if (res.status === 402 || res.status === 429 || res.status >= 500) {
       console.warn(`[Worker] Together key #${i + 1} returned ${res.status} — trying next`);
       continue;
     }

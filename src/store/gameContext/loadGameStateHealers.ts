@@ -117,13 +117,28 @@ export function migrateLoadedPlayers(loaded: any, currentSeasonYear: number) {
       console.warn(`[LOAD_GAME] Repaired corrupt contract.amount for ${updated.name}: ${amount} → ${recovered}`);
       updated = { ...updated, contract: { ...updated.contract, amount: recovered } };
     }
-    if (
+    const liveContractYears = Array.isArray(updated.contractYears)
+      ? updated.contractYears.filter((contractYear: any) => {
+          const seasonStart = parseInt(String(contractYear?.season ?? '').split('-')[0], 10);
+          return Number.isFinite(seasonStart) && seasonStart + 1 >= currentSeasonYear;
+        })
+      : [];
+    const currentSeasonContractYear = liveContractYears.find((contractYear: any) => contractYear.season === currentSeasonStr)
+      ?? liveContractYears[0];
+    const currentGuaranteedUSD = Number(currentSeasonContractYear?.guaranteed ?? 0);
+    const shouldInferLegacyTwoWay =
       loaded.leagueStats?.uiMode !== 'euro_isolated' &&
       !updated.twoWay &&
+      !updated.nonGuaranteed &&
       updated.tid >= 0 &&
+      updated.status === 'Active' &&
+      !updated.contract?.rookie &&
       (updated.contract?.amount ?? 0) > 0 &&
-      (updated.contract?.amount ?? 9999) < 800
-    ) {
+      (updated.contract?.amount ?? 9999) <= 700 &&
+      currentGuaranteedUSD > 0 &&
+      currentGuaranteedUSD <= 700_000 &&
+      liveContractYears.length <= 1;
+    if (shouldInferLegacyTwoWay) {
       updated = { ...updated, twoWay: true };
     }
     if ((updated as any).status === 'FreeAgent') {

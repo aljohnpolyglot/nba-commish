@@ -56,6 +56,15 @@ import {
 } from './engineTeamModifiers';
 
 export class GameSimulator {
+  private static perfNow(): number {
+    return typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
+  }
+
+  private static perfMs(start: number): number {
+    return Math.round((this.perfNow() - start) * 10) / 10;
+  }
 
   private static scaleWinnerToTarget(home: number, away: number, target: number): { home: number; away: number } {
     const saneTarget = Math.max(1, Math.round(target));
@@ -845,6 +854,7 @@ export class GameSimulator {
     const leagueBaseKnobs = buildLeagueBaseKnobs(leagueStats);
 
     for (const game of gamesToSimulate) {
+      const gameStart = this.perfNow();
       const setup = resolveDayGameSetup({
         game,
         teams,
@@ -857,11 +867,13 @@ export class GameSimulator {
         awayOverridePlayers,
       });
       if (!setup.home || !setup.away || !setup.homeKnobs || !setup.awayKnobs) continue;
+      const setupMs = this.perfMs(gameStart);
 
       if (clubDebuffs && clubDebuffs.size > 0) setClubDebuffs(clubDebuffs);
       const gameRig = riggedForTid !== undefined &&
         (setup.home.id === riggedForTid || setup.away.id === riggedForTid)
         ? riggedForTid : undefined;
+      const simulateStart = this.perfNow();
       const gameResult = simulateGameViaAdapter(
         {
           homeTeam: setup.home,
@@ -885,8 +897,22 @@ export class GameSimulator {
         },
         (a) => this.simulateGame(a.homeTeam, a.awayTeam, a.players, a.gameId, a.date, a.playerApproval, a.homeOverridePlayers, a.awayOverridePlayers, a.isAllStar, a.isRisingStars, a.isEliminationGame, a.riggedForTid, a.homeKnobs ?? KNOBS_DEFAULT, a.awayKnobs ?? KNOBS_DEFAULT),
       );
+      const simulateMs = this.perfMs(simulateStart);
       results.push(gameResult);
       if (clubDebuffs && clubDebuffs.size > 0) clearClubDebuffs();
+
+      console.log('[SIM_GAME_PERF]', {
+        gameId: game.gid,
+        date,
+        home: setup.home.abbrev ?? setup.home.name,
+        away: setup.away.abbrev ?? setup.away.name,
+        isPlayoff: !!game.isPlayoff,
+        isPlayIn: !!game.isPlayIn,
+        isNBACup: !!game.isNBACup,
+        setupMs,
+        simulateMs,
+        totalMs: this.perfMs(gameStart),
+      });
 
       if (onGame) {
         onGame(gameResult);

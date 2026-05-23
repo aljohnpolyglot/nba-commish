@@ -57,6 +57,13 @@ export interface LazySimResult {
   lastSimResults: any[];
 }
 
+const perfNow = () =>
+  typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+
+const perfMs = (start: number) => Math.round((perfNow() - start) * 10) / 10;
+
 export const runLazySim = async (
   initialState: GameState,
   targetDateStr: string,
@@ -149,6 +156,7 @@ export const runLazySim = async (
     let iterNum = 0;
     while (true) {
       iterNum++;
+      const iterStart = perfNow();
       const currentNorm = normalizeDate(state.date);
       state = autoResolveEuroSetupOffseasonTasks(state, options?.autoResolveOffseasonTasks === true);
       currentPhase = getPhaseLabel(currentNorm, state.leagueStats.year);
@@ -248,11 +256,14 @@ export const runLazySim = async (
         break;
       }
 
+      const runSimulationStart = perfNow();
       const { stateWithSim, allSimResults, perDayResults, userInterrupted } = await runSimulation(state, batchDays, undefined, options?.onGame);
+      const runSimulationMs = perfMs(runSimulationStart);
       console.log(`[LAZY_SIM] 🎮 iter ${iterNum} — after runSimulation: state.date=${stateWithSim.date}, simResults=${allSimResults.length}, perDayResults=${perDayResults.length}, userInterrupted=${!!userInterrupted}`);
       lastBatchSimResults = allSimResults; // track for silent mode return
       console.log(`[LAZY_SIM] ✓ 581 post-runSim — iter ${iterNum}`);
 
+      const postProcessStart = perfNow();
       const { updatedPlayers, updatedDraftPicks } = processSimulationResults(
         allSimResults,
         stateWithSim.players,
@@ -261,10 +272,12 @@ export const runLazySim = async (
         stateWithSim.leagueStats?.year,
         stateWithSim.teams,
       );
+      const postProcessMs = perfMs(postProcessStart);
       console.log(`[LAZY_SIM] ✓ 591 post-processSimulationResults — iter ${iterNum}, updatedPlayers=${updatedPlayers.length}`);
 
       let runningState = { ...state };
       const newHistoricalPoints: HistoricalStatPoint[] = [];
+      const historicalStatsStart = perfNow();
       for (const dayData of perDayResults) {
         const { newStats, newLeagueStats } = calculateNewStats(
           runningState,
@@ -289,6 +302,7 @@ export const runLazySim = async (
           viewership: newLeagueStats.viewership,
         });
       }
+      const historicalStatsMs = perfMs(historicalStatsStart);
 
       console.log(`[LAZY_SIM] ✓ 620 post-perDayLoop — iter ${iterNum}, histPoints=${newHistoricalPoints.length}`);
 
@@ -301,9 +315,12 @@ export const runLazySim = async (
       const socialEngine = new SocialEngine();
       const batchDateString = stateWithSim.date;
       console.log(`[LAZY_SIM] ✓ 625 pre-socialEngine — iter ${iterNum}, nbaPlayers=${nbaPlayers.length}`);
+      const socialStart = perfNow();
       const enginePosts = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, stateWithSim.teams, batchDateString, batchDays, stateWithSim.playoffs, stateWithSim.schedule, stateWithSim.leagueType);
+      const socialMs = perfMs(socialStart);
       console.log(`[LAZY_SIM] ✓ 626 post-socialEngine — iter ${iterNum}, posts=${enginePosts.length}`);
 
+      const shamsStart = perfNow();
       const shamsInjuryPosts: any[] = [];
       const injuryInsider = getInsiderHandle(stateWithSim.leagueType);
       for (const simResult of allSimResults) {
@@ -333,8 +350,10 @@ export const runLazySim = async (
         }
       }
       const allBatchPosts = [...enginePosts, ...shamsInjuryPosts];
+      const shamsMs = perfMs(shamsStart);
       console.log(`[LAZY_SIM] ✓ 662 post-shams — iter ${iterNum}, totalPosts=${allBatchPosts.length}`);
 
+      const newsStart = perfNow();
       const batchNews = generateLazySimNews(
         stateWithSim.teams,
         updatedPlayers,
@@ -347,8 +366,10 @@ export const runLazySim = async (
         stateWithSim.schedule,
         stateWithSim.leagueStats?.year ?? new Date().getFullYear()
       );
+      const newsMs = perfMs(newsStart);
       console.log(`[LAZY_SIM] ✓ 676 post-lazySimNews — iter ${iterNum}, news=${batchNews?.length ?? 0}`);
 
+      const playoffOutcomesStart = perfNow();
       const {
         updatedPlayers: updatedPlayersWithPlayoffAwards,
         playoffSeriesNews,
@@ -362,6 +383,7 @@ export const runLazySim = async (
         allSimResults,
         updatedPlayers,
       });
+      const playoffOutcomesMs = perfMs(playoffOutcomesStart);
       console.log(`[LAZY_SIM] ✓ 690 post-playoffSeriesNews — iter ${iterNum}, news=${playoffSeriesNews?.length ?? 0}`);
 
       const batchPayResult = generatePaychecks(
@@ -384,6 +406,7 @@ export const runLazySim = async (
         ? state.schedule
         : stateWithSim.schedule;
 
+      const commitStart = perfNow();
       state = {
         ...stateWithSim,
         schedule: safeSchedule,
@@ -413,10 +436,27 @@ export const runLazySim = async (
         ...(champTeamsWithRoundsWon ? { teams: champTeamsWithRoundsWon } : {}),
         ...(seasonHistoryPatch ?? {}),
       };
+      const commitMs = perfMs(commitStart);
       daysComplete += batchDays;
 
       const currentNormAfterSim = normalizeDate(state.date);
       console.log(`[LAZY_SIM] 📍 iter ${iterNum} — post-batch: state.date=${state.date}, currentNormAfterSim=${currentNormAfterSim}, daysComplete=${daysComplete}`);
+      console.log('[LAZY_SIM_PERF]', {
+        iter: iterNum,
+        startDate: currentNorm,
+        endDate: currentNormAfterSim,
+        batchDays,
+        games: allSimResults.length,
+        runSimulationMs,
+        postProcessMs,
+        historicalStatsMs,
+        socialMs,
+        shamsMs,
+        newsMs,
+        playoffOutcomesMs,
+        commitMs,
+        totalIterMs: perfMs(iterStart),
+      });
       if (currentNormAfterSim >= targetNorm) {
         if (hasDueUnplayedEuroCompetitionGames(state, currentNormAfterSim) && allSimResults.length > 0) {
           console.log(`[LAZY_SIM] 🔁 iter ${iterNum} — continuing for newly injected due Euro competition games`);

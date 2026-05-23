@@ -97,6 +97,9 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     const resolvedRows = visibleRows.filter(row => !unresolved(checklist[row]));
     return [...unresolvedRows, ...resolvedRows];
   }, [isEuroMode, visibleRows, checklist]);
+  const budgetLockBlockedByTransfer = isEuroMode
+    && checklist.transferMarket !== 'done'
+    && checklist.transferMarket !== 'skipped';
   const euroSections = React.useMemo(() => {
     if (!isEuroMode) return [] as Array<{ id: EuroSidebarSectionId; title: string; blurb: string; rows: OffseasonChecklistRow[] }>;
     const grouped: Record<EuroSidebarSectionId, OffseasonChecklistRow[]> = {
@@ -110,6 +113,10 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       const isResolved = status === 'done' || status === 'skipped';
       if (isResolved) {
         grouped.resolved.push(row);
+        continue;
+      }
+      if (row === 'budgetLock' && budgetLockBlockedByTransfer) {
+        grouped.opensSoon.push(row);
         continue;
       }
       if (row === 'transferMarket' && !transferWindowStatus?.open) {
@@ -131,7 +138,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     return meta
       .map(section => ({ ...section, rows: grouped[section.id] }))
       .filter(section => section.rows.length > 0);
-  }, [isEuroMode, orderedRows, checklist, transferWindowStatus?.open]);
+  }, [isEuroMode, orderedRows, checklist, transferWindowStatus?.open, budgetLockBlockedByTransfer]);
   const displayCurrentRow = React.useMemo(() => {
     if (!isEuroMode) return currentRow;
     const unresolved = (row: OffseasonChecklistRow) => {
@@ -141,12 +148,13 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     const actionableNow = orderedRows.find(row =>
       unresolved(row)
       && row !== 'transferMarket'
+      && !(row === 'budgetLock' && budgetLockBlockedByTransfer)
       && !EURO_LATER_ROWS.has(row),
     );
     if (actionableNow) return actionableNow;
     const transferIfOpen = orderedRows.find(row => row === 'transferMarket' && unresolved(row) && !!transferWindowStatus?.open);
     return transferIfOpen ?? currentRow;
-  }, [isEuroMode, currentRow, orderedRows, checklist, transferWindowStatus?.open]);
+  }, [isEuroMode, currentRow, orderedRows, checklist, transferWindowStatus?.open, budgetLockBlockedByTransfer]);
   const transferMarketCanComplete = React.useMemo(() => {
     if (!isEuroMode || !checklist) return true;
     const required: OffseasonChecklistRow[] = ['sponsorRenewals', 'facilityUpgrades', 'staffSignings'];
@@ -164,11 +172,23 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   const [autoResolveConfirmOpen, setAutoResolveConfirmOpen] = useState(false);
   const [stepConfirm, setStepConfirm] = useState<OffseasonConfirmSpec | null>(null);
   const [rookieDisclaimerOpen, setRookieDisclaimerOpen] = useState(false);
+  const previousTransferMarketStatusRef = useRef<OffseasonRowStatus | null>(checklist.transferMarket ?? null);
   const rookieDisclaimerKey = `rookie-disclaimer-${state.saveId ?? 'default'}-${state.leagueStats?.year ?? 0}`;
   useEffect(() => {
     transferWindowSimPendingRef.current = false;
     setTransferWindowSimPending(false);
   }, [state.date, state.isProcessing]);
+  useEffect(() => {
+    const previous = previousTransferMarketStatusRef.current;
+    const current = checklist.transferMarket ?? null;
+    previousTransferMarketStatusRef.current = current;
+    if (!isEuroMode) return;
+    if (current !== 'done') return;
+    if (previous === 'done') return;
+    if (checklist.budgetLock === 'done' || checklist.budgetLock === 'skipped') return;
+    dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row: 'budgetLock' } } as any);
+    setBudgetReviewOpen(true);
+  }, [isEuroMode, checklist.transferMarket, checklist.budgetLock, dispatchAction]);
   const handleTransferWindowSimDay = () => {
     if (!tmWindowCounter || tmWindowCounter.isLast || state.isProcessing || transferWindowSimPendingRef.current) return;
     transferWindowSimPendingRef.current = true;
@@ -311,6 +331,8 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       transferWindowOpen: !!transferWindowStatus?.open,
       transferWindowNextOpenLabel,
     });
+    const blocked = row === 'budgetLock' && budgetLockBlockedByTransfer;
+    const blockedLabel = blocked ? 'After Market' : null;
     const showMarkDone = (row === 'transferMarket' || row === 'sponsorRenewals')
       && !isResolved
       && (row !== 'transferMarket' || (!transferRowClosed && transferMarketCanComplete))
@@ -330,12 +352,14 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         openStaffCount={openStaffCount}
         transferRowClosed={transferRowClosed}
         transferClosedLabel={transferClosedLabel}
+        blocked={blocked}
+        blockedLabel={blockedLabel}
         transferMarketCanComplete={transferMarketCanComplete}
         rowDescription={rowDescription}
         autoReason={autoReason}
         tmWindowCounter={row === 'transferMarket' ? tmWindowCounter : null}
         onPrimary={() => {
-          if (transferRowClosed) return;
+          if (transferRowClosed || blocked) return;
                     openStepConfirm(getOffseasonStepConfirmSpec({
                       row,
                       status,

@@ -59,6 +59,7 @@ export function isPlayerEligible(
     const onTeam = activeStatuses.includes(player.status as never) && (player.tid ?? -1) >= 0;
     if (!onTeam) return false;
     if (context?.userTeamId != null && player.tid !== context.userTeamId) return false;
+    if ((player as { twoWay?: boolean }).twoWay) return false;
     if ((player as { nonGuaranteed?: boolean }).nonGuaranteed) return false;
     const exp = player.contract?.exp;
     const year = context?.currentYear ?? new Date().getUTCFullYear();
@@ -127,4 +128,3 @@ export function isPersonnelEligible(personType: StaffType, eligibility: PersonEl
   if (!eligibility.staffTypes) return false;
   return eligibility.staffTypes.includes(personType);
 }
-

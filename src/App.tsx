@@ -25,6 +25,33 @@ import { Menu, X } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
+function buildPersistableState(state: any) {
+  const {
+    isProcessing,
+    isClubbing,
+    isWatchingGame,
+    lazySimProgress,
+    pendingStartPayload,
+    prevTeams,
+    lastSimResults,
+    simCurrentDate,
+    lastActionType,
+    lastActionPayload,
+    ...persistable
+  } = state;
+  void isProcessing;
+  void isClubbing;
+  void isWatchingGame;
+  void lazySimProgress;
+  void pendingStartPayload;
+  void prevTeams;
+  void lastSimResults;
+  void simCurrentDate;
+  void lastActionType;
+  void lastActionPayload;
+  return persistable;
+}
+
 const EuroCashChip: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   const { state } = useGame();
   if (!isEuroIsolatedMode(state) || state.gameMode !== 'gm') return null;
@@ -69,6 +96,13 @@ function GameLayout() {
   const { state, dispatchAction, currentView, setCurrentView } = useGame();
   const labels = useLeagueLabels();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const latestStateRef = useRef(state);
+  const saveInFlightRef = useRef(false);
+  const pendingSaveRef = useRef(false);
+
+  useEffect(() => {
+    latestStateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     fetchStatmuseData();
@@ -93,32 +127,62 @@ function GameLayout() {
     setTycoonWelcomeOpen(true);
   }, [state.isDataLoaded, state.leagueStats?.uiMode]);
 
-  // Auto-save effect (Debounced)
   useEffect(() => {
-    if (state.isDataLoaded && !state.isProcessing && state.commissionerName) {
-      // Clear existing timeout
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
+    const runAutosave = async () => {
+      const snapshot = latestStateRef.current;
+      if (!snapshot.isDataLoaded || snapshot.isProcessing || !snapshot.commissionerName) return;
+      if (saveInFlightRef.current) {
+        pendingSaveRef.current = true;
+        return;
       }
-
-      // Set new timeout for 2 seconds
-      saveTimeoutRef.current = setTimeout(() => {
-        const modePrefix = state.gameMode === 'gm' ? 'GM' : 'Commissioner';
-        const saveName = `${modePrefix}: ${state.commissionerName}'s Legacy`;
-        SaveManager.saveGame(state, saveName).then(id => {
-          if (!state.saveId) {
-            dispatchAction({ type: 'UPDATE_SAVE_ID', payload: id });
-          }
-        }).catch(console.error);
-      }, 2000);
-    }
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
+      saveInFlightRef.current = true;
+      try {
+        const modePrefix = snapshot.gameMode === 'gm' ? 'GM' : 'Commissioner';
+        const saveName = `${modePrefix}: ${snapshot.commissionerName}'s Legacy`;
+        const persistableState = buildPersistableState(snapshot);
+        const id = await SaveManager.saveGame(persistableState, saveName);
+        if (!latestStateRef.current.saveId) {
+          await dispatchAction({ type: 'UPDATE_SAVE_ID', payload: id } as any);
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        saveInFlightRef.current = false;
+        if (pendingSaveRef.current) {
+          pendingSaveRef.current = false;
+          void runAutosave();
+        }
       }
     };
-  }, [state, dispatchAction]); // Run on any state change
+
+    if (state.isDataLoaded && !state.isProcessing && state.commissionerName) {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        void runAutosave();
+      }, 500);
+    }
+
+    const flushAutosave = () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+      void runAutosave();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flushAutosave();
+    };
+
+    window.addEventListener('pagehide', flushAutosave);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      window.removeEventListener('pagehide', flushAutosave);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [state.isDataLoaded, state.isProcessing, state.commissionerName, state.gameMode, dispatchAction]);
 
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const loadingMessages = [

@@ -83,12 +83,33 @@ export const ScheduleView: React.FC = () => {
 
   const euroIsolated = isEuroIsolatedMode(state);
   const pbaIsolated = isPbaIsolatedMode(state);
+  const euroScheduleState = useMemo(() => ({
+    activeCompetitions: state.activeCompetitions,
+    leagueStats: state.leagueStats,
+    userTeamId: state.userTeamId,
+    gameMode: state.gameMode,
+    teams: state.teams,
+    nonNBATeams: state.nonNBATeams,
+    schedule: state.schedule,
+    boxScores: state.boxScores,
+    clubAliasMap: (state as any).clubAliasMap,
+  }), [
+    state.activeCompetitions,
+    state.leagueStats,
+    state.userTeamId,
+    state.gameMode,
+    state.teams,
+    state.nonNBATeams,
+    state.schedule,
+    state.boxScores,
+    (state as any).clubAliasMap,
+  ]);
   const visibleSchedule = useMemo(() => {
     const schedule = state.schedule ?? [];
-    if (euroIsolated) return schedule.filter(g => isEuroVisibleScheduleGame(state, g));
+    if (euroIsolated) return schedule.filter(g => isEuroVisibleScheduleGame(euroScheduleState as any, g));
     if (pbaIsolated) return schedule.filter(g => g.homeTid >= 2000 && g.homeTid < 2100);
     return schedule;
-  }, [state, state.schedule, euroIsolated, pbaIsolated]);
+  }, [state.schedule, euroIsolated, pbaIsolated, euroScheduleState]);
 
   const gamesForSelectedDate = useMemo(() => {
     return visibleSchedule.filter(g => normalizeDate(g.date) === normalizeDate(selectedDate));

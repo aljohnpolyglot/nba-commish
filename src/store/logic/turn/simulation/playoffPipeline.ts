@@ -1,5 +1,5 @@
 import { GameState, Game, NBATeam, NBAPlayer as Player } from '../../../../types';
-import { calculateTeamStrength } from '../../../../utils/playerRatings';
+import { buildTeamStrengthContext, calculateTeamStrength } from '../../../../utils/playerRatings';
 import { normalizeDate } from '../../../../utils/helpers';
 import { addGameDays } from '../../../../utils/dateUtils';
 import { PlayoffGenerator } from '../../../../services/playoffs/PlayoffGenerator';
@@ -7,9 +7,10 @@ import { PlayoffAdvancer } from '../../../../services/playoffs/PlayoffAdvancer';
 import { normalizeTeamJerseyNumbers } from '../../../../utils/jerseyUtils';
 
 export const updateTeamStrengths = (teams: NBATeam[], players: Player[]): NBATeam[] => {
+    const context = buildTeamStrengthContext(players);
     return teams.map(team => ({
         ...team,
-        strength: calculateTeamStrength(team.id, players),
+        strength: calculateTeamStrength(team.id, players, undefined, context),
     }));
 };
 

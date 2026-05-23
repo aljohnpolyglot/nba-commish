@@ -11,6 +11,11 @@ function getBudgetScoutingFuzzBand(team: any): number {
   return clamp(Math.round(8 - quality * 8), 0, 8);
 }
 
+function isNBATeam(team: any): boolean {
+  const tid = Number(team?.id ?? team?.tid ?? -1);
+  return tid >= 0 && tid < 100;
+}
+
 function hash(input: string): number {
   let h = 2166136261;
   for (let i = 0; i < input.length; i++) {
@@ -29,6 +34,7 @@ export function getScoutingFuzzBand(state: GameState, player?: NBAPlayer | null)
   const status = String((player as any).status ?? '').toLowerCase();
   const isDraftProspect = (player as any).tid === -2 || status.includes('draft prospect') || status === 'prospect';
   const staffBand = getTeamScoutingFuzzBand(team, isDraftProspect ? 'draft' : 'current');
+  if (isNBATeam(team)) return staffBand;
   const budgetBand = getBudgetScoutingFuzzBand(team);
   return clamp(Math.round(staffBand * 0.3 + budgetBand * 0.7), 0, 8);
 }

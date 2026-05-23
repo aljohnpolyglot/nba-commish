@@ -324,7 +324,7 @@ export function initialPreseasonChecklist(): OffseasonChecklist {
     staffSignings: 'skipped',
     youthPromotion: 'skipped',
     preseasonFriendlies: 'skipped',
-    hofCeremony: 'skipped',
+    hofCeremony: 'pending',
     trainingCamp: 'pending',
     pbaDraft: 'skipped',
     pbaLocalFreeAgency: 'skipped',

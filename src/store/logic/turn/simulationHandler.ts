@@ -21,7 +21,15 @@ import { applyFAMarketTickPass, applyJan10GuaranteesPass, clearLegacyGLeagueAssi
 import { applyPlayoffLogic, normalizeReservedJerseys, updateTeamStrengths } from './simulation/playoffPipeline';
 import { applySeasonCalendarPasses } from './simulation/seasonCalendarPasses';
 
+const perfNow = () =>
+    typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now();
+
+const perfMs = (start: number) => Math.round((perfNow() - start) * 10) / 10;
+
 export const runSimulation = async (state: GameState, daysToSimulate: number, action?: any, onGame?: (result: any) => void) => {
+    const batchStart = perfNow();
     let stateWithSim = { ...state };
 
     // Forward-healing normalize: pre-migration saves (or any save that bypassed
@@ -44,7 +52,9 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
     clearTeamStrengthCache();
 
     // Pre-calculate strengths once for the batch
+    const strengthPrepStart = perfNow();
     stateWithSim.teams = updateTeamStrengths(stateWithSim.teams, stateWithSim.players);
+    const strengthPrepMs = perfMs(strengthPrepStart);
 
     let allSimResults: any[] = [];
     let lastDaySimResults: any[] = [];
@@ -57,6 +67,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
     const effectiveRiggedForTid: number | undefined = action?.payload?.riggedForTid ?? undefined;
     const numGamesPerRound: number[] = state.leagueStats.numGamesPlayoffSeries ?? [7, 7, 7, 7];
     for (let i = 0; i < daysToSimulate; i++) {
+        const dayStart = perfNow();
         // Advance date FIRST (except on iteration 0 — start from current date)
         if (i > 0) {
             const currentNorm = normalizeDate(stateWithSim.date);
@@ -99,7 +110,9 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             ? stateWithSim.teams.find(t => t.id === stateWithSim.userTeamId)
             : undefined;
 
+        const simulateGamesStart = perfNow();
         let simPatch = await simulateDayGames(stateWithSim, watchedResult, effectiveRiggedForTid, onGame);
+        const simulateGamesMs = perfMs(simulateGamesStart);
 
         const postSimUserTeam = preSimUserTeam
             ? simPatch.teams.find(t => t.id === stateWithSim.userTeamId)
@@ -279,6 +292,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         }
 
         // ── NBA Cup standings + phase transitions ────────────────────────────
+        const applyPatchStart = perfNow();
         ({ stateWithSim, simPatch } = applyCupSimulationPass(stateWithSim, simPatch));
 
         stateWithSim = applySimPatchState(stateWithSim, simPatch, justEliminated, newInjToasts, newFeatToasts);
@@ -302,12 +316,16 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
             );
         }
+        const applyPatchMs = perfMs(applyPatchStart);
 
+        const calendarPassStart = perfNow();
         const { stateWithSim: calendarState, simDateNorm: simDateForEvents, isPlayoffDay } =
             applySeasonCalendarPasses(stateWithSim);
         stateWithSim = calendarState;
+        const calendarPassMs = perfMs(calendarPassStart);
 
         // AI trade proposals — frequency increases as trade deadline approaches
+        const tradePassStart = perfNow();
         const simDateForTrades = normalizeDate(stateWithSim.date);
         const tradeDeadline = toISODateString(getTradeDeadlineDate(stateWithSim.leagueStats?.year ?? new Date().getFullYear(), stateWithSim.leagueStats));
         const beforeTradeDeadline = simDateForTrades <= tradeDeadline;
@@ -342,6 +360,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 stateWithSim = { ...stateWithSim, ...patch };
             }
         }
+        const tradePassMs = perfMs(tradePassStart);
 
         // ── Offseason orchestrator (Sessions 3-4 — plan is AUTHORITATIVE) ──
         // The plan owns all four offseason dispatch decisions: rollover,
@@ -359,7 +378,15 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
             const rolloverPatch = applySeasonRollover(stateWithSim);
             stateWithSim = { ...stateWithSim, ...rolloverPatch };
             // Re-compute strengths after roster changes from contract expiry
+            const rolloverStrengthStart = perfNow();
             stateWithSim.teams = updateTeamStrengths(stateWithSim.teams, stateWithSim.players);
+            console.log('[SIM_PERF]', {
+                day: simDateNorm,
+                stage: 'rolloverStrengthRefresh',
+                ms: perfMs(rolloverStrengthStart),
+                teams: stateWithSim.teams.length,
+                players: stateWithSim.players.length,
+            });
 
             // (Historical note: an inline Bird Rights pass used to fire here on
             // rollover day, but it was disabled because rollover lands on Jun 30
@@ -404,6 +431,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         // Legacy cleanup: any player still flagged gLeagueAssigned=true from a
         // previous save gets the flag cleared here so they re-enter the normal
         // roster count (and the trim will cut them if the team is over 15).
+        const offseasonPassStart = perfNow();
         stateWithSim = clearLegacyGLeagueAssignments(stateWithSim, isRegularSeason);
         if (offseasonPlan.actions.tickFAMarkets === 'fire') {
             const faTickPass = applyFAMarketTickPass(stateWithSim);
@@ -412,10 +440,12 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         }
         stateWithSim = applyJan10GuaranteesPass(stateWithSim, simMonth, simDayNum);
         stateWithSim = applyAIFreeAgencyPass(stateWithSim, offseasonPlan, simMonth, simDayNum);
+        const offseasonPassMs = perfMs(offseasonPassStart);
 
         // Euro Transfer Market: daily tick (AI listings/bids/accepts).
         // Safe to run in NBA mode too — transferListings array would be empty —
         // but gate on euro_isolated for clarity + perf.
+        const transferPassStart = perfNow();
         if (stateWithSim.leagueStats?.uiMode === 'euro_isolated') {
             const tmTick = tickTransferMarket(stateWithSim);
             stateWithSim = {
@@ -437,6 +467,21 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 } : {}),
             };
         }
+        const transferPassMs = perfMs(transferPassStart);
+
+        console.log('[SIM_PERF]', {
+            dayIndex: i + 1,
+            totalDays: daysToSimulate,
+            day: simDateNorm,
+            games: datedSimResults.length,
+            simulateGamesMs,
+            applyPatchMs,
+            calendarPassMs,
+            tradePassMs,
+            offseasonPassMs,
+            transferPassMs,
+            totalDayMs: perfMs(dayStart),
+        });
 
         // End-of-day: if a user-facing FA event fired this tick, stop the batch
         // so the toast/modal lands at the resolution moment. The day's full
@@ -444,6 +489,13 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         // coherent — next sim resumes on day+1.
         if (userInterrupted) break;
     }
+
+    console.log('[SIM_PERF]', {
+        daysToSimulate,
+        totalGames: allSimResults.length,
+        strengthPrepMs,
+        totalBatchMs: perfMs(batchStart),
+    });
 
     return { stateWithSim, allSimResults, lastDaySimResults, perDayResults, userInterrupted };
 };

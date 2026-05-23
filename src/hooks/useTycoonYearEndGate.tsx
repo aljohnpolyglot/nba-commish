@@ -43,13 +43,13 @@ export function useTycoonYearEndGate(_props?: Props) {
   }, [userTeam]);
 
   const rolloverDate = useMemo(() => {
-    if (!isEuroIsolatedMode(state as any)) return null;
+    if (!isEuroIsolatedMode({ leagueStats: state.leagueStats } as any)) return null;
     try {
       return toISODateString(getRolloverDate(state.leagueStats.year, state.leagueStats as any, state.schedule as any));
     } catch {
       return null;
     }
-  }, [state]);
+  }, [state.leagueStats, state.schedule]);
 
   const attempt = (fn: () => void | Promise<void>, targetDate?: string) => {
     // Fast-path: no gate needed

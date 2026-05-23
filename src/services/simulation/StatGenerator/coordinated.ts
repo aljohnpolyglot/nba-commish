@@ -52,6 +52,8 @@ export function generateCoordinatedStats(
   const avgMin = stats.reduce((s, p) => s + p.min, 0) / (stats.length || 1) || 24;
   const minFrac = (p: Player) =>
     Math.sqrt((stats.find(s => s.playerId === p.internalId)?.min ?? avgMin) / avgMin);
+  const assistMinFrac = (p: Player) =>
+    Math.max(0.35, (stats.find(s => s.playerId === p.internalId)?.min ?? avgMin) / avgMin);
   const lineFor = (p: Player) => stats.find(s => s.playerId === p.internalId);
 
   const reboundSkill = (p: Player, type: 'orb' | 'drb') => {
@@ -154,13 +156,14 @@ export function generateCoordinatedStats(
       const pss = rHelper(p, 'pss');
       const oiq = rHelper(p, 'oiq');
       const line = getNight(p);
+      const eliteCreatorBoost = pss >= 95 ? 1.58 : pss >= 92 ? 1.34 : pss >= 88 ? 1.16 : 1.0;
       const scorerTax = isEuroClubGame
         ? Math.max(0.52, 1 - Math.max(0, (line?.pts ?? 0) - 16) * 0.035)
         : 1.0;
       return Math.pow(
-        Math.max(0.1, drb * 0.4 + pss * 2.0 + oiq * 0.4),
-        4.35
-      ) * minFrac(p) * (getNight(p)?._nightAssistMult ?? 1) * scorerTax;
+        Math.max(0.1, drb * 0.15 + pss * 3.15 + oiq * 0.70),
+        isEuroClubGame ? 4.45 : 5.35
+      ) * assistMinFrac(p) * (getNight(p)?._nightAssistMult ?? 1) * scorerTax * eliteCreatorBoost;
     },
     'ast', 1.0,
     rotation, stats

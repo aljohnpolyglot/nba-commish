@@ -317,8 +317,8 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
   },
   {
     id: 'sign_guaranteed',
-    title: 'Sign (Guaranteed)',
-    description: 'Convert this two-way contract to a standard guaranteed deal at market value.',
+    title: 'Guarantee Contract',
+    description: 'Convert this two-way deal to a standard guaranteed contract at market value.',
     icon: PenTool,
     color: 'bg-emerald-500',
     hover: 'hover:bg-emerald-600',
@@ -376,4 +376,3 @@ export const GENERAL_ACTION_DEF: PersonActionDef = {
     includesLeagueOffice: true,
   },
 };
-

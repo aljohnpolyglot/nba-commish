@@ -75,6 +75,8 @@ type ChecklistRowItemProps = {
   openStaffCount: number;
   transferRowClosed: boolean;
   transferClosedLabel: string;
+  blocked: boolean;
+  blockedLabel: string | null;
   transferMarketCanComplete: boolean;
   rowDescription: string;
   autoReason: string | null;
@@ -96,6 +98,8 @@ export const OffseasonChecklistRowItem: React.FC<ChecklistRowItemProps> = ({
   openStaffCount,
   transferRowClosed,
   transferClosedLabel,
+  blocked,
+  blockedLabel,
   transferMarketCanComplete,
   rowDescription,
   autoReason,
@@ -166,12 +170,12 @@ export const OffseasonChecklistRowItem: React.FC<ChecklistRowItemProps> = ({
             </span>
           )
         )}
-        {transferRowClosed && (
+        {(transferRowClosed || blocked) && (
           <span
-            title="The transfer window is closed right now."
+            title={transferRowClosed ? 'The transfer window is closed right now.' : 'This offseason step is still locked.'}
             className="text-[8px] uppercase tracking-widest font-bold text-sky-300 bg-sky-500/10 border border-sky-500/30 px-1.5 py-0.5 rounded"
           >
-            {transferClosedLabel}
+            {blocked ? blockedLabel : transferClosedLabel}
           </span>
         )}
         {STATUS_LABEL[status] && (
@@ -205,20 +209,24 @@ export const OffseasonChecklistRowItem: React.FC<ChecklistRowItemProps> = ({
           {!isResolved && (
             <button
               onClick={onPrimary}
-              disabled={transferRowClosed}
+              disabled={transferRowClosed || blocked}
               title={transferRowClosed
                 ? `This task unlocks on ${transferClosedLabel.replace(/^Opens /, '')}.`
+                : blocked
+                  ? `${blockedLabel ?? 'This task is locked.'}`
                 : status === 'in-progress'
                   ? 'Re-open this offseason task and continue where you left off.'
                   : 'Open this offseason task.'}
               className={`flex-1 px-2 py-1 rounded-md font-bold text-[10px] uppercase tracking-widest transition-colors ${
-                transferRowClosed
+                transferRowClosed || blocked
                   ? 'bg-white/5 text-slate-500 border border-white/10 cursor-not-allowed'
                   : 'bg-emerald-600 hover:bg-emerald-500 text-white'
               }`}
             >
               {transferRowClosed
                 ? transferClosedLabel
+                : blocked
+                  ? blockedLabel
                 : isEuroMode && row === 'trainingCamp'
                   ? 'Mark Done'
                   : status === 'in-progress'

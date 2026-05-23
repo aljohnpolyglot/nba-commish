@@ -110,11 +110,11 @@ export const OffseasonSidebarShell: React.FC<Props> = ({
     {!isEuroMode && !isChecklistComplete(checklist, visibleRows) && (
       <button
         onClick={onAutoResolveAll}
-        title="Advance through the remaining offseason phases and land on opening night."
+        title="Advance through the remaining offseason phases and land in preseason."
         className="w-full mt-4 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-600/80 hover:bg-amber-500 text-white font-black text-[10px] uppercase tracking-widest transition-colors"
       >
         <FastForward size={12} />
-        {uiMode === 'pba_isolated' ? 'Skip Remaining Tasks' : 'Sim to Opening Night'}
+        {uiMode === 'pba_isolated' ? 'Skip Remaining Tasks' : 'Sim to Preseason'}
       </button>
     )}
 

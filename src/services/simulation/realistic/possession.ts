@@ -34,7 +34,7 @@ function pickAssister(offense: OnCourt, shooterIndex: number): PlayerComposite |
   const candidates = offense.composites.filter((_, i) => i !== shooterIndex);
   // Strong power-law so Jokic / Doncic actually hit 10+ APG. Combined with the
   // elite-skewed composite (^1.4 in compositeMap) the top playmaker dominates.
-  const passExp = offense.isEuroClubGame ? 2.85 : 4.15;
+  const passExp = offense.isEuroClubGame ? 2.95 : 5.35;
   const weights = candidates.map(c => Math.pow(c.passing, passExp));
   const total = weights.reduce((s, w) => s + w, 0);
   if (total <= 0) return undefined;
@@ -55,9 +55,10 @@ function resolveShotAttempt(offense: OnCourt, defense: OnCourt): PossessionEnd {
   let assisterId: string | undefined;
   if (result.made) {
     const teamPass = offense.composites.reduce((s, c) => s + c.passing, 0) / offense.composites.length;
+    const leadPass = offense.composites.reduce((best, c) => Math.max(best, c.passing), 0);
     const pAssist = offense.isEuroClubGame
       ? 0.44 + 0.22 * teamPass
-      : 0.54 + 0.38 * teamPass; // 0.54–0.92 → nudges elite creators back toward NBA assist volume
+      : 0.48 + 0.18 * teamPass + 0.28 * leadPass; // stronger lead-creator concentration without raising weak-pass teams much
     if (Math.random() < pAssist) {
       const assister = pickAssister(offense, index);
       if (assister) assisterId = assister.id;

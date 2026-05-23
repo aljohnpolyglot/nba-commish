@@ -128,8 +128,8 @@ export function attrsForCoach(name: string | undefined | null, fallbackSeed: num
 
 /** Build the card/signing-modal display rows for a role. Slot variants like
  *  'Assistant Coach 2' fall back to the base role's keys. */
-export function buildDisplayAttributes(role: string, seed: number): Array<[string, number]> {
-  const attrs = buildStaffAttrs(seed);
+export function buildDisplayAttributes(role: string, seed: number, name?: string | null): Array<[string, number]> {
+  const attrs = attrsForCoach(name, seed);
   const baseRole = role.replace(/ \d+$/, '');
   const keys = ROLE_DISPLAY_KEYS[baseRole] ?? ROLE_DISPLAY_KEYS['Head Coach'];
   return keys.map(([key, label]) => [label, attrs[key]]);

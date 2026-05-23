@@ -75,6 +75,11 @@ function getStaffMembers(team?: TeamWithStaff | null) {
   return Array.isArray(team?.tycoon?.staffMembers) ? team!.tycoon!.staffMembers! : [];
 }
 
+function isNBATeam(team?: TeamWithStaff | null): boolean {
+  const tid = Number(team?.id ?? (team as any)?.tid ?? -1);
+  return tid >= 0 && tid < 100;
+}
+
 function getStaffMember(team: TeamWithStaff | null | undefined, role: string) {
   return getStaffMembers(team).find(member => member?.role === role) ?? null;
 }
@@ -162,7 +167,9 @@ export function getTeamMedicalGameplayEffects(team?: TeamWithStaff | null): Team
   const injuryScale = scaleAroundNeutral(sportsScienceAvg);
   const staffRecoveryScale = scaleAroundNeutral(physioAvg);
   const facilityRecoveryScale = medicalQuality(team?.tycoon?.medicalBudget) * 2 - 1;
-  const recoveryScale = facilityRecoveryScale * 0.7 + staffRecoveryScale * 0.3;
+  const recoveryScale = isNBATeam(team)
+    ? staffRecoveryScale
+    : facilityRecoveryScale * 0.7 + staffRecoveryScale * 0.3;
 
   return {
     injuryRiskMultiplier: clamp(1 - injuryScale * 0.5, 0.5, 1.35),

@@ -1,4 +1,4 @@
-import { Dispatch, MutableRefObject, SetStateAction, useEffect } from 'react';
+import { Dispatch, MutableRefObject, SetStateAction, useEffect, useRef } from 'react';
 import { GameState, Tab } from '../../types';
 import { ensureStaffPoolDepth } from '../../services/euro/staffPool';
 import { ensureEuroUserAcademyProspects } from '../../services/externalLeagueSustainer';
@@ -46,9 +46,10 @@ export function useGameProviderBootstrapEffects({
   }, [state.saveId]);
 
   useEffect(() => {
-    if (state.isDataLoaded && state.gameMode === 'gm' && currentView === 'Schedule') {
-      setCurrentView('Team Office');
-    }
+    void state.isDataLoaded;
+    void state.gameMode;
+    void currentView;
+    void setCurrentView;
   }, [state.isDataLoaded, state.gameMode, currentView, setCurrentView]);
 
   useEffect(() => {
@@ -194,15 +195,20 @@ export function useGameProviderBootstrapEffects({
 }
 
 export function useGameProviderPostLoadEffects(state: GameState, setState: SetGameState) {
+  const prefetchedSaveIdRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
     if (!state.players || state.players.length === 0) return;
+    if (!state.isDataLoaded) return;
+    if (prefetchedSaveIdRef.current === state.saveId) return;
+    prefetchedSaveIdRef.current = state.saveId;
     const sorted = [...state.players]
       .filter(p => p.status === 'Active')
       .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
     sorted.forEach((player, i) => {
       setTimeout(() => prefetchPlayerBio(player), i * 4000);
     });
-  }, [!!state.players?.length, state.players]);
+  }, [state.isDataLoaded, state.saveId]);
 
   useEffect(() => {
     if (!state.isDataLoaded || state.staff || !state.players?.length || !state.teams?.length) return;
@@ -237,5 +243,5 @@ export function useGameProviderPostLoadEffects(state: GameState, setState: SetGa
     }
     const id = setTimeout(load, 2000);
     return () => clearTimeout(id);
-  }, [state.isDataLoaded, !!state.staff, state.staff, state.players, state.teams, setState]);
+  }, [state.isDataLoaded, !!state.staff, state.players?.length, state.teams?.length, setState]);
 }

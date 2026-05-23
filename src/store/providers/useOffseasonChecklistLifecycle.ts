@@ -99,7 +99,7 @@ export const useOffseasonChecklistLifecycle = (
       return;
     }
 
-    if (inOffseason && hasChecklist && !isInitialFirstSeason && !isEuroIsolated && !isPbaIsolatedMode(state)) {
+    if (inOffseason && hasChecklist && !isEuroIsolated && !isPbaIsolatedMode(state)) {
       const checklist = state.offseasonChecklist!;
       const todayStr = normalizeDate(state.date);
       const offseasonYear = Number(todayStr.slice(0, 4));
@@ -110,7 +110,12 @@ export const useOffseasonChecklistLifecycle = (
           next.retiredPlayersReview = 'pending';
           changed = true;
         }
-        if (todayStr >= getHOFCeremonyDateString(offseasonYear) && checklist.hofCeremony === 'skipped') {
+        const hofCeremonyDate = getHOFCeremonyDateString(offseasonYear);
+        if (todayStr >= `${offseasonYear}-07-01` && checklist.hofCeremony === 'skipped') {
+          next.hofCeremony = 'pending';
+          changed = true;
+        }
+        if (todayStr >= hofCeremonyDate && checklist.hofCeremony === 'skipped') {
           next.hofCeremony = 'pending';
           changed = true;
         }
