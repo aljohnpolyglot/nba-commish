@@ -1,0 +1,457 @@
+import React, { useState, useMemo } from 'react';
+import { normalizeDate } from '../../utils/helpers';
+import {
+  Inbox, MessageSquare, Newspaper, Activity, Trophy, Sparkles,
+  User, Calendar, BarChart2, TrendingUp,
+  Search, Users, Star, Building2, Settings2, ChevronDown,
+  ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
+  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight, Globe2,
+  Landmark, Megaphone, Plane, HeartPulse, Hammer, IdCard, Telescope, Repeat
+} from 'lucide-react';
+import { useGame } from '../../store/GameContext';
+import { useLeagueLabels } from '../../utils/leagueLabels';
+import { Tab } from '../../types';
+import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
+import { compareGameDates, getTradeDeadlineDate, getCurrentOffseasonEffectiveFAStart, getOpeningNightDate, getDraftDate, parseGameDate, toISODateString } from '../../utils/dateUtils';
+import { isNoDraftLeague } from '../../services/offseason/offseasonState';
+import { isEuroIsolatedMode } from '../../utils/uiMode';
+import { getEffectiveUiMode } from '../../utils/useEffectiveUiMode';
+import { LeaguePortalButton } from './LeaguePortalButton';
+import { isNoDraftLeague } from '../../services/offseason/offseasonState';
+import { isEuroIsolatedMode } from '../../utils/uiMode';
+
+interface NavigationMenuProps {
+  currentView: Tab;
+  onViewChange: (view: Tab) => void;
+  onClose: () => void;
+}
+
+interface NavItem {
+  id: Tab;
+  label: string;
+  icon: any;
+  badge?: number | string;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onViewChange, onClose }) => {
+  const { state, markSocialRead, markNewsRead, markPayslipsRead } = useGame();
+  const labels = useLeagueLabels();
+  const isGM = state.gameMode === 'gm';
+  const noDraft = isNoDraftLeague(state.leagueStats as any);
+  const tradesDisabled = state.leagueStats?.tradesAllowed === false;
+  const euroIsolated = isEuroIsolatedMode(state) && getEffectiveUiMode(state as any) === 'euro_isolated';
+  const noDraft = isNoDraftLeague(state.leagueStats as any);
+  const tradesDisabled = state.leagueStats?.tradesAllowed === false;
+  const euroIsolated = isEuroIsolatedMode(state);
+
+  // Trade deadline + FA period detection for GM mode gating
+  // Dates resolved dynamically via dateUtils.resolveSeasonDate (day-of-week aware).
+  const currentDateNorm = normalizeDate(state.date ?? '');
+  const seasonYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const tradeDeadline = toISODateString(getTradeDeadlineDate(seasonYear, state.leagueStats));
+  const faStartDate = getCurrentOffseasonEffectiveFAStart(`${currentDateNorm}T00:00:00Z`, state.leagueStats, state.schedule as any);
+  const faStart = toISODateString(faStartDate);
+  const faEnd = `${faStartDate.getUTCFullYear()}-10-01`; // dead period ends at training camp
+  const openingNight = toISODateString(getOpeningNightDate(seasonYear, state.leagueStats, state.schedule as any));
+
+  // Trades reopen once the NBA Finals end (bracketComplete) OR once it's draft day —
+  // dynamic draft dates can fall before Game 7, and draft-night trades are real.
+  const finalsOver = !!(state.playoffs?.bracketComplete);
+  const draftDate = toISODateString(getDraftDate(seasonYear, state.leagueStats));
+  const isDraftDayOrLater = currentDateNorm >= draftDate;
+  const isPastTradeDeadline = isGM && !finalsOver && !isDraftDayOrLater && currentDateNorm > tradeDeadline && currentDateNorm < faStart;
+  const isFreeAgencyPeriod = currentDateNorm >= faStart && currentDateNorm < faEnd;
+  // Year-round regular-season FA: between opening night and next FA start
+  const regularSeasonFAEnabled = state.leagueStats?.regularSeasonFAEnabled ?? true;
+  const isRegularSeasonSigningWindow = regularSeasonFAEnabled && currentDateNorm >= openingNight && currentDateNorm < faStart;
+  // Post-Finals pre-FA offseason: after playoffs wrap up, GM should still see impending FAs.
+  // Fires whenever date is before the next FA start AND before opening night — i.e. summer dead zone.
+  const isOffseasonPreFA = currentDateNorm < faStart && currentDateNorm < openingNight;
+  // Show FA tab in GM mode during: FA window OR regular season OR offseason pre-FA
+  const showFATabInGM = isFreeAgencyPeriod || isRegularSeasonSigningWindow || isOffseasonPreFA;
+
+  const pendingTradesCount   = (state.tradeProposals || []).filter(p => p.status === 'pending').length;
+  const unreadCount          = (state.inbox      || []).filter(e  => !e.read).length;
+  const socialCount          = (state.socialFeed  || []).filter(p  => p.isNew).length;
+  const newsCount            = (state.news        || []).filter(n  => n.isNew).length;
+  const unreadMessagesCount  = (state.chats       || []).reduce((a, c) => a + c.unreadCount, 0);
+  const hasUnreadPayslip     = state.hasUnreadPayslip;
+  const userTycoon = state.teams.find(t => t.id === state.userTeamId)?.tycoon;
+  const cashBadge = euroIsolated && isGM && userTycoon
+    ? `€${((userTycoon.cashOnHand ?? 0) / 1_000_000).toFixed(1)}M`
+    : undefined;
+
+  const fmt = (n: number) => (n > 99 ? '99+' : n);
+
+  const playoffBadge = (() => {
+    if (!state.playoffs) return 0;
+    if (state.playoffs.bracketComplete) return 0;
+    if (state.playoffs.gamesInjected) return '•';
+    return 0;
+  })();
+
+  const broadcastingBadge = (() => {
+    if (state.leagueStats.mediaRights?.isLocked) return 0;
+    const broadcastDeadline = `${state.leagueStats.year ?? new Date().getFullYear()}-06-30`;
+    if (compareGameDates(state.date, broadcastDeadline) >= 0) return 0;
+    return '!';
+  })();
+
+  const seasonalBadge = (() => {
+    const currentDate = parseGameDate(state.date);
+    const season = state.leagueStats.year || 2026;
+    const dates = getAllStarWeekendDates(season);
+    const allStar = state.allStar;
+    const URGENT = 7; // days
+
+    const urgentDeadline = (deadline: Date, done: boolean) => {
+      if (done) return false;
+      const days = Math.ceil((deadline.getTime() - currentDate.getTime()) / 86400000);
+      return days >= 0 && days <= URGENT;
+    };
+
+    let count = 0;
+    // Rig voting: open + starters announced + not yet rigged
+    if (urgentDeadline(dates.votingEnd, !!(allStar?.hasRiggedVoting) || !(allStar?.startersAnnounced))) count++;
+    // Celebrity Game roster
+    if (urgentDeadline(dates.celebrityAnnounced, !!(allStar?.celebrityAnnounced))) count++;
+    // Dunk contest
+    if (urgentDeadline(dates.dunkContestAnnounced, false)) count++;
+    // 3-Point contest
+    if (urgentDeadline(dates.threePointAnnounced, false)) count++;
+    // Injured All-Star waiting for replacement
+    const hasInjury = !!(allStar?.startersAnnounced) &&
+      (allStar?.roster ?? []).some((r: any) => {
+        const p = state.players.find(p => p.internalId === r.playerId);
+        return p && (p as any).injury?.gamesRemaining > 0;
+      });
+    if (hasInjury) count++;
+
+    return count > 0 ? count : 0;
+  })();
+
+  const euroGmGroups: NavGroup[] = [
+    {
+      label: 'My Team',
+      items: [
+        { id: 'Schedule' as Tab, label: 'Schedule', icon: Calendar },
+        { id: 'Front Office' as Tab, label: 'Front Office', icon: Briefcase },
+        { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
+        { id: 'Training Center' as Tab, label: 'Training', icon: Activity },
+      ],
+    },
+    {
+      label: 'Front Office',
+      items: [
+        { id: 'Front Office Finances' as Tab,        label: 'Finances',        icon: Landmark },
+        { id: 'Front Office Sponsorships' as Tab,    label: 'Sponsorships',    icon: Megaphone },
+        { id: 'Front Office Transfer Market' as Tab, label: 'Transfer Market', icon: Repeat },
+        { id: 'Front Office Staff' as Tab,           label: 'Staff',           icon: IdCard },
+        { id: 'Front Office Medical' as Tab,         label: 'Medical',         icon: HeartPulse },
+        { id: 'Front Office Facilities' as Tab,      label: 'Facilities',      icon: Hammer },
+        { id: 'Front Office Travel' as Tab,          label: 'Travel',          icon: Plane },
+        { id: 'Front Office Scouting' as Tab,        label: 'Scouting',        icon: Telescope },
+      ],
+    },
+    {
+      label: 'Competitions',
+      items: [
+        { id: 'Endesa Hub' as Tab,     label: 'Liga Endesa', icon: Trophy },
+        { id: 'Euroleague Hub' as Tab, label: 'EuroLeague',  icon: Globe2 },
+        { id: 'Standings' as Tab,      label: 'Standings',   icon: Table2 },
+      ],
+    },
+    {
+      label: 'Squad',
+      items: [
+        { id: 'Player Search' as Tab,     label: 'Player Search',     icon: Search },
+        { id: 'Player Bios' as Tab,       label: 'Player Bios',       icon: Users },
+        { id: 'Player Comparison' as Tab, label: 'Player Comparison', icon: ArrowLeftRight },
+        { id: 'Free Agents' as Tab,       label: 'Free Agents',       icon: UserX },
+        { id: 'Injuries' as Tab,          label: 'Injuries',          icon: Stethoscope },
+      ],
+    },
+    {
+      label: 'Analytics',
+      items: [
+        { id: 'Player Stats' as Tab,       label: 'Player Stats',       icon: BarChart2 },
+        { id: 'Player Ratings' as Tab,     label: 'Player Ratings',     icon: BarChart2 },
+        { id: 'Team Stats' as Tab,         label: 'Team Stats',         icon: Users },
+        { id: 'League Leaders' as Tab,     label: 'League Leaders',     icon: ListOrdered },
+        { id: 'Statistical Feats' as Tab,  label: 'Statistical Feats',  icon: Zap },
+        { id: 'Power Rankings' as Tab,     label: 'Power Rankings',     icon: TrendingUp },
+      ],
+    },
+    {
+      label: 'Communications',
+      items: [
+        { id: 'Messages' as Tab,    label: 'Messages',    icon: MessageSquare, badge: fmt(unreadMessagesCount) },
+        { id: 'Social Feed' as Tab, label: 'Social Feed', icon: Activity,      badge: fmt(socialCount) },
+        { id: 'League News' as Tab, label: 'League News', icon: Newspaper,     badge: fmt(newsCount) },
+      ],
+    },
+  ] as NavGroup[];
+
+  const groups: NavGroup[] = isGM && euroIsolated ? euroGmGroups : [
+    {
+      label: isGM ? 'My Team' : 'Command Center',
+      items: [
+        { id: 'Schedule' as Tab,  label: 'Schedule',  icon: Calendar },
+        ...(!isGM ? [
+          { id: 'Actions' as Tab,   label: 'Actions',   icon: Sparkles },
+          { id: 'Events' as Tab,    label: 'Timeline',  icon: Clock },
+        ] : []),
+        ...(isGM && !euroIsolated ? [
+          { id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase },
+          { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
+          { id: 'Training Center' as Tab, label: 'Training Center', icon: Activity },
+        ] : []),
+        ...(isGM && euroIsolated ? [
+          { id: 'Front Office' as Tab, label: 'Front Office', icon: Briefcase },
+          { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
+          { id: 'Training Center' as Tab, label: 'Training', icon: Activity },
+        ] : []),
+      ],
+    },
+    ...(isGM && euroIsolated ? [{
+      label: 'Front Office',
+      items: [
+        { id: 'Front Office Finances' as Tab,        label: 'Finances',          icon: Landmark },
+        { id: 'Front Office Sponsorships' as Tab,    label: 'Sponsorships',      icon: Megaphone },
+        { id: 'Front Office Transfer Market' as Tab, label: 'Transfer Market',   icon: Repeat },
+        { id: 'Front Office Staff' as Tab,           label: 'Staff',             icon: IdCard },
+        { id: 'Front Office Medical' as Tab,         label: 'Medical',           icon: HeartPulse },
+        { id: 'Front Office Facilities' as Tab,      label: 'Facilities',        icon: Hammer },
+        { id: 'Front Office Travel' as Tab,          label: 'Travel',            icon: Plane },
+        { id: 'Front Office Scouting' as Tab,        label: 'Scouting',          icon: Telescope },
+      ],
+    }] : []),
+    ...(!isGM ? [{
+      label: 'Seasonal',
+      items: [
+        ...(!euroIsolated ? [{ id: 'Seasonal' as Tab, label: 'Seasonal Actions', icon: Clock, badge: seasonalBadge || undefined }] : []),
+        ...(() => {
+          const yr = state.leagueStats?.year ?? new Date().getFullYear();
+          const currentNorm = normalizeDate(state.date ?? '');
+          const oct1 = `${yr - 1}-10-01`;
+          const oct25 = `${yr - 1}-10-25`; // opening night — preview badge expires after games start
+          const isPreseason = currentNorm >= oct1 && currentNorm < oct25;
+          return (!state.seasonPreviewDismissed && (state.seasonHistory ?? []).length > 0 && isPreseason)
+            ? [{ id: 'Season Preview' as Tab, label: 'Season Preview', icon: Sparkles, badge: '!' as string }]
+            : [];
+        })(),
+        ...(!euroIsolated ? [{ id: 'All-Star' as Tab, label: 'All-Star', icon: Star }] : []),
+        ...(!euroIsolated ? [{ id: 'NBA Cup' as Tab, label: labels.cupShort, icon: Trophy }] : []),
+        ...(euroIsolated ? [{ id: 'Euroleague' as Tab, label: 'Euroleague', icon: Globe2 }] : []),
+        ...(euroIsolated ? [{ id: 'Euroleague' as Tab, label: 'Euroleague', icon: Globe2 }] : []),
+        { id: 'Playoffs' as Tab,       label: 'Playoffs',           icon: Trophy, badge: playoffBadge },
+      ],
+    }] : [{
+      label: 'Season',
+      items: [
+        ...(!euroIsolated ? [{ id: 'All-Star' as Tab, label: 'All-Star', icon: Star }] : []),
+        ...(!euroIsolated ? [{ id: 'NBA Cup' as Tab, label: labels.cupShort, icon: Trophy }] : []),
+        { id: 'Playoffs' as Tab,  label: 'Playoffs',  icon: Trophy, badge: playoffBadge },
+      ],
+    }]),
+    {
+      label: 'Communications',
+      items: [
+        ...(!isGM ? [
+          { id: 'Inbox' as Tab,        label: 'Inbox',        icon: Inbox,          badge: fmt(unreadCount) },
+        ] : []),
+        { id: 'Messages' as Tab,     label: 'Messages',     icon: MessageSquare,  badge: fmt(unreadMessagesCount) },
+        { id: 'Social Feed' as Tab,  label: 'Social Feed',  icon: Activity,       badge: fmt(socialCount) },
+        { id: 'League News' as Tab,  label: 'League News',  icon: Newspaper,      badge: fmt(newsCount) },
+      ],
+    },
+    {
+      label: 'League',
+      items: [
+        { id: 'NBA Central' as Tab,      label: labels.central,    icon: Trophy },
+        { id: 'Standings' as Tab,        label: 'Standings',       icon: Table2 },
+        { id: 'Transactions' as Tab,     label: 'Transactions',    icon: ArrowRightLeft },
+        ...(!tradesDisabled && !isPastTradeDeadline ? [
+          { id: 'Trade Machine' as Tab,    label: isPastTradeDeadline ? 'Trade Machine (Locked)' : 'Trade Machine',   icon: Cpu },
+          { id: 'Trade Finder' as Tab,     label: 'Trade Finder',    icon: Search },
+        ] : []),
+        ...(isGM && !tradesDisabled && !isPastTradeDeadline ? [{ id: 'Trade Proposals' as Tab, label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) }] : []),
+        { id: 'Player Search' as Tab,    label: 'Player Search',   icon: Search },
+        { id: 'Player Bios' as Tab,        label: 'Player Bios',       icon: Users },
+        { id: 'Player Comparison' as Tab,  label: 'Player Comparison', icon: ArrowLeftRight },
+        ...(!isGM || showFATabInGM ? [{ id: 'Free Agents' as Tab, label: 'Free Agents', icon: UserX }] : []),
+        { id: 'Injuries' as Tab,         label: 'Injuries',        icon: Stethoscope },
+      ],
+    },
+    {
+      label: 'Analytics',
+      items: [
+        { id: 'Player Stats' as Tab,    label: 'Player Stats',    icon: BarChart2 },
+        { id: 'Player Ratings' as Tab,  label: 'Player Ratings',  icon: BarChart2 },
+        { id: 'Team Stats' as Tab,      label: 'Team Stats',      icon: Users },
+        { id: 'Award Races' as Tab,     label: 'Award Races',     icon: TrendingUp },
+        { id: 'Statistical Feats' as Tab, label: 'Statistical Feats', icon: Zap },
+        { id: 'League Leaders' as Tab,  label: 'League Leaders',  icon: ListOrdered },
+        { id: 'League History' as Tab,  label: 'League History',  icon: Trophy },
+        { id: 'Team History' as Tab,    label: 'Team History',    icon: BookOpen },
+        { id: 'Hall of Fame' as Tab,    label: 'Hall of Fame',    icon: Crown },
+        { id: 'Power Rankings' as Tab,  label: 'Power Rankings',  icon: TrendingUp },
+      ],
+    },
+    ...(!noDraft ? [{
+      label: 'Draft',
+      items: [
+        { id: 'Draft Scouting' as Tab, label: 'Scouting',      icon: Target },
+        { id: 'Draft Lottery' as Tab,  label: 'Draft Lottery', icon: Ticket },
+        { id: 'Draft Board' as Tab,    label: 'Draft Board',   icon: ClipboardList },
+      ],
+    }] : []),
+    // ── International league hubs (commented out — user has a better design in mind) ──
+    // ...(state.leagueType !== 'fictional' ? [{
+    //   label: 'International',
+    //   items: [
+    //     { id: 'Euroleague Hub' as Tab,    label: 'Euroleague',    icon: Globe2 },
+    //     { id: 'Endesa Hub' as Tab,        label: 'Liga ACB',      icon: Globe2 },
+    //     { id: 'G-League Hub' as Tab,      label: 'G-League',      icon: Globe2 },
+    //     { id: 'WNBA Hub' as Tab,          label: 'WNBA',          icon: Globe2 },
+    //     { id: 'B-League Hub' as Tab,      label: 'B-League',      icon: Globe2 },
+    //     { id: 'China CBA Hub' as Tab,     label: 'China CBA',     icon: Globe2 },
+    //     { id: 'NBL Australia Hub' as Tab, label: 'NBL Australia', icon: Globe2 },
+    //     { id: 'PBA Hub' as Tab,           label: 'PBA',           icon: Globe2 },
+    //   ],
+    // }] : []),
+    {
+      label: 'Operations',
+      items: [
+        ...(isGM ? [] : [
+          { id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase },
+          { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
+          { id: 'Training Center' as Tab, label: 'Training Center', icon: Activity },
+        ]),
+        ...(!isGM ? [
+          { id: 'League Office' as Tab,    label: 'League Office',   icon: Building2 },
+          { id: 'Player Creator' as Tab,   label: 'Player Creator',  icon: UserPlus },
+          { id: 'League Settings' as Tab,  label: 'League Settings', icon: Settings2 },
+          { id: 'Broadcasting' as Tab,     label: 'Broadcasting',    icon: Tv, badge: broadcastingBadge },
+        ] : []),
+        { id: 'League Finances' as Tab,  label: 'Team Finances',   icon: DollarSign },
+      ],
+    },
+    ...(!isGM ? [
+      {
+        label: 'Wealth',
+        items: [
+          { id: 'Personal' as Tab,      label: 'Payslips',      icon: User,        badge: hasUnreadPayslip ? 1 : 0 },
+          { id: 'Commish Store' as Tab, label: 'Store',          icon: ShoppingBag },
+          { id: 'Real Stern' as Tab,    label: 'Real Stern',     icon: Building2 },
+          { id: 'Sports Book' as Tab,   label: 'Sports Book',    icon: TrendingUp },
+        ],
+      },
+      {
+        label: 'Legacy',
+        items: [
+          { id: 'Approvals' as Tab,  label: 'Approvals',  icon: ThumbsUp },
+          { id: 'Viewership' as Tab, label: 'Viewership', icon: Eye },
+          { id: 'Finances' as Tab,   label: 'Finances',   icon: DollarSign },
+        ],
+      },
+    ] : [
+      {
+        label: 'Entertainment',
+        items: [
+          { id: 'Sports Book' as Tab,   label: 'Sports Book',    icon: TrendingUp },
+        ],
+      },
+    ]),
+  ];
+
+  // All groups expanded by default
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  const toggleGroup = (label: string) => {
+    setCollapsed(prev => ({ ...prev, [label]: !prev[label] }));
+  };
+
+  const handleNavClick = (item: NavItem) => {
+    if (item.id === 'Social Feed') markSocialRead();
+    else if (item.id === 'League News') markNewsRead();
+    else if (item.id === 'Personal') markPayslipsRead();
+    onViewChange(item.id);
+    onClose();
+  };
+
+  return (
+    <div className="space-y-1 mb-6">
+      {groups.map(group => {
+        const isCollapsed = collapsed[group.label] ?? false;
+        const hasActiveMember = group.items.some(i => i.id === currentView);
+
+        return (
+          <div key={group.label}>
+            {/* Group header */}
+            <button
+              onClick={() => toggleGroup(group.label)}
+              className="w-full flex items-center justify-between px-2 py-1.5 mt-3 mb-0.5 group"
+            >
+              <span className={`text-[9px] font-black uppercase tracking-[0.15em] transition-colors ${
+                hasActiveMember ? 'text-indigo-400' : 'text-slate-600 group-hover:text-slate-500'
+              }`}>
+                {group.label}
+              </span>
+              <ChevronDown
+                size={11}
+                className={`text-slate-700 group-hover:text-slate-500 transition-transform duration-200 ${
+                  isCollapsed ? '-rotate-90' : ''
+                }`}
+              />
+            </button>
+
+            {/* Group items */}
+            {!isCollapsed && (
+              <div className="space-y-0.5">
+                {group.items.map(item => {
+                  const isActive = currentView === item.id;
+                  const hasBadge = item.badge !== undefined && item.badge !== 0 && item.badge !== '0';
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => handleNavClick(item)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-150 ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                          : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <item.icon
+                          size={15}
+                          className={isActive ? 'text-white' : 'text-slate-500'}
+                        />
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </div>
+                      {hasBadge && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                          item.badge === '!'
+                            ? isActive ? 'bg-white text-amber-600' : 'bg-amber-500 text-white animate-pulse'
+                            : isActive ? 'bg-white text-indigo-600' : 'bg-indigo-500 text-white'
+                        }`}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <LeaguePortalButton />
+    </div>
+  );
+};

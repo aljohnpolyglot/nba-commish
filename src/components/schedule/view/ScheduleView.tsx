@@ -16,6 +16,7 @@ import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import { useDraftEventGate } from '../../../hooks/useDraftEventGate';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
+import { isEuroVisibleScheduleGame } from '../../../utils/euroLeagueDefaults';
 
 // Sub-components
 import { AllStarDayView } from './components/AllStarDayView';
@@ -80,12 +81,18 @@ export const ScheduleView: React.FC = () => {
     setCalendarMonth(new Date(state.date));
   }, [state.date, state.day]);
 
+  const euroIsolated = isEuroIsolatedMode(state);
   const pbaIsolated = isPbaIsolatedMode(state);
+  const visibleSchedule = useMemo(() => {
+    const schedule = state.schedule ?? [];
+    if (euroIsolated) return schedule.filter(g => isEuroVisibleScheduleGame(state, g));
+    if (pbaIsolated) return schedule.filter(g => g.homeTid >= 2000 && g.homeTid < 2100);
+    return schedule;
+  }, [state, state.schedule, euroIsolated, pbaIsolated]);
+
   const gamesForSelectedDate = useMemo(() => {
-    const byDate = state.schedule.filter(g => normalizeDate(g.date) === normalizeDate(selectedDate));
-    if (pbaIsolated) return byDate.filter(g => g.homeTid >= 2000 && g.homeTid < 2100);
-    return byDate;
-  }, [state.schedule, selectedDate, pbaIsolated]);
+    return visibleSchedule.filter(g => normalizeDate(g.date) === normalizeDate(selectedDate));
+  }, [visibleSchedule, selectedDate]);
 
   // Roster compliance gate — shared hook covers every sim advancement path.
   const rosterGate = useRosterComplianceGate();
@@ -121,7 +128,7 @@ export const ScheduleView: React.FC = () => {
 
   const simulateSeason = async () => {
     // Season sim — include the last day's games (we want the season complete).
-    const lastGame = [...state.schedule].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    const lastGame = [...visibleSchedule].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
     rosterGate.attempt(() => draftGate.attempt(() => {
       if (lastGame) {
         return dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lastGame.date } } as any);
@@ -378,7 +385,7 @@ export const ScheduleView: React.FC = () => {
 
       </AnimatePresence>
 
-      {watchingDunkContest && !state.allStar?.dunkContest?.complete && (
+      {watchingDunkContest && !euroIsolated && !state.allStar?.dunkContest?.complete && (
         <div className="fixed inset-0 z-[100] bg-black">
           <DunkContest
             contestants={(state.allStar?.dunkContestContestants ?? [])
@@ -390,7 +397,7 @@ export const ScheduleView: React.FC = () => {
         </div>
       )}
 
-      {watchingThreePoint && !state.allStar?.threePointContest?.complete && (() => {
+      {watchingThreePoint && !euroIsolated && !state.allStar?.threePointContest?.complete && (() => {
         const threeContestants = (state.allStar?.threePointContestants ?? []).map((c: any) => {
           const player = state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c;
           const team = state.teams.find((t: any) => t.id === player.tid);
@@ -407,7 +414,7 @@ export const ScheduleView: React.FC = () => {
         );
       })()}
 
-      {allStarModalTab && (
+      {allStarModalTab && !euroIsolated && (
         <AllStarRosterModal
           tab={allStarModalTab}
           allStar={state.allStar}
@@ -420,7 +427,7 @@ export const ScheduleView: React.FC = () => {
         />
       )}
 
-      {contestModalType && (
+      {contestModalType && !euroIsolated && (
         <ContestDetailsModal
           type={contestModalType}
           state={state}
@@ -501,7 +508,7 @@ export const ScheduleView: React.FC = () => {
                     game.gid, game.date, 50,
                     homeOverride?.length ? homeOverride : undefined,
                     awayOverride?.length ? awayOverride : undefined,
-                    undefined, undefined, rig
+                    undefined, undefined, undefined, rig
                   );
                   console.log(`[WatchGame] pre-sim done — home=${simResult.homeScore} away=${simResult.awayScore} gid=${simResult.gameId}`);
                   await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId: game.gid, result: simResult } });
@@ -560,7 +567,7 @@ export const ScheduleView: React.FC = () => {
             onClose={() => setSelectedBoxScoreGame(null)}
             onPlayerClick={p => setBoxScoreClickedPlayer(p)}
             playoffs={state.playoffs}
-            schedule={state.schedule}
+            schedule={visibleSchedule}
           />
         )}
 

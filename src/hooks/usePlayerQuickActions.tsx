@@ -3,9 +3,10 @@ import { AnimatePresence, motion } from 'motion/react';
 import { AlertTriangle, X } from 'lucide-react';
 import { useGame } from '../store/GameContext';
 import { SignFreeAgentModal } from '../components/modals/SignFreeAgentModal';
-import { PlayerActionsModal } from '../components/central/view/PlayerActionsModal';
+import { PlayerActionsModal } from '../components/shared/PlayerActionsModal';
 import { PlayerRatingsModal } from '../components/modals/PlayerRatingsModal';
 import { PlayerBioView } from '../components/central/view/PlayerBioView';
+import { DraftScoutingModal } from '../components/draft/DraftScoutingModal';
 import { FAOffersModal } from '../components/modals/FAOffersModal';
 import { WaiveConfirmModal } from '../components/modals/WaiveConfirmModal';
 import type { NBAPlayer } from '../types';
@@ -13,6 +14,18 @@ import { formatGameDateShort, getCurrentOffseasonEffectiveFAStart, parseGameDate
 import { isOnRoster, resolveAnyTeam } from '../utils/teamLookup';
 import { isPbaIsolatedMode } from '../utils/uiMode';
 import { canSignInPba, isFilipino } from '../services/pba/importManager';
+import { isDraftProspectLike } from '../utils/prospectUtils';
+import {
+  getClassPercentiles,
+  getClassAverages,
+  batchComparisonsDeduped,
+  type ClassPercentileMaps,
+} from '../services/scoutingReport';
+import {
+  ensureDraftScouting,
+  getCachedDraftScouting,
+  matchProspectToGist,
+} from '../services/draftScoutingGist';
 
 /**
  * Unified "click a player name" handler — one hook that owns the entire modal stack:
@@ -39,12 +52,81 @@ export function usePlayerQuickActions() {
   const [actionsPlayer, setActionsPlayer] = useState<NBAPlayer | null>(null);
   const [ratingsPlayer, setRatingsPlayer] = useState<NBAPlayer | null>(null);
   const [bioPlayer, setBioPlayer] = useState<NBAPlayer | null>(null);
+  const [scoutingPlayer, setScoutingPlayer] = useState<NBAPlayer | null>(null);
   const [signingPlayer, setSigningPlayer] = useState<NBAPlayer | null>(null);
   const [resignTeamId, setResignTeamId] = useState<number | null>(null);
   const [forceContractType, setForceContractType] = useState<'GUARANTEED' | 'TWO_WAY' | undefined>(undefined);
   const [offersPlayer, setOffersPlayer] = useState<NBAPlayer | null>(null);
   const [waivePlayer, setWaivePlayer] = useState<NBAPlayer | null>(null);
   const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
+  const currentYear = state.leagueStats?.year ?? new Date().getUTCFullYear();
+  const scoutingDraftYear = Number((scoutingPlayer as any)?.draft?.year ?? currentYear);
+  const [gistByYear, setGistByYear] = useState(() => getCachedDraftScouting(scoutingDraftYear) ?? null);
+
+  React.useEffect(() => {
+    if (!scoutingPlayer) return;
+    const cached = getCachedDraftScouting(scoutingDraftYear);
+    if (cached !== undefined) {
+      setGistByYear(cached);
+      return;
+    }
+    let cancelled = false;
+    ensureDraftScouting(scoutingDraftYear).then(data => {
+      if (!cancelled) setGistByYear(data);
+    });
+    return () => { cancelled = true; };
+  }, [scoutingPlayer, scoutingDraftYear]);
+
+  const scoutingClassProspects = React.useMemo(() => {
+    if (!scoutingPlayer) return [] as NBAPlayer[];
+    return state.players.filter(player =>
+      isDraftProspectLike(player, currentYear) &&
+      Number((player as any).draft?.year ?? scoutingDraftYear) === scoutingDraftYear,
+    );
+  }, [scoutingPlayer, state.players, currentYear, scoutingDraftYear]);
+
+  const scoutingActivePlayers = React.useMemo(() =>
+    state.players.filter(player =>
+      player.tid >= 0 && player.tid < 100 &&
+      !isDraftProspectLike(player, currentYear),
+    ),
+  [state.players, currentYear]);
+
+  const scoutingClassAverages = React.useMemo(
+    () => getClassAverages(scoutingClassProspects),
+    [scoutingClassProspects],
+  );
+
+  const scoutingPercentilesByPos = React.useMemo(() => {
+    const map = new Map<string, ClassPercentileMaps>();
+    map.set('Guard', getClassPercentiles(scoutingClassProspects, 'Guard'));
+    map.set('Forward', getClassPercentiles(scoutingClassProspects, 'Forward'));
+    map.set('Center', getClassPercentiles(scoutingClassProspects, 'Center'));
+    map.set('Class', getClassPercentiles(scoutingClassProspects, 'Class'));
+    return map;
+  }, [scoutingClassProspects]);
+
+  const scoutingBatchComps = React.useMemo(
+    () => batchComparisonsDeduped(scoutingClassProspects, scoutingActivePlayers),
+    [scoutingClassProspects, scoutingActivePlayers],
+  );
+
+  const scoutingGistMatch = React.useMemo(
+    () => scoutingPlayer ? matchProspectToGist(scoutingPlayer, gistByYear) : null,
+    [scoutingPlayer, gistByYear],
+  );
+
+  const scoutingRanks = React.useMemo(() => {
+    if (!scoutingPlayer || !gistByYear?.length || !scoutingGistMatch) return undefined;
+    const consensusIndex = gistByYear.findIndex(entry => entry.id === scoutingGistMatch.id);
+    const espn = scoutingGistMatch.externalRanks?.espn ? parseInt(scoutingGistMatch.externalRanks.espn, 10) : undefined;
+    const noCeilings = scoutingGistMatch.externalRanks?.noCeilings ? parseInt(scoutingGistMatch.externalRanks.noCeilings, 10) : undefined;
+    return {
+      consensus: consensusIndex >= 0 ? consensusIndex + 1 : undefined,
+      espn: Number.isFinite(espn) ? espn : undefined,
+      noCeilings: Number.isFinite(noCeilings) ? noCeilings : undefined,
+    };
+  }, [scoutingPlayer, gistByYear, scoutingGistMatch]);
 
   const closeSigning = () => {
     setSigningPlayer(null);
@@ -72,6 +154,13 @@ export function usePlayerQuickActions() {
 
   /** Dispatch-only handler for the lightweight sign/resign/waive actions. Returns true if handled. */
   const handle = (player: NBAPlayer, actionType: string): boolean => {
+    if (actionType === 'view_scouting') {
+      if (isDraftProspectLike(player, currentYear)) {
+        setScoutingPlayer(player);
+        return true;
+      }
+      return false;
+    }
     if (actionType === 'sign_player') {
       const faStartLabel = isBeforeFreeAgencyOpen(player);
       if (faStartLabel && state.gameMode === 'gm') {
@@ -208,6 +297,24 @@ export function usePlayerQuickActions() {
           onClose={() => setRatingsPlayer(null)}
         />
       )}
+      {scoutingPlayer && (
+        <DraftScoutingModal
+          player={scoutingPlayer}
+          onClose={() => setScoutingPlayer(null)}
+          classProspects={scoutingClassProspects}
+          activePlayers={scoutingActivePlayers}
+          percentilesByPos={scoutingPercentilesByPos}
+          classAverages={scoutingClassAverages}
+          draftYear={scoutingDraftYear}
+          gistData={scoutingGistMatch}
+          ranks={scoutingRanks}
+          preComputedComps={scoutingBatchComps.get(scoutingPlayer.internalId)}
+          onViewPlayerBio={(player) => {
+            setScoutingPlayer(null);
+            setBioPlayer(player);
+          }}
+        />
+      )}
       {offersPlayer && (
         <FAOffersModal
           player={offersPlayer}
@@ -243,6 +350,7 @@ export function usePlayerQuickActions() {
           onClose={closeSigning}
           onConfirm={async (payload) => {
             closeSigning();
+            console.log('[quickActions] SIGN_FREE_AGENT dispatch', payload);
             await dispatchAction({ type: 'SIGN_FREE_AGENT', payload });
             // Stamp import flag for non-Filipino players signed to PBA teams
             if (isPbaIsolatedMode(state) && payload.playerId) {

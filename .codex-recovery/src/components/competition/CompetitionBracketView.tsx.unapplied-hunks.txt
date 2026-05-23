@@ -1,0 +1,67 @@
+# Codex hunks NOT found on current disk for src/components/competition/CompetitionBracketView.tsx
+# 4 hunks unapplied. Total ops: 7
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=2421 ts=2026-05-11T09:04:57.594Z ---
+   };
+ 
+-  const playInSeries = resolution.playInMatches.map(buildSeries);
++  const hasPhaseMaterialized = (phase: 'play-in' | 'qf' | 'sf' | 'final'): boolean =>
++    (state.schedule as Game[]).some(game => game.competitionId === spec.id && game.competitionPhase === phase) ||
++    (state.boxScores as GameResult[]).some(game => game.competitionId === spec.id && game.competitionPhase === phase);
++
++  const playInSeries = hasPhaseMaterialized('play-in') ? resolution.playInMatches.map(buildSeries) : [];
+   const qfMatches = resolution.knockoutMatches.filter(m => m.round === 'quarterfinal');
+   const sfMatches = resolution.knockoutMatches.filter(m => m.round === 'semifinal');
+   const finalMatch = resolution.knockoutMatches.find(m => m.round === 'final');
+-  const qfSeries = qfMatches.map(buildSeries);
+-  const sfSeries = sfMatches.map(buildSeries);
+-  const finalSeries = finalMatch ? buildSeries(finalMatch, 0) : null;
++  const qfSeries = hasPhaseMaterialized('qf') ? qfMatches.map(buildSeries) : [];
++  const sfSeries = hasPhaseMaterialized('sf') ? sfMatches.map(buildSeries) : [];
++  const finalSeries = finalMatch && hasPhaseMaterialized('final') ? buildSeries(finalMatch, 0) : null;
+
+--- HUNK [op#2 hunk#0] session=8 line=2569 ts=2026-05-11T12:02:11.617Z ---
+ const countWins = (
+   match: CompetitionKnockoutMatch,
+   competitionId: string,
+   phase: 'play-in' | 'qf' | 'sf' | 'final',
+   boxScores: GameResult[],
++  season: number,
+ ): { high: number; low: number; complete: boolean; winnerTid?: number } => {
+   let high = 0;
+   let low = 0;
+   for (const game of boxScores) {
+     if (game.competitionId !== competitionId || game.competitionPhase !== phase) continue;
++    if (typeof game.season === 'number' && game.season !== season) continue;
+     const isThisPair =
+       (game.homeTeamId === match.highSeedTid && game.awayTeamId === match.lowSeedTid) ||
+
+--- HUNK [op#2 hunk#2] session=8 line=2569 ts=2026-05-11T12:02:11.617Z ---
+   const hasPhaseMaterialized = (phase: 'play-in' | 'qf' | 'sf' | 'final'): boolean =>
+     (state.schedule as Game[]).some(game => game.competitionId === spec.id && game.competitionPhase === phase) ||
+-    (state.boxScores as GameResult[]).some(game => game.competitionId === spec.id && game.competitionPhase === phase);
++    (state.boxScores as GameResult[]).some(game =>
++      game.competitionId === spec.id &&
++      game.competitionPhase === phase &&
++      (typeof game.season !== 'number' || game.season === season)
++    );
+
+--- HUNK [op#4 hunk#0] session=8 line=2673 ts=2026-05-11T12:07:17.253Z ---
+ const PHASE_FOR_ROUND: Record<CompetitionKnockoutMatch['round'], 'play-in' | 'qf' | 'sf' | 'final'> = {
+   'play-in': 'play-in',
+   'quarterfinal': 'qf',
+   'semifinal': 'sf',
+   'final': 'final',
+ };
+ 
++const matchesSeason = (game: GameResult, season: number): boolean => {
++  if (typeof game.season === 'number') return game.season === season;
++  const m = String(game.date ?? '').match(/(20\d{2})/);
++  if (!m) return false;
++  const y = Number(m[1]);
++  return y === season || y === season - 1;
++};
++
+ const countWins = (

@@ -108,7 +108,7 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
 
   // Tier color: defense uses cyan to match the DailyPlanModal toggle accent.
   const accent = side === 'offense' ? 'blue' : 'cyan';
-  const learningLabel = side === 'offense' ? 'Incompatible Schemes' : 'Personnel Mismatch';
+  const learningLabel = side === 'offense' ? 'Still Learning' : 'Needs More Reps';
 
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -162,7 +162,7 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
             <div className="rounded-[2rem] border border-cyan-500/20 bg-slate-950/70 p-6 space-y-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-400">Best Current Fit</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-400">Best Fit Right Now</div>
                   <h4 className="text-2xl font-black text-white uppercase tracking-tight mt-2">{defenseOverview.top.name}</h4>
                   <p className="text-sm text-slate-400 mt-2 max-w-2xl">{defenseOverview.top.details.desc}</p>
                 </div>
@@ -175,17 +175,17 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
                 <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
                   <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Roster Fit</div>
                   <div className="text-2xl font-black text-white mt-2 tabular-nums">{defenseOverview.top.fit}</div>
-                  <p className="text-[11px] text-slate-500 mt-1">Personnel-only baseline before reps.</p>
+                  <p className="text-[11px] text-slate-500 mt-1">How naturally this roster fits the scheme.</p>
                 </div>
                 <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Familiarity</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Practice Reps</div>
                   <div className="text-2xl font-black text-white mt-2 tabular-nums">{defenseOverview.top.familiarity}</div>
-                  <p className="text-[11px] text-slate-500 mt-1">Built in system practice reps.</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Built from time spent drilling it.</p>
                 </div>
                 <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Composite</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Overall Readiness</div>
                   <div className="text-2xl font-black text-cyan-300 mt-2 tabular-nums">{defenseOverview.top.score}</div>
-                  <p className="text-[11px] text-slate-500 mt-1">What the team can actually live in today.</p>
+                  <p className="text-[11px] text-slate-500 mt-1">How comfortable the team looks in it today.</p>
                 </div>
               </div>
 
@@ -211,13 +211,12 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
 
             <div className="rounded-[2rem] border border-slate-800 bg-slate-950/60 p-6 space-y-3">
               <div className="flex items-center justify-between">
-                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Scheme Compare</div>
-                <div className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Train cold looks here</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Other Options</div>
+                <div className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Useful changeups</div>
               </div>
               <div className="space-y-3">
                 {defenseOverview.compare.map(system => {
                   const tone = getDefenseTierTone(system.familiarity);
-                  const delta = system.score - defenseOverview.top.score;
                   return (
                     <div
                       key={system.name}
@@ -236,18 +235,16 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
                           <div className="text-xs font-bold text-slate-300 mt-1 tabular-nums">{system.fit}</div>
                         </div>
                         <div>
-                          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">Fam</div>
+                          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">Reps</div>
                           <div className="text-xs font-bold text-slate-300 mt-1 tabular-nums">{system.familiarity}</div>
                         </div>
                         <div>
-                          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">Delta</div>
-                          <div className={`text-xs font-bold mt-1 tabular-nums ${delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            {delta >= 0 ? `+${delta}` : delta}
-                          </div>
+                          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">Ready</div>
+                          <div className="text-xs font-bold mt-1 tabular-nums text-cyan-300">{system.score}</div>
                         </div>
                       </div>
                       <div className="text-[10px] text-slate-400 mt-3">
-                        {system.details.pos[0]} • Risk: {system.details.neg[0]}
+                        Strength: {system.details.pos[0]} • Watch: {system.details.neg[0]}
                       </div>
                     </div>
                   );
@@ -264,7 +261,7 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
           <div className="flex items-center gap-4">
             <h3 className={`text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2 ${accent === 'blue' ? 'text-blue-400' : 'text-cyan-400'}`}>
               <Zap size={16} />
-              Scheme Mastery
+              Best Fits
             </h3>
             <div className={`h-px flex-1 bg-gradient-to-r ${accent === 'blue' ? 'from-blue-400/20' : 'from-cyan-400/20'} to-transparent`} />
           </div>
@@ -290,7 +287,7 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
           <div className="flex items-center gap-4">
             <h3 className="text-sm font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
               <TrendingUp size={16} />
-              System Competence
+              Solid Options
             </h3>
             <div className="h-px flex-1 bg-gradient-to-r from-slate-400/10 to-transparent" />
           </div>
@@ -625,7 +622,7 @@ function SystemModal({ name, roster, onClose }: { name: string, roster: PlayerK2
                  {/* Developing Fits */}
                  {playerTiers.developing.length > 0 && (
                    <div className="space-y-2">
-                     <div className="text-[9px] font-black text-slate-700 uppercase tracking-widest px-1">Development Pending</div>
+                     <div className="text-[9px] font-black text-slate-700 uppercase tracking-widest px-1">Needs More Time</div>
                      {playerTiers.developing.map(({ player, fitScore }) => (
                         <PlayerFitCard key={player.id} player={player} fitScore={fitScore} tier="developing" />
                      ))}

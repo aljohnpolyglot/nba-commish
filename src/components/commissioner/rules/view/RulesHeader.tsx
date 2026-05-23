@@ -1,13 +1,13 @@
 import React from 'react';
-import { Save, RotateCcw, Info, Settings2, ShieldCheck, Zap, Trophy, Globe, Star, Calendar, UserPlus, Award, DollarSign } from 'lucide-react';
+import { Save, RotateCcw, Settings2, Trophy, Star, Calendar, UserPlus, Award, DollarSign } from 'lucide-react';
 import { useLeagueLabels } from '../../../../utils/leagueLabels';
 
 interface RulesHeaderProps {
     activeTab: string;
     setActiveTab: (tab: any) => void;
     hasConfigChanges: boolean;
+    isEditable: boolean;
     isSaving: boolean;
-    handleApplyEuroDefaults: () => void;
     handleSaveConfig: () => void;
     handleResetConfig: () => void;
 }
@@ -16,12 +16,13 @@ export const RulesHeader: React.FC<RulesHeaderProps> = ({
     activeTab,
     setActiveTab,
     hasConfigChanges,
+    isEditable,
     isSaving,
-    handleApplyEuroDefaults,
     handleSaveConfig,
     handleResetConfig
 }) => {
     const labels = useLeagueLabels();
+    const lockedTitle = 'Commissioner settings are locked right now.';
     const tabs = [
         { id: 'Format', icon: Calendar, label: 'Format' },
         { id: 'NBA Cup', icon: Trophy, label: labels.cupShort },
@@ -45,25 +46,20 @@ export const RulesHeader: React.FC<RulesHeaderProps> = ({
             </div>
 
             <div className="flex items-center gap-2 self-end">
-                <button
-                    onClick={handleApplyEuroDefaults}
-                    className="px-3 py-2 text-xs font-semibold text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg hover:bg-amber-500/20 transition-colors"
-                    title="Apply Euro Defaults"
-                >
-                    Apply Euro Defaults
-                </button>
                 {hasConfigChanges && (
                     <div className="flex items-center gap-2 mr-2">
                         <button
                             onClick={handleResetConfig}
-                            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-                            title="Reset Changes"
+                            disabled={!isEditable}
+                            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-slate-400 disabled:hover:bg-transparent"
+                            title={isEditable ? 'Reset Changes' : lockedTitle}
                         >
                             <RotateCcw className="w-5 h-5" />
                         </button>
                         <button
                             onClick={handleSaveConfig}
-                            disabled={isSaving}
+                            disabled={!isEditable || isSaving}
+                            title={isEditable ? 'Save Changes' : lockedTitle}
                             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all shadow-lg shadow-indigo-500/20"
                         >
                             {isSaving ? (

@@ -139,7 +139,7 @@ export const processTurn = async (
     const executiveTradeTransactionFinal = executiveTradeTransactionRef.current;
     
     // 5. Post-process simulation results (injuries, stats)
-    let { updatedPlayers, updatedDraftPicks, recoveries } = processSimulationResults(allSimResults, result.players || stateWithSim.players, result.draftPicks || stateWithSim.draftPicks, stateWithSim.schedule, stateWithSim.leagueStats?.year);
+    let { updatedPlayers, updatedDraftPicks, recoveries } = processSimulationResults(allSimResults, result.players || stateWithSim.players, result.draftPicks || stateWithSim.draftPicks, stateWithSim.schedule, stateWithSim.leagueStats?.year, stateWithSim.teams);
 
     // Queue recovery toasts (GM mode, user team only — league-wide would be spammy)
     if (recoveries && recoveries.length > 0 && stateWithSim.gameMode === 'gm' && stateWithSim.userTeamId !== undefined) {
@@ -417,7 +417,7 @@ export const processTurn = async (
     }
 
     const boxScoresWithDate = allSimResults.map(r => ({ ...r, date: r.date || state.date, season: state.leagueStats.year }));
-    const allowNBASeasonEvents = state.leagueStats?.uiMode !== 'euro_isolated';
+    const allowNBASeasonEvents = true;
 
     // All-Star Logic
     let allStarPatch = state.allStar;
@@ -958,21 +958,31 @@ export const processTurn = async (
     const prunedBets = betResolution.updatedBets;
     const previousMonthKey = normalizeDate(state.date).slice(0, 7);
     const finalMonthKey = normalizedFinalDate.slice(0, 7);
+    const baseStaffFreeAgents =
+        (result as any).staffFreeAgents
+        ?? (stateWithSim as any).staffFreeAgents
+        ?? state.staffFreeAgents;
     const shouldRefillStaffPool =
         daysToAdvance > 0 &&
         previousMonthKey !== finalMonthKey &&
         state.gameMode === 'gm' &&
         !!state.leagueStats?.staffPoolSeeded &&
-        state.userTeamId >= 1000 &&
-        state.userTeamId < 9000;
+        state.userTeamId != null &&
+        state.userTeamId >= 0;
     // Monthly tick: top up to min 10 per position for the user's league.
     // Idempotent — positions already at or above the floor get no additions.
     const staffPoolAfterMonthlyRefill = shouldRefillStaffPool
         ? ensureStaffPoolDepth(
-            { ...state, players: updatedPlayers, nonNBATeams: (stateWithSim as any).nonNBATeams ?? state.nonNBATeams } as GameState,
+            {
+                ...state,
+                players: updatedPlayers,
+                teams: result.teams || stateWithSim.teams,
+                nonNBATeams: (result as any).nonNBATeams ?? (stateWithSim as any).nonNBATeams ?? state.nonNBATeams,
+                staffFreeAgents: baseStaffFreeAgents,
+            } as GameState,
             inferEuroStaffLeagueId(state.userTeamId),
           ).staffFreeAgents
-        : state.staffFreeAgents;
+        : baseStaffFreeAgents;
 
     // ── Draft Lottery & Draft Auto-Fire ──────────────────────────────────────
     // autoRunLottery / autoRunDraft only fire inside lazySimRunner's event loop.
@@ -1086,6 +1096,49 @@ export const processTurn = async (
         dateString,
         daysToAdvance,
     );
+    const actionHistoryEntry = {
+        text: ((action as any)?.payload?.outcomeText || result.outcomeText || ''),
+        date: dateString,
+        commissioner: state.gameMode !== 'gm',
+        type: (() => {
+            switch (action.type) {
+                case 'EXECUTIVE_TRADE':
+                case 'FORCE_TRADE': return 'Trade';
+                case 'SIGN_FREE_AGENT': return 'Signing';
+                case 'WAIVE_PLAYER': return 'Waive';
+                case 'EXERCISE_TEAM_OPTION': return 'Re-signing';
+                case 'DECLINE_TEAM_OPTION': return 'Waive';
+                case 'SUSPEND_PLAYER': return 'Suspension';
+                case 'FIRE_PERSONNEL': return 'Personnel';
+                case 'SIMULATE_TO_DATE': return 'Simulation';
+                case 'INVITE_DINNER': return action.payload?.subType === 'movie' ? 'Movie Night' : 'Dinner';
+                case 'GO_TO_CLUB': return 'Night Out';
+                case 'TRAVEL': return 'Travel';
+                case 'INVITE_PERFORMANCE': return 'Performance';
+                case 'DRUG_TEST_PERSON': return 'Drug Test';
+                case 'FINE_PERSON': return 'Fine';
+                case 'BRIBE_PERSON': return 'Bribe';
+                case 'GIVE_MONEY': return 'Finance';
+                case 'TRANSFER_FUNDS': return 'Finance';
+                case 'SABOTAGE_PLAYER': return 'Sabotage';
+                case 'LEAK_SCANDAL': return 'Leak';
+                case 'HYPNOTIZE':
+                case 'HYPNOTIC_BROADCAST': return 'Covert Op';
+                case 'GLOBAL_GAMES': return 'Global Games';
+                case 'ENDORSE_HOF': return 'HOF';
+                case 'RIG_LOTTERY': return 'Lottery';
+                case 'VISIT_NON_NBA_TEAM': return 'Travel';
+                default: return 'League Event';
+            }
+        })(),
+    } as any;
+    const historyBase = [...((result as any).history ?? stateWithSim.history ?? state.history ?? [])];
+    const shouldAppendActionHistory = !!String(actionHistoryEntry.text ?? '').trim()
+        && !historyBase.some((entry: any) =>
+            entry?.text === actionHistoryEntry.text
+            && entry?.date === actionHistoryEntry.date
+            && entry?.type === actionHistoryEntry.type,
+        );
 
     // AI Training Camp annual auto-setup — refresh dev-focus + mentor pairings
     // when we cross Aug 15 (start of training camp). Overwrites prior assignments
@@ -1129,6 +1182,7 @@ export const processTurn = async (
         news: [...tycoonOps.news, ...uniqueNewNews, ...(stateWithSim.news ?? state.news)],
         socialFeed: [...tycoonOps.socialFeed, ...uniqueNewPosts, ...(stateWithSim.socialFeed ?? state.socialFeed)].slice(0, 500),
         teams: tycoonOps.teams,
+        nonNBATeams: (result as any).nonNBATeams ?? (stateWithSim as any).nonNBATeams ?? state.nonNBATeams,
         schedule: finalSchedule,
         players: updatedPlayers,
         draftPicks: updatedDraftPicks,
@@ -1139,37 +1193,7 @@ export const processTurn = async (
             const deduped = boxScoresWithDate.filter(b => !existingKeys.has(`${b.season ?? 0}-${b.gameId}`));
             return [...(state.boxScores || []), ...deduped];
         })(),
-        history: [...(stateWithSim.history ?? state.history), { text: ((action as any)?.payload?.outcomeText || result.outcomeText || ''), date: dateString, commissioner: state.gameMode !== 'gm', type: (() => {
-            switch (action.type) {
-                case 'EXECUTIVE_TRADE':
-                case 'FORCE_TRADE': return 'Trade';
-                case 'SIGN_FREE_AGENT': return 'Signing';
-                case 'WAIVE_PLAYER': return 'Waive';
-                case 'EXERCISE_TEAM_OPTION': return 'Re-signing';
-                case 'DECLINE_TEAM_OPTION': return 'Waive';
-                case 'SUSPEND_PLAYER': return 'Suspension';
-                case 'FIRE_PERSONNEL': return 'Personnel';
-                case 'SIMULATE_TO_DATE': return 'Simulation';
-                case 'INVITE_DINNER': return action.payload?.subType === 'movie' ? 'Movie Night' : 'Dinner';
-                case 'GO_TO_CLUB': return 'Night Out';
-                case 'TRAVEL': return 'Travel';
-                case 'INVITE_PERFORMANCE': return 'Performance';
-                case 'DRUG_TEST_PERSON': return 'Drug Test';
-                case 'FINE_PERSON': return 'Fine';
-                case 'BRIBE_PERSON': return 'Bribe';
-                case 'GIVE_MONEY': return 'Finance';
-                case 'TRANSFER_FUNDS': return 'Finance';
-                case 'SABOTAGE_PLAYER': return 'Sabotage';
-                case 'LEAK_SCANDAL': return 'Leak';
-                case 'HYPNOTIZE':
-                case 'HYPNOTIC_BROADCAST': return 'Covert Op';
-                case 'GLOBAL_GAMES': return 'Global Games';
-                case 'ENDORSE_HOF': return 'HOF';
-                case 'RIG_LOTTERY': return 'Lottery';
-                case 'VISIT_NON_NBA_TEAM': return 'Travel';
-                default: return 'League Event';
-            }
-        })() } as any],
+        history: shouldAppendActionHistory ? [...historyBase, actionHistoryEntry] : historyBase,
         isProcessing: false,
         isWatchingGame: false,
       lastOutcome: state.gameMode === 'gm' ? null : (result.outcomeText || result.narrative),
@@ -1278,6 +1302,7 @@ export const processTurn = async (
         pendingRecoveryToasts: stateWithSim.pendingRecoveryToasts,
         pendingOptionToasts: stateWithSim.pendingOptionToasts,
         faBidding: stateWithSim.faBidding,
+        staff: (result as any).staff ?? stateWithSim.staff ?? state.staff,
         staffFreeAgents: staffPoolAfterMonthlyRefill,
         pendingFAToasts: stateWithSim.pendingFAToasts,
         pendingRFAOfferSheets: (stateWithSim as any).pendingRFAOfferSheets,

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { ArrowRightLeft, Calendar, Info, UserCheck, UserX, AlertTriangle, Users, Sunset, Trophy, CheckCircle } from 'lucide-react';
+import { ArrowRightLeft, Calendar, Info, UserCheck, UserX, AlertTriangle, Users, Sunset, Trophy, CheckCircle, Plane } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { NBAPlayer } from '../../../types';
 
@@ -9,6 +9,7 @@ import type { NBAPlayer } from '../../../types';
 const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React.ReactNode; label: string }> = {
   Draft:          { color: 'text-violet-400',  bg: 'bg-violet-500/10',  icon: <Trophy size={18}/>,         label: 'Draft' },
   Trade:          { color: 'text-blue-400',    bg: 'bg-blue-500/10',    icon: <ArrowRightLeft size={18}/>, label: 'Trade' },
+  Transfer:       { color: 'text-cyan-400',    bg: 'bg-cyan-500/10',    icon: <Plane size={18}/>,          label: 'Transfer' },
   Signing:        { color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: <UserCheck size={18}/>,      label: 'Signing' },
   Waive:          { color: 'text-amber-400',   bg: 'bg-amber-500/10',   icon: <UserX size={18}/>,          label: 'Waiver' },
   Suspension:     { color: 'text-rose-400',    bg: 'bg-rose-500/10',    icon: <AlertTriangle size={18}/>,  label: 'Suspension' },
@@ -25,6 +26,7 @@ function detectType(text: string, type?: string): string {
   if (type === 'NG Guaranteed' || (t.includes('guaranteed by') && t.includes('january 10'))) return 'NG Guaranteed';
   if (type === 'Jersey Retirement' || t.includes('retired #') || t.includes('retired jersey')) return 'Jersey Retirement';
   if (type === 'Retirement'  || t.includes('has retired') || t.includes('announced his retirement')) return 'Retirement';
+  if (type === 'Transfer'    || t.includes('transferred from') || t.includes(' transferred to ')) return 'Transfer';
   if (type === 'Trade'       || t.includes('trade'))   return 'Trade';
   if (type === 'Signing'     || t.includes('signed') || t.includes('re-signed') || t.includes('signs with')) return 'Signing';
   if (type === 'Waive'       || t.includes('waived'))  return 'Waive';

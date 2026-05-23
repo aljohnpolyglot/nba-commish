@@ -26,8 +26,8 @@ import { PlayerBioView } from '../central/view/PlayerBioView';
 import { History } from 'lucide-react';
 import { fetchAllStarHistory, getCachedAllStarHistory } from '../../data/allStarHistoryFetcher';
 import { parseGameDate } from '../../utils/dateUtils';
-
-type AllStarTab = 'overview' | 'votes' | 'roster' | 'rising-stars' | 'celebrity' | 'dunk' | 'three-point' | 'throne';
+import { useAllStarThroneLifecycle } from './useAllStarThroneLifecycle';
+import { buildAllStarTabs, type AllStarTab } from './allStarTabs';
 
 export const AllStarView: React.FC = () => {
   const { state, dispatchAction } = useGame();
@@ -49,74 +49,7 @@ export const AllStarView: React.FC = () => {
   
   const dates = getAllStarWeekendDates(state.leagueStats.year);
   const dateStr = dates.allStarGame.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-
-  // Throne lifecycle catch-up: if the toggle was enabled AFTER a phase boundary
-  // already passed, the daily tick in gameLogic missed it. Run the catch-up
-  // headlessly here so the user sees the correct phase view immediately.
-  useEffect(() => {
-    if (state.leagueStats.allStarThroneEnabled !== true) return;
-    if (!state.allStar) return;
-    const now = parseGameDate(state.date);
-    const as = state.allStar as any;
-
-    (async () => {
-      const orch = await import('../../services/allStar/throneOrchestrator');
-      let patch: any = {};
-      const stateWithPatch = () => ({ ...state, allStar: { ...state.allStar, ...patch } as any });
-
-      // Seed signups if we're past Dec 1 and they were never created.
-      if (now >= dates.throneSignupOpens && !as.throneSignupSchedule) {
-        const p = orch.initThroneSignups(state, dates.throneSignupOpens, dates.throneSignupCloses);
-        if (p?.allStar) patch = { ...patch, ...p.allStar };
-      }
-      // Tick voting tally if we're in the voting window — runs every render so the
-      // leaderboard reflects today's progress (lazy sim doesn't have a daily tick).
-      if (now >= dates.throneVotingOpens && now < dates.throneFieldReveal && !as.throneAnnounced) {
-        const p = orch.tickThroneVoting(stateWithPatch(), now, dates.throneVotingOpens, dates.throneFieldReveal);
-        if (p?.allStar) patch = { ...patch, ...p.allStar };
-      }
-      // Lock field if past Jan 30 and not yet announced.
-      if (now >= dates.throneFieldReveal && !as.throneAnnounced) {
-        const p = orch.lockThroneField(stateWithPatch());
-        if (p?.allStar) patch = { ...patch, ...p.allStar };
-      }
-      // Auto-resolve: if weekend is over but the Throne never simulated
-      // (toggle was enabled mid-window or an older save predates the wiring),
-      // run the headless tournament now so the user sees the champion.
-      if (
-        now >= dates.saturday
-        && (state.allStar as any).weekendComplete === true
-        && !(as.throne?.complete)
-      ) {
-        const p = orch.simulateThroneTournament(stateWithPatch());
-        if (p?.allStar) patch = { ...patch, ...p.allStar };
-      }
-      // Whitelist: only ever touch throne-related allStar fields. The orchestrator
-      // helpers spread `...allStar` into their return, but dispatching the whole
-      // thing risks clobbering dunkContest / threePointContest / shootingStars / etc
-      // if any of them differ even slightly (key order, undefined fields). Surgical
-      // merge keeps the other events' results untouched.
-      const THRONE_KEYS = [
-        'throne',
-        'throneAnnounced',
-        'throneVacated',
-        'throneVotingProgress',
-        'throneVoteTally',
-        'throneSignupSchedule',
-        'throneSignupComplete',
-      ];
-      const merged: any = {};
-      for (const k of THRONE_KEYS) {
-        if (k in patch && patch[k] !== undefined
-            && JSON.stringify((state.allStar as any)[k]) !== JSON.stringify(patch[k])) {
-          merged[k] = patch[k];
-        }
-      }
-      if (Object.keys(merged).length > 0) {
-        dispatchAction({ type: 'MERGE_THRONE_LIFECYCLE', payload: { allStarPatch: merged } });
-      }
-    })();
-  }, [state.leagueStats.allStarThroneEnabled, state.date, (state.allStar as any)?.throneAnnounced, (state.allStar as any)?.throneSignupSchedule, (state.allStar as any)?.weekendComplete, (state.allStar as any)?.throne?.complete]);
+  useAllStarThroneLifecycle(state, dispatchAction, dates);
 
   const handleWatchGame = (game: any) => {
     const isToday = normalizeDate(game.date) === normalizeDate(state.date);
@@ -161,66 +94,7 @@ export const AllStarView: React.FC = () => {
     }
   }
 
-  const tabs: { 
-    id: AllStarTab; 
-    label: string; 
-    icon: any;
-    locked?: boolean;
-    hidden?: boolean;
-  }[] = [
-    { id: 'overview', label: 'Overview', icon: Star },
-    { 
-      id: 'votes', 
-      label: 'Voting', 
-      icon: Target,
-      locked: phase === 'upcoming'
-    },
-    { 
-      id: 'roster', 
-      label: 'Roster', 
-      icon: Star,
-      locked: phase === 'upcoming' || phase === 'voting'
-    },
-    { 
-      id: 'rising-stars', 
-      label: 'Rising Stars', 
-      icon: Zap,
-      locked: !allStar?.risingStarsAnnounced && currentDate < dates.risingStars
-    },
-    { 
-      id: 'celebrity', 
-      label: 'Celebrity Game', 
-      icon: Users,
-      locked: !allStar?.celebrityRoster,
-      hidden: !state.leagueStats.celebrityGameEnabled
-    },
-    { 
-      id: 'dunk', 
-      label: 'Dunk Contest', 
-      icon: Zap,
-      locked: !allStar?.dunkContestAnnounced && currentDate < dates.saturday
-    },
-    {
-      id: 'three-point',
-      label: '3-Point Contest',
-      icon: Target,
-      locked: !allStar?.threePointAnnounced && currentDate < dates.saturday
-    },
-    {
-      id: 'throne',
-      label: 'The Throne',
-      icon: Crown,
-      hidden: !state.leagueStats.allStarThroneEnabled,
-      // Locked until lifecycle starts (sign-ups Dec 1) — same pattern as 3PT
-      // (locked until announce). Unlocks as soon as sign-ups seed, the field
-      // is announced, the tournament completes, or sign-up window opens.
-      locked:
-        !(allStar as any)?.throneSignupSchedule
-        && !(allStar as any)?.throneAnnounced
-        && !(allStar as any)?.throne?.complete
-        && currentDate < (dates as any).throneSignupOpens,
-    },
-  ];
+  const tabs = buildAllStarTabs({ allStar, currentDate, dates, leagueStats: state.leagueStats, phase });
 
   const handleDunkComplete = (simResult: any) => {
     if (!simResult || !allStar) return;

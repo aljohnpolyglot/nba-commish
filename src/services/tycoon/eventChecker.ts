@@ -59,14 +59,14 @@ function runChecks(team: NBATeam, date: string, events: TycoonEvent[]): void {
   }
 
   if ((team as any).justWonEndesa) {
-    const slot = pickRandomNonExpiredSlot(t.sponsorships);
+    const slot = pickRandomNonExpiredSlot(t.sponsorships ?? {});
     if (slot) {
       pushEvent(events, tid, date, 'sponsorMidTermBonus', { slot });
     }
     (team as any).justWonEndesa = false;
   }
 
-  if ((team as any).justReachedEuroFinalFour && t.sponsorships.sleeve && t.sponsorships.sleeve.yearsRemaining >= 2) {
+  if ((team as any).justReachedEuroFinalFour && t.sponsorships?.sleeve && t.sponsorships.sleeve.yearsRemaining >= 2) {
     pushEvent(events, tid, date, 'sponsorPoachingOffer', { slot: 'sleeve' });
     (team as any).justReachedEuroFinalFour = false;
   }
@@ -78,7 +78,7 @@ function pickRandomNonExpiredSlot(s: TycoonState['sponsorships']): SponsorshipSl
 }
 
 export function acceptMidTermBonus(team: NBATeam, slot: SponsorshipSlot): void {
-  const s = team.tycoon?.sponsorships[slot];
+  const s = team.tycoon?.sponsorships?.[slot];
   if (!s) return;
   s.valuePerYear = Math.round(s.valuePerYear * 1.20);
   s.yearsRemaining += 2;
@@ -94,6 +94,7 @@ export function acceptPoachingOffer(
 ): { penalty: number } {
   const t = team.tycoon;
   if (!t) return { penalty: 0 };
+  t.sponsorships = t.sponsorships ?? {};
   const existing = t.sponsorships[slot];
   const penalty = existing ? Math.round(existing.valuePerYear * existing.yearsRemaining * 0.30) : 0;
   t.sponsorships[slot] = {

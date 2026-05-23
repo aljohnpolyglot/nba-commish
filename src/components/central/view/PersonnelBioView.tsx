@@ -3,16 +3,8 @@ import { Personnel } from './LeagueOfficeSearcher';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
-// ─────────────────────────────────────────────────────────────────
-// WORKER URLS
-// ─────────────────────────────────────────────────────────────────
-
 const REF_WORKER   = 'https://curly-credit-f292.mogatas-princealjohn-05082003.workers.dev/';
 const COACH_WORKER = 'https://fragrant-bar-f766.mogatas-princealjohn-05082003.workers.dev/';
-
-// ─────────────────────────────────────────────────────────────────
-// PARSED DATA SHAPES
-// ─────────────────────────────────────────────────────────────────
 
 interface RefData {
   name: string;
@@ -33,28 +25,16 @@ type BioData =
   | { kind: 'ref';   data: RefData }
   | { kind: 'coach'; data: CoachData };
 
-// ─────────────────────────────────────────────────────────────────
-// FETCH HELPERS — mirrors the existing Hub JS exactly
-// ─────────────────────────────────────────────────────────────────
-
 async function fetchRefBio(slug: string): Promise<RefData> {
   const resp = await fetch(`${REF_WORKER}?ref=${slug}`);
   if (!resp.ok) throw new Error(`Worker responded ${resp.status}`);
   const html = await resp.text();
   const doc  = new DOMParser().parseFromString(html, 'text/html');
-
-  // Name & number — exactly as REF-INTEL HUB does
   const name   = doc.querySelector('h1')?.textContent?.trim() ?? '';
   const number = doc.querySelector('.ref-number')?.textContent?.trim() ?? '';
-
-  // Photo — .photo src; if relative, prepend nbra.net base
   let imgSrc = doc.querySelector('.photo')?.getAttribute('src') ?? '';
   if (imgSrc.startsWith('/')) imgSrc = `https://www.nbra.net${imgSrc}`;
-
-  // Bio
   const bioHtml = doc.querySelector('.description')?.innerHTML ?? '';
-
-  // Career stats (first table.stats)
   const tables = doc.querySelectorAll('table.stats');
   const careerRows = parseTableRows(tables[0]);
   const funFactRows = parseTableRows(tables[1]);
@@ -67,8 +47,6 @@ async function fetchCoachBio(slug: string): Promise<CoachData> {
   if (!resp.ok) throw new Error(`Worker responded ${resp.status}`);
   const html = await resp.text();
   const doc  = new DOMParser().parseFromString(html, 'text/html');
-
-  // Photo — background-image on .fusion-column-inner-bg-image, exactly as COACH-INTEL HUB does
   let imgSrc = '';
   const firstCol = doc.querySelector('.fusion-builder-column-0');
   if (firstCol) {
@@ -78,12 +56,8 @@ async function fetchCoachBio(slug: string): Promise<CoachData> {
       if (match) imgSrc = match[2];
     }
   }
-
-  // Bio — .fusion-text-1, strip disclaimer
   let bioHtml = doc.querySelector('.fusion-text-1')?.innerHTML ?? '';
   bioHtml = bioHtml.replace(/\*Inclusive of Full-Time and Interim Head Coaches/gi, '').trim();
-
-  // Staff — .fusion-text-2
   const staffNames: string[] = [];
   const staffSection = doc.querySelector('.fusion-text-2');
   if (staffSection) {
@@ -98,10 +72,6 @@ async function fetchCoachBio(slug: string): Promise<CoachData> {
   return { imgSrc, bioHtml, staffNames };
 }
 
-// ─────────────────────────────────────────────────────────────────
-// UTIL
-// ─────────────────────────────────────────────────────────────────
-
 function parseTableRows(table: Element | undefined): { label: string; value: string }[] {
   if (!table) return [];
   return Array.from(table.querySelectorAll('tr')).reduce<{ label: string; value: string }[]>((acc, row) => {
@@ -112,17 +82,12 @@ function parseTableRows(table: Element | undefined): { label: string; value: str
   }, []);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// BIO TEXT PARSERS
-// ─────────────────────────────────────────────────────────────────
-
 function htmlToPlainText(html: string): string {
   const div = document.createElement('div');
   div.innerHTML = html;
   return (div.textContent || '').replace(/\s+/g, ' ').trim();
 }
 
-/** Split text into sentences on ". Capital" boundaries */
 function splitSentences(text: string): string[] {
   return text
     .split(/(?<=[.!?])\s+(?=[A-Z])/)
@@ -168,19 +133,13 @@ function parseCoachBio(bioHtml: string): ParsedCoachBio {
 
   return { intro, career, background };
 }
-
-/** Extract clean paragraphs from referee bio HTML */
 function parseRefParagraphs(bioHtml: string): string[] {
   const div = document.createElement('div');
   div.innerHTML = bioHtml;
-
-  // Prefer explicit <p> elements
   const pEls = Array.from(div.querySelectorAll('p'));
   if (pEls.length > 1) {
     return pEls.map(p => p.textContent?.trim() || '').filter(Boolean);
   }
-
-  // Fallback: group sentences into topic paragraphs
   const text = (div.textContent || '').replace(/\s+/g, ' ').trim();
   const sentences = splitSentences(text);
   const paragraphs: string[] = [];
@@ -188,7 +147,6 @@ function parseRefParagraphs(bioHtml: string): string[] {
 
   for (const s of sentences) {
     current.push(s);
-    // Break on clear topic shifts
     if (/^(A standout|He was also|has done charitable|went on to play|In April)/i.test(s)) {
       paragraphs.push(current.join(' '));
       current = [];
@@ -198,17 +156,9 @@ function parseRefParagraphs(bioHtml: string): string[] {
   return paragraphs.filter(Boolean);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// SKELETON
-// ─────────────────────────────────────────────────────────────────
-
 const Skeleton: React.FC<{ className?: string }> = ({ className = '' }) => (
   <div className={`bg-slate-800/60 rounded-xl animate-pulse ${className}`} />
 );
-
-// ─────────────────────────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────────────────────────
 
 interface PersonnelBioViewProps {
   person: Personnel;
@@ -246,7 +196,6 @@ export const PersonnelBioView: React.FC<PersonnelBioViewProps> = ({ person, onBa
     return () => { cancelled = true; };
   }, [person]);
 
-  // ── Determine display portrait ───────────────────────────────
   const portrait = (() => {
     if (bioData?.kind === 'ref')   return bioData.data.imgSrc   || person.playerPortraitUrl || '';
     if (bioData?.kind === 'coach') return bioData.data.imgSrc   || person.playerPortraitUrl || '';

@@ -150,6 +150,33 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
   const teamBPostBucket = getApronBucketAfterTrade(teamBPayrollUSD, { outgoingSalaryUSD: teamBOutUSD, incomingSalaryUSD: teamAOutUSD }, leagueStats);
   const resultBase = { teamAPostBucket, teamBPostBucket, teamAPostPayrollUSD, teamBPostPayrollUSD };
   const apronsActive = leagueStats.apronsEnabled !== false;
+  const teamAReceivesSnt = input.teamAReceivesSignAndTrade || teamBPlayers.some(p => isSameDaySigning(p, currentDate));
+  const teamBReceivesSnt = input.teamBReceivesSignAndTrade || teamAPlayers.some(p => isSameDaySigning(p, currentDate));
+
+  // Post-signing trade moratorium still applies in cap-less leagues.
+  if (leagueStats.postSigningMoratoriumEnabled !== false) {
+    const checkMoratorium = (p: NBAPlayer, side: 'A' | 'B', team: NBATeam): CBATradeValidationResult | null => {
+      if (isSameDaySigning(p, currentDate)) return null;
+      if (isTradeEligible(p, currentDate, leagueStats)) return null;
+      const eligible = (p as any).tradeEligibleDate as string | undefined;
+      const reason = eligible
+        ? `${p.name} cannot be traded until ${eligible} (post-signing moratorium)`
+        : `${p.name} is under post-signing trade moratorium`;
+      return { ok: false, reason, offendingSide: side, offendingTeamId: team.id, ...resultBase };
+    };
+    for (const p of teamAPlayers) {
+      const v = checkMoratorium(p, 'A', teamA);
+      if (v) return v;
+    }
+    for (const p of teamBPlayers) {
+      const v = checkMoratorium(p, 'B', teamB);
+      if (v) return v;
+    }
+  }
+
+  if (leagueStats.salaryCapEnabled === false) {
+    return { ok: true, ...resultBase };
+  }
 
   if (apronsActive && leagueStats.restrictCashSendOver2ndApron !== false) {
     if (teamACashUSD > 0 && isOverSecondApron(teamAPostBucket)) {
@@ -170,30 +197,6 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
     }
   }
 
-  const teamAReceivesSnt = input.teamAReceivesSignAndTrade || teamBPlayers.some(p => isSameDaySigning(p, currentDate));
-  const teamBReceivesSnt = input.teamBReceivesSignAndTrade || teamAPlayers.some(p => isSameDaySigning(p, currentDate));
-
-  // Post-signing trade moratorium per real NBA CBA (Dec 15 / Jan 15 / 3-month / 6-month).
-  // Same-day sign-and-trade outgoing players are exempt — that path is gated above.
-  if (leagueStats.postSigningMoratoriumEnabled !== false) {
-    const checkMoratorium = (p: NBAPlayer, side: 'A' | 'B', team: NBATeam): CBATradeValidationResult | null => {
-      if (isSameDaySigning(p, currentDate)) return null;
-      if (isTradeEligible(p, currentDate, leagueStats)) return null;
-      const eligible = (p as any).tradeEligibleDate as string | undefined;
-      const reason = eligible
-        ? `${p.name} cannot be traded until ${eligible} (post-signing moratorium)`
-        : `${p.name} is under post-signing trade moratorium`;
-      return { ok: false, reason, offendingSide: side, offendingTeamId: team.id, ...resultBase };
-    };
-    for (const p of teamAPlayers) {
-      const v = checkMoratorium(p, 'A', teamA);
-      if (v) return v;
-    }
-    for (const p of teamBPlayers) {
-      const v = checkMoratorium(p, 'B', teamB);
-      if (v) return v;
-    }
-  }
   if (apronsActive && leagueStats.restrictSignAndTradeAcquisitionOver1stApron !== false) {
     if (teamAReceivesSnt && isOverFirstApron(teamAPostBucket)) {
       return { ok: false, reason: 'Over 1st apron — cannot acquire via sign-and-trade', offendingSide: 'A', offendingTeamId: teamAId, ...resultBase };

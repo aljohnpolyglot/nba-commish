@@ -1,0 +1,123 @@
+# Codex hunks NOT found on current disk for src/components/commissioner/rules/view/EconomyContractsSection.tsx
+# 5 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=9 line=240 ts=2026-05-12T21:35:06.743Z ---
+ export const EconomyContractsSection = ({ 
+     props, 
+     setIsMinContractModalOpen, 
+-    setIsMaxContractModalOpen 
++    setIsMaxContractModalOpen,
++    euroMode = false,
+ }: { 
+     props: any, 
+     setIsMinContractModalOpen: (val: boolean) => void,
+-    setIsMaxContractModalOpen: (val: boolean) => void
++    setIsMaxContractModalOpen: (val: boolean) => void,
++    euroMode?: boolean,
+ }) => {
++    const euro = (usd: number) => `€${((usd * 0.92) / 1_000_000).toFixed(2)}M`;
++    const euroK = (usd: number) => `€${Math.round((usd * 0.92) / 1000)}K`;
++
+     return (
+         <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-800/50 space-y-6">
+
+--- HUNK [op#0 hunk#1] session=9 line=240 ts=2026-05-12T21:35:06.743Z ---
+             </div>
++
++            {euroMode && (
++                <div className="pt-6 border-t border-slate-800/50 space-y-4">
++                    <div>
++                        <h3 className="text-xs font-bold text-amber-400 uppercase tracking-widest">Euro Mode Salaries</h3>
++                        <p className="text-[10px] text-slate-500 mt-1">
++                            Club salaries use a Euro floor and a soft market target. Bankruptcy, not a hard max, is the real cap.
++                        </p>
++                    </div>
++
++                    <div className="bg-slate-900/60 rounded-2xl p-4 border border-amber-500/20 space-y-4">
++                        <div className="space-y-2">
++                            <div className="flex items-center justify-between text-[10px] text-slate-400">
++                                <span className="font-bold uppercase tracking-wider">Minimum Salary Floor</span>
++                                <span className="font-black text-amber-300">{euroK(props.euroMinSalaryUSD)}</span>
++                            </div>
++                            <input
++                                type="range"
++                                min="50_000"
++                                max="1_000_000"
++                                step="10_000"
++                                value={props.euroMinSalaryUSD}
++                                onChange={(e) => props.setEuroMinSalaryUSD(parseInt(e.target.value, 10))}
++                                className="w-full accent-amber-500"
++                            />
++                            <p className="text-[9px] text-slate-500">Controls the Signing Modal MIN value for Euro isolated saves.</p>
++                        </div>
++
++                        <div className="space-y-2">
++                            <div className="flex items-center justify-between text-[10px] text-slate-400">
++                                <span className="font-bold uppercase tracking-wider">Star Salary Market Target</span>
++                                <span className="font-black text-emerald-300">{euro(props.euroMaxSalaryUSD)}</span>
++                            </div>
++                            <input
++                                type="range"
++                                min="1_000_000"
++                                max="15_000_000"
++                                step="100_000"
++                                value={props.euroMaxSalaryUSD}
++                                onChange={(e) => props.setEuroMaxSalaryUSD(parseInt(e.target.value, 10))}
++                                className="w-full accent-emerald-500"
++                            />
++                            <p className="text-[9px] text-slate-500">Guides Euro market expectations. It does not reintroduce a hard max contract.</p>
++                        </div>
++
++                        <div className="space-y-2">
++                            <div className="flex items-center justify-between text-[10px] text-slate-400">
++                                <span className="font-bold uppercase tracking-wider">EuroLeague BRL</span>
++                                <span className="font-black text-blue-300">{euro(props.euroleagueBRL)}</span>
++                            </div>
++                            <input
++                                type="range"
++                                min="5_000_000"
++                                max="20_000_000"
++                                step="100_000"
++                                value={props.euroleagueBRL}
++                                onChange={(e) => props.setEuroleagueBRL(parseInt(e.target.value, 10))}
++                                className="w-full accent-blue-500"
++                            />
++                            <p className="text-[9px] text-slate-500">Team-spend floor for EuroLeague budget checks and future finance reviews.</p>
++                        </div>
++                    </div>
++                </div>
++            )}
+ 
+             {/* Supermax */}
+
+--- HUNK [op#1 hunk#0] session=9 line=246 ts=2026-05-12T21:36:42.798Z ---
+                             <input
+                                 type="range"
+-                                min="50_000"
+-                                max="1_000_000"
+-                                step="10_000"
++                                min={50_000}
++                                max={1_000_000}
++                                step={10_000}
+
+--- HUNK [op#1 hunk#1] session=9 line=246 ts=2026-05-12T21:36:42.798Z ---
+                             <input
+                                 type="range"
+-                                min="1_000_000"
+-                                max="15_000_000"
+-                                step="100_000"
++                                min={1_000_000}
++                                max={15_000_000}
++                                step={100_000}
+
+--- HUNK [op#1 hunk#2] session=9 line=246 ts=2026-05-12T21:36:42.798Z ---
+                             <input
+                                 type="range"
+-                                min="5_000_000"
+-                                max="20_000_000"
+-                                step="100_000"
++                                min={5_000_000}
++                                max={20_000_000}
++                                step={100_000}

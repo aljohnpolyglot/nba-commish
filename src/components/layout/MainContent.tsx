@@ -14,6 +14,7 @@ import ActionsView from '../actions/view/ActionsView';
 import { PersonalView } from '../personal/PersonalView';
 import { ScheduleView } from '../schedule/view/ScheduleView';
 import { AwardRacesView } from '../view/AwardRacesView';
+import { EuroAwardRacesView } from '../view/EuroAwardRacesView';
 import { PlayersView } from '../players/PlayersView';
 import { FreeAgentsView } from '../players/view/FreeAgentsView';
 import { TransactionsView } from '../central/view/TransactionsView';
@@ -102,7 +103,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Team Stats':
       return <TeamStatsView />;
     case 'Award Races':
-      if (euroIsolated) return <div className="p-8 text-slate-500">European season awards will appear here once the trophy system is complete.</div>;
+      if (euroIsolated) return <EuroAwardRacesView />;
       return <AwardRacesView />;
     case 'All-Star':
       return <AllStarView />;

@@ -30,21 +30,16 @@ export const NBACentral: React.FC = () => {
   const rosterGate = useRosterComplianceGate();
   const draftGate = useDraftEventGate();
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Modals State
   const [selectedPlayerForActions, setSelectedPlayerForActions] = useState<NBAPlayer | null>(null);
   const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
   const [viewingRatingsPlayer, setViewingRatingsPlayer] = useState<NBAPlayer | null>(null);
   const [selectedPlayerContact, setSelectedPlayerContact] = useState<Contact | null>(null);
-  
   const [personSelectorOpen, setPersonSelectorOpen] = useState(false);
   const [personSelectorType, setPersonSelectorType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage' | 'waive' | 'club' | 'endorse_hof' | 'fire'>('general');
   const personSelectorTitle = '';
 
-  // Sign / re-sign / waive are delegated to the shared quick-actions hook.
   const quick = usePlayerQuickActions();
 
-  // Game Watch State
   const [gameToWatch, setGameToWatch] = useState<Game | null>(null);
   const [pendingGameToWatch, setPendingGameToWatch] = useState<Game | null>(null);
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
@@ -69,9 +64,7 @@ export const NBACentral: React.FC = () => {
   const selectedTeam = selectedTeamId !== null
     ? resolveAnyTeam(selectedTeamId, state.teams, state.nonNBATeams ?? []) ?? undefined
     : undefined;
-  
   const seasonPhase = useMemo(() => getSeasonPhase(state), [state.schedule, state.date, state.teams]);
-  // Banner only during true preseason (before Oct 24, no prior history). Offseason hides it.
   const isScheduleRevealed = seasonPhase !== 'preseason';
 
   const todayGames = useMemo(() => {
@@ -134,21 +127,18 @@ export const NBACentral: React.FC = () => {
       setSelectedPlayerForActions(null);
       return;
     }
-
-// Sign / re-sign / waive → delegated to the shared hook.
     if (quick.handle(selectedPlayerForActions, actionType)) {
       setSelectedPlayerForActions(null);
       return;
     }
 
     const contact = getContactFromPlayer(selectedPlayerForActions);
-    setSelectedPlayerForActions(null); // Close actions modal
-
+    setSelectedPlayerForActions(null);
     if (actionType === 'contact') {
       setSelectedPlayerContact(contact);
     } else {
       setPersonSelectorType(actionType as typeof personSelectorType);
-      setSelectedPlayerContact(contact); // Temporarily store to pass as preSelected
+      setSelectedPlayerContact(contact);
       setPersonSelectorOpen(true);
     }
   };
@@ -431,7 +421,7 @@ export const NBACentral: React.FC = () => {
                           homeTeam, awayTeam, state.players,
                           game.gid, game.date,
                           state.stats.playerApproval,
-                          undefined, undefined, undefined, undefined, rig
+                          undefined, undefined, undefined, undefined, undefined, rig
                       );
                       await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId: game.gid, result: preResult } });
                       rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({

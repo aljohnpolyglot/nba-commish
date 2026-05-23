@@ -1,0 +1,29 @@
+# Codex hunks NOT found on current disk for src/components/schedule/view/ScheduleView.tsx
+# 3 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=207 ts=2026-05-10T20:53:20.264Z ---
+ import { useDraftEventGate } from '../../../hooks/useDraftEventGate';
++import { isEuroIsolatedMode } from '../../../utils/uiMode';
+
+--- HUNK [op#0 hunk#1] session=8 line=207 ts=2026-05-10T20:53:20.264Z ---
+   const gamesForSelectedDate = useMemo(() => {
+-    return state.schedule.filter(g => normalizeDate(g.date) === normalizeDate(selectedDate));
+-  }, [state.schedule, selectedDate]);
++    return state.schedule.filter(g => {
++      if (normalizeDate(g.date) !== normalizeDate(selectedDate)) return false;
++      return !isEuroIsolatedMode(state) || !!g.competitionId;
++    });
++  }, [state, state.schedule, selectedDate]);
+
+--- HUNK [op#1 hunk#0] session=8 line=802 ts=2026-05-11T01:46:23.896Z ---
+   const gamesForSelectedDate = useMemo(() => {
+-    return state.schedule.filter(g => {
++    const competitionOrder: Record<string, number> = { euroleague: 0, endesa: 1, 'copa-del-rey': 2, supercopa: 3 };
++    return state.schedule.filter(g => {
+       if (normalizeDate(g.date) !== normalizeDate(selectedDate)) return false;
+       return !isEuroIsolatedMode(state) || !!g.competitionId;
+-    });
++    }).sort((a, b) => (competitionOrder[a.competitionId ?? ''] ?? 99) - (competitionOrder[b.competitionId ?? ''] ?? 99));
+   }, [state, state.schedule, selectedDate]);

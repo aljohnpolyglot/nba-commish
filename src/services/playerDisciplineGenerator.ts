@@ -10,6 +10,7 @@
 import { NBAPlayer, NBATeam, Sender } from '../types';
 import { selectRandom } from './storyGenerators';
 import { computeMoodScore, dramaProbability, moodToStoryType } from '../utils/mood';
+import { getTeamCoachingGameplayEffects } from './staff/staffGameplayEffects';
 
 export interface DisciplineStoryResult {
   story: string;
@@ -142,7 +143,8 @@ export const generatePlayerDisciplineStory = (
     const endorsed = endorsedPlayers?.includes(p.internalId) ?? false;
     const { score } = computeMoodScore(p, team, date, endorsed);
     const traits = p.moodTraits ?? [];
-    return dramaProbability(score, traits);
+    const dramaMult = team ? getTeamCoachingGameplayEffects(team as any).dramaMultiplier : 1.0;
+    return dramaProbability(score, traits) * dramaMult;
   });
   const totalWeight = weights.reduce((a, b) => a + b, 0);
   let pick = Math.random() * totalWeight;

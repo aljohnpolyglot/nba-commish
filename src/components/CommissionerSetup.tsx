@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { User, ArrowRight, Crown, ArrowLeft, Settings, ChevronDown, ChevronUp, Bot, BarChart2, Banknote, CalendarDays, Dumbbell, Brain, Activity, Crosshair, Search, BarChart, Gem, Hourglass, Eye, Landmark, Shield, Building2, Users, Shirt, Star } from 'lucide-react';
 import { SettingsManager } from '../services/SettingsManager';
-import { INITIAL_LEAGUE_STATS } from '../constants';
+import { INITIAL_LEAGUE_STATS, PBA_ISOLATED_DEFAULTS } from '../constants';
 import { getSeasonSimStartDate, toISODateString } from '../utils/dateUtils';
 import { prewarmRoster } from '../services/rosterService';
 import { generateFictionalLeague } from '../services/fictionalLeagueGenerator';
-import { fetchEndesaRoster, fetchPBARoster } from '../services/externalRosterService';
+import { fetchEndesaRoster, fetchPBARoster, getPBARosterEconomyConfig } from '../services/externalRosterService';
 import { getLeagueLabels } from '../utils/leagueLabels';
 import type { LeagueType, ModdedLeagueBase, EuropeMarket } from './setup/LeagueTypeSelector';
 import { Home as FranchisePicker } from './central/view/TeamOffice/pages/Home';
@@ -17,13 +17,10 @@ import { getCountryFlag } from '../utils/countryFlags';
 import { getStaffImageUrl } from '../utils/staffPortrait';
 
 const SIM_START_DATE = toISODateString(getSeasonSimStartDate(INITIAL_LEAGUE_STATS.year)); // e.g. '2025-08-06'
-// Euro-Isolated leagues (Spain Endesa, etc.) start the season in September.
-// Endesa tips off late Sept, EuroLeague early Oct. Sept 15 leaves ~2 weeks of
-// pre-season for friendlies, training camp, last-minute FA signings — and
-// avoids the empty Aug 6 → late-Sept stretch that has zero NBA events but is
-// totally dead in Euro mode (no Christmas Games, no NBA Cup, no preseason
-// fixtures until mid-September).
-const EURO_SIM_START_DATE = `${INITIAL_LEAGUE_STATS.year - 1}-09-15`;
+// Euro saves open on July 1 — the real ACB transfer window opens then. Any
+// later Euro start date is lazy-simmed after INIT_EURO_CAREER, not through the
+// NBA setup jump, so Euro offseason tasks and competitions use Euro wiring.
+const EURO_SIM_START_DATE = `${INITIAL_LEAGUE_STATS.year - 1}-07-01`;
 import { StartDateTimeline } from './setup/StartDateTimeline';
 import { JumpReviewScreen } from './setup/JumpReviewScreen';
 
@@ -98,7 +95,10 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       return;
     }
     if (isPbaSetup) {
-      fetchPBARoster().then(({ teams, players }) => {
+      fetchPBARoster(getPBARosterEconomyConfig({
+        ...INITIAL_LEAGUE_STATS,
+        ...PBA_ISOLATED_DEFAULTS,
+      }, 'pba_isolated')).then(({ teams, players }) => {
         if (cancelled) return;
         const mappedTeams = teams.map((team: NonNBATeam) => ({
           id: team.tid,
@@ -194,28 +194,31 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
       .join(' ');
     const date = overrideDate ?? chosenDate;
+    const selectedTeamId = overrideTeamId ?? userTeamId;
+    const selectedEuroSeed = overrideEuroSeed ?? (isEuroSetup ? euroCareerSeed : null);
     onStart({
       name: nameCase,
       startScenario: 'regular_season',
       skipLLM: !settings.enableLLM,
       startDate: date,
-      jumpRequired: date > SIM_START_DATE,
+      // Euro mode skips the NBA lazy-sim; later Euro starts are simulated after INIT_EURO_CAREER.
+      jumpRequired: isEuroSetup ? false : date > SIM_START_DATE,
       gameMode,
-      userTeamId: gameMode === 'gm' ? (overrideTeamId ?? userTeamId) : undefined,
+      userTeamId: gameMode === 'gm' ? selectedTeamId : undefined,
       assistantGM: gameMode === 'gm' ? (assistantGM ?? false) : false,
       leagueType,
       moddedLeagueBase: leagueType === 'modded' ? moddedLeagueBase : undefined,
       europeMarket: leagueType === 'modded' ? europeMarket : undefined,
       fictionalLeagueSeed: isFictional ? fictionalLeagueSeed : undefined,
-      euroCareerSeed: overrideEuroSeed ?? undefined,
-      euroCareerLeagueId: overrideEuroSeed ? 'endesa' : undefined,
+      euroCareerSeed: selectedEuroSeed ?? undefined,
+      euroCareerLeagueId: selectedEuroSeed ? 'endesa' : undefined,
     });
   };
 
   const handleDateSelected = (date: string) => {
     setChosenDate(date);
-    if (date === SIM_START_DATE) {
-      handleStart(date);
+    if (date === defaultStartDate) {
+      handleStart(date, false, userTeamId, euroCareerSeed);
     } else {
       setStep('review');
     }
@@ -227,6 +230,10 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
     } else if (step === 'euroReview') {
       setStep('franchise');
     } else if (step === 'timeline') {
+      if (isEuroSetup && euroCareerSeed) {
+        setStep('euroReview');
+        return;
+      }
       setStep(gameMode === 'gm' ? 'franchise' : 'name');
     } else if (step === 'franchise') {
       setStep('name');
@@ -385,8 +392,11 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
     const STAFF_ROLE_ICONS: Record<string, React.ReactNode> = {
       'Head Coach': <Dumbbell size={18} className="text-emerald-400" />,
       'Assistant Coach': <Users size={18} className="text-emerald-400" />,
+      'Assistant Coach 2': <Users size={18} className="text-emerald-400" />,
+      'Assistant Coach 3': <Users size={18} className="text-emerald-400" />,
       'Head of Sports Science': <Activity size={18} className="text-emerald-400" />,
       'Head Physio': <Activity size={18} className="text-emerald-400" />,
+      'Player Development Coach': <Dumbbell size={18} className="text-emerald-400" />,
       'Chief Scout': <Search size={18} className="text-emerald-400" />,
       'Head of Analytics': <BarChart size={18} className="text-emerald-400" />,
     };
@@ -595,10 +605,10 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
 
               {/* Start Career */}
               <button
-                onClick={() => handleStart(defaultStartDate, false, userTeamId, euroCareerSeed)}
+                onClick={() => setStep('timeline')}
                 className="w-full h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-3 text-base"
               >
-                Start Career <ArrowRight size={20} />
+                Choose Start Date <ArrowRight size={20} />
               </button>
             </aside>
           </div>
@@ -612,7 +622,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
     return (
       <StartDateTimeline
         onSelect={handleDateSelected}
-        onBack={() => setStep(gameMode === 'gm' ? 'franchise' : 'name')}
+        onBack={() => setStep(isEuroSetup && euroCareerSeed ? 'euroReview' : gameMode === 'gm' ? 'franchise' : 'name')}
         leagueType={leagueType}
         moddedLeagueBase={moddedLeagueBase}
       />
@@ -626,7 +636,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
         gameMode={gameMode}
         leagueType={leagueType}
         moddedLeagueBase={moddedLeagueBase}
-        onContinue={(assistantGM) => handleStart(undefined, assistantGM)}
+        onContinue={(assistantGM) => handleStart(undefined, assistantGM, userTeamId, euroCareerSeed)}
         onBack={() => setStep('timeline')}
       />
     );

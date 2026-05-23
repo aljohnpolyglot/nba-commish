@@ -13,6 +13,7 @@ import { handleInvitePerformance, handleGlobalGames, handleRigLottery, handleHyp
 import { handleGoToClub } from './actions/clubActions';
 import { handleEndorseHof } from './actions/hofActions';
 import { resolveAnyTeam } from '../../utils/teamLookup';
+import { getTeamCoachingGameplayEffects } from '../../services/staff/staffGameplayEffects';
 
 export const processAction = async (stateWithSim: GameState, action: UserAction, executiveTradeTransactionRef: { current: any }, simResults: any[] = [], daysToSimulate: number = 1) => {
     let result;
@@ -222,7 +223,9 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
                 // Mood-based player story: pick player by dramaProbability weight, route by mood
                 const weights = activePlayers.map(p => {
                     const mood = moodMap.get(p.internalId) ?? 0;
-                    return dramaProbability(mood, p.moodTraits ?? []);
+                    const team = stateWithSim.teams.find(t => t.id === p.tid);
+                    const dramaMult = team ? getTeamCoachingGameplayEffects(team as any).dramaMultiplier : 1.0;
+                    return dramaProbability(mood, p.moodTraits ?? []) * dramaMult;
                 });
                 const total = weights.reduce((a, b) => a + b, 0);
                 let pick = Math.random() * total;

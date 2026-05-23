@@ -1,0 +1,124 @@
+# Codex hunks NOT found on current disk for src/components/central/view/StandingsView.tsx
+# 5 hunks unapplied. Total ops: 4
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=226 ts=2026-05-10T20:54:30.669Z ---
+ import { useGame } from '../../../store/GameContext';
+ import { ChevronLeft, ChevronRight } from 'lucide-react';
+ import { getOwnTeamId } from '../../../utils/helpers';
++import { isEuroIsolatedMode } from '../../../utils/uiMode';
++import { getActiveLeagueTeams, resolveAnyTeam } from '../../../utils/teamLookup';
++import { getTeamFullName } from '../../../utils/teamNames';
+
+--- HUNK [op#0 hunk#1] session=8 line=226 ts=2026-05-10T20:54:30.669Z ---
+   const [selectedYear, setSelectedYear] = useState(leagueYear);
+   const currentYear = selectedYear;
++  const euroRows = useMemo(() => {
++    if (!isEuroIsolatedMode(state)) return [];
++    const activeTids = new Set(getActiveLeagueTeams(state).map(t => t.id));
++    const acc = new Map<number, { tid: number; w: number; l: number; pf: number; pa: number }>();
++    activeTids.forEach(tid => acc.set(tid, { tid, w: 0, l: 0, pf: 0, pa: 0 }));
++    state.boxScores.filter(b => b.competitionId === 'endesa').forEach(b => {
++      const home = acc.get(b.homeTeamId);
++      const away = acc.get(b.awayTeamId);
++      if (!home || !away) return;
++      const homeWon = b.homeScore > b.awayScore;
++      home.w += homeWon ? 1 : 0; home.l += homeWon ? 0 : 1; home.pf += b.homeScore; home.pa += b.awayScore;
++      away.w += homeWon ? 0 : 1; away.l += homeWon ? 1 : 0; away.pf += b.awayScore; away.pa += b.homeScore;
++    });
++    return [...acc.values()].sort((a, b) => (b.w * 2 + b.l) - (a.w * 2 + a.l) || b.w - a.w || (b.pf - b.pa) - (a.pf - a.pa));
++  }, [state]);
++
++  if (isEuroIsolatedMode(state)) {
++    return (
++      <div className="h-full overflow-y-auto p-4 md:p-8 bg-slate-950">
++        <div className="max-w-6xl mx-auto">
++          <h2 className="text-3xl font-black uppercase tracking-tight text-white mb-2">Liga Endesa Standings</h2>
++          <p className="text-sm text-slate-500 mb-6">Single-table points format: 2 points per win, 1 per loss.</p>
++          <div className="rounded-2xl border border-slate-800 overflow-hidden bg-slate-950/70">
++            <table className="w-full text-sm">
++              <thead className="bg-slate-900/70 text-[10px] uppercase tracking-widest text-slate-500">
++                <tr><th className="px-4 py-3 text-left">#</th><th className="px-4 py-3 text-left">Club</th><th>W</th><th>L</th><th>Pts</th><th>PF</th><th>PA</th><th>Diff</th></tr>
++              </thead>
++              <tbody>
++                {euroRows.map((row, index) => {
++                  const team = resolveAnyTeam(row.tid, state.teams, state.nonNBATeams ?? []);
++                  return (
++                    <tr key={row.tid} className={row.tid === ownTid ? 'border-t border-amber-500/30 bg-amber-500/10 text-white' : 'border-t border-slate-900 text-slate-200'}>
++                      <td className="px-4 py-3 font-black text-slate-500">{index + 1}</td>
++                      <td className="px-4 py-3 font-bold">{getTeamFullName(team)}</td>
++                      <td className="text-center">{row.w}</td>
++                      <td className="text-center">{row.l}</td>
++                      <td className="text-center font-black">{row.w * 2 + row.l}</td>
++                      <td className="text-center">{row.pf}</td>
++                      <td className="text-center">{row.pa}</td>
++                      <td className="text-center">{row.pf - row.pa}</td>
++                    </tr>
++                  );
++                })}
++              </tbody>
++            </table>
++          </div>
++        </div>
++      </div>
++    );
++  }
+ 
+   const standingsData = useMemo(() => {
+
+--- HUNK [op#2 hunk#0] session=8 line=243 ts=2026-05-10T20:55:08.480Z ---
+   };
+ 
++  if (isEuroIsolatedMode(state)) {
++    return (
++      <div className="h-full overflow-y-auto p-4 md:p-8 bg-slate-950">
++        <div className="max-w-6xl mx-auto">
++          <h2 className="text-3xl font-black uppercase tracking-tight text-white mb-2">Liga Endesa Standings</h2>
++          <p className="text-sm text-slate-500 mb-6">Single-table points format: 2 points per win, 1 per loss.</p>
++          <div className="rounded-2xl border border-slate-800 overflow-hidden bg-slate-950/70">
++            <table className="w-full text-sm">
++              <thead className="bg-slate-900/70 text-[10px] uppercase tracking-widest text-slate-500">
++                <tr><th className="px-4 py-3 text-left">#</th><th className="px-4 py-3 text-left">Club</th><th>W</th><th>L</th><th>Pts</th><th>PF</th><th>PA</th><th>Diff</th></tr>
++              </thead>
++              <tbody>
++                {euroRows.map((row, index) => {
++                  const team = resolveAnyTeam(row.tid, state.teams, state.nonNBATeams ?? []);
++                  return (
++                    <tr key={row.tid} className={row.tid === ownTid ? 'border-t border-amber-500/30 bg-amber-500/10 text-white' : 'border-t border-slate-900 text-slate-200'}>
++                      <td className="px-4 py-3 font-black text-slate-500">{index + 1}</td>
++                      <td className="px-4 py-3 font-bold">{getTeamFullName(team)}</td>
++                      <td className="text-center">{row.w}</td>
++                      <td className="text-center">{row.l}</td>
++                      <td className="text-center font-black">{row.w * 2 + row.l}</td>
++                      <td className="text-center">{row.pf}</td>
++                      <td className="text-center">{row.pa}</td>
++                      <td className="text-center">{row.pf - row.pa}</td>
++                    </tr>
++                  );
++                })}
++              </tbody>
++            </table>
++          </div>
++        </div>
++      </div>
++    );
++  }
++
+   return (
+
+--- HUNK [op#3 hunk#0] session=8 line=1708 ts=2026-05-11T02:36:08.069Z ---
+ import { getOwnTeamId } from '../../../utils/helpers';
+ import { isEuroIsolatedMode } from '../../../utils/uiMode';
+-import { getActiveLeagueTeams, resolveAnyTeam } from '../../../utils/teamLookup';
++import { resolveAnyTeam } from '../../../utils/teamLookup';
+ import { getTeamFullName } from '../../../utils/teamNames';
++import { selectCompetitionTeamTids } from '../../../services/competition/competitionScheduler';
+
+--- HUNK [op#3 hunk#1] session=8 line=1708 ts=2026-05-11T02:36:08.069Z ---
+   const euroRows = useMemo(() => {
+     if (!isEuroIsolatedMode(state)) return [];
+-    const activeTids = new Set(getActiveLeagueTeams(state).map(t => t.id));
++    const endesaSpec = state.activeCompetitions?.find(c => c.id === 'endesa');
++    const activeTids = new Set(endesaSpec ? selectCompetitionTeamTids(endesaSpec, state) : []);
+     const acc = new Map<number, { tid: number; w: number; l: number; pf: number; pa: number }>();

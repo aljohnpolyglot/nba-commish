@@ -1,0 +1,132 @@
+# Codex hunks NOT found on current disk for src/components/CommissionerSetup.tsx
+# 16 hunks unapplied. Total ops: 6
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=1 line=128 ts=2026-05-09T22:52:28.306Z ---
+ import { getSeasonSimStartDate, toISODateString } from '../utils/dateUtils';
+ import { prewarmRoster } from '../services/rosterService';
+ import { generateFictionalLeague } from '../services/fictionalLeagueGenerator';
++import { getLeagueLabels } from '../utils/leagueLabels';
+ import type { LeagueType } from './setup/LeagueTypeSelector';
+
+--- HUNK [op#0 hunk#1] session=1 line=128 ts=2026-05-09T22:52:28.306Z ---
+     gameMode?: 'commissioner' | 'gm';
+     userTeamId?: number;
+     assistantGM?: boolean;
+     leagueType?: LeagueType;
++    fictionalLeagueSeed?: number;
+   }) => void;
+
+--- HUNK [op#0 hunk#2] session=1 line=128 ts=2026-05-09T22:52:28.306Z ---
+   const [chosenDate, setChosenDate] = useState<string>(SIM_START_DATE);
+   const [showSettings, setShowSettings] = useState(true);
+   const [settings, setSettings] = useState(() => SettingsManager.getSettings());
++  const [fictionalLeagueSeed] = useState(() => Math.floor(Math.random() * 2_147_483_647));
++  const labels = getLeagueLabels(leagueType);
++  const isFictional = leagueType === 'fictional';
+
+--- HUNK [op#0 hunk#4] session=1 line=128 ts=2026-05-09T22:52:28.306Z ---
+-  }, [leagueType]);
++  }, [fictionalLeagueSeed, leagueType]);
+
+--- HUNK [op#0 hunk#5] session=1 line=128 ts=2026-05-09T22:52:28.306Z ---
+       gameMode,
+       userTeamId: gameMode === 'gm' ? userTeamId : undefined,
+       assistantGM: gameMode === 'gm' ? (assistantGM ?? false) : false,
+       leagueType,
++      fictionalLeagueSeed: isFictional ? fictionalLeagueSeed : undefined,
+     });
+   };
+
+--- HUNK [op#0 hunk#6] session=1 line=128 ts=2026-05-09T22:52:28.306Z ---
+             <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-3">Choose Your Role</h1>
+-            <p className="text-slate-400 text-sm">How do you want to experience the NBA?</p>
++            <p className="text-slate-400 text-sm">How do you want to experience the {isFictional ? 'league' : 'NBA'}?</p>
+
+--- HUNK [op#0 hunk#7] session=1 line=128 ts=2026-05-09T22:52:28.306Z ---
+             <p className="text-slate-400 text-lg">
+               {gameMode === 'gm'
+                 ? 'A franchise is about to bet five years on you.'
+-                : 'The league is waiting for your leadership.'}
++                : isFictional ? 'A new league is waiting for your blueprint.' : 'The league is waiting for your leadership.'}
+             </p>
+
+--- HUNK [op#0 hunk#8] session=1 line=128 ts=2026-05-09T22:52:28.306Z ---
+-                  placeholder="e.g. Adam Silver"
++                  placeholder={isFictional ? 'e.g. Avery Stone' : 'e.g. Adam Silver'}
+
+--- HUNK [op#2 hunk#0] session=5 line=265 ts=2026-05-10T04:28:46.853Z ---
+ import { generateFictionalLeague } from '../services/fictionalLeagueGenerator';
+ import { getLeagueLabels } from '../utils/leagueLabels';
+-import type { LeagueType } from './setup/LeagueTypeSelector';
++import type { LeagueType, ModdedLeagueBase } from './setup/LeagueTypeSelector';
+
+--- HUNK [op#2 hunk#1] session=5 line=265 ts=2026-05-10T04:28:46.853Z ---
+ interface CommissionerSetupProps {
+   leagueType: LeagueType;
++  moddedLeagueBase?: ModdedLeagueBase;
+   onStart: (payload: {
+     name: string;
+
+--- HUNK [op#2 hunk#2] session=5 line=265 ts=2026-05-10T04:28:46.853Z ---
+     assistantGM?: boolean;
+     leagueType?: LeagueType;
++    moddedLeagueBase?: ModdedLeagueBase;
+     fictionalLeagueSeed?: number;
+   }) => void;
+   onBack: () => void;
+ }
+
+--- HUNK [op#2 hunk#3] session=5 line=265 ts=2026-05-10T04:28:46.853Z ---
+-export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType, onStart, onBack }) => {
++export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType, moddedLeagueBase, onStart, onBack }) => {
+
+--- HUNK [op#2 hunk#4] session=5 line=265 ts=2026-05-10T04:28:46.853Z ---
+       assistantGM: gameMode === 'gm' ? (assistantGM ?? false) : false,
+       leagueType,
++      moddedLeagueBase: leagueType === 'modded' ? moddedLeagueBase : undefined,
+       fictionalLeagueSeed: isFictional ? fictionalLeagueSeed : undefined,
+     });
+   };
+
+--- HUNK [op#3 hunk#7] session=5 line=368 ts=2026-05-10T04:35:25.338Z ---
+             <FranchisePicker
+               pickerMode
+               selectedTid={userTeamId ?? null}
+               teams={rosterTeams}
+               players={rosterPlayers}
++              title={isSpainEuropeSetup ? 'Pick Your Endesa Club' : undefined}
++              subtitle={isSpainEuropeSetup ? 'Spain setup path. Real Madrid and Barcelona remain selectable here, with Euroleague sister-league support reserved for later phases.' : undefined}
+               onSelectTeam={(teamId) => {
+                 setUserTeamId(teamId);
+                 setStep('timeline');
+
+--- HUNK [op#4 hunk#1] session=5 line=395 ts=2026-05-10T04:37:25.145Z ---
+   const labels = getLeagueLabels(leagueType);
+   const isFictional = leagueType === 'fictional';
+   const isSpainEuropeSetup = leagueType === 'modded' && moddedLeagueBase === 'europe' && europeMarket === 'spain';
++  const highlightedSpainTeamIds = React.useMemo(() => {
++    if (!isSpainEuropeSetup) return [];
++    const euroleagueClubHints = ['real madrid', 'barcelona', 'baskonia', 'valencia', 'gran canaria'];
++    return rosterTeams
++      .filter((team: any) => {
++        const full = `${team.region ?? ''} ${team.name ?? ''}`.toLowerCase();
++        return euroleagueClubHints.some(hint => full.includes(hint));
++      })
++      .map((team: any) => team.id);
++  }, [isSpainEuropeSetup, rosterTeams]);
+
+--- HUNK [op#4 hunk#2] session=5 line=395 ts=2026-05-10T04:37:25.145Z ---
+             <FranchisePicker
+               pickerMode
+               selectedTid={userTeamId ?? null}
+               teams={rosterTeams}
+               players={rosterPlayers}
+               title={isSpainEuropeSetup ? 'Pick Your Endesa Club' : undefined}
+               subtitle={isSpainEuropeSetup ? 'Spain setup path. Real Madrid and Barcelona remain selectable here, with Euroleague sister-league support reserved for later phases.' : undefined}
++              highlightedTeamIds={isSpainEuropeSetup ? highlightedSpainTeamIds : undefined}
++              highlightedLabel={isSpainEuropeSetup ? 'Euroleague' : undefined}
+               onSelectTeam={(teamId) => {
+                 setUserTeamId(teamId);
+                 setStep('timeline');

@@ -124,6 +124,15 @@ export interface GameResult {
   /** Calendar year the game was played — written by the simulator so the
    *  boxScoreLookup helper can disambiguate recycled gameIds across seasons. */
   season?: number;
+  isPreseason?: boolean;
+  isPlayoff?: boolean;
+  isPlayIn?: boolean;
+  isNBACup?: boolean;
+  nbaCupRound?: 'group' | 'QF' | 'SF' | 'Final';
+  nbaCupGroupId?: 'East-A' | 'East-B' | 'East-C' | 'West-A' | 'West-B' | 'West-C';
+  excludeFromRecord?: boolean;
+  competitionId?: string;
+  competitionPhase?: string;
 }
 
 /** Live per-player box-score accumulated by useGameStats */

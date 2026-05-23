@@ -29,6 +29,10 @@ import { defensiveSystemDescriptions } from '../../utils/defensiveSystemDescript
 import { getAICoachPlanForDay } from './aiCoachParadigm';
 import { resolveEffectiveTrainingPlan } from './trainingPlanResolver';
 import type { Game } from '../../types';
+import {
+  getTeamCoachingGameplayEffects,
+  getTeamMedicalGameplayEffects,
+} from '../staff/staffGameplayEffects';
 
 // Allocation reps → familiarity gain. Each daily session contributes a small
 // rep count proportional to the offense/defense allocation in the user's plan.
@@ -86,6 +90,11 @@ function defensiveAuraDelta(plan: PlanLike | null): number {
   return REP_BASE * defShare * factor;
 }
 
+function applyPositiveDefenseTrainingBoost(team: NBATeam, delta: number): number {
+  if (delta <= 0) return delta;
+  return delta * getTeamCoachingGameplayEffects(team as any).defensiveTrainingMultiplier;
+}
+
 /**
  * Apply ONE day's familiarity tick to a single team.
  * Pure — returns updated team or the original if no change.
@@ -119,13 +128,15 @@ export function tickTeamFamiliarity(
     defDelta = defShare > 0 ? REP_BASE * defShare * factor : NO_REPS_DECAY;
   }
 
+  defDelta = applyPositiveDefenseTrainingBoost(team, defDelta);
+
   const current = team.systemFamiliarity ?? { offense: 0, defense: 0 };
   const currentAura = team.defensiveAura ?? 50;
   const nextFlat = {
     offense: clamp(current.offense + offDelta),
     defense: clamp(current.defense + defDelta),
   };
-  const nextAura = clamp(currentAura + defensiveAuraDelta(plan));
+  const nextAura = clamp(currentAura + applyPositiveDefenseTrainingBoost(team, defensiveAuraDelta(plan)));
 
   // Per-system reps. Each drilled system gets the side's full delta; un-drilled
   // systems on the same side decay at NO_REPS_DECAY. Imports stay lazy via require
@@ -380,6 +391,9 @@ export function tickPlayerFatigue(
 ): NBAPlayer {
   const plan = team ? resolveEffectiveTrainingPlan(team, iso) : null;
   const indMult = INDIVIDUAL_INTENSITY_MULT[player.trainingIntensity ?? 'Normal'] ?? 1.0;
+  const recoveryMultiplier = team
+    ? getTeamMedicalGameplayEffects(team as any).recoveryMultiplier
+    : 1.0;
 
   // Modern NBA sport-science calibration: pro recovery teams (cryo, hyperbaric,
   // film/load monitoring, individualized nutrition) keep elite athletes fresh
@@ -405,6 +419,8 @@ export function tickPlayerFatigue(
   // Bench-player exemption — only scales positive deltas (fatigue gain).
   if (delta > 0) {
     delta *= recentMinutesFatigueScale(getRecentMpg(player));
+  } else if (delta < 0) {
+    delta *= recoveryMultiplier;
   }
 
   const current = player.trainingFatigue ?? 0;

@@ -398,6 +398,7 @@ export const TradeProposalsView: React.FC = () => {
                     teams={teams}
                     currentYear={currentYear}
                     dateStr={state.date ?? ''}
+                    nonNBATeams={state.nonNBATeams ?? []}
                     capSpaceK={capSpaces.get(proposal.proposingTeamId)}
                     showAsk
                     onManage={() => setManageProposal(proposal)}

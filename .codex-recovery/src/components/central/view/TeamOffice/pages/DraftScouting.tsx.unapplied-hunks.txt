@@ -1,0 +1,8 @@
+# Codex hunks NOT found on current disk for src/components/central/view/TeamOffice/pages/DraftScouting.tsx
+# 1 hunks unapplied. Total ops: 3
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#1 hunk#0] session=8 line=286 ts=2026-05-10T20:55:57.467Z ---
+   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
++  if (noDraft) return null;

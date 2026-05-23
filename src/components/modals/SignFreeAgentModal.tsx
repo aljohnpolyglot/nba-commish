@@ -146,7 +146,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
             mleType,
           });
         }}
-        onSubmitBid={({ salary, years, option }) => {
+        onSubmitBid={!euroIsolated ? ({ salary, years, option }) => {
           // Bidding-war path — post a competing offer into state.faBidding.markets
           // instead of signing right away. The ticker resolves it alongside AI bids
           // 3-5 days later. No tid/contract mutation happens here.
@@ -182,7 +182,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
             years,
             resolvesInDays,
           });
-        }}
+        } : undefined}
       />
     );
   }

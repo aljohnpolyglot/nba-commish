@@ -1,0 +1,54 @@
+# Codex hunks NOT found on current disk for src/services/staff/staffFallback.ts
+# 8 hunks unapplied. Total ops: 1
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=11 line=75 ts=2026-05-13T17:14:57.612Z ---
+ import type { NBATeam, StaffMember, GameState } from '../../types';
++import { generate } from 'facesjs';
+
+--- HUNK [op#0 hunk#2] session=11 line=75 ts=2026-05-13T17:14:57.612Z ---
+   nationality: string;
+   isPlaceholder: true;
++  face?: any;
+ }
+
+--- HUNK [op#0 hunk#3] session=11 line=75 ts=2026-05-13T17:14:57.612Z ---
+   isPlaceholder: true;
++  face?: any;
+ }
+
+--- HUNK [op#0 hunk#5] session=11 line=75 ts=2026-05-13T17:14:57.612Z ---
+     careerStartYear: careerStart,
+     isPlaceholder: true,
++    face: generate(undefined, { gender: 'male' }),
+   };
+ }
+
+--- HUNK [op#0 hunk#6] session=11 line=75 ts=2026-05-13T17:14:57.612Z ---
+     playerPortraitUrl: (team as any).logoUrl
+       || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a1a2e&color=FDB927&size=512&bold=true`,
+     nationality,
+     isPlaceholder: true,
++    face: generate(undefined, { gender: 'male' }),
+   };
+ }
+
+--- HUNK [op#0 hunk#7] session=11 line=75 ts=2026-05-13T17:14:57.612Z ---
+       yearsWithTeam: coach.yearsWithTeam,
+       isPlaceholder: true,
++      face: coach.face,
+     } as StaffMember);
+
+--- HUNK [op#0 hunk#8] session=11 line=75 ts=2026-05-13T17:14:57.612Z ---
+       nationality: gm.nationality,
+       isPlaceholder: true,
++      face: gm.face,
+     } as StaffMember);
+
+--- HUNK [op#0 hunk#9] session=11 line=75 ts=2026-05-13T17:14:57.612Z ---
+       position: 'Owner',
+       jobTitle: 'Majority Owner',
+       teamLogoUrl: t.imgURL,
++      face: generate(undefined, { gender: 'male' }),
+     } as StaffMember);

@@ -1,0 +1,287 @@
+import { Dispatch, MutableRefObject, SetStateAction } from 'react';
+import { GameState, OffseasonChecklistRow, Tab, UserAction } from '../../types';
+import { normalizeDate } from '../../utils/helpers';
+import {
+  getCurrentOffseasonFAMoratoriumEnd,
+  getTrainingCampDate,
+  parseGameDate,
+  toISODateString,
+} from '../../utils/dateUtils';
+import {
+  defaultOffseasonChecklist,
+  setRowStatus,
+  OFFSEASON_ROW_TAB,
+  computeUpcomingSeasonYear,
+} from '../../services/offseason/offseasonState';
+import { isPbaIsolatedMode } from '../../utils/uiMode';
+import { isEuroVisibleScheduleGame } from '../../utils/euroLeagueDefaults';
+import { generateForCompetition, selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
+import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
+
+type SetGameState = Dispatch<SetStateAction<GameState>>;
+
+type HandleOffseasonDispatchActionArgs = {
+  action: UserAction;
+  setState: SetGameState;
+  setCurrentView: (view: Tab) => void;
+  stateRef: MutableRefObject<GameState>;
+  dispatchAction: (action: UserAction) => Promise<void>;
+};
+
+export async function handleOffseasonDispatchAction({
+  action,
+  setState,
+  setCurrentView,
+  stateRef,
+  dispatchAction,
+}: HandleOffseasonDispatchActionArgs): Promise<boolean> {
+  if (action.type === 'OFFSEASON_ENTER_PHASE') {
+    const row = (action.payload as { row: OffseasonChecklistRow }).row;
+    setState(prev => ({
+      ...prev,
+      offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, 'in-progress'),
+    }));
+    const target = OFFSEASON_ROW_TAB[row];
+    if (target) setCurrentView(target);
+    return true;
+  }
+
+  if (action.type === 'PROMOTE_YOUTH') {
+    const { playerIds, teamId } = action.payload as { playerIds: any[]; teamId: number };
+    const idSet = new Set(playerIds);
+    setState(prev => ({
+      ...prev,
+      players: prev.players.map((player: any) => {
+        const pid = player.pid ?? player.internalId ?? player.id;
+        if (!idSet.has(pid) || player.tid !== teamId) return player;
+        return { ...player, promotedFromAcademy: true, status: player.status ?? 'Active' };
+      }),
+    }));
+    return true;
+  }
+
+  if (action.type === 'OFFSEASON_COMPLETE_PHASE') {
+    const row = (action.payload as { row: OffseasonChecklistRow }).row;
+    setState(prev => ({
+      ...prev,
+      leagueStats: row === 'youthPromotion' && prev.leagueStats?.uiMode === 'euro_isolated'
+        ? { ...prev.leagueStats, euroYouthPromotionReviewedYear: prev.leagueStats.year }
+        : prev.leagueStats,
+      offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, 'done'),
+    }));
+    return true;
+  }
+
+  if (action.type === 'OFFSEASON_SKIP_PHASE') {
+    const row = (action.payload as { row: OffseasonChecklistRow }).row;
+    if (row === 'freeAgency' && (stateRef.current.faTagCounter ?? 0) > 0) {
+      const todayNorm = stateRef.current.date ? normalizeDate(stateRef.current.date) : '';
+      const currentDate = stateRef.current.date ? parseGameDate(stateRef.current.date) : new Date();
+      const cMonth = currentDate.getUTCMonth() + 1;
+      const cYear = currentDate.getUTCFullYear();
+      const lsYear = stateRef.current.leagueStats?.year ?? cYear;
+      const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, cYear, lsYear);
+      const campStr = toISODateString(getTrainingCampDate(upcomingSeasonYear, stateRef.current.leagueStats as any));
+      if (todayNorm && todayNorm < campStr) {
+        setState(prev => ({
+          ...prev,
+          offseasonChecklist: setRowStatus(prev.offseasonChecklist, 'freeAgency', 'in-progress'),
+        }));
+        return true;
+      }
+    }
+    setState(prev => ({
+      ...prev,
+      offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, 'skipped'),
+      ...(row === 'freeAgency' ? { faTagCounter: undefined, faTagsTotal: undefined } : {}),
+    }));
+    return true;
+  }
+
+  if (action.type === 'OFFSEASON_RESET_CHECKLIST') {
+    setState(prev => ({
+      ...prev,
+      offseasonChecklist: defaultOffseasonChecklist(prev.leagueStats),
+      faTagCounter: undefined,
+      pendingOfferDecisions: [],
+    }));
+    return true;
+  }
+
+  if (action.type === 'OFFSEASON_AUTO_RESOLVE_ALL') {
+    await dispatchAction({ type: 'OFFSEASON_EXIT', payload: { assistantGM: true } } as any);
+    return true;
+  }
+
+  if (action.type === 'SUBMIT_QUALIFYING_OFFER') {
+    const { playerId } = (action as any).payload as { playerId: string };
+    setState(prev => ({
+      ...prev,
+      players: prev.players.map(player =>
+        player.internalId === playerId
+          ? { ...player, contract: { ...(player.contract as any), restrictedFA: true, isRestrictedFA: true, qualifyingOfferSubmitted: true } } as any
+          : player,
+      ),
+    }));
+    return true;
+  }
+
+  if (action.type === 'SKIP_QUALIFYING_OFFER') {
+    const { playerId } = (action as any).payload as { playerId: string };
+    setState(prev => ({
+      ...prev,
+      players: prev.players.map(player =>
+        player.internalId === playerId
+          ? { ...player, contract: { ...(player.contract as any), restrictedFA: false, isRestrictedFA: false, qualifyingOfferSkipped: true, qualifyingOfferSubmitted: false } } as any
+          : player,
+      ),
+    }));
+    return true;
+  }
+
+  if (action.type === 'OFFSEASON_EXIT') {
+    if (isPbaIsolatedMode(stateRef.current)) {
+      const leagueStats = stateRef.current.leagueStats as any;
+      const currentConference: import('../../services/pba/conferenceTransition').PbaConference = leagueStats?.pbaConference ?? 'philippine';
+      const { getNextConference, generateNextConferenceSchedule, clearConferenceImports, getConferenceStartDate } = require('../../services/pba/conferenceTransition');
+      const nextConference = getNextConference(currentConference);
+      if (!nextConference) {
+        const nextYear = (leagueStats?.year ?? new Date().getFullYear()) + 1;
+        const philSpec = PBA_COMPETITIONS[0];
+        const source = { nonNBATeams: stateRef.current.nonNBATeams as any, userTeamId: stateRef.current.userTeamId };
+        const tids = selectCompetitionTeamTids(philSpec, source);
+        const start = new Date(Date.UTC(nextYear - 1, philSpec.seasonStart.month - 1, philSpec.seasonStart.day));
+        const newGames = generateForCompetition(philSpec, tids.map((tid: number) => ({ tid })), start, 800_000);
+        const cleaned = clearConferenceImports(stateRef.current.players, currentConference);
+        setState(prev => ({
+          ...prev,
+          players: cleaned,
+          leagueStats: {
+            ...prev.leagueStats,
+            year: nextYear,
+            pbaConference: 'philippine',
+            pbaConferencePhase: 'regularSeason',
+          },
+          date: `Oct 5, ${nextYear - 1}`,
+          schedule: [...(prev.schedule ?? []), ...newGames],
+          offseasonChecklist: undefined,
+        }));
+      } else {
+        const newGames = generateNextConferenceSchedule(stateRef.current, nextConference);
+        const cleaned = clearConferenceImports(stateRef.current.players, currentConference);
+        const startDate = getConferenceStartDate(nextConference, leagueStats?.year ?? new Date().getFullYear());
+        setState(prev => ({
+          ...prev,
+          players: cleaned,
+          leagueStats: {
+            ...prev.leagueStats,
+            pbaConference: nextConference,
+            pbaConferencePhase: 'regularSeason',
+          },
+          date: startDate,
+          schedule: [...(prev.schedule ?? []), ...newGames],
+          offseasonChecklist: undefined,
+        }));
+      }
+      return true;
+    }
+
+    const useAssistantGM = !!(action.payload as any)?.assistantGM;
+    const leagueStats = stateRef.current.leagueStats as any;
+    const lsYear: number = leagueStats?.year ?? new Date().getFullYear();
+    const cMonth = stateRef.current.date ? new Date(stateRef.current.date).getUTCMonth() + 1 : 0;
+    const cYear = stateRef.current.date ? new Date(stateRef.current.date).getUTCFullYear() : lsYear;
+    const preseasonYear = cMonth <= 6 && cYear === lsYear ? lsYear : cYear;
+    const todayStr = stateRef.current.date ? normalizeDate(stateRef.current.date) : '';
+    const currentState = stateRef.current;
+    const target = currentState.leagueStats?.uiMode === 'euro_isolated'
+      ? ((currentState.schedule ?? [])
+          .filter((game: any) => !game.played && isEuroVisibleScheduleGame(currentState as any, game))
+          .map((game: any) => normalizeDate(game.date))
+          .filter((date: string) => !!date && (!todayStr || date >= todayStr))
+          .sort()[0] ?? `${preseasonYear}-09-28`)
+      : ((currentState.schedule ?? [])
+          .filter((game: any) => game.isPreseason && !game.played)
+          .map((game: any) => normalizeDate(game.date))
+          .filter((date: string) => !!date && (!todayStr || date > todayStr))
+          .sort()[0] ?? `${preseasonYear}-10-01`);
+    if (todayStr && todayStr < target) {
+      await dispatchAction({
+        type: 'SIMULATE_TO_DATE',
+        payload: { targetDate: target, stopBefore: true, assistantGM: useAssistantGM },
+      } as any);
+    }
+    const exitCYear = stateRef.current.date ? new Date(stateRef.current.date).getUTCFullYear() : 0;
+    setState(prev => ({
+      ...prev,
+      offseasonChecklist: undefined,
+      faTagCounter: undefined,
+      faTagsTotal: undefined,
+      pendingOfferDecisions: [],
+      offseasonExitedYear: exitCYear,
+    }));
+    return true;
+  }
+
+  if (action.type === 'OFFSEASON_ADVANCE_FA_TAG') {
+    const total = stateRef.current.faTagsTotal ?? 13;
+    const counter = stateRef.current.faTagCounter ?? 0;
+    const currentDateStr = stateRef.current.date;
+    if (!currentDateStr) return true;
+    setState(prev => ({
+      ...prev,
+      offseasonChecklist: setRowStatus(prev.offseasonChecklist, 'freeAgency', 'in-progress'),
+    }));
+
+    if (counter === 0) {
+      const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(
+        currentDateStr,
+        stateRef.current.leagueStats as any,
+        stateRef.current.schedule as any,
+      );
+      const targetISO = toISODateString(moratoriumEnd);
+      const currentNorm = normalizeDate(currentDateStr);
+      if (currentNorm < targetISO) {
+        await dispatchAction({
+          type: 'SIMULATE_TO_DATE',
+          payload: { targetDate: targetISO, stopBefore: true },
+        } as any);
+      }
+      setState(prev => ({
+        ...prev,
+        offseasonChecklist: setRowStatus(prev.offseasonChecklist, 'freeAgency', 'in-progress'),
+        faTagCounter: 1,
+        faTagsTotal: total,
+      }));
+      return true;
+    }
+
+    const daysPerTag = Math.max(1, Math.floor(62 / total));
+    const currentDate = new Date(`${normalizeDate(currentDateStr)}T00:00:00Z`);
+    currentDate.setUTCDate(currentDate.getUTCDate() + daysPerTag);
+    const targetISO = toISODateString(currentDate);
+    await dispatchAction({
+      type: 'SIMULATE_TO_DATE',
+      payload: { targetDate: targetISO, stopBefore: true },
+    } as any);
+
+    const newCounter = counter + 1;
+    if (newCounter >= total) {
+      setState(prev => ({
+        ...prev,
+        offseasonChecklist: setRowStatus(prev.offseasonChecklist, 'freeAgency', 'done'),
+        faTagCounter: undefined,
+        faTagsTotal: undefined,
+      }));
+    } else {
+      setState(prev => ({
+        ...prev,
+        offseasonChecklist: setRowStatus(prev.offseasonChecklist, 'freeAgency', 'in-progress'),
+        faTagCounter: newCounter,
+      }));
+    }
+    return true;
+  }
+
+  return false;
+}

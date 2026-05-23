@@ -7,50 +7,7 @@ import { formatCurrencyWithCode } from '../../../../../utils/helpers';
 import type { TycoonState, SponsorshipSlot } from '../../../../../types/tycoon';
 import { TEAM_ARENAS } from '../../../../../data/arenas';
 import { getArenaForTeam, type ArenaInfo } from '../../../../../utils/arenaData';
-
-type ArenaTab = 'identity' | 'court' | 'overview' | 'sponsorship' | 'ticketing';
-
-const TABS: Array<{ id: ArenaTab; label: string; icon: React.ReactNode }> = [
-  { id: 'identity', label: 'Arena Identity', icon: <Building2 size={16} /> },
-  { id: 'court', label: 'Court & Logo', icon: <Maximize2 size={16} /> },
-  { id: 'overview', label: 'Arena Overview', icon: <Eye size={16} /> },
-  { id: 'sponsorship', label: 'Sponsorship Portfolio', icon: <Tag size={16} /> },
-  { id: 'ticketing', label: 'Ticket Pricing', icon: <Ticket size={16} /> },
-];
-
-const NBA_ARENA_CAPACITIES: Record<string, number> = {
-  'United Center': 20_917,
-  'Madison Square Garden': 19_812,
-  'Little Caesars Arena': 20_332,
-  'Wells Fargo Center': 20_478,
-  'Toyota Center': 18_055,
-  'Capital One Arena': 20_356,
-  'Rocket Mortgage FieldHouse': 19_432,
-  'TD Garden': 19_156,
-  'Barclays Center': 17_732,
-  'Spectrum Center': 19_077,
-  'American Airlines Center': 19_200,
-  'Ball Arena': 19_520,
-  'Chase Center': 18_064,
-  'Gainbridge Fieldhouse': 17_923,
-  'Intuit Dome': 18_000,
-  'Crypto.com Arena': 18_997,
-  'FedExForum': 17_794,
-  'Kaseya Center': 19_600,
-  'Fiserv Forum': 17_341,
-  'Target Center': 18_798,
-  'Smoothie King Center': 16_867,
-  'Paycom Center': 18_203,
-  'Kia Center': 18_846,
-  'Footprint Center': 18_055,
-  'Moda Center': 19_393,
-  'Golden 1 Center': 17_608,
-  'Frost Bank Center': 18_581,
-  'Scotiabank Arena': 19_800,
-  'Delta Center': 18_306,
-  'State Farm Arena': 18_048,
-};
-
+import { ARENA_TABS, type ArenaTab, NBA_ARENA_CAPACITIES } from './arenaSectionConfig';
 interface ArenaSectionProps {
   tycoon: TycoonState;
   teamName: string;
@@ -60,13 +17,11 @@ interface ArenaSectionProps {
   onTicketMultChange: (mult: number) => void;
   locked?: boolean;
 }
-
 export const ArenaSection: React.FC<ArenaSectionProps> = ({
   tycoon, teamName, teamAbbrev, teamLogoUrl, currency, onTicketMultChange, locked = false,
 }) => {
   const [tab, setTab] = useState<ArenaTab>('identity');
   const ticketMult = tycoon.ticketPriceMultiplier ?? 1.0;
-
   const arenaName = TEAM_ARENAS[teamName] ?? `${teamName} Arena`;
   const arenaInfo = getArenaForTeam(teamName);
   const capacity = arenaInfo?.seating_capacity
@@ -75,26 +30,22 @@ export const ArenaSection: React.FC<ArenaSectionProps> = ({
     ?? 18_000;
   const location = arenaInfo?.arena_location ?? '';
   const openingYear = arenaInfo?.opening_year ?? 0;
-
   const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
   const arenaRating = 56 + tycoon.facilities.stadium.level * 9;
-
   const revenueEstimate = useMemo(() => {
     const avgTicketPrice = 85 * ticketMult;
     const homeGames = 41;
     const fillRate = Math.min(1.0, 0.75 + ticketMult * -0.05 + tycoon.facilities.stadium.level * 0.03);
     return Math.round(avgTicketPrice * capacity * homeGames * fillRate);
   }, [ticketMult, capacity, tycoon.facilities.stadium.level]);
-
   const sponsorships = tycoon.sponsorships ?? {};
   const arenaSponsors = (['court', 'stadium'] as SponsorshipSlot[])
     .map(slot => ({ slot, deal: sponsorships[slot] }))
     .filter(s => s.deal);
-
   return (
     <div className="space-y-5">
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-        {TABS.map(t => (
+        {ARENA_TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -108,7 +59,6 @@ export const ArenaSection: React.FC<ArenaSectionProps> = ({
           </button>
         ))}
       </div>
-
       {tab === 'identity' && (
         <IdentityTab
           arenaName={arenaName}
@@ -150,7 +100,6 @@ export const ArenaSection: React.FC<ArenaSectionProps> = ({
     </div>
   );
 };
-
 const StatBox: React.FC<{ icon: React.ReactNode; label: string; value: string; sub?: string; accent?: string }> = ({ icon, label, value, sub, accent = 'text-amber-300' }) => (
   <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-center">
     <div className={`flex justify-center ${accent}`}>{icon}</div>
@@ -159,7 +108,6 @@ const StatBox: React.FC<{ icon: React.ReactNode; label: string; value: string; s
     {sub && <div className="text-[10px] text-slate-500 mt-1">{sub}</div>}
   </div>
 );
-
 const IdentityTab: React.FC<{
   arenaName: string; capacity: number; location: string; openingYear: number;
   arenaRating: number; teamName: string; teamLogoUrl?: string; fmt: (v: number) => string;
@@ -182,7 +130,6 @@ const IdentityTab: React.FC<{
           </div>
         </div>
       </div>
-
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <StatBox icon={<Users size={24} />} label="Capacity" value={capacity.toLocaleString()} sub="Seats" />
         <StatBox icon={<MapPin size={24} />} label="Location" value={location.split(',')[0] || '—'} sub={location.split(',').slice(1).join(',').trim() || ''} />
@@ -211,7 +158,6 @@ const IdentityTab: React.FC<{
         </div>
       </div>
     </div>
-
     <aside className="space-y-5">
       <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
         <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Quick Facts</div>
@@ -253,26 +199,19 @@ const IdentityTab: React.FC<{
     </aside>
   </div>
 );
-
 const CourtTab: React.FC<{ teamName: string; teamLogoUrl?: string; teamAbbrev?: string; arenaName: string }> = ({ teamName, teamLogoUrl, teamAbbrev, arenaName }) => (
   <div className="space-y-5">
     <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
       <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Court Design</div>
       <div className="relative w-full aspect-[94/50] rounded-xl border border-slate-700 bg-[#c4935a] overflow-hidden flex items-center justify-center">
         <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 11px)' }} />
-
         <div className="absolute inset-4 border-2 border-white/60 rounded-sm" />
-
         <div className="absolute left-4 top-1/2 -translate-y-1/2 w-[19%] h-[64%] border-2 border-white/60" />
         <div className="absolute right-4 top-1/2 -translate-y-1/2 w-[19%] h-[64%] border-2 border-white/60" />
-
         <div className="absolute left-4 top-1/2 -translate-y-1/2 w-[6%] aspect-square border-2 border-white/60 rounded-full" />
         <div className="absolute right-4 top-1/2 -translate-y-1/2 w-[6%] aspect-square border-2 border-white/60 rounded-full" />
-
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[12%] aspect-square border-2 border-white/60 rounded-full" />
-
         <div className="absolute left-1/2 top-4 bottom-4 w-px bg-white/60 -translate-x-1/2" />
-
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
           {teamLogoUrl ? (
             <img src={teamLogoUrl} alt={teamName} className="w-16 h-16 sm:w-24 sm:h-24 object-contain drop-shadow-lg opacity-80" />
@@ -282,11 +221,9 @@ const CourtTab: React.FC<{ teamName: string; teamLogoUrl?: string; teamAbbrev?: 
             </div>
           )}
         </div>
-
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[8px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest">{arenaName}</div>
       </div>
     </div>
-
     <div className="grid sm:grid-cols-3 gap-4">
       <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
         <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Court Surface</div>
@@ -311,7 +248,6 @@ const CourtTab: React.FC<{ teamName: string; teamLogoUrl?: string; teamAbbrev?: 
     </div>
   </div>
 );
-
 const OverviewTab: React.FC<{
   arenaName: string; capacity: number; arenaRating: number;
   tycoon: TycoonState; revenueEstimate: number; fmt: (v: number) => string;
@@ -334,7 +270,6 @@ const OverviewTab: React.FC<{
           <StatBox icon={<DollarSign size={22} />} label="Est. Revenue" value={fmt(revenueEstimate)} sub="Projected annual" />
           <StatBox icon={<TrendingUp size={22} />} label="Level" value={String(level)} sub={`of 5`} />
         </div>
-
         <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
           <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Performance Attributes</div>
           <div className="space-y-3">
@@ -351,7 +286,6 @@ const OverviewTab: React.FC<{
             ))}
           </div>
         </div>
-
         <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
           <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Arena Sections</div>
           <div className="grid sm:grid-cols-3 gap-3">
@@ -369,7 +303,6 @@ const OverviewTab: React.FC<{
           </div>
         </div>
       </div>
-
       <aside className="space-y-5">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
           <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Arena Details</div>
@@ -389,7 +322,6 @@ const OverviewTab: React.FC<{
             ))}
           </div>
         </div>
-
         <div className="rounded-2xl border border-amber-400/30 bg-amber-400/5 p-5">
           <div className="text-xs font-black uppercase tracking-widest text-amber-300 mb-3">Matchday Revenue</div>
           <div className="text-3xl font-black text-white">{fmt(revenueEstimate)}</div>
@@ -399,7 +331,6 @@ const OverviewTab: React.FC<{
     </div>
   );
 };
-
 const SponsorshipTab: React.FC<{
   arenaSponsors: Array<{ slot: SponsorshipSlot; deal: any }>;
   arenaName: string;
@@ -413,7 +344,6 @@ const SponsorshipTab: React.FC<{
         <StatBox icon={<DollarSign size={22} />} label="Portfolio Value" value={fmt(totalValue)} sub="Annual revenue" />
         <StatBox icon={<Trophy size={22} />} label="Naming Rights" value={arenaSponsors.find(s => s.slot === 'stadium')?.deal?.sponsor ?? 'Vacant'} sub="Title sponsor" />
       </div>
-
       <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
         <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Arena Sponsorship Slots</div>
         {arenaSponsors.length > 0 ? (
@@ -439,7 +369,6 @@ const SponsorshipTab: React.FC<{
           </div>
         )}
       </div>
-
       <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
         <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Sponsor Visibility</div>
         <div className="grid sm:grid-cols-2 gap-3">
@@ -459,7 +388,6 @@ const SponsorshipTab: React.FC<{
     </div>
   );
 };
-
 const TicketingTab: React.FC<{
   ticketMult: number; onTicketMultChange: (mult: number) => void;
   capacity: number; revenueEstimate: number; fmt: (v: number) => string;
@@ -469,7 +397,6 @@ const TicketingTab: React.FC<{
   const avgPrice = Math.round(basePrice * ticketMult);
   const fillRate = Math.min(100, Math.round((0.75 + ticketMult * -0.05 + 0.15) * 100));
   const avgAttendance = Math.round(capacity * fillRate / 100);
-
   const pricingLabel = ticketMult <= 0.7 ? 'Budget'
     : ticketMult <= 0.9 ? 'Value'
     : ticketMult <= 1.1 ? 'Standard'
@@ -483,7 +410,6 @@ const TicketingTab: React.FC<{
     ['Upper Bowl', Math.round(avgPrice * 0.65), `~${Math.round(capacity * 0.40).toLocaleString()} seats`],
     ['Standing Room', Math.round(avgPrice * 0.35), 'Limited availability'],
   ] as Array<[string, number, string]>;
-
   return (
     <div className="grid lg:grid-cols-[1fr_320px] gap-5">
       <div className="space-y-5">

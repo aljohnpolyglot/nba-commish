@@ -1,0 +1,115 @@
+# Codex hunks NOT found on current disk for src/services/competition/competitionScheduler.ts
+# 4 hunks unapplied. Total ops: 5
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#3 hunk#0] session=8 line=1687 ts=2026-05-11T02:35:27.914Z ---
+ import type { Game } from '../../types';
+ import type { CompetitionDayOfWeek, CompetitionSpec } from './types';
+ 
++type CompetitionTeamSource = {
++  nonNBATeams?: Array<{ tid: number; league?: string }>;
++  clubAliasMap?: Record<number, number>;
++  userTeamId?: number | null;
++};
++
+
+--- HUNK [op#3 hunk#1] session=8 line=1687 ts=2026-05-11T02:35:27.914Z ---
+ const iso = (date: Date) => date.toISOString();
++
++function uniqueTids(tids: number[]): number[] {
++  return [...new Set(tids.filter(tid => tid >= 100))];
++}
++
++function capTeamCount(tids: number[], count?: number, userTeamId?: number | null): number[] {
++  if (!count || tids.length <= count) return tids;
++  const capped = tids.slice(0, count);
++  if (userTeamId == null || capped.includes(userTeamId) || !tids.includes(userTeamId)) return capped;
++  return [...capped.slice(0, -1), userTeamId];
++}
++
++export function selectCompetitionTeamTids(spec: CompetitionSpec, source: CompetitionTeamSource): number[] {
++  const teams = source.nonNBATeams ?? [];
++  if (spec.teamSelector === 'allEndesa') {
++    return capTeamCount(uniqueTids(teams.filter(t => t.league === 'Endesa').map(t => t.tid)), spec.teamCount, source.userTeamId);
++  }
++  if (spec.teamSelector === 'allEuroleague') {
++    const euroTids = teams.filter(t => t.league === 'Euroleague').map(t => source.clubAliasMap?.[t.tid] ?? t.tid);
++    const mergedClubTids = Object.values(source.clubAliasMap ?? {});
++    return capTeamCount(uniqueTids([...euroTids, ...mergedClubTids]), spec.teamCount, source.userTeamId);
++  }
++  return capTeamCount(
++    uniqueTids(teams.filter(t => t.league === 'Endesa' || t.league === 'Euroleague').map(t => source.clubAliasMap?.[t.tid] ?? t.tid)),
++    spec.teamCount,
++    source.userTeamId,
++  );
++}
+
+--- HUNK [op#4 hunk#0] session=8 line=1743 ts=2026-05-11T02:37:47.293Z ---
+ type CompetitionTeamSource = {
+   nonNBATeams?: Array<{ tid: number; league?: string }>;
+   clubAliasMap?: Record<number, number>;
+   userTeamId?: number | null;
+ };
++
++type CompetitionScheduleRepairState = CompetitionTeamSource & {
++  date: string;
++  schedule: Game[];
++};
+
+--- HUNK [op#4 hunk#2] session=8 line=1743 ts=2026-05-11T02:37:47.293Z ---
+   if (selected.length >= 4) games.push(makeGame(gid++, selected[0].tid, selected[2].tid, date, spec, 'final'));
+   return games;
+ }
++
++function dateForCompetitionSeason(season: number, month: number, day: number): string {
++  return new Date(Date.UTC(month >= 9 ? season - 1 : season, month - 1, day)).toISOString();
++}
++
++function expectedRegularSeasonGames(spec: CompetitionSpec, teamCount: number): number {
++  if (teamCount < 2) return 0;
++  const singleRoundRobin = (teamCount * (teamCount - 1)) / 2;
++  return (spec.gamesPerTeam ?? 0) >= (teamCount - 1) * 2 ? singleRoundRobin * 2 : singleRoundRobin;
++}
++
++function gameKey(game: Pick<Game, 'homeTid' | 'awayTid'>): string {
++  return `${game.homeTid}->${game.awayTid}`;
++}
++
++export function repairCompetitionSchedules(
++  state: CompetitionScheduleRepairState,
++  specs: CompetitionSpec[] = [],
++  season: number,
++): Game[] {
++  let schedule = [...state.schedule];
++  let nextGid = Math.max(700_000, ...schedule.map(game => game.gid)) + 1;
++
++  for (const spec of specs.filter(s => s.format === 'regular-league' || s.format === 'group-knockout')) {
++    const teamTids = selectCompetitionTeamTids(spec, state);
++    const expected = expectedRegularSeasonGames(spec, teamTids.length);
++    if (expected === 0) continue;
++
++    const seasonStart = dateForCompetitionSeason(season, spec.seasonStart.month, spec.seasonStart.day);
++    const seasonEnd = dateForCompetitionSeason(season, spec.seasonEnd.month, spec.seasonEnd.day);
++    const current = schedule.filter(game => game.competitionId === spec.id);
++    const regularCurrent = current.filter(game => game.competitionPhase === 'group' || game.competitionPhase?.startsWith('r'));
++    const inWindow = regularCurrent.filter(game => game.date >= seasonStart && game.date <= seasonEnd);
++    const participants = new Set(regularCurrent.flatMap(game => [game.homeTid, game.awayTid]));
++    const isSparse = inWindow.length < Math.floor(expected * 0.8) || teamTids.some(tid => !participants.has(tid));
++    if (!isSparse) continue;
++
++    const played = current.filter(game => game.played);
++    const playedKeys = new Set(played.map(gameKey));
++    const repairStart = new Date(Math.max(new Date(seasonStart).getTime(), new Date(state.date).getTime()));
++    const regenerated = generateForCompetition(spec, teamTids.map(tid => ({ tid })), repairStart, nextGid)
++      .filter(game => !playedKeys.has(gameKey(game)));
++    nextGid += regenerated.length;
++    schedule = [
++      ...schedule.filter(game => game.competitionId !== spec.id),
++      ...played,
++      ...regenerated,
++    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.gid - b.gid);
++  }
++
++  return schedule;
++}

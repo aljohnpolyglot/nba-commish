@@ -83,7 +83,7 @@ export function useLiveGame(
         // identity doesn't reset playback mid-game (gameKey is the only reset).
         const snapshotPrecomputed = precomputedRef.current;
         const usedPrecomputed = !!snapshotPrecomputed;
-        const result = snapshotPrecomputed ?? GameSimulator.simulateGame(homeTeam, awayTeam, frozenPlayers, game.gid, game.date, 50, frozenHome, frozenAway, undefined, undefined, riggedForTid);
+        const result = snapshotPrecomputed ?? GameSimulator.simulateGame(homeTeam, awayTeam, frozenPlayers, game.gid, game.date, 50, frozenHome, frozenAway, undefined, undefined, undefined, riggedForTid);
         console.log(`[useLiveGame] ${usedPrecomputed ? '✅ using precomputed' : '🔄 fresh sim'} — home=${result.homeScore} away=${result.awayScore} gid=${result.gameId}`);
         setFinalResult(result);
         window.__finalResult = result;

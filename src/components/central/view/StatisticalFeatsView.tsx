@@ -8,90 +8,24 @@ import { PlayerBioView } from './PlayerBioView';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { getOwnTeamId } from '../../../utils/helpers';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
-
+import { FEAT_CATEGORIES, type FeatEntry } from './StatisticalFeatsViewShared';
 interface StatisticalFeatsViewProps {
   onGameClick?: (game: Game) => void;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CONSTANTS & TYPES
-// ─────────────────────────────────────────────────────────────────────────────
-
-const FEAT_CATEGORIES = [
-  '50-PT GAMES',
-  '40-PT GAMES',
-  '30-PT GAMES',
-  'TRIPLE-DOUBLES',
-  'DOUBLE-DOUBLES',
-  '5×5'
-];
-
-interface FeatEntry {
-  id: string;
-  gameId: number;
-  player: NBAPlayer;
-  playerName: string;
-  teamId: number;
-  teamAbbrev: string;
-  oppTeamId: number;
-  oppAbbrev: string;
-  date: string;
-  isWin: boolean;
-  result: string;
-  featsFound: string[];
-  // Stats (1:1 with PlayerBioView Game Log)
-  gs: boolean;
-  min: number;
-  mp: string;
-  fgm: number;
-  fga: number;
-  fgp: string;
-  tpm: number;
-  tpa: number;
-  tpp: string;
-  twom: number;
-  twoa: number;
-  twop: string;
-  efgp: string;
-  ftm: number;
-  fta: number;
-  ftp: string;
-  orb: number;
-  drb: number;
-  trb: number;
-  ast: number;
-  stl: number;
-  blk: number;
-  tov: number;
-  pf: number;
-  pts: number;
-  gmsc: number;
-  plusMinus: number | null;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGameClick }) => {
   const { state, navigateToTeam } = useGame();
   const ownTid = getOwnTeamId(state);
   const { teams: scopedTeams, players: scopedPlayers, tids: scopedTids } = useHubScope();
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
-  
-  // State
   const [selectedPlayer, setSelectedPlayer] = useState<NBAPlayer | null>(null);
   const [activeFilters, setActiveFilters] = useState<string[]>(FEAT_CATEGORIES);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
-  
   const [sortField, setSortField] = useState<keyof FeatEntry>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
-
-  // Available seasons from box scores
   const availableSeasons = useMemo(() => {
     const years = new Set<number>();
     state.boxScores.forEach(g => {
@@ -108,8 +42,6 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
 
   const [selectedSeason, setSelectedSeason] = useState(state.leagueStats.year);
   const currentYear = selectedSeason.toString();
-
-  // ─── 1. EXTRACT DATA AND CALCULATE FEATS ─────────────────────────────────────
   const { feats, summaryCounts } = useMemo(() => {
     const extracted: FeatEntry[] = [];
     const counts: Record<string, number> = {
@@ -125,17 +57,13 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
     const seasonEnd = `${selectedSeason}-06-30`;
 
     state.boxScores.forEach(game => {
-      // Skip All-Star & Rising Stars
       if (game.isAllStar || game.isRisingStars) return;
-      // Filter to selected season
       try {
         const d = new Date(game.date);
         const m = d.getMonth() + 1;
         const yr = m >= 7 ? d.getFullYear() + 1 : d.getFullYear();
         if (yr !== selectedSeason) return;
       } catch { return; }
-
-      // Skip Preseason
       const schedGame = state.schedule.find((g: any) => g.gid === game.gameId);
       const isPreseason = schedGame?.isPreseason === true ||
         (() => { try { return new Date(game.date).getTime() < OPENING_NIGHT_MS; } catch { return false; } })();
@@ -159,22 +87,14 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
           const blk = stat.blk || 0;
 
           const activeFeats: string[] = [];
-          
-          // Points Logic (Mutually Exclusive for the visual buckets)
           if (pts >= 50) { activeFeats.push('50-PT GAMES'); counts['50-PT GAMES']++; }
           else if (pts >= 40) { activeFeats.push('40-PT GAMES'); counts['40-PT GAMES']++; }
           else if (pts >= 30) { activeFeats.push('30-PT GAMES'); counts['30-PT GAMES']++; }
-
-          // Double/Triple Doubles (Mutually Exclusive)
           const tens = [pts, reb, ast, stl, blk].filter(val => val >= 10).length;
           if (tens >= 3) { activeFeats.push('TRIPLE-DOUBLES'); counts['TRIPLE-DOUBLES']++; }
           else if (tens === 2) { activeFeats.push('DOUBLE-DOUBLES'); counts['DOUBLE-DOUBLES']++; }
-
-          // 5x5
           const fives = [pts, reb, ast, stl, blk].filter(val => val >= 5).length;
           if (fives >= 5) { activeFeats.push('5×5'); counts['5×5']++; }
-
-          // Only add to table if they actually accomplished a tracked feat
           if (activeFeats.length > 0) {
             const isWin = isHome ? isHomeWin : !isHomeWin;
             const scoreStr = isHome 
@@ -240,8 +160,6 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
 
     return { feats: extracted, summaryCounts: counts };
   }, [state.boxScores, scopedPlayers, scopedTeams, state.schedule, selectedSeason]);
-
-  // ─── 2. FILTER ───────────────────────────────────────────────────────────────
   const filteredFeats = useMemo(() => {
     return feats.filter(feat => {
       if (selectedTeam !== 'all' && feat.teamAbbrev !== selectedTeam) return false;
@@ -254,8 +172,6 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
       return true;
     });
   }, [feats, selectedTeam, searchQuery, activeFilters]);
-
-  // ─── 3. SORT ─────────────────────────────────────────────────────────────────
   const filteredAndSorted = useMemo(() => {
     return [...filteredFeats].sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1;
@@ -285,21 +201,14 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
       return ((valA as number) - (valB as number)) * dir;
     });
   }, [filteredFeats, sortField, sortDir]);
-
-  // ─── 4. PAGINATION ───────────────────────────────────────────────────────────
   const totalPages = Math.ceil(filteredAndSorted.length / itemsPerPage);
   const paginatedData = filteredAndSorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const sortedTeams = useMemo(() => [...state.teams].sort((a, b) => (a.region ?? '').localeCompare(b.region ?? '')), [state.teams]);
-
-  // Toggle Box Click Logic
   const toggleFilter = (feat: string) => {
     setActiveFilters(prev => {
-      // If all are currently active, clicking one isolates it
       if (prev.length === FEAT_CATEGORIES.length) return [feat];
-      // If it's the only one active, clicking it again resets to all
       if (prev.includes(feat) && prev.length === 1) return FEAT_CATEGORIES;
-      // Normal multi-select toggle
       if (prev.includes(feat)) return prev.filter(f => f !== feat);
       return [...prev, feat];
     });
@@ -337,8 +246,6 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#0a0a0a] text-white overflow-hidden rounded-[2.5rem] border border-white/10 relative shadow-2xl">
-      
-      {/* ── HEADER AREA ── */}
       <div className="flex-shrink-0 bg-[#080808] border-b border-white/10 p-3 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
           <div>
@@ -376,7 +283,6 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               />
             </div>
-
             <select
               className="bg-black/50 border border-white/10 text-white text-xs font-bold tracking-wider uppercase rounded-full px-2 sm:px-4 py-1.5 sm:py-2 outline-none cursor-pointer appearance-none transition-colors hover:border-white/30 flex-shrink-0"
               value={selectedTeam}
@@ -390,8 +296,6 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
           </div>
         </div>
       </div>
-
-      {/* ── SUMMARY BOXES (CLICKABLE) ── */}
       <div className="flex-shrink-0 grid grid-cols-3 md:grid-cols-6 gap-1.5 sm:gap-2 md:gap-4 px-3 sm:px-6 py-3 sm:py-4 bg-[#080808] border-b border-white/5">
         {FEAT_CATEGORIES.map(feat => {
           const isActive = activeFilters.includes(feat);
@@ -415,8 +319,6 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
           );
         })}
       </div>
-
-      {/* ── TABLE CONTAINER ── */}
       <div className="flex-1 overflow-y-auto overflow-x-auto custom-scrollbar bg-[#080808]">
         <table className="w-full text-sm text-left text-slate-300">
           <thead className="text-[10px] text-slate-400 uppercase bg-slate-900/50 border-y border-slate-800 whitespace-nowrap sticky top-0 z-10 backdrop-blur-md">
@@ -542,8 +444,6 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
           </tbody>
         </table>
       </div>
-
-      {/* ── PAGINATION BAR ── */}
       {totalPages > 1 && (
         <div className="flex-shrink-0 bg-[#080808] border-t border-white/10 p-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -558,12 +458,10 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
               <option value={100}>100</option>
             </select>
           </div>
-
           <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center flex-1">
             Page {currentPage} <span className="text-slate-600">of</span> {totalPages} 
             <span className="hidden sm:inline"> • {filteredAndSorted.length} Results</span>
           </div>
-
           <div className="flex items-center gap-2">
             <button 
               className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest bg-black/50 border border-white/10 text-white rounded-full hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -582,7 +480,6 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
           </div>
         </div>
       )}
-
       {selectedBoxScoreGame && (
         <BoxScoreModal
           game={selectedBoxScoreGame}

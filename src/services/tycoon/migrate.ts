@@ -107,7 +107,7 @@ function seedDefaultStaffMembers(team: TycoonHost, tier: TycoonState['tier'], cu
       role,
       name: `${first} ${last}`,
       nationality: 'Spain',
-      salary: getStaffMarketSalary(tier, role, rating),
+      salary: getStaffMarketSalary(tier, role, rating, { market: 'euro' }),
       contractYears: 1 + (seed % 4),
       rating,
       hiredYear: currentYear - 1,
@@ -220,7 +220,7 @@ export function upgradeExistingTycoon(
   if (!t.staffSalaryScaleHealed) {
     t.staffMembers = t.staffMembers.map(member => ({
       ...member,
-      salary: normalizeStaffSalary(t.tier, member.role, member.salary, member.rating),
+      salary: normalizeStaffSalary(t.tier, member.role, member.salary, member.rating, { market: 'euro' }),
     }));
     t.staffSalaryScaleHealed = true;
   }

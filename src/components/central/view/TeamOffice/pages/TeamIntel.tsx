@@ -13,11 +13,12 @@ import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingB
 import { TeamIntelFreeAgency } from './TeamIntelFreeAgency';
 import { TeamIntelExpiring } from './TeamIntelExpiring';
 import { resolveTeamStrategyProfile } from '../../../../../utils/teamStrategy';
-import { compareGameDates, getCurrentOffseasonEffectiveFAStart } from '../../../../../utils/dateUtils';
+import { compareGameDates, getCurrentOffseasonEffectiveFAStart, parseGameDate } from '../../../../../utils/dateUtils';
 import { getOffseasonState } from '../../../../../services/offseason/offseasonState';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
 import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
 import { getTeamFullName } from '../../../../../utils/teamNames';
+import { getDisplayAge } from '../../../../../store/playerRatingStore';
 
 interface TeamIntelProps {
   teamId: number;
@@ -35,6 +36,9 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   const { state, dispatchAction } = useGame();
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const players = (state.players || []).filter(p => p.tid === teamId && isOnRoster(p));
+  const expiringAnchorYear = state.date
+    ? parseGameDate(state.date).getUTCFullYear()
+    : state.leagueStats?.year ?? new Date().getFullYear();
   const allTeamsForPickers = useMemo(
     () => [
       ...(state.teams ?? []),
@@ -134,7 +138,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
     if (strategy.key === 'contending' || strategy.key === 'win_now' || strategy.key === 'play_in_push') {
       blockList = rosterTV.filter(r => r.k2 < 80 && (r.player.contract?.exp ?? currentYear + 5) <= currentYear + 1).slice(0, 3);
     } else if (strategy.key === 'retooling') {
-      const age = (p: NBAPlayer) => p.born?.year ? currentYear - p.born.year : 27;
+      const age = (p: NBAPlayer) => getDisplayAge(p, currentYear);
       blockList = rosterTV.filter(r =>
         age(r.player) >= 28 &&
         (r.player.contract?.exp ?? currentYear + 5) <= currentYear + 2 &&
@@ -146,7 +150,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
         .filter(r => (r.player.contract?.amount ?? 0) > 9000)
         .slice(0, 4);
     } else if (strategy.key === 'rebuilding' || strategy.key === 'development' || mode === 'presti') {
-      const age = (p: NBAPlayer) => p.born?.year ? currentYear - p.born.year : 27;
+      const age = (p: NBAPlayer) => getDisplayAge(p, currentYear);
       blockList = rosterTV.filter(r => age(r.player) >= 28 && r.k2 >= 75).slice(0, 4);
     } else {
       blockList = rosterTV.filter(r => (r.player.contract?.amount ?? 0) > 10000 && r.k2 < 85).slice(0, 3);
@@ -179,7 +183,15 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
 
   // Expiring contracts
   const expiring = [...players]
-    .filter(p => p.contract && p.contract.exp <= currentYear)
+    .filter(p => {
+      if (!p.contract) return false;
+      const cyYears = ((((p as any).contractYears) ?? []) as Array<{ season?: string }>)
+        .map(cy => parseInt(String(cy.season ?? '').split('-')[0], 10) + 1)
+        .filter(y => Number.isFinite(y));
+      const latestCY = cyYears.length > 0 ? Math.max(...cyYears) : 0;
+      const effectiveExp = Math.max(p.contract.exp ?? expiringAnchorYear, latestCY);
+      return effectiveExp <= expiringAnchorYear;
+    })
     .sort((a, b) => getK2Ovr(b) - getK2Ovr(a));
 
   // ── Editable lists (own team only) ──────────────────────────────────────
@@ -189,15 +201,14 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   // ── Sub-tab pill: Trades (existing) | Free Agency (new) ─────────────────
   // Both views share the team banner; only the body switches. Persists per-mount.
   const [intelTab, setIntelTab] = useState<'trades' | 'fa' | 'expiring'>(
-    euroIsolated ? 'expiring' : state.leagueStats?.tradesAllowed === false ? 'fa' : 'trades',
+    euroIsolated ? 'fa' : state.leagueStats?.tradesAllowed === false ? 'fa' : 'trades',
   );
   const tradesDisabled = state.leagueStats?.tradesAllowed === false;
-  const showFreeAgencyTab = !euroIsolated;
+  const showFreeAgencyTab = true;
 
   useEffect(() => {
-    if (euroIsolated && intelTab === 'fa') setIntelTab('expiring');
-    else if (tradesDisabled && intelTab === 'trades') setIntelTab(showFreeAgencyTab ? 'fa' : 'expiring');
-  }, [euroIsolated, tradesDisabled, showFreeAgencyTab, intelTab]);
+    if (tradesDisabled && intelTab === 'trades') setIntelTab(showFreeAgencyTab ? 'fa' : 'expiring');
+  }, [tradesDisabled, showFreeAgencyTab, intelTab]);
 
   // Deep-link from offseason AUFGABEN sidebar — reads pendingTeamOfficeNav
   // .intelTab and applies it once, then clears the slot.

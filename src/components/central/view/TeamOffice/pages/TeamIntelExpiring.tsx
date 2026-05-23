@@ -4,9 +4,8 @@ import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
-import { convertTo2KRating } from '../../../../../utils/helpers';
 import { getDisplayPotential } from '../../../../../utils/playerRatings';
-import { computeContractOffer, hasBirdRights } from '../../../../../utils/salaryUtils';
+import { computeContractOffer, formatPlayerSalaryDisplay, getPlayerCurrentSalaryUSD, hasBirdRights } from '../../../../../utils/salaryUtils';
 import { computeMoodScore, normalizeMoodTraits } from '../../../../../utils/mood/moodScore';
 import { computeResignProbability } from '../../PlayerBioMoraleTab';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
@@ -14,12 +13,13 @@ import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import type { NBAPlayer } from '../../../../../types';
 import { isOnRoster, resolveAnyTeam } from '../../../../../utils/teamLookup';
 import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
+import { getDisplayAge, getDisplayOverall } from '../../../../../store/playerRatingStore';
+import { parseGameDate } from '../../../../../utils/dateUtils';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getK2Ovr(p: NBAPlayer): number {
-  const r = p.ratings?.[p.ratings.length - 1];
-  return convertTo2KRating(p.overallRating, r?.hgt ?? 50, r?.tp ?? 50);
+  return getDisplayOverall(p);
 }
 
 function getLastSeasonPg(p: NBAPlayer) {
@@ -94,6 +94,7 @@ interface RowData {
   bird: boolean;
   opt: 'player' | 'team' | 'rookie' | null;
   currentSalaryUSD: number;
+  currentSalaryLabel: string;
   offer: { salaryUSD: number; years: number };
   resignScore: number | null;
   yearsLeft: number;
@@ -112,10 +113,14 @@ interface Props {
 export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
   const { state, dispatchAction } = useGame();
   const quick = usePlayerQuickActions();
-  const isGM = state.gameMode === 'gm';
-  const isOwnTeam = isGM && teamId === state.userTeamId;
+  const isOwnTeam = teamId === state.userTeamId;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const expiringAnchorYear = state.date
+    ? parseGameDate(state.date).getUTCFullYear()
+    : currentYear;
   const hideNbaContractBadges = isEuroIsolatedMode(state) || teamId >= 100;
+  const birdRightsEnabled = state.leagueStats?.birdRightsEnabled !== false;
+  const playerOptionsEnabled = state.leagueStats?.playerOptionsEnabled !== false;
 
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const gamesPlayed = (team?.wins ?? 0) + (team?.losses ?? 0);
@@ -159,18 +164,19 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
         .map(cy => parseInt((cy.season ?? '').split('-')[0], 10) + 1)
         .filter(y => Number.isFinite(y));
       const latestCY = cyYears.length > 0 ? Math.max(...cyYears) : 0;
-      const effectiveExp = Math.max(p.contract?.exp ?? currentYear, latestCY);
-      const yearsLeft = Math.max(0, effectiveExp - currentYear);
+      const effectiveExp = Math.max(p.contract?.exp ?? expiringAnchorYear, latestCY);
+      const yearsLeft = Math.max(0, effectiveExp - expiringAnchorYear);
       return {
         player: p,
         k2: getK2Ovr(p),
-        age: p.born?.year ? currentYear - p.born.year : (p.age ?? 0),
+        age: getDisplayAge(p, currentYear),
         pot: getDisplayPotential(p, currentYear),
         pg: getLastSeasonPg(p),
         rfa: isPlayerRFA(p),
         bird: hasBirdRights(p),
         opt: getContractOption(p),
-        currentSalaryUSD: (p.contract?.amount ?? 0) * 1_000,
+        currentSalaryUSD: getPlayerCurrentSalaryUSD(p as any, currentYear),
+        currentSalaryLabel: formatPlayerSalaryDisplay(p as any, currentYear, state.nonNBATeams ?? []),
         offer: computeContractOffer(p, state.leagueStats),
         resignScore: resign?.score ?? null,
         yearsLeft,
@@ -179,7 +185,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
         isNonGuaranteed: !hideNbaContractBadges && !!(p as any).nonGuaranteed,
       };
     });
-  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, teamWinPct, hideNbaContractBadges]);
+  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, expiringAnchorYear, teamWinPct, hideNbaContractBadges, state.nonNBATeams]);
 
   const rows = useMemo((): RowData[] => {
     const filtered = allRows.filter(r => {
@@ -268,8 +274,8 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
                 <SortTh col="ast"    label="AST" />
                 <SortTh col="per"    label="PER" />
                 <SortTh col="type"   label="Type"   cls="text-center" />
-                <SortTh col="bird"   label="Bird"   cls="text-center" />
-                <SortTh col="option" label="Option" cls="text-center" />
+                {birdRightsEnabled && <SortTh col="bird"   label="Bird"   cls="text-center" />}
+                {playerOptionsEnabled && <SortTh col="option" label="Option" cls="text-center" />}
                 <SortTh col="exp"      label="Exp"      cls="text-center" />
                 <SortTh col="contract" label="Contract" />
                 <SortTh col="asking"   label="Asking" />
@@ -277,7 +283,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ player: p, k2, age, pot, pg, rfa, bird, opt, currentSalaryUSD, offer, resignScore, yearsLeft, isExpiring, isTwoWay, isNonGuaranteed }) => (
+              {rows.map(({ player: p, k2, age, pot, pg, rfa, bird, opt, currentSalaryUSD, currentSalaryLabel, offer, resignScore, yearsLeft, isExpiring, isTwoWay, isNonGuaranteed }) => (
                 <tr
                   key={p.internalId}
                   className={cn(
@@ -346,29 +352,33 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
                   </td>
 
                   {/* Bird */}
-                  <td className="text-center px-2">
-                    <span className={cn(
-                      'inline-block px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider',
-                      bird ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                           : 'bg-slate-700/40 text-slate-500 border border-slate-700',
-                    )}>
-                      {bird ? 'YES' : 'NO'}
-                    </span>
-                  </td>
+                  {birdRightsEnabled && (
+                    <td className="text-center px-2">
+                      <span className={cn(
+                        'inline-block px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider',
+                        bird ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                             : 'bg-slate-700/40 text-slate-500 border border-slate-700',
+                      )}>
+                        {bird ? 'YES' : 'NO'}
+                      </span>
+                    </td>
+                  )}
 
                   {/* Option */}
-                  <td className="text-center px-2">
-                    {opt ? (
-                      <span className={cn(
-                        'inline-block px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider whitespace-nowrap',
-                        opt === 'player' ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
-                          : opt === 'rookie' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
-                          : 'bg-violet-500/20 text-violet-300 border border-violet-500/40',
-                      )}>
-                        {opt === 'player' ? 'PLR OPT' : opt === 'rookie' ? 'ROOKIE' : 'TEAM OPT'}
-                      </span>
-                    ) : <span className="text-[9px] text-slate-600">—</span>}
-                  </td>
+                  {playerOptionsEnabled && (
+                    <td className="text-center px-2">
+                      {opt ? (
+                        <span className={cn(
+                          'inline-block px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider whitespace-nowrap',
+                          opt === 'player' ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                            : opt === 'rookie' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                            : 'bg-violet-500/20 text-violet-300 border border-violet-500/40',
+                        )}>
+                          {opt === 'player' ? 'PLR OPT' : opt === 'rookie' ? 'ROOKIE' : 'TEAM OPT'}
+                        </span>
+                      ) : <span className="text-[9px] text-slate-600">—</span>}
+                    </td>
+                  )}
 
                   {/* Exp year */}
                   <td className="text-center px-2">
@@ -386,7 +396,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
 
                   {/* Current contract */}
                   <td className="text-right text-slate-300 tabular-nums whitespace-nowrap px-2">
-                    {currentSalaryUSD > 0 ? fmtUSD(currentSalaryUSD) : <span className="text-slate-600">—</span>}
+                    {currentSalaryUSD > 0 ? currentSalaryLabel : <span className="text-slate-600">—</span>}
                   </td>
 
                   {/* Asking (FA market value — only meaningful when hitting FA this season) */}

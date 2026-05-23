@@ -1,0 +1,13 @@
+# Codex hunks NOT found on current disk for src/components/central/view/TeamOffice/pages/TeamIntel.tsx
+# 1 hunks unapplied. Total ops: 5
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#2 hunk#1] session=8 line=356 ts=2026-05-10T20:57:28.322Z ---
+-          {([ 
+-          { key: 'trades'   as const, label: 'Trades' },
++        {([
++          ...(state.leagueStats?.tradesAllowed === false ? [] : [{ key: 'trades' as const, label: 'Trades' }]),
+           { key: 'fa'       as const, label: 'Free Agency' },
+           { key: 'expiring' as const, label: 'Expiring' },
+         ]).map(t => (

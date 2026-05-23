@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { NBAPlayer, NonNBATeam } from '../../../types';
-import { convertTo2KRating, getCountryFromLoc, getCountryCode } from '../../../utils/helpers';
+import { getCountryFromLoc, getCountryCode } from '../../../utils/helpers';
 import { getPlayerImage } from '../../central/view/bioCache';
 import { useGame } from '../../../store/GameContext';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
@@ -10,6 +10,7 @@ import { isPlausibleActiveMarket } from '../../../services/freeAgencyBidding';
 import { formatFuzzedRating } from '../../../utils/scoutingFuzz';
 import { isNonNbaIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import { isFilipino } from '../../../services/pba/importManager';
+import { getDisplayAge, getDisplayOverall } from '../../../store/playerRatingStore';
 
 const LEAGUE_LOGOS: Record<string, string> = {
   PBA: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/93/Philippine_Basketball_Association_logo.svg/200px-Philippine_Basketball_Association_logo.svg.png',
@@ -32,8 +33,8 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
   const pbaMode = isPbaIsolatedMode(state);
   const showImportBadge = pbaMode && !isFilipino(player);
   const simYear = state.leagueStats?.year ?? new Date().getFullYear();
-  const age = player.born?.year ? simYear - player.born.year : player.age || 0;
-  const ovr = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
+  const age = getDisplayAge(player, simYear);
+  const ovr = getDisplayOverall(player, simYear);
   const displayOvr = formatFuzzedRating(ovr, state, player);
   const country = getCountryFromLoc(player.born?.loc);
   const countryCode = getCountryCode(country);

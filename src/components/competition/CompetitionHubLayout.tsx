@@ -13,6 +13,7 @@ import { TeamHistoryView } from '../central/view/TeamHistoryView';
 import { CompetitionCentralView } from './CompetitionCentralView';
 import { TeamStatsView } from '../team-stats/TeamStatsView';
 import { AwardRacesView } from '../view/AwardRacesView';
+import { EuroAwardRacesView } from '../view/EuroAwardRacesView';
 import { CompetitionHistoryView } from './CompetitionHistoryView';
 import { CompetitionHubLeagueTabContext } from './hubContext';
 import { LeagueFinancesPanel } from '../finances/LeagueFinancesPanel';
@@ -79,7 +80,7 @@ export const CompetitionHubLayout: React.FC<Props> = ({ specId, onViewChange }) 
       case 'stat-feats':      return <StatisticalFeatsView />;
       case 'power-rankings':  return <PowerRankingsView />;
       case 'injuries':        return <InjuriesView />;
-      case 'mvp-race':        return <AwardRacesView />;
+      case 'mvp-race':        return <EuroAwardRacesView forcedCompetition={specId} />;
       case 'awards':
         return <CompetitionHistoryView specId={specId} />;
       default:                return <CompetitionBracketView specId={specId} />;

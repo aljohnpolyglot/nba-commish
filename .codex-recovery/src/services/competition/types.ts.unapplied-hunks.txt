@@ -1,0 +1,19 @@
+# Codex hunks NOT found on current disk for src/services/competition/types.ts
+# 2 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#1 hunk#1] session=8 line=125 ts=2026-05-10T20:51:32.663Z ---
+ export interface CompetitionPlayoffFormat {
+   rounds: CompetitionPlayoffRoundSpec[];
++  qfBest?: number;
++  sfBest?: number;
+   finalFormat?: 'best-of' | 'final-four' | 'single-game';
++  finalBest?: number;
+ }
+
+--- HUNK [op#1 hunk#2] session=8 line=125 ts=2026-05-10T20:51:32.663Z ---
+   teamSelector: string;
++  teamCount?: number;
++  groups?: number[][];
+   gamesPerTeam?: number;

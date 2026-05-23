@@ -1,11 +1,12 @@
 export type DateZone = 'offseason' | 'early' | 'mid' | 'allstar' | 'late' | 'locked';
+export type EuroDateZone = 'transfer' | 'preseason' | 'endesa' | 'euroleague' | 'cup' | 'postseason' | 'offseason';
 
 export interface KeyDate {
   date: string;
   label: string;
   sublabel?: string;
   icon: string;
-  zone: DateZone | PbaDateZone;
+  zone: DateZone | PbaDateZone | EuroDateZone;
   locked?: boolean;
   placeholder?: boolean;
   placeholderLabel?: string;
@@ -59,6 +60,10 @@ export const PBA_TIMELINE_MIN = '2025-10-05';
 export const PBA_TIMELINE_MAX = '2026-12-28';
 export const PBA_TIMELINE_DISPLAY_END = '2027-01-10';
 
+export const EURO_TIMELINE_MIN = '2025-07-01';
+export const EURO_TIMELINE_MAX = '2026-06-29';
+export const EURO_TIMELINE_DISPLAY_END = '2026-07-10';
+
 export type PbaDateZone = 'philippineCup' | 'allstar' | 'commissionersCup' | 'governorsCup' | 'offseason';
 
 export function getPbaKeyDates(): KeyDate[] {
@@ -93,6 +98,45 @@ export const PBA_ZONE_LABELS: Record<PbaDateZone, string> = {
   commissionersCup: "Commissioner's Cup",
   governorsCup:     "Governors' Cup",
   offseason:        'Offseason',
+};
+
+export function getEuroKeyDates(): KeyDate[] {
+  return [
+    { date: '2025-07-01', label: 'Transfer Window',  sublabel: 'Euro offseason opens',                    icon: '↔️', zone: 'transfer' },
+    { date: '2025-08-01', label: 'Staff + Sponsors', sublabel: 'Front office planning window',             icon: '💼', zone: 'transfer' },
+    { date: '2025-09-01', label: 'Training Camp',    sublabel: 'Camp and friendlies ramp up',              icon: '💪', zone: 'preseason' },
+    { date: '2025-09-22', label: 'Supercopa',        sublabel: 'Spanish curtain-raiser',                   icon: '⭐', zone: 'preseason' },
+    { date: '2025-09-28', label: 'Endesa Opening',   sublabel: 'Liga Endesa regular season begins',        icon: '🏀', zone: 'endesa' },
+    { date: '2025-10-01', label: 'EuroLeague Open',  sublabel: 'Continental regular season begins',        icon: '🏆', zone: 'euroleague' },
+    { date: '2026-02-13', label: 'Copa del Rey',     sublabel: 'Domestic cup weekend',                     icon: '🏆', zone: 'cup' },
+    { date: '2026-04-17', label: 'EL Reg. Ends',     sublabel: 'EuroLeague regular season closes',         icon: '🏁', zone: 'euroleague' },
+    { date: '2026-04-28', label: 'EL Playoffs',      sublabel: 'EuroLeague quarterfinals',                 icon: '⚡', zone: 'postseason' },
+    { date: '2026-05-22', label: 'Final Four',       sublabel: 'EuroLeague semifinal and final weekend',   icon: '🏆', zone: 'postseason' },
+    { date: '2026-05-30', label: 'Endesa Reg. Ends', sublabel: 'Domestic regular season closes',           icon: '🏁', zone: 'endesa' },
+    { date: '2026-06-01', label: 'Endesa Playoffs',  sublabel: 'ACB postseason starts',                   icon: '⚡', zone: 'postseason' },
+    { date: '2026-06-20', label: 'Endesa Finals',    sublabel: 'ACB title series begins',                 icon: '🏆', zone: 'postseason' },
+    { date: '2026-06-29', label: 'Offseason',        sublabel: 'Season complete, summer window next',      icon: '🏁', zone: 'offseason' },
+  ];
+}
+
+export const EURO_ZONE_COLORS: Record<EuroDateZone, string> = {
+  transfer:   '#0f766e',
+  preseason:  '#475569',
+  endesa:     '#b91c1c',
+  euroleague: '#c2410c',
+  cup:        '#a16207',
+  postseason: '#7e22ce',
+  offseason:  '#334155',
+};
+
+export const EURO_ZONE_LABELS: Record<EuroDateZone, string> = {
+  transfer:   'Transfer Window',
+  preseason:  'Preseason',
+  endesa:     'Liga Endesa',
+  euroleague: 'EuroLeague',
+  cup:        'Copa del Rey',
+  postseason: 'Playoffs',
+  offseason:  'Offseason',
 };
 
 export const ZONE_COLORS: Record<DateZone, string> = {

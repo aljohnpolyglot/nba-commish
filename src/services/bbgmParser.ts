@@ -3,7 +3,9 @@ import JSONParserText from '../utils/JSONParserText';
 import { calculateTeamStrength } from '../utils/playerRatings';
 
 function extractJerseyNumber(player: { jerseyNumber?: string | number; stats?: Array<{ jerseyNumber?: string | number }> }): string | undefined {
-    const latestStats = player.stats && player.stats.length > 0 ? player.stats[player.stats.length - 1] : undefined;
+    const latestStats = player.stats
+        ?.filter(s => s.jerseyNumber !== undefined && s.jerseyNumber !== null && s.jerseyNumber !== '')
+        .sort((a: any, b: any) => Number(b?.season ?? 0) - Number(a?.season ?? 0))[0];
     const raw = latestStats?.jerseyNumber ?? player.jerseyNumber;
     return raw === undefined || raw === null || raw === '' ? undefined : String(raw);
 }

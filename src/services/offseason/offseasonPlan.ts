@@ -6,6 +6,7 @@
 import type { GameState } from '../../types';
 import { getOffseasonState, type OffseasonState } from './offseasonState';
 import { getGameDateParts, getRolloverDate, toISODateString } from '../../utils/dateUtils';
+import { hasUnresolvedEuroSeasonCompetitions } from '../competition/competitionResolver';
 
 export type PlanAction = 'fire' | 'skip';
 
@@ -50,14 +51,17 @@ export interface OffseasonDayPlan {
  * `state.faBidding`. Does not mutate.
  */
 export function getOffseasonDayPlan(state: GameState): OffseasonDayPlan {
+  const euroSeasonCompletionActive = hasUnresolvedEuroSeasonCompetitions(state as any);
   const os = getOffseasonState(
     state.date,
     state.leagueStats as any,
     state.schedule as any,
+    { playoffsActive: euroSeasonCompletionActive, draftComplete: !!state.draftComplete },
   );
 
   const ls = state.leagueStats as any;
   const lsYear: number = ls?.year ?? new Date().getFullYear();
+  const euroIsolated = ls?.uiMode === 'euro_isolated';
   const { month: simMonth, day: simDayNum } = state.date
     ? getGameDateParts(state.date)
     : { month: 1, day: 1 };
@@ -128,6 +132,35 @@ export function getOffseasonDayPlan(state: GameState): OffseasonDayPlan {
   // throttle here.
   const dayCounter: number = (state as any)?.day ?? 0;
 
+  const nbaFaActions: Pick<OffseasonDayPlan['actions'], 'tickFAMarkets' | 'runAIFAPass' | 'runBirdRightsPass'> = euroIsolated
+    ? {
+        tickFAMarkets: 'skip',
+        runAIFAPass: 'skip',
+        runBirdRightsPass: 'skip',
+      }
+    : {
+        // FA market ticks every day during FA-active window — including moratorium
+        // (the ticker itself suppresses signings during moratorium, just opens
+        // markets and resolves expired ones).
+        tickFAMarkets: isFreeAgencySeason ? 'fire' : 'skip',
+
+        // AI FA round = isFA && !moratorium && (cadence-met || underMinRoster).
+        // Cadence: state.day % faFrequency === 0. Daily in July, biweekly off-season.
+        // The underMinRoster bypass forces a fill regardless of cadence (immediate
+        // refill after a salary-dump trade).
+        runAIFAPass: isFreeAgencySeason && !moratoriumActive && (dayCounter % faFrequency === 0 || underMinRoster)
+          ? 'fire'
+          : 'skip',
+
+        // Bird Rights — fires once per league year on a July non-moratorium day.
+        // Inline gate: isFA && simMonth === 7 && !moratorium && passYear !== ls.year.
+        // Plan equivalent: month is July (phase 'birdRights' or early 'openFA' both
+        // qualify in July) AND not moratorium AND not yet ran this year.
+        runBirdRightsPass: isFreeAgencySeason && simMonth === 7 && !moratoriumActive && !birdRightsAlreadyRanThisYear
+          ? 'fire'
+          : 'skip',
+      };
+
   const actions: OffseasonDayPlan['actions'] = {
     // shouldFireRollover === (date >= rolloverDate) AND year not yet incremented.
     // Year-increment is implicit in `rolloverAlreadyHappened` (post-rollover, the
@@ -135,31 +168,11 @@ export function getOffseasonDayPlan(state: GameState): OffseasonDayPlan {
     rollover: os.dateStr >= rolloverDateStr && !rolloverAlreadyHappened
       ? 'fire'
       : 'skip',
-
-    // FA market ticks every day during FA-active window — including moratorium
-    // (the ticker itself suppresses signings during moratorium, just opens
-    // markets and resolves expired ones).
-    tickFAMarkets: isFreeAgencySeason ? 'fire' : 'skip',
-
-    // AI FA round = isFA && !moratorium && (cadence-met || underMinRoster).
-    // Cadence: state.day % faFrequency === 0. Daily in July, biweekly off-season.
-    // The underMinRoster bypass forces a fill regardless of cadence (immediate
-    // refill after a salary-dump trade).
-    runAIFAPass: isFreeAgencySeason && !moratoriumActive && (dayCounter % faFrequency === 0 || underMinRoster)
-      ? 'fire'
-      : 'skip',
-
-    // Bird Rights — fires once per league year on a July non-moratorium day.
-    // Inline gate: isFA && simMonth === 7 && !moratorium && passYear !== ls.year.
-    // Plan equivalent: month is July (phase 'birdRights' or early 'openFA' both
-    // qualify in July) AND not moratorium AND not yet ran this year.
-    runBirdRightsPass: isFreeAgencySeason && simMonth === 7 && !moratoriumActive && !birdRightsAlreadyRanThisYear
-      ? 'fire'
-      : 'skip',
+    ...nbaFaActions,
   };
 
   const reason = `phase=${os.phase}, isFA=${isFreeAgencySeason}, moratorium=${moratoriumActive}, ` +
-    `underMin=${underMinRoster}, birdAlready=${birdRightsAlreadyRanThisYear}, freq=${faFrequency}`;
+    `underMin=${underMinRoster}, birdAlready=${birdRightsAlreadyRanThisYear}, freq=${faFrequency}, euro=${euroIsolated}`;
 
   // [OSPLAN] single-tag tracing — grep this prefix to see every offseason
   // dispatch decision in chronological order. Throttled per phase so daily
@@ -215,5 +228,3 @@ function emitPlanTrace(
 export function logPlanEvent(caller: string, action: 'fire' | 'skip', extra?: string): void {
   console.log(`[OSPLAN] ${caller} ${action}${extra ? ' ' + extra : ''}`);
 }
-
-

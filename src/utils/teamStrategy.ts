@@ -9,6 +9,7 @@ import {
   type TradeRole,
 } from './salaryUtils';
 import type { TeamMode } from '../services/trade/tradeValueEngine';
+import { getDisplayAge } from '../store/playerRatingStore';
 
 const EXTERNAL = new Set([
   'WNBA',
@@ -237,7 +238,7 @@ export function tradeRoleToTeamMode(role: string): TeamMode {
 }
 
 function ageOf(player: NBAPlayer, currentYear: number): number {
-  return player.born?.year ? currentYear - player.born.year : (player.age ?? 27);
+  return getDisplayAge(player, currentYear);
 }
 
 function inferStrategyKey(args: {

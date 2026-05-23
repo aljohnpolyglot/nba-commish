@@ -1,0 +1,14 @@
+# Codex hunks NOT found on current disk for src/components/shared/GameSimulatorScreen.tsx
+# 2 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#1 hunk#0] session=8 line=1907 ts=2026-05-11T02:49:54.603Z ---
+ import { getTeamForGame, getPlayersForExhibitionTeam } from '../../utils/helpers';
++import { resolveAnyTeam } from '../../utils/teamLookup';
+
+--- HUNK [op#1 hunk#1] session=8 line=1907 ts=2026-05-11T02:49:54.603Z ---
+-  const homeTeam = useMemo(() => getTeamForGame(game.homeTid, teams), [game.homeTid, teams]);
+-  const awayTeam = useMemo(() => getTeamForGame(game.awayTid, teams), [game.awayTid, teams]);
++  const homeTeam = useMemo(() => resolveAnyTeam(game.homeTid, teams, state.nonNBATeams ?? []) ?? getTeamForGame(game.homeTid, teams), [game.homeTid, teams, state.nonNBATeams]);
++  const awayTeam = useMemo(() => resolveAnyTeam(game.awayTid, teams, state.nonNBATeams ?? []) ?? getTeamForGame(game.awayTid, teams), [game.awayTid, teams, state.nonNBATeams]);

@@ -10,8 +10,8 @@
 // über das per-Team-Protection-Limit hinaus, da der Bug-Fix sonst zerbricht.
 
 import type { NBAPlayer } from '../../types';
-import { convertTo2KRating } from '../../utils/helpers';
 import { hasFamilyOnRoster } from '../../utils/familyTies';
+import { getDisplayAge, getDisplayOverall } from '../../store/playerRatingStore';
 
 export type TeamPhase = 'rebuilding' | 'contending' | 'middle';
 
@@ -31,7 +31,7 @@ const REBUILDING_K2_THRESHOLD = 75;
 export function getTeamPhase(roster: NBAPlayer[]): TeamPhase {
   if (roster.length === 0) return 'middle';
   const k2Scores = roster
-    .map(p => convertTo2KRating(p.overallRating ?? 60, 50))
+    .map(p => getDisplayOverall(p))
     .sort((a, b) => b - a);
   const top = k2Scores.slice(0, PHASE_TOP_N);
   const avg = top.reduce((s, v) => s + v, 0) / top.length;
@@ -45,9 +45,9 @@ export function getTeamPhase(roster: NBAPlayer[]): TeamPhase {
 /** Heuristische POT-Approximation. Repo hat keinen exportierten potEstimator,
  *  also: BBGM-OVR + Restjugend-Bonus. Ein 24-jähriger 65-OVR-Spieler kommt auf
  *  ~67 POT, ein 35-jähriger 80-OVR auf ~80 (kein Wachstum mehr). */
-function estimatePot(player: NBAPlayer): number {
+function estimatePot(player: NBAPlayer, currentYear: number): number {
   const ovr = player.overallRating ?? 60;
-  const age = player.age ?? 27;
+  const age = getDisplayAge(player, currentYear);
   const youthBonus = Math.max(0, 26 - age) * 0.5;
   return ovr + youthBonus;
 }
@@ -74,9 +74,9 @@ function hasNegativeMood(player: NBAPlayer): boolean {
 
 /** Score in [0, 100]. Höher = wichtiger zu schützen. Phase-abhängig gewichtet. */
 export function computeProtectScore(player: NBAPlayer, ctx: ScoreContext): number {
-  const ovrK2 = convertTo2KRating(player.overallRating ?? 60, 50);
-  const potK2 = convertTo2KRating(estimatePot(player), 50);
-  const age = player.age ?? 27;
+  const ovrK2 = getDisplayOverall(player);
+  const potK2 = getDisplayOverall({ ...player, overallRating: estimatePot(player, ctx.currentYear) });
+  const age = getDisplayAge(player, ctx.currentYear);
   const yearsLeft = getYearsRemaining(player, ctx.currentYear);
   const isStar = isStarByAwards(player);
   const negativeMood = hasNegativeMood(player);

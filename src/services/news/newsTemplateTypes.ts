@@ -1,0 +1,47 @@
+export type NewsCategory =
+  | 'win_streak'
+  | 'long_win_streak'
+  | 'lose_streak'
+  | 'streak_snapped'
+  | 'monster_performance'
+  | 'preseason_performance'
+  | 'triple_double'
+  | 'major_injury'
+  | 'playoff_injury_out'
+  | 'playoff_injury_series'
+  | 'playoff_injury_game'
+  | 'trade_rumor'
+  | 'trade_confirmed'
+  | 'signing_confirmed'
+  | 'coach_hot_seat'
+  | 'milestone'
+  | 'batch_recap'
+  | 'preseason_recap'
+  | 'game_result'
+  | 'duo_performance'
+  | 'all_star_winner'
+  | 'all_star_mvp'
+  | 'all_star_bracket'
+  | 'playoff_series_win'
+  | 'playoff_advance_r2'
+  | 'playoff_finals_bound'
+  | 'playoff_elimination'
+  | 'series_alive'
+  | 'series_comeback'
+  | 'series_forces_game7'
+  | 'nba_champion'
+  | 'finals_mvp'
+  | 'award_mvp'
+  | 'award_dpoy'
+  | 'award_roty'
+  | 'award_allnba'
+  | 'award_smoy'
+  | 'award_mip'
+  | 'award_coy'
+  | 'team_feat';
+
+export interface NewsTemplate {
+  category: NewsCategory;
+  headlines: string[];
+  contents: string[];
+}

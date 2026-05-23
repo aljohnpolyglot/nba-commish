@@ -2,7 +2,7 @@ import type { GameState, NBATeam, NBAPlayer } from '../../types';
 import type { BoardPromise, FinanceRecapLine, SponsorReview, TycoonState } from '../../types/tycoon';
 import { ALL_SLOTS } from '../../types/tycoon';
 import { getSponsorConflictWarnings } from './sponsorshipEngine';
-import { sumStaffPayrollEUR } from './economyScale';
+import { fallbackStaffPayrollEUR, sumStaffPayrollEUR } from './economyScale';
 
 interface EuroTycoonOpsResult {
   teams: NBATeam[];
@@ -29,13 +29,13 @@ function clampConfidence(value: number): number {
 }
 
 function rosterWages(players: NBAPlayer[], tid: number): number {
-  return Math.round(players
+  return players
     .filter((p: any) => p.tid === tid)
-    .reduce((sum, p: any) => sum + ((p.contract?.amount ?? 0) * 1000), 0));
+    .reduce((sum, p: any) => sum + ((p.contract?.amount ?? 0) * 1000), 0);
 }
 
-function staffWages(tycoon: TycoonState): number {
-  return sumStaffPayrollEUR(tycoon);
+function staffWages(tycoon: TycoonState, playerPayroll: number): number {
+  return sumStaffPayrollEUR(tycoon, 'euro') || fallbackStaffPayrollEUR(playerPayroll);
 }
 
 function seedPromises(year: number, tycoon: TycoonState): BoardPromise[] {
@@ -72,9 +72,10 @@ function updateBoardPromises(tycoon: TycoonState, year: number, endDate: string)
 }
 
 function buildSponsorReview(tycoon: TycoonState, year: number): SponsorReview | undefined {
-  const openSlots = ALL_SLOTS.filter(slot => tycoon.sponsorships[slot] == null);
+  const sponsorships = tycoon.sponsorships ?? {};
+  const openSlots = ALL_SLOTS.filter(slot => sponsorships[slot] == null);
   const expiringSlots = ALL_SLOTS.filter(slot => {
-    const deal = tycoon.sponsorships[slot];
+    const deal = sponsorships[slot];
     return !!deal && deal.yearsRemaining <= 1;
   });
   if (openSlots.length === 0 && expiringSlots.length === 0) return undefined;
@@ -138,8 +139,10 @@ export function applyEuroTycoonDailyOps(
   const duePeriods = Math.floor(daysBetween(lastPay, endDate) / 14);
   let payrollOut = 0;
   if (duePeriods > 0) {
-    const playerPayroll = rosterWages(state.players ?? [], tid) / 26;
-    const staffPayroll = staffWages(tycoon) / 26;
+    const playerPayrollTotal = rosterWages(state.players ?? [], tid);
+    const staffPayrollTotal = staffWages(tycoon, playerPayrollTotal);
+    const playerPayroll = playerPayrollTotal / 26;
+    const staffPayroll = staffPayrollTotal / 26;
     payrollOut = Math.round((playerPayroll + staffPayroll) * duePeriods);
     tycoon.cashOnHand = Math.round((tycoon.cashOnHand ?? 0) - payrollOut);
     tycoon.lastTycoonPayslipDate = addDays(lastPay, duePeriods * 14);

@@ -1,0 +1,43 @@
+# Codex hunks NOT found on current disk for src/services/simulation/InjurySystem.ts
+# 4 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#1 hunk#0] session=9 line=213 ts=2026-05-12T21:30:09.671Z ---
+ import {
+   getPlayerInjuryProfile,
+   get2KExplosiveness,
+   BODY_PART_TO_INJURIES,
+ } from '../../data/playerInjuryData';
+ import { getRealDurability } from '../../utils/durabilityUtils';
++import { medicalQuality } from '../tycoon/medicalEngine';
+
+--- HUNK [op#1 hunk#1] session=9 line=213 ts=2026-05-12T21:30:09.671Z ---
+ export function enforceSeasonEndingMinimum(type: string, games: number): number {
+   return SEASON_ENDING_INJURIES.has(type)
+     ? Math.max(SEASON_ENDING_MIN_GAMES, games)
+     : games;
+ }
++
++function applyMedicalRecovery(type: string, games: number, quality: number): number {
++  if (SEASON_ENDING_INJURIES.has(type)) return games;
++  return Math.max(1, Math.round(games * (1 - quality * 0.15)));
++}
+
+--- HUNK [op#1 hunk#3] session=9 line=213 ts=2026-05-12T21:30:09.671Z ---
+       // ── Base rate ──────────────────────────────────────────────────────
+       let injuryRate = BASE_INJURY_RATE;
++      const teamQuality = player.tid === (homeTeam as any).id
++        ? medicalQuality((homeTeam as any).tycoon?.medicalBudget)
++        : player.tid === (awayTeam as any).id
++          ? medicalQuality((awayTeam as any).tycoon?.medicalBudget)
++          : 0;
++      injuryRate *= 1 - teamQuality * 0.30;
+
+--- HUNK [op#1 hunk#4] session=9 line=213 ts=2026-05-12T21:30:09.671Z ---
+         const result = profile && Object.keys(profile.bodyParts).length > 0
+           ? profiledInjury(profile.bodyParts, bmiLowerBoost, healthLevel)
+           : genericInjury(healthLevel);
++        result.gamesRemaining = applyMedicalRecovery(result.type, result.gamesRemaining, teamQuality);
+ 
+         const isMajor = result.gamesRemaining >= MAJOR_INJURY_GAMES_THRESHOLD;

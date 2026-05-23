@@ -1,0 +1,16 @@
+# Codex hunks NOT found on current disk for src/services/logic/simulationRunner.ts
+# 1 hunks unapplied. Total ops: 1
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=2050 ts=2026-05-11T08:44:05.092Z ---
+-    const gamesToday = state.schedule.filter(g =>
+-      (!g.played || g.gid === watchedGameId) && normalizeDate(g.date) === normalizedCurrent
+-    );
++    const gamesToday = state.schedule.filter(g => {
++      if (g.gid === watchedGameId) return normalizeDate(g.date) === normalizedCurrent;
++      if (g.played) return false;
++      const gameDate = normalizeDate(g.date);
++      if (gameDate === normalizedCurrent) return true;
++      return !!g.competitionId && gameDate < normalizedCurrent;
++    });

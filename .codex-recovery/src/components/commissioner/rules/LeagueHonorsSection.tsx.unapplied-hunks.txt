@@ -1,0 +1,13 @@
+# Codex hunks NOT found on current disk for src/components/commissioner/rules/LeagueHonorsSection.tsx
+# 2 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#1] session=1 line=297 ts=2026-05-09T23:19:02.937Z ---
+ }) => {
++  const labels = useLeagueLabels();
+   return (
+
+--- HUNK [op#0 hunk#4] session=1 line=297 ts=2026-05-09T23:19:02.937Z ---
+-            <h4 className="text-sm font-bold text-white uppercase tracking-wider">All-NBA</h4>
++            <h4 className="text-sm font-bold text-white uppercase tracking-wider">{labels.leagueType === undefined ? 'All-NBA' : (labels.draft === 'Draft Night' ? 'All-League' : 'All-NBA')}</h4>

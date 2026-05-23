@@ -1,17 +1,18 @@
 import { NBAPlayer, GameState } from '../../types';
 import { Player as ThronePlayer, GameSettings, GameStatus, GameState as ThroneGameState } from '../../throne/types/throne';
 import { GameSim } from '../../throne/engine/GameSim';
-import { convertTo2KRating } from '../../utils/helpers';
-
-const FIELD_SIZE = 16;
-
-const jitter = (mag: number) => (Math.random() * 2 - 1) * mag;
-const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-
-const currentRatings = (p: NBAPlayer): any => {
-  const arr = (p.ratings ?? []) as any[];
-  return arr[arr.length - 1] ?? {};
-};
+import {
+  BLOC_BALLOTS,
+  FIELD_SIZE,
+  careerAccolades,
+  clamp,
+  compositeVote,
+  currentRatings,
+  decidesToSignUp,
+  distributeBlocVotes,
+  oneOnOneSkill,
+  rankByScore,
+} from './throneSelectionUtils';
 
 export function toThronePlayer(p: NBAPlayer, seed: number): ThronePlayer {
   const r = currentRatings(p);
@@ -46,119 +47,14 @@ export function buildThroneSettings(state: GameState): GameSettings {
   };
 }
 
-interface VoteEntry {
-  player: NBAPlayer;
-  fan: number;
-  player_: number;
-  media: number;
-  coach: number;
-  composite: number;
-}
-
-function decidesToSignUp(p: NBAPlayer, prizePool: number, isDefendingKing: boolean): boolean {
-  if (p.injury && p.injury.gamesRemaining > 0) return false;
-  if (p.status && p.status !== 'Active') return false;
-  if (p.contract?.amount == null) return false;
-  if (isDefendingKing) return true;
-  const annualSalary = (p.contract?.amount ?? 0) * 1000;
-  const cashMotivated = annualSalary < prizePool * 5;
-  const competitive = (p.moodTraits ?? []).includes('competitive' as any);
-  const fame = (p as any).fame ?? 50;
-  const gloryMotivated = competitive || fame > 70;
-  return cashMotivated || gloryMotivated;
-}
-
-function oneOnOneSkill(p: NBAPlayer): number {
-  const r = currentRatings(p);
-  return 0.30 * (r.tp ?? 50)
-       + 0.25 * (r.fg ?? 50)
-       + 0.20 * (r.drb ?? 50)
-       + 0.15 * (r.spd ?? 50)
-       + 0.10 * (r.ins ?? 50);
-}
-
-function careerAccolades(p: NBAPlayer): number {
-  const aw = p.awards ?? [];
-  const allStar = aw.filter(a => a.type?.toLowerCase().includes('all-star') && !a.type.toLowerCase().includes('mvp')).length;
-  const otherTrophies = aw.filter(a => /mvp|champion|all-league|defensive player|throne/i.test(a.type)).length;
-  return allStar * 5 + otherTrophies * 4;
-}
-
-// Bloc populations — drive realistic-looking vote totals on the leaderboard.
-// Each voter ranks 16 candidates, so a single candidate can appear on at most
-// `ballotCount` ballots (cap). Fan ballotCount is the # of fans who voted.
-//   Fan:    5M ballots (top candidate ~5M votes — appears on nearly every ballot)
-//   Player: 18 players × 30 teams = 540 ballots (top ~540, role players ~150)
-//   Media:  100 voters (top ~100)
-//   Coach:  30 head coaches (top ~30)
-const BLOC_BALLOTS = {
-  fan: 5_000_000,
-  player: 18 * 30,  // 540
-  media: 100,
-  coach: 30,
-};
-
-/** Per-candidate vote count: fraction of ballots that include this candidate
- *  in their 16 picks. Bounded above at ballotCount. Score² ramp gives a
- *  realistic falloff — leader near 100% inclusion, mid-pack ~30-50%, fringe <10%. */
-function distributeBlocVotes(scores: number[], ballotCount: number, progress = 1): number[] {
-  let max = 0;
-  for (const s of scores) if (s > max) max = s;
-  if (max <= 0) return scores.map(() => 0);
-  return scores.map(s => {
-    const ratio = Math.max(0, Math.min(1, s / max));
-    const inclusionRate = ratio ** 1.5; // softer-than-linear falloff
-    return Math.round(ballotCount * progress * inclusionRate);
-  });
-}
-
-/** Per-bloc rank: 1 = highest score in that bloc. Stable for ties via index. */
-function rankByScore(scores: number[]): number[] {
-  const indexed = scores.map((s, i) => ({ s, i }));
-  indexed.sort((a, b) => b.s - a.s || a.i - b.i);
-  const ranks = new Array(scores.length).fill(0);
-  indexed.forEach((entry, rank) => { ranks[entry.i] = rank + 1; });
-  return ranks;
-}
-
-function compositeVote(p: NBAPlayer, beltHolderId: string | null): VoteEntry {
-  const r = currentRatings(p);
-  const k2 = convertTo2KRating(p.overallRating, r.hgt ?? 50);   // 0-100 K2 OVR
-
-  // Fan: pure popularity tracks current OVR.
-  const fan = k2;
-
-  // Player (peer respect): 60% current production + 40% career accolades.
-  // Pure-accolade weighting was burying current stars (Wemby) under late-career
-  // guards with thicker résumés.
-  const player_ = clamp(0.6 * k2 + 0.4 * (40 + careerAccolades(p)), 0, 100);
-
-  // Media (storyline value): 50% K2 + 50% fame, with K2 fallback when fame is
-  // unset on a player. Defending king gets a +15 storyline bump.
-  const fameRaw = (p as any).fame;
-  const fame = typeof fameRaw === 'number' ? fameRaw : k2;
-  const storylineBonus = p.internalId === beltHolderId ? 15 : 0;
-  const media = clamp(0.5 * k2 + 0.5 * fame + storylineBonus, 0, 100);
-
-  // Coach (1v1 effectiveness): 60% scoring/iso skill + 40% K2 OVR floor.
-  // Pure skill weighting overvalued high-tp/drb guards and ignored elite bigs.
-  const coach = clamp(0.6 * oneOnOneSkill(p) + 0.4 * k2, 0, 100);
-
-  const fanW = fan * (1 + jitter(0.10));
-  const playerW = player_ * (1 + jitter(0.15));
-  const mediaW = media * (1 + jitter(0.20));
-  const coachW = coach * (1 + jitter(0.05));
-
-  const composite = 0.40 * fanW + 0.30 * playerW + 0.20 * mediaW + 0.10 * coachW;
-  return { player: p, fan: Math.round(fan), player_: Math.round(player_), media: Math.round(media), coach: Math.round(coach), composite };
-}
-
 export interface SelectionResult {
   fieldPlayerIds: string[];
   titleDefenderId: string | null;
   vacated: boolean;
   voteBreakdown: Record<string, any>;
 }
+
+type VoteEntry = ReturnType<typeof compositeVote>;
 
 export function selectThroneField(state: GameState): SelectionResult {
   const ls = state.leagueStats;

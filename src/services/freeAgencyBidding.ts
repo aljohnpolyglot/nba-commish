@@ -1,7 +1,7 @@
 /** FA bidding engine: AI bids, user offers, daily decision resolution. */
 
 import type { NBAPlayer, NBATeam, GameState } from '../types';
-import { convertTo2KRating } from '../utils/helpers';
+import { getDisplayOverall } from '../store/playerRatingStore';
 import { getGMAttributes, clampSpendOffer } from './staff/gmAttributes';
 import { SettingsManager } from './SettingsManager';
 import { hasBirdRights as resolveBirdRights, computeContractOffer, getCapThresholds, getMLEAvailability } from '../utils/salaryUtils';
@@ -194,6 +194,18 @@ export function getRFAPriorTid(player: NBAPlayer): number {
   return s ? (s.tid ?? -1) : -1;
 }
 
+export function getDeclinedTeamOptionInfo(
+  player: NBAPlayer,
+  currentYear: number,
+): { teamId: number; salaryUSD: number } | null {
+  const teamId = Number((player as any).declinedTeamOptionByTid ?? -1);
+  const seasonYear = Number((player as any).declinedTeamOptionSeasonYear ?? 0);
+  if (teamId < 0 || seasonYear !== currentYear) return null;
+  return {
+    teamId,
+    salaryUSD: Math.max(0, Number((player as any).declinedTeamOptionSalaryUSD ?? 0)),
+  };
+}
 
 export function generateAIBids(
   player: NBAPlayer,
@@ -213,8 +225,7 @@ export function generateAIBids(
     : 1_200_000;
 
   // Get player K2 OVR for salary computation
-  const lastRating = (player as any).ratings?.[(player as any).ratings?.length - 1];
-  const k2 = convertTo2KRating(player.overallRating ?? 60, lastRating?.hgt ?? 50);
+  const k2 = getDisplayOverall(player);
 
   const thresholds = getCapThresholds(state.leagueStats as any);
   const luxuryTax = thresholds.luxuryTax;
@@ -227,6 +238,7 @@ export function generateAIBids(
   // Bird Rights override: prior team can re-sign over cap regardless of payroll.
   const priorTid = getRFAPriorTid(player);
   const playerHasBirdRights = resolveBirdRights(player) && priorTid >= 0;
+  const declinedTeamOption = getDeclinedTeamOptionInfo(player, currentYear);
 
   // Eligibility: cap space OR MLE-eligible OR Bird Rights with prior team.
   // 90-day cooldown: a team that just waived this player won't bid again immediately.
@@ -321,6 +333,9 @@ export function generateAIBids(
     const teamSpending = getGMAttributes(state, team.id).spending;
     salaryUSD = clampSpendOffer(salaryUSD, teamSpending, Math.round(cap * 0.35));
     salaryUSD = Math.max(minSalary, salaryUSD);
+    if (declinedTeamOption?.teamId === team.id && declinedTeamOption.salaryUSD > 0) {
+      salaryUSD = Math.max(salaryUSD, declinedTeamOption.salaryUSD);
+    }
 
     // Bird Rights stars — incumbents max out for their own. Real NBA: LAL/MAVS/etc.
     // offer max contract to retain LeBron/Doncic-tier players. The pct + spending
@@ -395,8 +410,7 @@ export function resolvePlayerDecision(
 
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const cap = state.leagueStats?.salaryCap ?? 154_600_000;
-  const lastRating = (player as any).ratings?.[(player as any).ratings?.length - 1];
-  const k2 = convertTo2KRating(player.overallRating ?? 60, lastRating?.hgt ?? 50);
+  const k2 = getDisplayOverall(player);
   const marketValue = Math.round(cap * getMarketValuePct(k2));
 
   // Score each bid
@@ -434,8 +448,7 @@ export function computeOfferStrength(
 ): number {
   const cap = state.leagueStats?.salaryCap ?? 154_600_000;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-  const lastRating = (player as any).ratings?.[(player as any).ratings?.length - 1];
-  const k2 = convertTo2KRating(player.overallRating ?? 60, lastRating?.hgt ?? 50);
+  const k2 = getDisplayOverall(player);
   const marketValue = Math.round(cap * getMarketValuePct(k2));
 
   const team = state.teams.find(t => t.id === bid.teamId);

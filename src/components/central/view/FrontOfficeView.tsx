@@ -25,7 +25,6 @@ import { computeStarPower } from '../../../services/tycoon/starPower';
 import { getCityPrestige } from '../../../services/tycoon/specs/spain';
 import { ALL_SLOTS, type SponsorshipSlot, type TycoonState } from '../../../types/tycoon';
 import { makePlaceholderCoach, makePlaceholderGM } from '../../../services/staff/staffFallback';
-import { ensureStaffPoolDepth, inferEuroStaffLeagueId } from '../../../services/euro/staffPool';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 import { FacilitiesSection } from './FrontOffice/sections/FacilitiesSection';
 import { FinanceSection, AnnualProjectionCard } from './FrontOffice/sections/FinanceSection';
@@ -38,6 +37,7 @@ import { ArenaSection } from './FrontOffice/sections/ArenaSection';
 import { TrainingSection } from './FrontOffice/sections/TrainingSection';
 import { AcademySection } from './FrontOffice/sections/AcademySection';
 import { BoardPromisesCard } from './FrontOffice/sections/BoardPromisesCard';
+import { useFrontOfficeStaffActions } from './useFrontOfficeStaffActions';
 
 type FrontOfficeSection = 'finances' | 'sponsorships' | 'medical' | 'facilities' | 'staff';
 
@@ -52,7 +52,10 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
   const selectedTeam = resolveAnyTeam(userTeamId, state.teams, state.nonNBATeams ?? []);
   const tycoon = (selectedTeam as any)?.tycoon;
   const budgetLocked = !!tycoon?.budgetLocked;
+  const facilitiesReviewOpen = state.offseasonChecklist?.facilityUpgrades === 'in-progress';
+  const slidersLocked = budgetLocked || !facilitiesReviewOpen;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const selectedTeamName = selectedTeam ? getTeamFullName(selectedTeam as any) : 'Team';
 
   const [sponsorModal, setSponsorModal] = useState<{ open: boolean; slot: SponsorshipSlot; mode: NegotiationMode }>({ open: false, slot: 'kit', mode: 'renegotiate' });
   const [openMarketOpen, setOpenMarketOpen] = useState(false);
@@ -65,103 +68,45 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
   const [academyModalOpen, setAcademyModalOpen] = useState(false);
 
   const handleTicketMultChange = (mult: number) => {
-    if (budgetLocked) return;
+    if (slidersLocked) return;
     applyTycoonMutation(userTeamId, (t: any) => {
       if (!t.tycoon) return;
       t.tycoon.ticketPriceMultiplier = Math.max(0.5, Math.min(2.0, mult));
     });
   };
   const handleScoutingInvestmentChange = (budget: number) => {
-    if (budgetLocked) return;
+    if (slidersLocked) return;
     applyTycoonMutation(userTeamId, (t: any) => {
       if (!t.tycoon) return;
       t.tycoon.scoutingInvestment = Math.max(50_000, Math.min(2_500_000, budget));
     });
   };
-  // Lazily seed a minimal tycoon shell so NBA teams (no full tycoon state) can
-  // still hire/fire/promote staff. Only the staff-related fields are touched;
-  // none of the finance / sponsorship / medical fields get populated here.
-  const ensureStaffShell = (t: any) => {
-    if (!t.tycoon) t.tycoon = { staffMembers: [], firedStaffRoles: [], cashOnHand: 0 };
-    if (!t.tycoon.staffMembers) t.tycoon.staffMembers = [];
-    if (!t.tycoon.firedStaffRoles) t.tycoon.firedStaffRoles = [];
-  };
-
-  const handlePromoteStaff = (person: any, fromRole: string, toRole: string) => {
-    applyTycoonMutation(userTeamId, (t: any) => {
-      ensureStaffShell(t);
-      t.tycoon.staffMembers = t.tycoon.staffMembers.filter((s: any) => s.role !== fromRole && s.role !== toRole);
-      t.tycoon.staffMembers.push({
-        ...(person ?? {}),
-        id: person?.id ?? `staff-${toRole.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
-        role: toRole,
-      });
-      if (!t.tycoon.firedStaffRoles.includes(fromRole)) t.tycoon.firedStaffRoles.push(fromRole);
-      t.tycoon.firedStaffRoles = t.tycoon.firedStaffRoles.filter((r: string) => r !== toRole);
-    });
-  };
-
-  const handleFireStaff = (role: string) => {
-    applyTycoonMutation(userTeamId, (t: any) => {
-      ensureStaffShell(t);
-      t.tycoon.staffMembers = t.tycoon.staffMembers.filter((s: any) => s.role !== role);
-      if (!t.tycoon.firedStaffRoles.includes(role)) t.tycoon.firedStaffRoles.push(role);
-    });
-  };
-
-  const handleHireStaff = (hire: any) => {
-    applyTycoonMutation(userTeamId, (t: any) => {
-      ensureStaffShell(t);
-      const staffMembers = t.tycoon.staffMembers.filter((s: any) => s.role !== hire.role);
-      t.tycoon.staffMembers = [
-        ...staffMembers,
-        {
-          id: `staff-${hire.role.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
-          role: hire.role,
-          name: hire.name,
-          nationality: hire.nationality,
-          salary: hire.salary,
-          contractYears: hire.years,
-          rating: hire.rating,
-          hiredYear: currentYear,
-          signingBonus: hire.bonus,
-          face: hire.face,
-          staffImageId: hire.staffImageId,
-        },
-      ];
-      t.tycoon.cashOnHand = Math.round((t.tycoon.cashOnHand ?? 0) - (hire.bonus ?? 0));
-      t.tycoon.firedStaffRoles = (t.tycoon.firedStaffRoles ?? []).filter((r: string) => r !== hire.role);
-    });
-    // Hire pulls one member out of the FA pool; immediately top up to the
-    // per-position floor so the modal never shows a depleted list next time.
-    const remainingPool = (state.staffFreeAgents ?? []).filter((m: any) => m.id !== hire.id);
-    const leagueId = inferEuroStaffLeagueId(userTeamId);
-    const refilled = ensureStaffPoolDepth(
-      { ...state, staffFreeAgents: remainingPool } as any,
-      leagueId,
-    );
-    void dispatchAction({
-      type: 'UPDATE_STATE',
-      payload: { staffFreeAgents: refilled.staffFreeAgents ?? remainingPool },
-    });
-  };
+  const { handleFireStaff, handleHireStaff, handlePromoteStaff } = useFrontOfficeStaffActions({
+    applyTycoonMutation,
+    currentYear,
+    dispatchAction,
+    selectedTeam,
+    selectedTeamName,
+    state,
+    userTeamId,
+  });
 
   const handleMedicalBudgetChange = (budget: number) => {
-    if (budgetLocked) return;
+    if (slidersLocked) return;
     applyTycoonMutation(userTeamId, (t: any) => {
       if (!t.tycoon) return;
       t.tycoon.medicalBudget = Math.max(MEDICAL_BUDGET_MIN_EUR, Math.min(MEDICAL_BUDGET_MAX_EUR, budget));
     });
   };
   const handleAcademyBudgetChange = (budget: number) => {
-    if (budgetLocked) return;
+    if (slidersLocked) return;
     applyTycoonMutation(userTeamId, (t: any) => {
       if (!t.tycoon) return;
       t.tycoon.academyBudget = Math.max(0, Math.min(5, Math.round(budget)));
     });
   };
   const handleTravelSave = (prefs: { hotel: number; flight: number; bus: number }) => {
-    if (budgetLocked) return;
+    if (slidersLocked) return;
     applyTycoonMutation(userTeamId, (t: any) => {
       if (!t.tycoon) return;
       t.tycoon.travelPreferences = prefs;
@@ -225,7 +170,7 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
           <Briefcase size={12} /> Front Office{tycoon?.tier ? ` · Tier ${tycoon.tier}` : ''}
         </div>
         <h1 className="text-3xl font-black tracking-tight mt-1">{getTeamFullName(selectedTeam as any)}</h1>
-        <p className="text-sm text-slate-400 mt-1">{tycoon ? 'Control club finances, sponsorships, medical investment, travel standards, staff, and scouting.' : 'Manage coaching, performance, and scouting staff.'}</p>
+        <p className="text-sm text-slate-400 mt-1">{tycoon ? 'Run the club budget, sponsors, facilities, travel, staff, and scouting.' : 'Manage your coaching, performance, and scouting staff.'}</p>
       </div>
     </div>
   );
@@ -248,6 +193,7 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
           <SponsorshipSection
             tycoon={tycoon}
             currency={currency}
+            currentYear={currentYear}
             avgOpponentPrestige={avgOpponentPrestige}
             marqueeOpponents={marqueeOpponents}
             onAction={(slot, mode) => {
@@ -326,7 +272,7 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
                   <X size={20} />
                 </button>
               </div>
-              <MedicalSection tycoon={tycoon} currency={currency} onMedicalBudgetChange={handleMedicalBudgetChange} locked={budgetLocked} />
+              <MedicalSection tycoon={tycoon} currency={currency} onMedicalBudgetChange={handleMedicalBudgetChange} locked={slidersLocked} />
             </motion.div>
           </motion.div>
         )}
@@ -362,7 +308,7 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
                 domesticAwayGames={17}
                 internationalAwayGames={internationalAway}
                 onSave={(prefs) => { handleTravelSave(prefs); setTravelModalOpen(false); }}
-                locked={budgetLocked}
+                locked={slidersLocked}
               />
             </motion.div>
           </motion.div>
@@ -393,7 +339,7 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
                   <X size={20} />
                 </button>
               </div>
-              <ScoutingSection tycoon={tycoon} currency={currency} onChange={handleScoutingInvestmentChange} locked={budgetLocked} />
+              <ScoutingSection tycoon={tycoon} currency={currency} onChange={handleScoutingInvestmentChange} locked={slidersLocked} />
             </motion.div>
           </motion.div>
         )}
@@ -430,7 +376,7 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
                 teamLogoUrl={(selectedTeam as any).logoUrl ?? (selectedTeam as any).imgURL}
                 currency={currency}
                 onTicketMultChange={handleTicketMultChange}
-                locked={budgetLocked}
+                locked={slidersLocked}
               />
             </motion.div>
           </motion.div>
@@ -504,7 +450,7 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
                 simYear={currentYear}
                 seniorRosterSize={(state.players ?? []).filter((p: any) => p.tid === userTeamId && computeAge(p, currentYear) > 19).length}
                 onAcademyBudgetChange={handleAcademyBudgetChange}
-                locked={budgetLocked}
+                locked={slidersLocked}
               />
             </motion.div>
           </motion.div>

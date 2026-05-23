@@ -36,11 +36,12 @@ const matchesSeason = (game: GameResult, season: number): boolean => {
   return y === season || y === season - 1;
 };
 
-const addDays = (date: string, days: number): string => {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
+const maxDateString = (dates: Array<string | null | undefined>): string | null =>
+  dates
+    .filter((date): date is string => !!date)
+    .map(normalizeDate)
+    .sort()
+    .at(-1) ?? null;
 
 const countWins = (
   match: CompetitionKnockoutMatch,
@@ -183,7 +184,11 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
   // ─── Sim helpers ──────────────────────────────────────────────────────────
   const today = normalizeDate(state.date);
   const compUnplayedGames = (state.schedule as Game[])
-    .filter(g => g.competitionId === spec.id && !g.played)
+    .filter(g =>
+      g.competitionId === spec.id &&
+      !g.played &&
+      ['play-in', 'qf', 'sf', 'final'].includes(String((g as any).competitionPhase))
+    )
     .sort((a, b) => a.date.localeCompare(b.date));
   const nextCompGame = compUnplayedGames[0];
   const roundDate = (phases: string[], edge: 'start' | 'end'): string | null => {
@@ -242,9 +247,11 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
   })();
 
   // "All playoffs" = last game of the entire postseason for this comp
-  const lastPlayoffDate = compUnplayedGames[compUnplayedGames.length - 1]?.date
-    ?? roundDate(['final', 'final-four'], 'end')
-    ?? fallbackRoundEndDate;
+  const lastPlayoffDate = maxDateString([
+    compUnplayedGames[compUnplayedGames.length - 1]?.date,
+    roundDate(['final', 'final-four'], 'end'),
+    fallbackRoundEndDate,
+  ]);
 
   const simTo = (targetIsoOrDate: string) => {
     const targetDate = normalizeDate(targetIsoOrDate);
@@ -252,8 +259,7 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
   };
   const simToChampion = () => {
     if (!lastPlayoffDate) return;
-    const targetDate = normalizeDate(lastPlayoffDate);
-    simTo(targetDate <= today ? addDays(today, 30) : targetDate);
+    simTo(lastPlayoffDate);
   };
   const simOneDay = () => dispatchAction({ type: 'ADVANCE_DAY' } as any);
 

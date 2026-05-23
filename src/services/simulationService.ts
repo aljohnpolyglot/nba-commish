@@ -67,18 +67,26 @@ export const simulateGames = async (
         onGame
     );
     const gameById = new Map(gamesToSimulate.map(g => [g.gid, g]));
-    allResults.push(...dayResults.map(result => {
+    const stampGameMeta = (result: GameResult): GameResult => {
         const game = gameById.get(result.gameId);
-        return game?.competitionId
-            ? { ...result, competitionId: game.competitionId, competitionPhase: game.competitionPhase }
-            : result;
-    }));
+        if (!game) return result;
+        return {
+            ...result,
+            isPreseason: game.isPreseason,
+            isPlayoff: game.isPlayoff,
+            isPlayIn: game.isPlayIn,
+            isNBACup: game.isNBACup,
+            nbaCupRound: game.nbaCupRound,
+            nbaCupGroupId: game.nbaCupGroupId,
+            excludeFromRecord: (game as any).excludeFromRecord,
+            competitionId: game.competitionId,
+            competitionPhase: game.competitionPhase,
+        };
+    };
+    allResults.push(...dayResults.map(stampGameMeta));
 
     if (watchedGameResult) {
-        const game = gameById.get(watchedGameResult.gameId);
-        allResults.push(game?.competitionId
-            ? { ...watchedGameResult, competitionId: game.competitionId, competitionPhase: game.competitionPhase }
-            : watchedGameResult);
+        allResults.push(stampGameMeta(watchedGameResult));
     }
 
     // Update standings

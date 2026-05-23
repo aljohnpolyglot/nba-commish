@@ -13,7 +13,7 @@
 import type { NBAPlayer, NBATeam, DraftPick, LeagueStats, TradeProposal } from '../../types';
 import {
   calcOvr2K, calcPlayerTV, getPickTV, isRecentlySignedLocked, isSalaryLegal, isUntouchable, isWalkingExpiring,
-  type TeamMode, type PickValueContext,
+  getTradeCandidateFloor, type TeamMode, type PickValueContext,
 } from './tradeValueEngine';
 import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 import { validateCBATradeRules } from '../../utils/cbaTradeRules';
@@ -98,6 +98,12 @@ interface RawProposal {
   cbaReason?: string;
 }
 
+function formatTradeValue(tv: number): string {
+  if (tv >= 20) return String(Math.round(tv));
+  const fixed = tv.toFixed(1);
+  return fixed.endsWith('.0') ? fixed.slice(0, -2) : fixed;
+}
+
 export function generateInboundProposalsForUser(input: InboundProposalInput): TradeProposal[] {
   const {
     userTid, userGMName, blockPlayerIds, blockPickIds,
@@ -135,6 +141,12 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
 
   const userPlayerTVs = new Map(userBlockPlayers.map(p => [p.internalId, calcPlayerTV(p, userMode, currentYear, tvCtx)]));
   const userPickTVs = new Map(userBlockPicks.map(dp => [dp.dpid, getPickTV(dp, pickCtx)]));
+  const blockScale = Math.max(
+    1,
+    ...Array.from(userPlayerTVs.values()),
+    ...Array.from(userPickTVs.values()),
+  );
+  const deadWeightFloor = getTradeCandidateFloor(blockScale);
 
   const proposals: RawProposal[] = [];
 
@@ -151,7 +163,7 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
       .filter(p => !isWalking(p) && !isLocked(p))
       .filter(p => !isUntouchable(p, theirMode, currentYear, mvpRank))
       .map(p => ({ player: p, tv: calcPlayerTV(p, theirMode, currentYear, tvCtx), salary: (p.contract?.amount ?? 0) * 1000 }))
-      .filter(r => r.tv > 5) // skip dead roster weight
+      .filter(r => r.tv >= deadWeightFloor)
       .sort((a, b) => b.tv - a.tv)
       .slice(0, 12); // top 12 candidates — keeps combo explosion bounded
 
@@ -159,7 +171,7 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
     const theirPicks = liveDraftPicks
       .filter(dp => dp.tid === team.id && dp.season >= minLivePickSeason)
       .map(dp => ({ pick: dp, tv: getPickTV(dp, pickCtx) }))
-      .filter(r => r.tv > 5)
+      .filter(r => r.tv >= deadWeightFloor)
       .sort((a, b) => b.tv - a.tv)
       .slice(0, 6);
 
@@ -315,7 +327,7 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
     proposedDate,
     status: 'pending',
     isAIvsAI: false,
-    tradeText: `Fit ${p.fitScore.toFixed(0)}% · TV ${Math.round(p.offerTV)} ↔ ${Math.round(p.requestTV)}`,
+    tradeText: `Fit ${p.fitScore.toFixed(0)}% · TV ${formatTradeValue(p.offerTV)} ↔ ${formatTradeValue(p.requestTV)}`,
     cbaValid: p.cbaValid,
     cbaReason: p.cbaReason,
   }));

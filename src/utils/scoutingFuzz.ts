@@ -1,5 +1,15 @@
 import type { GameState, NBAPlayer } from '../types';
-import { isEuroIsolatedMode } from './uiMode';
+import { getTeamScoutingFuzzBand } from '../services/staff/staffGameplayEffects';
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getBudgetScoutingFuzzBand(team: any): number {
+  const investment = Math.max(50_000, Math.min(2_500_000, team?.tycoon?.scoutingInvestment ?? 250_000));
+  const quality = (investment - 50_000) / (2_500_000 - 50_000);
+  return clamp(Math.round(8 - quality * 8), 0, 8);
+}
 
 function hash(input: string): number {
   let h = 2166136261;
@@ -11,13 +21,16 @@ function hash(input: string): number {
 }
 
 export function getScoutingFuzzBand(state: GameState, player?: NBAPlayer | null): number {
-  if (!player || !isEuroIsolatedMode(state) || state.gameMode !== 'gm') return 0;
+  if (!player || state.gameMode !== 'gm') return 0;
   if ((player as any).tid === state.userTeamId) return 0;
   const team = state.teams.find((t: any) => (t.id ?? t.tid) === state.userTeamId)
     ?? (state.nonNBATeams ?? []).find((t: any) => (t.id ?? t.tid) === state.userTeamId) as any;
-  const investment = team?.tycoon?.scoutingInvestment ?? 250_000;
-  const quality = Math.max(0, Math.min(1, (investment - 50_000) / (2_500_000 - 50_000)));
-  return Math.max(1, Math.round(9 - quality * 7));
+  if (!team) return 0;
+  const status = String((player as any).status ?? '').toLowerCase();
+  const isDraftProspect = (player as any).tid === -2 || status.includes('draft prospect') || status === 'prospect';
+  const staffBand = getTeamScoutingFuzzBand(team, isDraftProspect ? 'draft' : 'current');
+  const budgetBand = getBudgetScoutingFuzzBand(team);
+  return clamp(Math.round(staffBand * 0.3 + budgetBand * 0.7), 0, 8);
 }
 
 export function fuzzRatingValue(value: number, state: GameState, player?: NBAPlayer | null, salt = 'ovr'): number {

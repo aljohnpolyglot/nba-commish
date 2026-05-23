@@ -6,14 +6,18 @@ import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { convertTo2KRating } from '../../../../../utils/helpers';
 import { calculatePlayerOverallForYear, getDisplayPotential } from '../../../../../utils/playerRatings';
 import { computeMoodScore } from '../../../../../utils/mood/moodScore';
-import { getGMAttributes, findGMForTeam } from '../../../../../services/staff/gmAttributes';
+import { DEFAULT_GM_ATTRIBUTES, findGMForTeam } from '../../../../../services/staff/gmAttributes';
 import { StarterService } from '../../../../../services/simulation/StarterService';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
 import { getGameplan } from '../../../../../store/gameplanStore';
+import { formatPlayerSalaryDisplay, getPlayerCurrentSalaryUSD } from '../../../../../utils/salaryUtils';
 import type { NBAPlayer } from '../../../../../types';
 import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
 import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
+import { getDisplayAge } from '../../../../../store/playerRatingStore';
+import { makePlaceholderGM } from '../../../../../services/staff/staffFallback';
+import { getFatigueBarColor, getFatigueTextColor, getInjuryRisk, getMoodBarColor } from '../../../../shared/playerWellness';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -39,9 +43,24 @@ function getPotWithDelta(p: NBAPlayer, currentYear: number): { pot: number; delt
   return { pot, delta: pot - prevPot };
 }
 
-function getLastSeasonStats(p: NBAPlayer) {
+function isRegularRosterBox(box: any, schedule: any[]) {
+  const sched = schedule.find(g => g.gid === box.gameId);
+  const phase = sched?.competitionPhase;
+  if (sched?.isPreseason || sched?.isPlayIn || sched?.isPlayoff) return false;
+  if (phase === 'play-in' || phase === 'qf' || phase === 'sf' || phase === 'final') return false;
+  return true;
+}
+
+function getLastSeasonStats(p: NBAPlayer, teamId: number, currentYear: number, boxScores: any[], schedule: any[]) {
   const stats = ((p as any).stats ?? []) as any[];
-  const last = stats.filter(s => !s.playoffs && (s.gp ?? 0) > 0).slice(-1)[0];
+  const currentTeamRow = stats
+    .filter(s => !s.playoffs && (s.gp ?? 0) > 0 && s.tid === teamId && s.season === currentYear)
+    .sort((a, b) => (a.season ?? 0) - (b.season ?? 0))
+    .slice(-1)[0];
+  const last = currentTeamRow ?? stats
+    .filter(s => !s.playoffs && (s.gp ?? 0) > 0 && s.tid === teamId)
+    .sort((a, b) => (a.season ?? 0) - (b.season ?? 0))
+    .slice(-1)[0];
   if (!last) return null;
   const gp = last.gp;
   return {
@@ -54,6 +73,29 @@ function getLastSeasonStats(p: NBAPlayer) {
   };
 }
 
+function getBoxScoreDerivedStats(p: NBAPlayer, teamId: number, currentYear: number, boxScores: any[], schedule: any[]) {
+  let g = 0, min = 0, pts = 0, reb = 0, ast = 0, per = 0;
+  for (const box of boxScores ?? []) {
+    if ((box.season ?? currentYear) !== currentYear) continue;
+    if (!isRegularRosterBox(box, schedule)) continue;
+    const lines = box.homeTeamId === teamId
+      ? box.homeStats ?? []
+      : box.awayTeamId === teamId
+        ? box.awayStats ?? []
+        : [];
+    const line = lines.find((s: any) => s.playerId === p.internalId);
+    if (!line) continue;
+    g++;
+    min += Number(line.min ?? 0);
+    pts += Number(line.pts ?? 0);
+    reb += Number(line.reb ?? ((line.orb ?? 0) + (line.drb ?? 0)));
+    ast += Number(line.ast ?? 0);
+    per += Number(line.gameScore ?? line.per ?? 0);
+  }
+  if (g <= 0) return null;
+  return { g, mp: min / g, pts: pts / g, reb: reb / g, ast: ast / g, per: per / g };
+}
+
 function getYearsWithTeam(p: NBAPlayer, teamId: number): number {
   const seasons = new Set<number>();
   ((p as any).stats ?? []).forEach((s: any) => {
@@ -63,11 +105,15 @@ function getYearsWithTeam(p: NBAPlayer, teamId: number): number {
 }
 
 const fmt1 = (v: number) => (Number.isFinite(v) && v > 0 ? v.toFixed(1) : '—');
+const hasBrokenGMName = (name?: string | null): boolean => {
+  const normalized = String(name ?? '').trim().toLowerCase();
+  return !normalized || normalized === 'unknown gm' || normalized === 'gunknown gm' || normalized === 'ai gm' || normalized.endsWith(' gm');
+};
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type SortMode = 'rating' | 'rotation' | 'gameplan';
-type SortCol = 'name' | 'num' | 'pos' | 'age' | 'k2' | 'pot' | 'salary' | 'exp' | 'ywt' | 'g' | 'mp' | 'pts' | 'reb' | 'ast' | 'per' | 'mood';
+type SortCol = 'name' | 'num' | 'pos' | 'age' | 'k2' | 'pot' | 'salary' | 'exp' | 'ywt' | 'g' | 'mp' | 'pts' | 'reb' | 'ast' | 'per' | 'fatigue' | 'mood';
 
 interface RowData {
   player: NBAPlayer;
@@ -78,6 +124,7 @@ interface RowData {
   potDelta: number | null;
   age: number;
   currentSalaryUSD: number;
+  currentSalaryLabel: string;
   effectiveExp: number;
   yearsLeft: number;
   ywt: number;
@@ -87,6 +134,7 @@ interface RowData {
   reb: number;
   ast: number;
   per: number;
+  trainingFatigue: number;
   moodScore: number;
   isTwoWay: boolean;
   isNonGuaranteed: boolean;
@@ -184,8 +232,13 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   );
 
   // GM sidebar
-  const gmObj = findGMForTeam(state, teamId);
-  const gmAttrs = getGMAttributes(state, teamId);
+  const placeholderGM = useMemo(
+    () => (team ? makePlaceholderGM(team as any) : null),
+    [team],
+  );
+  const foundGM = findGMForTeam(state, teamId);
+  const gmObj = foundGM && !hasBrokenGMName(foundGM.name) ? foundGM : placeholderGM;
+  const gmAttrs = gmObj?.attributes ?? DEFAULT_GM_ATTRIBUTES;
   let gmName = gmObj?.name ?? '';
   let gmPortrait = gmObj?.playerPortraitUrl ?? '';
   if (isOwnTeam && state.commissionerName) {
@@ -198,7 +251,9 @@ export function TeamOfficeRosterView({ teamId }: Props) {
     return active.map(p => {
       const { k2, delta: k2Delta } = getK2WithDelta(p, currentYear);
       const { pot, delta: potDelta } = getPotWithDelta(p, currentYear);
-      const stats = getLastSeasonStats(p);
+      const stats =
+        getLastSeasonStats(p, teamId, currentYear, state.boxScores ?? [], state.schedule ?? []) ??
+        getBoxScoreDerivedStats(p, teamId, currentYear, state.boxScores ?? [], state.schedule ?? []);
       const { score: moodScore } = computeMoodScore(
         p, team, state.date, false, false, false, teamPlayers, currentYear,
       );
@@ -220,8 +275,9 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         k2Delta,
         pot,
         potDelta,
-        age: p.born?.year ? currentYear - p.born.year : (p.age ?? 0),
-        currentSalaryUSD: (p.contract?.amount ?? 0) * 1_000,
+        age: getDisplayAge(p, currentYear),
+        currentSalaryUSD: getPlayerCurrentSalaryUSD(p as any, currentYear),
+        currentSalaryLabel: formatPlayerSalaryDisplay(p as any, currentYear, state.nonNBATeams ?? []),
         effectiveExp,
         yearsLeft,
         ywt: getYearsWithTeam(p, teamId),
@@ -231,6 +287,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         reb: stats?.reb ?? 0,
         ast: stats?.ast ?? 0,
         per: stats?.per ?? 0,
+        trainingFatigue: Math.max(0, Math.min(100, Math.round((p as any).trainingFatigue ?? 0))),
         moodScore,
         isTwoWay: !hideNbaContractBadges && !!(p as any).twoWay,
         isNonGuaranteed: !hideNbaContractBadges && !!(p as any).nonGuaranteed,
@@ -238,7 +295,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         injuryType: (p as any).injury?.type ?? 'Injured',
       };
     });
-  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, teamId, hideNbaContractBadges]);
+  }, [teamPlayers, team, state.date, state.leagueStats, state.boxScores, state.schedule, currentYear, teamId, hideNbaContractBadges, state.nonNBATeams]);
 
   const rows = useMemo((): RowData[] => {
     if (sortMode === 'rotation' && team) {
@@ -302,6 +359,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
       else if (col === 'reb')    { av = a.reb;  bv = b.reb; }
       else if (col === 'ast')    { av = a.ast;  bv = b.ast; }
       else if (col === 'per')    { av = a.per;  bv = b.per; }
+      else if (col === 'fatigue'){ av = a.trainingFatigue; bv = b.trainingFatigue; }
       else if (col === 'mood')   { av = a.moodScore; bv = b.moodScore; }
       if (typeof av === 'string') return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       return dir === 'asc' ? av - bv : bv - av;
@@ -475,6 +533,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                   <SortTh col="reb"    label="TRB" />
                   <SortTh col="ast"    label="AST" />
                   <SortTh col="per"    label="PER" />
+                  <SortTh col="fatigue" label="Fatigue" cls="text-left" />
                   <SortTh col="mood"   label="Mood" cls="text-left" />
                 </tr>
               </thead>
@@ -483,10 +542,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                   const p = r.player;
                   const isExpiring = r.yearsLeft === 0;
                   const moodPct = Math.round(((r.moodScore + 10) / 20) * 100);
-                  const moodBarColor =
-                    r.moodScore >= 5 ? 'bg-emerald-400' :
-                    r.moodScore >= 1 ? 'bg-amber-400' :
-                    r.moodScore >= -1 ? 'bg-slate-400' : 'bg-rose-400';
+                  const fatigueRisk = getInjuryRisk(r.trainingFatigue);
 
                   // Bench divider in rotation mode
                   const showBenchDivider = sortMode === 'rotation' && idx === rotationStarterCount && rotationStarterCount > 0;
@@ -499,7 +555,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                     <React.Fragment key={p.internalId}>
                       {showBenchDivider && (
                         <tr>
-                          <td colSpan={16} className="py-0.5 px-3">
+                          <td colSpan={17} className="py-0.5 px-3">
                             <div className="flex items-center gap-2">
                               <div className="flex-1 h-px bg-slate-700/40" />
                               <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">Bench</span>
@@ -510,7 +566,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                       )}
                       {showInjuredDivider && (
                         <tr>
-                          <td colSpan={16} className="py-0.5 px-3">
+                          <td colSpan={17} className="py-0.5 px-3">
                             <div className="flex items-center gap-2">
                               <div className="flex-1 h-px bg-rose-700/30" />
                               <span className="text-[8px] font-black uppercase tracking-widest text-rose-600">Injured</span>
@@ -588,7 +644,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                         </td>
 
                         <td className="text-right tabular-nums px-1.5 whitespace-nowrap text-slate-300">
-                          {r.currentSalaryUSD > 0 ? fmtSalary(r.currentSalaryUSD) : <span className="text-slate-600">—</span>}
+                          {r.currentSalaryUSD > 0 ? r.currentSalaryLabel : <span className="text-slate-600">—</span>}
                         </td>
 
                         <td className="text-center tabular-nums px-1.5">
@@ -607,10 +663,24 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                         <td className="text-right tabular-nums px-1 text-slate-300">{fmt1(r.ast)}</td>
                         <td className="text-right tabular-nums px-1 text-slate-300">{fmt1(r.per)}</td>
 
+                        <td className="px-2 py-1.5" style={{ minWidth: 120 }}>
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                                <span className={getFatigueTextColor(r.trainingFatigue)}>{r.trainingFatigue}</span>
+                                <span className={`px-1 py-0.5 rounded border text-[7px] ${fatigueRisk.color}`}>{fatigueRisk.label}</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                                <div className={`h-full transition-all ${getFatigueBarColor(r.trainingFatigue)}`} style={{ width: `${Math.max(2, r.trainingFatigue)}%` }} />
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
                         <td className="px-2 py-1.5" style={{ minWidth: 80 }}>
                           <div className="flex items-center gap-1.5">
                             <div className="flex-1 h-1.5 bg-slate-800 rounded overflow-hidden">
-                              <div className={cn('h-full rounded transition-all', moodBarColor)} style={{ width: `${moodPct}%` }} />
+                              <div className={cn('h-full rounded transition-all', getMoodBarColor(r.moodScore))} style={{ width: `${moodPct}%` }} />
                             </div>
                             <span className="text-[9px] text-slate-500 tabular-nums w-6 text-right shrink-0">
                               {r.moodScore >= 0 ? '+' : ''}{r.moodScore.toFixed(1)}

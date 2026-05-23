@@ -4,13 +4,15 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import {
-  calculateK2, K2_CATS, getRadarValues, RADAR_AXES,
+  K2_CATS, getRadarValues, RADAR_AXES,
 } from '../../../services/simulation/convert2kAttributes';
-import { applyLeagueDisplayScale } from '../../../hooks/useLeagueScaledRatings';
 import { convertTo2KRating } from '../../../utils/helpers';
-import { getDisplayPotential } from '../../../utils/playerRatings';
-import { getRealDurability, applyDurabilityToK2 } from '../../../utils/durabilityUtils';
 import type { NBAPlayer } from '../../../types';
+import {
+  ensurePlayerRatingData,
+  resolvePlayerRatingBundle,
+  usePlayerRatingStore,
+} from '../../../store/playerRatingStore';
 
 // ─── Radar ───────────────────────────────────────────────────────────────────
 
@@ -101,27 +103,23 @@ function ensureVisibleColor(hex: string): string {
 
 export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player, currentYear, teamColor: rawTeamColor }) => {
   const teamColor = ensureVisibleColor(rawTeamColor);
+  const ratingVersion = usePlayerRatingStore(s => s.version);
   const [view, setView] = React.useState<'K2' | 'Simple'>('K2');
   const [period, setPeriod] = React.useState<'Career' | '3Y' | '1Y'>('Career');
   const [collapsedCats, setCollapsedCats] = React.useState<Record<string, boolean>>({});
   const toggleCat = (k: string) => setCollapsedCats(prev => ({ ...prev, [k]: !prev[k] }));
 
-  const currentRating = player.ratings?.find((r: any) => r.season === currentYear) ?? player.ratings?.[player.ratings.length - 1];
+  React.useEffect(() => {
+    ensurePlayerRatingData();
+  }, []);
+
+  const ratingBundle = React.useMemo(() => {
+    return resolvePlayerRatingBundle(player, currentYear, currentYear);
+  }, [player, currentYear, ratingVersion]);
+  const currentRating = ratingBundle.currentRatings;
   const prevRating = player.ratings?.find((r: any) => r.season === currentYear - 1);
-
-  const scaledRatingForK2 = currentRating ? applyLeagueDisplayScale(player.status, currentRating) : null;
-  const k2 = React.useMemo(() => {
-    if (!scaledRatingForK2) return null;
-    const raw = calculateK2(scaledRatingForK2 as any, { pos: player.pos, heightIn: player.hgt, weightLbs: player.weight, age: player.age });
-    // Durability is sourced from injury history (see durabilityUtils), not K2
-    return applyDurabilityToK2(raw, getRealDurability(player));
-  }, [scaledRatingForK2, player.pos, player.hgt, player.weight, player.age, player.name, player.durability, player.stats]);
-
-  const overall2k = convertTo2KRating(
-    player.overallRating ?? 60,
-    currentRating?.hgt ?? 50,
-    currentRating?.tp ?? 50,
-  );
+  const k2 = ratingBundle.displayK2;
+  const overall2k = ratingBundle.overall2k;
 
   const attrKeys = ['stre', 'spd', 'jmp', 'endu', 'ins', 'dnk', 'ft', 'fg', 'tp', 'oiq', 'diq', 'drb', 'pss', 'reb'];
   const ratingHistory = (() => {
@@ -195,10 +193,10 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
   const deltaColor = delta > 0 ? '#22c55e' : delta < 0 ? '#f43f5e' : '#64748b';
 
   // Canonical POT — same as PlayerRatingsView / everywhere else.
-  const pot = getDisplayPotential(player, currentYear);
+  const pot = ratingBundle.potential2k;
   const potColor = pot >= 90 ? '#3b82f6' : pot >= 80 ? '#22c55e' : pot >= 70 ? '#eab308' : '#94a3b8';
 
-  const radarValues = k2 ? getRadarValues(k2, overall2k) : Array(7).fill(60);
+  const radarValues = getRadarValues(k2, overall2k);
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -318,8 +316,7 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
           })}
           {/* Durability — derived from real injury data (90 = iron man ceiling) */}
           {(() => {
-            const rawDur = getRealDurability(player) ?? 70;
-            const durVal = Math.max(0, Math.min(99, rawDur));
+            const durVal = Math.max(0, Math.min(99, ratingBundle.durability));
             const barPct = (durVal / 99) * 100;
             return (
               <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-800">

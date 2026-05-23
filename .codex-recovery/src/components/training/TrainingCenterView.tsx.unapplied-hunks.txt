@@ -1,0 +1,7 @@
+# Codex hunks NOT found on current disk for src/components/training/TrainingCenterView.tsx
+# 1 hunks unapplied. Total ops: 4
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#4] session=3 line=113 ts=2026-05-09T23:33:57.715Z ---
+               trainingCalendar={dailyPlansISO as any}

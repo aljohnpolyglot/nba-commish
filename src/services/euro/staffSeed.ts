@@ -7,6 +7,8 @@ import type { GameState, NBATeam, SetupTierLabel, StaffMember } from '../../type
 const ROLES = [
   'Head Coach',
   'Assistant Coach',
+  'Assistant Coach 2',
+  'Assistant Coach 3',
   'Head of Sports Science',
   'Head Physio',
   'Player Development Coach',

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Crown, ChevronRight, Star, Trophy, X } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import { careerWinShares, getHOFCeremonyDateString } from '../../../services/playerDevelopment/hofChecker';
+import { parseGameDate } from '../../../utils/dateUtils';
 import type { NBAPlayer } from '../../../types';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { PlayerBioView } from '../../central/view/PlayerBioView';
@@ -58,7 +59,9 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
   const { state, dispatchAction } = useGame();
   const [drillPlayer, setDrillPlayer] = useState<NBAPlayer | null>(null);
 
-  const classYear = (state.leagueStats?.year ?? new Date().getFullYear()) - 1;
+  const classYear = state.date
+    ? parseGameDate(state.date).getUTCFullYear()
+    : state.leagueStats?.year ?? new Date().getFullYear();
   const ceremonyDate = getHOFCeremonyDateString(classYear);
 
   const inductees = useMemo(() => {

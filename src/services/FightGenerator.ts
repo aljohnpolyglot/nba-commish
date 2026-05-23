@@ -14,6 +14,7 @@
 import { NBAPlayer, NBATeam } from '../types';
 import { FightResult } from './simulation/types';
 import { computeMoodScore } from '../utils/mood';
+import { getTeamCoachingGameplayEffects } from './staff/staffGameplayEffects';
 
 // ─── Real-player propensity map ───────────────────────────────────────────────
 // Keys are lowercase name substrings. Value is a multiplier on base fight prob.
@@ -166,7 +167,8 @@ export function generateFight(
     const { score } = computeMoodScore(p, team, dateStr, endorsed);
     // Mood contribution: disgruntled players are more volatile
     const moodFactor = 1 + Math.max(0, -score) * 0.15;
-    return getPropensity(p.name) * traitMult(p) * moodFactor;
+    const dramaMultiplier = team ? getTeamCoachingGameplayEffects(team as any).dramaMultiplier : 1.0;
+    return getPropensity(p.name) * traitMult(p) * moodFactor * dramaMultiplier;
   }
 
   // Pick the most volatile player from each side

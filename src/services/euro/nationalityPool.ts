@@ -36,6 +36,8 @@ export function buildCoachNationalityPool(
   state: Pick<GameState, 'players'>,
   leagueId: string,
 ): NationalityPoolEntry[] {
+  if (leagueId === 'nba') return [{ country: 'USA', weight: 1 }];
+
   const range = LEAGUE_TID_RANGES[leagueId];
   if (!range) return FALLBACK_POOL;
 

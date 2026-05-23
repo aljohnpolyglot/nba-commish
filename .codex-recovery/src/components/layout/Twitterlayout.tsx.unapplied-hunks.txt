@@ -1,0 +1,24 @@
+# Codex hunks NOT found on current disk for src/components/layout/Twitterlayout.tsx
+# 3 hunks unapplied. Total ops: 1
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=1936 ts=2026-05-11T02:51:48.398Z ---
+ import { enrichPostWithPhoto, getResolvedUrl, type GamePhotoInfo } from '../../services/social/photoEnricher';
+ import type { GameResult, SocialPost } from '../../types';
++import { resolveAnyTeam } from '../../utils/teamLookup';
+
+--- HUNK [op#0 hunk#1] session=8 line=1936 ts=2026-05-11T02:51:48.398Z ---
+     const lookup = new Map<number, GamePhotoInfo>();
+     for (const bs of (state.boxScores || []) as GameResult[]) {
+-      if (!bs.gameId || bs.homeTeamId <= 0 || bs.awayTeamId <= 0) continue;
+-      const home = state.teams.find(t => t.id === bs.homeTeamId);
+-      const away = state.teams.find(t => t.id === bs.awayTeamId);
++      if (!bs.gameId || bs.homeTeamId < 0 || bs.awayTeamId < 0) continue;
++      const home = resolveAnyTeam(bs.homeTeamId, state.teams, state.nonNBATeams ?? []);
++      const away = resolveAnyTeam(bs.awayTeamId, state.teams, state.nonNBATeams ?? []);
+
+--- HUNK [op#0 hunk#2] session=8 line=1936 ts=2026-05-11T02:51:48.398Z ---
+-  }, [state.boxScores, state.teams]);
++  }, [state.boxScores, state.teams, state.nonNBATeams]);
+ }

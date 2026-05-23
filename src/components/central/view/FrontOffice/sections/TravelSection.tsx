@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Bus, DollarSign, Hotel, MapPin, Plane, Star, TrendingUp, Zap } from 'lucide-react';
 import type { TycoonState, TycoonTier } from '../../../../../types/tycoon';
 import { formatCurrencyWithCode } from '../../../../../utils/helpers';
+import { getTravelGameplayEffectsFromPreferences } from '../../../../../services/tycoon/travelGameplayEffects';
 
 type Axis = 'hotel' | 'flight' | 'bus';
 
@@ -77,6 +78,10 @@ export const TravelSection: React.FC<TravelSectionProps> = ({
 
   const avgStars = ((hotel + flight + bus) / 3);
   const comfortLabel = avgStars >= 4.5 ? 'World Class' : avgStars >= 3.5 ? 'Premium' : avgStars >= 2.5 ? 'Standard' : 'Budget';
+  const travelImpact = useMemo(
+    () => getTravelGameplayEffectsFromPreferences({ hotel, flight, bus }),
+    [hotel, flight, bus],
+  );
 
   return (
     <div className="space-y-5">
@@ -173,10 +178,10 @@ export const TravelSection: React.FC<TravelSectionProps> = ({
             <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Travel Impact</div>
             <div className="space-y-3">
               {[
-                ['Road Recovery', Math.min(99, Math.round(avgStars * 18))],
-                ['Player Fatigue', Math.min(99, Math.round(avgStars * 16))],
-                ['Team Morale', Math.min(99, Math.round(avgStars * 15))],
-                ['Road Performance', Math.min(99, Math.round(avgStars * 14))],
+                ['Road Recovery', travelImpact.roadRecoveryScore],
+                ['Player Fatigue', travelImpact.playerFatigueScore],
+                ['Team Morale', travelImpact.teamMoraleScore],
+                ['Road Performance', travelImpact.roadPerformanceScore],
               ].map(([label, value]) => (
                 <div key={label as string}>
                   <div className="flex justify-between text-xs mb-1">

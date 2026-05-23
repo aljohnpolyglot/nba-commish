@@ -1,0 +1,75 @@
+# Codex hunks NOT found on current disk for src/components/modals/SigningModal/SigningModal.tsx
+# 7 hunks unapplied. Total ops: 4
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#2 hunk#0] session=9 line=308 ts=2026-05-12T21:47:36.514Z ---
+ import { computeOfferStrength, isPlausibleActiveMarket } from '../../../services/freeAgencyBidding';
+ import { getGMAttributes, clampSpendOffer, spendingOfferMultiplier } from '../../../services/staff/gmAttributes';
+ import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
++import { projectYearEndCash } from '../../../services/tycoon/budgetEngine';
+
+--- HUNK [op#2 hunk#1] session=9 line=308 ts=2026-05-12T21:47:36.514Z ---
+ const SigningModal: React.FC<SigningModalProps> = ({ player, team, leagueStats, autoAccept = false, preflightMessage, initialContractType, onClose, onSign, onSubmitBid }) => {
+-  const { state } = useGame();
++  const { state, applyTycoonMutation } = useGame() as any;
+
+--- HUNK [op#2 hunk#2] session=9 line=308 ts=2026-05-12T21:47:36.514Z ---
+   const [showCapWarning, setShowCapWarning] = useState(false);
++  const [cashGateOverride, setCashGateOverride] = useState(false);
+
+--- HUNK [op#2 hunk#3] session=9 line=308 ts=2026-05-12T21:47:36.514Z ---
+   const showOffersTab = hasActiveMarket || isPeakFA;
+   const euroIsolated = state.leagueStats?.uiMode === 'euro_isolated';
++  const projectedCashAfterDeal = useMemo(() => {
++    if (!euroIsolated || !(team as any).tycoon || contractType === 'TWO_WAY') return null;
++    return projectYearEndCash(team, {
++      year: leagueStats.year,
++      endesaFinishPosition: (team as any).lastEndesaFinish ?? 9,
++      euroleagueStage: (team as any).lastEuroleagueStage ?? 'none',
++      euroleagueAwayGames: (team as any).lastEuroAwayGames ?? 0,
++      endesaPrizeEUR: 0,
++      euroleaguePrizeEUR: 0,
++    }, salary, state.players);
++  }, [euroIsolated, team, contractType, leagueStats.year, salary, state.players]);
++  const cashGateDeficit = projectedCashAfterDeal != null && projectedCashAfterDeal < 0;
+
+--- HUNK [op#2 hunk#6] session=9 line=308 ts=2026-05-12T21:47:36.514Z ---
+     const fitsMLE = !!mle && !mle.blocked && salary > 0 && salary <= mle.available;
++    if (cashGateDeficit && cashGateOverride && applyTycoonMutation) {
++      applyTycoonMutation(team.id, (t: any) => {
++        if (!t.tycoon) return;
++        t.tycoon.boardConfidence = Math.max(0, (t.tycoon.boardConfidence ?? 60) - 10);
++        t.tycoon.cashGateOverridesThisSeason = (t.tycoon.cashGateOverridesThisSeason ?? 0) + 1;
++        if (t.tycoon.cashGateOverridesThisSeason >= 2) t.tycoon.ownerFiringRisk = true;
++      });
++    }
+     onSign({
+
+--- HUNK [op#3 hunk#0] session=9 line=318 ts=2026-05-12T21:48:35.452Z ---
+-            <div className="sticky bottom-0 z-40 px-3 sm:px-8 xl:px-10 py-3 sm:py-6 bg-black/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-end shrink-0 shadow-[0_-18px_40px_rgba(0,0,0,0.45)]">
+-              <div className="flex w-full sm:w-auto gap-2 sm:gap-3 flex-nowrap justify-end">
++            <div className="sticky bottom-0 z-40 px-3 sm:px-8 xl:px-10 py-3 sm:py-6 bg-black/80 backdrop-blur-xl border-t border-white/10 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-end shrink-0 shadow-[0_-18px_40px_rgba(0,0,0,0.45)]">
++              {cashGateDeficit && (
++                <div className={`w-full sm:max-w-xl rounded-sm border px-3 py-2 text-[10px] font-bold uppercase tracking-wider ${
++                  cashGateOverride
++                    ? 'border-rose-500/40 bg-rose-500/10 text-rose-200'
++                    : 'border-amber-500/40 bg-amber-500/10 text-amber-200'
++                }`}>
++                  {cashGateOverride
++                    ? `Owner alarm active — this deal projects year-end cash at ${moneyPrecise(Math.abs(projectedCashAfterDeal ?? 0), 2)} below zero.`
++                    : `Cash warning — this deal pushes projected year-end cash below zero. Submit again to override with an owner-confidence hit.`}
++                </div>
++              )}
++              <div className="flex w-full sm:w-auto gap-2 sm:gap-3 flex-nowrap justify-end">
+
+--- HUNK [op#3 hunk#1] session=9 line=318 ts=2026-05-12T21:48:35.452Z ---
+                     if (blownCap) {
+                       setShowCapWarning(true);
+                       return;
+                     }
++                    if (cashGateDeficit && !cashGateOverride) {
++                      setCashGateOverride(true);
++                      return;
++                    }
+                     if (shouldSubmitBid && onSubmitBid) {

@@ -68,6 +68,7 @@ interface TeamLegacyCase {
 
 interface JerseyRetirementOptions {
   leagueStartYear?: number;
+  previewFreshRetirees?: boolean;
 }
 
 function seededRandom(seed: string): number {
@@ -109,6 +110,23 @@ function getJerseyNumberForTeam(player: NBAPlayer, tid: number): string | null {
   return String(raw);
 }
 
+function retiredRecordMatchesPlayer(record: RetiredJerseyRecord, player: NBAPlayer): boolean {
+  const playerId = String(player.internalId ?? '').trim();
+  const recordPlayerId = String(record.playerId ?? '').trim();
+  if (playerId && recordPlayerId && playerId === recordPlayerId) return true;
+
+  const pid = String((player as any).pid ?? '').trim();
+  const recordPid = String(record.pid ?? '').trim();
+  if (pid && recordPid && pid === recordPid) return true;
+
+  const text = String(record.text ?? '').trim().toLowerCase();
+  return !!text && text === String(player.name ?? '').trim().toLowerCase();
+}
+
+function hasUsableRetiredNumber(record: RetiredJerseyRecord): boolean {
+  return record.number !== undefined && record.number !== null && String(record.number).trim() !== '';
+}
+
 function tierDelay(playerId: string, teamId: number, retiredYear: number, tier: JerseyRetirementTier): number {
   const roll = seededRandom(`jersey_delay_${playerId}_${teamId}_${retiredYear}_${tier}`);
   if (tier === 'automatic') return roll < 0.55 ? 1 : 2;
@@ -121,31 +139,42 @@ function classifyLegacy(score: number, facts: {
   seasonsWithTeam: number;
   gamesWithTeam: number;
   allStars: number;
+  allLeague: number;
   championships: number;
   mvps: number;
   finalsMVPs: number;
   hof: boolean;
+  careerTeamCount: number;
 }): { tier: JerseyRetirementTier; reason: JerseyRetirementReason } | null {
-  const { seasonsWithTeam, gamesWithTeam, allStars, championships, mvps, finalsMVPs, hof } = facts;
-  const tenureQualified = seasonsWithTeam >= 4 || gamesWithTeam >= 250;
-  const titleException = championships >= 2 || finalsMVPs >= 1 || mvps >= 1;
+  const { seasonsWithTeam, gamesWithTeam, allStars, allLeague, championships, mvps, finalsMVPs, hof, careerTeamCount } = facts;
+  const majorAward = mvps >= 1 || finalsMVPs >= 1;
+  const tenureQualified = seasonsWithTeam >= 5 || gamesWithTeam >= 350;
+  const titleCore = championships >= 2
+    && seasonsWithTeam >= 4
+    && (allStars >= 1 || allLeague >= 1 || hof || score >= 110);
+  const franchiseStar = allStars >= 3 || allLeague >= 2 || hof || majorAward;
+  const cultureLifer = careerTeamCount <= 1 && seasonsWithTeam >= 12 && gamesWithTeam >= 750;
+  const loyalCornerstone = seasonsWithTeam >= 9
+    && gamesWithTeam >= 600
+    && (allStars >= 1 || allLeague >= 1 || hof || score >= 110);
+  const deepLegacy = seasonsWithTeam >= 10 && gamesWithTeam >= 700 && score >= 112;
 
-  if (!tenureQualified && !titleException) return null;
+  if (!tenureQualified && !titleCore && !majorAward) return null;
 
-  if (score >= 115 && (seasonsWithTeam >= 7 || championships >= 2 || mvps >= 1 || finalsMVPs >= 1)) {
-    return { tier: 'automatic', reason: mvps > 0 || finalsMVPs > 0 ? 'franchise_icon' : 'championship_core' };
+  if (score >= 125 && (majorAward || titleCore || loyalCornerstone || (hof && allStars >= 4))) {
+    return { tier: 'automatic', reason: majorAward ? 'franchise_icon' : titleCore ? 'championship_core' : hof ? 'hof_legend' : 'franchise_icon' };
   }
 
-  if (score >= 82 && (hof || championships > 0 || allStars >= 4 || seasonsWithTeam >= 7)) {
-    return { tier: 'fast_track', reason: championships > 0 ? 'championship_core' : hof ? 'hof_legend' : 'franchise_icon' };
+  if (score >= 95 && (titleCore || (hof && (allStars >= 2 || championships >= 1 || seasonsWithTeam >= 7)) || allStars >= 5 || allLeague >= 3)) {
+    return { tier: 'fast_track', reason: titleCore || championships >= 2 ? 'championship_core' : hof ? 'hof_legend' : 'franchise_icon' };
   }
 
-  if (score >= 58 && (seasonsWithTeam >= 6 || gamesWithTeam >= 420 || allStars >= 3)) {
+  if (score >= 78 && (loyalCornerstone || cultureLifer || deepLegacy || (franchiseStar && seasonsWithTeam >= 6) || (allStars >= 3 && seasonsWithTeam >= 5))) {
     return { tier: 'standard', reason: hof ? 'hof_legend' : 'loyal_star' };
   }
 
-  if (score >= 44 && (seasonsWithTeam >= 8 || allStars >= 2 || championships > 0)) {
-    return { tier: 'late_honor', reason: championships > 0 ? 'championship_core' : 'honorary' };
+  if (score >= 70 && ((allStars >= 2 && seasonsWithTeam >= 5) || (hof && seasonsWithTeam >= 8) || titleCore || deepLegacy)) {
+    return { tier: 'late_honor', reason: titleCore ? 'championship_core' : 'honorary' };
   }
 
   return null;
@@ -172,6 +201,12 @@ function buildLegacyCase(player: NBAPlayer, team: NBATeam, year: number): TeamLe
   const finalsMVPs = countAward(player, 'Finals MVP', seasons);
   const championships = countAward(player, 'Champion', seasons) + countAward(player, 'Won Championship', seasons);
   const allNBA = countAwardIncludes(player, 'All-NBA', seasons) + countAwardIncludes(player, 'All-League', seasons);
+  const careerTeamIds = new Set(
+    (player.stats ?? [])
+      .filter((s: any) => !s.playoffs)
+      .map((s: any) => Number(s.tid))
+      .filter(t => t >= 0 && t < 100)
+  );
 
   const score =
     seasonsWithTeam * 4
@@ -191,10 +226,12 @@ function buildLegacyCase(player: NBAPlayer, team: NBATeam, year: number): TeamLe
     seasonsWithTeam,
     gamesWithTeam,
     allStars,
+    allLeague: allNBA,
     championships,
     mvps,
     finalsMVPs,
     hof: !!player.hof,
+    careerTeamCount: careerTeamIds.size,
   });
   if (!classified) return null;
 
@@ -265,7 +302,7 @@ export function runJerseyRetirementChecks(
     for (const tid of tids) {
       const team = teamById.get(tid)!;
       const existing = ((team as any).retiredJerseyNumbers ?? []) as RetiredJerseyRecord[];
-      if (existing.some(j => j.playerId === p.internalId || String(j.pid ?? '') === String((p as any).pid ?? ''))) continue;
+      if (existing.some(j => retiredRecordMatchesPlayer(j, p) && hasUsableRetiredNumber(j))) continue;
 
       const candidate = buildLegacyCase(p, team, year);
       if (!candidate || year < candidate.scheduledYear) continue;
@@ -350,7 +387,7 @@ export function getReservedJerseyNumbersByTeam(
     for (const tid of tids) {
       const team = teamById.get(tid)!;
       const existing = ((team as any).retiredJerseyNumbers ?? []) as RetiredJerseyRecord[];
-      if (existing.some(j => j.playerId === p.internalId || String(j.pid ?? '') === String((p as any).pid ?? ''))) continue;
+      if (existing.some(j => retiredRecordMatchesPlayer(j, p) && hasUsableRetiredNumber(j))) continue;
       const candidate = buildLegacyCase(p, team, year);
       if (!candidate) continue;
       if (!out.has(tid)) out.set(tid, new Set());
@@ -398,12 +435,23 @@ export function explainJerseyRetirementCandidates(
       }
 
       const existing = ((team as any).retiredJerseyNumbers ?? []) as RetiredJerseyRecord[];
-      if (existing.some(j => j.playerId === p.internalId || String(j.pid ?? '') === String((p as any).pid ?? ''))) {
-        rows.push({ ...base, outcome: 'skip_existing' });
+      const existingMatch = existing.find(j => retiredRecordMatchesPlayer(j, p) && hasUsableRetiredNumber(j));
+      if (existingMatch) {
+        rows.push({
+          ...base,
+          number: existingMatch.number,
+          scheduledYear: existingMatch.seasonRetired,
+          tier: existingMatch.tier,
+          reason: existingMatch.reason,
+          outcome: 'skip_existing',
+        });
         continue;
       }
 
-      const candidate = buildLegacyCase(p, team, year);
+      const evaluationYear = options.previewFreshRetirees && p.retiredYear && year <= p.retiredYear
+        ? p.retiredYear + 1
+        : year;
+      const candidate = buildLegacyCase(p, team, evaluationYear);
       if (!candidate) {
         const number = getJerseyNumberForTeam(p, tid) ?? undefined;
         rows.push({ ...base, number, outcome: number ? 'skip_not_qualified' : 'skip_missing_number' });

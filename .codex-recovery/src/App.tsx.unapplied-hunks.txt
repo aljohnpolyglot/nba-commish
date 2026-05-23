@@ -1,0 +1,40 @@
+# Codex hunks NOT found on current disk for src/App.tsx
+# 4 hunks unapplied. Total ops: 5
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=5 line=265 ts=2026-05-10T04:28:46.853Z ---
+-import { LeagueTypeSelector, type LeagueType } from './components/setup/LeagueTypeSelector';
++import { LeagueTypeSelector, type LeagueType, type ModdedLeagueBase } from './components/setup/LeagueTypeSelector';
+
+--- HUNK [op#0 hunk#2] session=5 line=265 ts=2026-05-10T04:28:46.853Z ---
+     if (setupPhase === 'leagueType') {
+       return <LeagueTypeSelector
+-        onSelect={(type) => {
+-          setLeagueType(type);
+-          if (type === 'modded') prewarmRoster();
++        onSelect={({ leagueType: type, moddedLeagueBase: base }) => {
++          setLeagueType(type);
++          setModdedLeagueBase(base ?? 'nba');
++          if (type === 'modded') prewarmRoster();
+           setSetupPhase('commish');
+         }}
+-        onBack={() => { setSetupPhase(null); setLeagueType(null); }}
++        onBack={() => { setSetupPhase(null); setLeagueType(null); setModdedLeagueBase('nba'); }}
+       />;
+     }
+
+--- HUNK [op#0 hunk#3] session=5 line=265 ts=2026-05-10T04:28:46.853Z ---
+         onStart={(payload) => {
+           setSetupPhase(null);
+           dispatchAction({ type: 'START_GAME', payload });
+         }}
+         onBack={() => setSetupPhase('leagueType')}
++        moddedLeagueBase={moddedLeagueBase}
+       />;
+     }
+
+--- HUNK [op#2 hunk#1] session=10 line=195 ts=2026-05-13T07:19:06.073Z ---
+         <TycoonWelcomeModal open={tycoonWelcomeOpen} onClose={() => setTycoonWelcomeOpen(false)} />
++        <EuroBankruptcyModal />
+         {isEuroIsolatedMode(state) && <TycoonEventToast />}

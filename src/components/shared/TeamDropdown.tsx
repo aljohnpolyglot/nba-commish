@@ -2,6 +2,7 @@ import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NBATeam } from '../../types';
+import { getTeamFullName } from '../../utils/teamNames';
 
 export interface TeamDropdownProps {
   label: string;
@@ -29,6 +30,37 @@ export const TeamDropdown: React.FC<TeamDropdownProps> = ({
   placeholder = 'Select team...',
 }) => {
   const selectedTeam = teams.find(t => t.id === selectedTeamId);
+  const visibleTeams = teams.filter(t => t.id !== otherTeamId);
+  const sortTeams = (a: NBATeam & { wins: number; losses: number }, b: NBATeam & { wins: number; losses: number }) => {
+    const ga = (a.wins ?? 0) + (a.losses ?? 0);
+    const gb = (b.wins ?? 0) + (b.losses ?? 0);
+    const pa = ga > 0 ? (a.wins ?? 0) / ga : 0;
+    const pb = gb > 0 ? (b.wins ?? 0) / gb : 0;
+    return pb - pa || (b.wins ?? 0) - (a.wins ?? 0);
+  };
+  const conferenceGroups = (() => {
+    const uniqueConfs = Array.from(new Set(
+      visibleTeams
+        .map(t => (t.conference ?? '').trim())
+        .filter(Boolean),
+    ));
+    if (uniqueConfs.length === 0) {
+      return [{ key: 'all', label: 'Teams', teams: [...visibleTeams].sort(sortTeams) }];
+    }
+    const isStandardNbaSplit = uniqueConfs.length === 2 && uniqueConfs.includes('East') && uniqueConfs.includes('West');
+    if (isStandardNbaSplit) {
+      return ['East', 'West'].map(conf => ({
+        key: conf,
+        label: conf === 'East' ? 'Eastern Conference' : 'Western Conference',
+        teams: visibleTeams.filter(t => t.conference === conf).sort(sortTeams),
+      }));
+    }
+    return uniqueConfs.map(conf => ({
+      key: conf,
+      label: uniqueConfs.length === 1 ? `${conf} Teams` : conf,
+      teams: visibleTeams.filter(t => (t.conference ?? '').trim() === conf).sort(sortTeams),
+    }));
+  })();
 
   return (
     <div className="relative flex-1 min-w-0">
@@ -45,7 +77,7 @@ export const TeamDropdown: React.FC<TeamDropdownProps> = ({
             <>
               <img src={selectedTeam.logoUrl} alt="" className={compact ? 'w-4 h-4 object-contain' : 'w-6 h-6 object-contain'} />
               <span className={`font-black uppercase tracking-tight truncate ${compact ? 'text-xs' : ''}`}>
-                {compact ? selectedTeam.abbrev : selectedTeam.name}
+                {compact ? selectedTeam.abbrev : getTeamFullName(selectedTeam)}
               </span>
             </>
           ) : (
@@ -66,24 +98,13 @@ export const TeamDropdown: React.FC<TeamDropdownProps> = ({
               className={`absolute top-full left-0 mt-2 bg-[#1a1a1a] border border-slate-700 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[80] max-h-[60vh] overflow-hidden flex flex-col ${compact ? 'w-72' : 'right-0'}`}
             >
               <div className="overflow-y-auto custom-scrollbar flex-1">
-                {['East', 'West'].map(conf => (
-                  <div key={conf}>
+                {conferenceGroups.map(group => (
+                  <div key={group.key}>
                     <div className="bg-[#111] px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] sticky top-0 border-b border-slate-800 z-10 flex justify-between items-center">
-                      <span>{conf}ern Conference</span>
+                      <span>{group.label}</span>
                       <span className="text-[8px] opacity-50">W-L</span>
                     </div>
-                    {teams
-                      .filter(t => t.conference === conf && t.id !== otherTeamId)
-                      // Sort by current-season standings (win% desc, wins as tiebreaker)
-                      // so the dropdown mirrors StandingsView ordering everywhere it's used.
-                      .sort((a, b) => {
-                        const ga = (a.wins ?? 0) + (a.losses ?? 0);
-                        const gb = (b.wins ?? 0) + (b.losses ?? 0);
-                        const pa = ga > 0 ? (a.wins ?? 0) / ga : 0;
-                        const pb = gb > 0 ? (b.wins ?? 0) / gb : 0;
-                        return pb - pa || (b.wins ?? 0) - (a.wins ?? 0);
-                      })
-                      .map(t => (
+                    {group.teams.map(t => (
                         <button
                           key={t.id}
                           onClick={() => { onSelect(t.id); onToggle(); }}
@@ -93,7 +114,7 @@ export const TeamDropdown: React.FC<TeamDropdownProps> = ({
                             <img src={t.logoUrl} alt="" className="w-8 h-8 object-contain" />
                             <div className="text-left truncate">
                               <div className="text-sm font-black uppercase tracking-tight truncate">{t.abbrev}</div>
-                              <div className="text-[10px] font-bold text-slate-500 truncate">{t.name}</div>
+                              <div className="text-[10px] font-bold text-slate-500 truncate">{getTeamFullName(t)}</div>
                             </div>
                           </div>
                           <div className="text-xs font-mono font-black text-slate-400">

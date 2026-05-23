@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Trophy, Table2, BarChart2, Users, ListOrdered, TrendingUp,
-  Star, BookOpen, Stethoscope, Globe2, LayoutGrid,
+  BookOpen, Globe2, LayoutGrid,
 } from 'lucide-react';
 
 export type PBAConferenceHubView =
@@ -49,11 +49,9 @@ export const PBAConferenceAside: React.FC<Props> = ({ active, onSelect, accentCo
       label: 'Analytics',
       items: [
         { id: 'player-stats', label: 'Player Stats', icon: BarChart2 },
-        { id: 'player-ratings', label: 'Player Ratings', icon: Star },
         { id: 'team-stats', label: 'Team Stats', icon: Users },
         { id: 'top-scorers', label: 'League Leaders', icon: ListOrdered },
         { id: 'power-rankings', label: 'Power Rankings', icon: TrendingUp },
-        { id: 'injuries', label: 'Injuries', icon: Stethoscope },
       ],
     },
     {

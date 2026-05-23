@@ -1,0 +1,258 @@
+# Codex hunks NOT found on current disk for src/services/logic/seasonRollover.ts
+# 12 hunks unapplied. Total ops: 7
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#2] session=8 line=565 ts=2026-05-11T01:21:36.703Z ---
+     };
+   }
++
++  const euroChampionHistory = isEuroIsolatedMode(state)
++    ? ['endesa', 'euroleague'].flatMap(competitionId => {
++        const spec = state.activeCompetitions?.find(c => c.id === competitionId);
++        const rows = new Map<number, { tid: number; w: number; pd: number }>();
++        state.boxScores.filter(b => b.competitionId === competitionId).forEach(b => {
++          const home = rows.get(b.homeTeamId) ?? { tid: b.homeTeamId, w: 0, pd: 0 };
++          const away = rows.get(b.awayTeamId) ?? { tid: b.awayTeamId, w: 0, pd: 0 };
++          const homeWon = b.homeScore > b.awayScore;
++          home.w += homeWon ? 1 : 0;
++          away.w += homeWon ? 0 : 1;
++          home.pd += b.homeScore - b.awayScore;
++          away.pd += b.awayScore - b.homeScore;
++          rows.set(home.tid, home);
++          rows.set(away.tid, away);
++        });
++        const champion = [...rows.values()].sort((a, b) => b.w - a.w || b.pd - a.pd)[0];
++        if (!champion || !spec) return [];
++        const team = resolveAnyTeam(champion.tid, state.teams, state.nonNBATeams ?? []);
++        return [{
++          text: `${getTeamFullName(team)} won the ${spec.displayName} ${currentYear} title.`,
++          date: state.date,
++          type: 'Champion' as const,
++          tid: champion.tid,
++          competitionId,
++        }];
++      })
++    : [];
+ 
+   return {
+
+--- HUNK [op#1 hunk#1] session=8 line=1370 ts=2026-05-11T02:19:54.338Z ---
+-  const euroChampionHistory = isEuroIsolatedMode(state)
+-    ? ['endesa', 'euroleague'].flatMap(competitionId => {
+-        const spec = state.activeCompetitions?.find(c => c.id === competitionId);
+-        const rows = new Map<number, { tid: number; w: number; pd: number }>();
+-        state.boxScores.filter(b => b.competitionId === competitionId).forEach(b => {
+-          const home = rows.get(b.homeTeamId) ?? { tid: b.homeTeamId, w: 0, pd: 0 };
+-          const away = rows.get(b.awayTeamId) ?? { tid: b.awayTeamId, w: 0, pd: 0 };
+-          const homeWon = b.homeScore > b.awayScore;
+-          home.w += homeWon ? 1 : 0;
+-          away.w += homeWon ? 0 : 1;
+-          home.pd += b.homeScore - b.awayScore;
+-          away.pd += b.awayScore - b.homeScore;
+-          rows.set(home.tid, home);
+-          rows.set(away.tid, away);
+-        });
+-        const champion = [...rows.values()].sort((a, b) => b.w - a.w || b.pd - a.pd)[0];
+-        if (!champion || !spec) return [];
+-        const team = resolveAnyTeam(champion.tid, state.teams, state.nonNBATeams ?? []);
+-        return [{
+-          text: `${getTeamFullName(team)} won the ${spec.displayName} ${currentYear} title.`,
+-          date: state.date,
+-          type: 'Champion' as const,
+-          tid: champion.tid,
+-          competitionId,
+-        }];
+-      })
+-    : [];
++  const euroCompetitionResolutions: CompetitionSeasonResolution[] = isEuroIsolatedMode(state)
++    ? (state.activeCompetitions ?? [])
++        .filter(spec => spec.id === 'endesa' || spec.id === 'euroleague')
++        .map(spec => {
++          const seedTids = (state.nonNBATeams ?? [])
++            .filter(team => {
++              if (spec.teamSelector === 'allEndesa') return team.league === 'Endesa';
++              if (spec.teamSelector === 'allEuroleague') return team.league === 'Euroleague';
++              return team.league === 'Endesa' || team.league === 'Euroleague';
++            })
++            .map(team => team.tid);
++          return resolveCompetitionSeason(spec, state.boxScores, currentYear, seedTids);
++        })
++        .filter((result): result is CompetitionSeasonResolution => result !== null)
++    : [];
++
++  const euroChampionHistory = euroCompetitionResolutions.flatMap(result => {
++    const spec = state.activeCompetitions?.find(c => c.id === result.competitionId);
++    const champion = result.championTid != null ? resolveAnyTeam(result.championTid, state.teams, state.nonNBATeams ?? []) : null;
++    const runnerUp = result.runnerUpTid != null ? resolveAnyTeam(result.runnerUpTid, state.teams, state.nonNBATeams ?? []) : null;
++    if (!champion || !spec) return [];
++    return [
++      {
++        text: `${getTeamFullName(champion)} won the ${spec.displayName} ${currentYear} title${runnerUp ? ` over ${getTeamFullName(runnerUp)}` : ''}.`,
++        date: state.date,
++        type: 'Champion' as const,
++        tid: result.championTid,
++        competitionId: result.competitionId,
++      },
++      ...(runnerUp ? [{
++        text: `${getTeamFullName(runnerUp)} finished runner-up in the ${spec.displayName} ${currentYear}.`,
++        date: state.date,
++        type: 'Runner Up' as const,
++        tid: result.runnerUpTid,
++        competitionId: result.competitionId,
++      }] : []),
++    ];
++  });
+
+--- HUNK [op#2 hunk#2] session=8 line=1398 ts=2026-05-11T02:20:59.352Z ---
+     ];
+   });
++  const euroHistoricalAwards: HistoricalAward[] = euroCompetitionResolutions.flatMap(result => {
++    const champion = result.championTid != null ? resolveAnyTeam(result.championTid, state.teams, state.nonNBATeams ?? []) : null;
++    const runnerUp = result.runnerUpTid != null ? resolveAnyTeam(result.runnerUpTid, state.teams, state.nonNBATeams ?? []) : null;
++    return [
++      ...(champion ? [{
++        season: currentYear,
++        type: 'Champion',
++        name: getTeamFullName(champion),
++        tid: result.championTid ?? undefined,
++        competitionId: result.competitionId,
++      } as HistoricalAward & { competitionId: string }] : []),
++      ...(runnerUp ? [{
++        season: currentYear,
++        type: 'Runner Up',
++        name: getTeamFullName(runnerUp),
++        tid: result.runnerUpTid ?? undefined,
++        competitionId: result.competitionId,
++      } as HistoricalAward & { competitionId: string }] : []),
++    ];
++  });
+
+--- HUNK [op#4 hunk#0] session=10 line=181 ts=2026-05-13T07:17:54.617Z ---
+   if (isEuroIsolatedMode(state)) {
+     const endesaResolution = euroCompetitionResolutions.find(r => r.competitionId === 'endesa');
+     const euroleagueResolution = euroCompetitionResolutions.find(r => r.competitionId === 'euroleague');
++    let pendingBankruptcy: GameState['pendingEuroBankruptcy'] | undefined;
++    const bankruptcyNews: GameState['news'] = [];
++    const bankruptcyHistory: GameState['history'] = [];
+
+--- HUNK [op#4 hunk#1] session=10 line=181 ts=2026-05-13T07:17:54.617Z ---
+         tycoonLedger.snapshot(team, ledger);
+         tycoonSponsor.dekrementSponsorshipYears(team.tycoon);
+         tycoonFacility.completeFinishedUpgrades(team, nextYear);
++        team.tycoon.cashGateOverridesThisSeason = 0;
+ 
+         team.recentEndesaPositions = [...(team.recentEndesaPositions ?? []), endesaFinish].slice(-3);
+
+--- HUNK [op#4 hunk#2] session=10 line=181 ts=2026-05-13T07:17:54.617Z ---
+         team.lastEuroAwayGames = elAway;
+         if (endesaResolution?.championTid === tid) team.justWonEndesa = true;
+         if (elStage === 'final-four') team.justReachedEuroFinalFour = true;
++        if (state.gameMode === 'gm' && state.userTeamId === tid && team.tycoon.cashOnHand < 0) {
++          pendingBankruptcy = {
++            teamId: tid,
++            teamName: getTeamFullName(team),
++            cashOnHand: team.tycoon.cashOnHand,
++            year: nextYear,
++          };
++          const text = `${getTeamFullName(team)} ist zahlungsunfähig. Der Vorstand beendet das Projekt und du musst einen neuen Euro-Club übernehmen.`;
++          bankruptcyNews.push({
++            id: `euro-bankruptcy-${tid}-${currentYear}`,
++            text,
++            date: state.date,
++            type: 'Business',
++            tid,
++          } as any);
++          bankruptcyHistory.push({ text, date: state.date, type: 'Business', tid } as any);
++        }
+       } catch (e) {
+         console.warn(`[tycoon] year-end snapshot failed for team ${team.id ?? team.tid}`, e);
+       }
+     }
++    (state as any).__pendingEuroBankruptcyPatch = {
++      pendingBankruptcy,
++      bankruptcyNews,
++      bankruptcyHistory,
++    };
+   }
++
++  const euroBankruptcyPatch = (state as any).__pendingEuroBankruptcyPatch as
++    | { pendingBankruptcy?: GameState['pendingEuroBankruptcy']; bankruptcyNews: GameState['news']; bankruptcyHistory: GameState['history'] }
++    | undefined;
+
+--- HUNK [op#4 hunk#3] session=10 line=181 ts=2026-05-13T07:17:54.617Z ---
+     news: [...jerseyRetirementNewsItems, ...hofNewsItems, ...mortalityNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
+-    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...euroChampionHistory, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries, ...jerseyRetirementHistoryEntries, ...mortalityHistoryEntries, ...extRetireHistory, ...extFAHistory],
++    ...(euroBankruptcyPatch?.pendingBankruptcy ? { pendingEuroBankruptcy: euroBankruptcyPatch.pendingBankruptcy } : {}),
++    news: [...(euroBankruptcyPatch?.bankruptcyNews ?? []), ...jerseyRetirementNewsItems, ...hofNewsItems, ...mortalityNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
++    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...euroChampionHistory, ...(euroBankruptcyPatch?.bankruptcyHistory ?? []), ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries, ...jerseyRetirementHistoryEntries, ...mortalityHistoryEntries, ...extRetireHistory, ...extFAHistory],
+
+--- HUNK [op#5 hunk#0] session=10 line=190 ts=2026-05-13T07:18:27.489Z ---
+   // upgrades. Stash recent results on team for next-season UI preview +
+   // sponsor offers. All mutations happen in-place on the team objects, which
+   // are then re-exported via the existing `teams: teamsWithSweptTPEs` return.
++  let pendingEuroBankruptcy: GameState['pendingEuroBankruptcy'] | undefined;
++  const euroBankruptcyNews: GameState['news'] = [];
++  const euroBankruptcyHistory: GameState['history'] = [];
+   if (isEuroIsolatedMode(state)) {
+     const endesaResolution = euroCompetitionResolutions.find(r => r.competitionId === 'endesa');
+     const euroleagueResolution = euroCompetitionResolutions.find(r => r.competitionId === 'euroleague');
+-    let pendingBankruptcy: GameState['pendingEuroBankruptcy'] | undefined;
+-    const bankruptcyNews: GameState['news'] = [];
+-    const bankruptcyHistory: GameState['history'] = [];
+
+--- HUNK [op#5 hunk#1] session=10 line=190 ts=2026-05-13T07:18:27.489Z ---
+         if (endesaResolution?.championTid === tid) team.justWonEndesa = true;
+         if (elStage === 'final-four') team.justReachedEuroFinalFour = true;
+         if (state.gameMode === 'gm' && state.userTeamId === tid && team.tycoon.cashOnHand < 0) {
+-          pendingBankruptcy = {
++          pendingEuroBankruptcy = {
+             teamId: tid,
+             teamName: getTeamFullName(team),
+             cashOnHand: team.tycoon.cashOnHand,
+
+--- HUNK [op#5 hunk#2] session=10 line=190 ts=2026-05-13T07:18:27.489Z ---
+           };
+           const text = `${getTeamFullName(team)} ist zahlungsunfähig. Der Vorstand beendet das Projekt und du musst einen neuen Euro-Club übernehmen.`;
+-          bankruptcyNews.push({
++          euroBankruptcyNews.push({
+             id: `euro-bankruptcy-${tid}-${currentYear}`,
+             text,
+             date: state.date,
+             type: 'Business',
+             tid,
+           } as any);
+-          bankruptcyHistory.push({ text, date: state.date, type: 'Business', tid } as any);
++          euroBankruptcyHistory.push({ text, date: state.date, type: 'Business', tid } as any);
+         }
+       } catch (e) {
+         console.warn(`[tycoon] year-end snapshot failed for team ${team.id ?? team.tid}`, e);
+       }
+     }
+-    (state as any).__pendingEuroBankruptcyPatch = {
+-      pendingBankruptcy,
+-      bankruptcyNews,
+-      bankruptcyHistory,
+-    };
+   }
+-
+-  const euroBankruptcyPatch = (state as any).__pendingEuroBankruptcyPatch as
+-    | { pendingBankruptcy?: GameState['pendingEuroBankruptcy']; bankruptcyNews: GameState['news']; bankruptcyHistory: GameState['history'] }
+-    | undefined;
+
+--- HUNK [op#5 hunk#3] session=10 line=190 ts=2026-05-13T07:18:27.489Z ---
+     },
+     retirementAnnouncements: newRetirees,
+     seasonPreviewDismissed: true,  // stays hidden through FA; shown when preseason starts (Oct 1)
+     draftComplete: undefined,      // reset so draft can run for new year
+-    news: [...jerseyRetirementNewsItems, ...hofNewsItems, ...mortalityNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
+-    ...(euroBankruptcyPatch?.pendingBankruptcy ? { pendingEuroBankruptcy: euroBankruptcyPatch.pendingBankruptcy } : {}),
+-    news: [...(euroBankruptcyPatch?.bankruptcyNews ?? []), ...jerseyRetirementNewsItems, ...hofNewsItems, ...mortalityNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
+-    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...euroChampionHistory, ...(euroBankruptcyPatch?.bankruptcyHistory ?? []), ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries, ...jerseyRetirementHistoryEntries, ...mortalityHistoryEntries, ...extRetireHistory, ...extFAHistory],
++    ...(pendingEuroBankruptcy ? { pendingEuroBankruptcy } : {}),
++    news: [...euroBankruptcyNews, ...jerseyRetirementNewsItems, ...hofNewsItems, ...mortalityNewsItems, ...farewellNewsItems, ...teamOptionNewsItems, ...playerOptionNewsItems, ...retirementNewsItems, rolloverNews, ...(state.news ?? [])].slice(0, 200),
++    history: [...(state.history ?? []), ...playerOptionHistory, ...teamOptionHistoryEntries, ...optionExtHistory, ...euroChampionHistory, ...euroBankruptcyHistory, ...retirementHistoryEntries, ...farewellHistoryEntries, ...hofHistoryEntries, ...jerseyRetirementHistoryEntries, ...mortalityHistoryEntries, ...extRetireHistory, ...extFAHistory],
+
+--- HUNK [op#6 hunk#0] session=10 line=209 ts=2026-05-13T07:19:36.174Z ---
+-          const text = `${getTeamFullName(team)} ist zahlungsunfähig. Der Vorstand beendet das Projekt und du musst einen neuen Euro-Club übernehmen.`;
++          const text = `${getTeamFullName(team)} is insolvent. The board ends the project and you must take over a new Euro club.`;

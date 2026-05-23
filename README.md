@@ -35,7 +35,7 @@ npm run dev
 
 **Wichtiger Unterschied:** Fictional-Setup erzeugt seine Liga vollständig lokal. Modded-Setup lädt Roster, Historie und Zusatzdaten aus externen Quellen.
 
-**Euro-Isolated worktree recovery (May 15–16, 2026):** Euro mode is being repaired directly in the main worktree. Current in-flight wiring seeds setup tier/budget, owner, six-role staff, sponsor slots, `INIT_EURO_CAREER` save state, LOAD_GAME healing for older Euro GM saves, generated staff free-agent pools for Front Office hiring, year-end owner patience/cash-injection mechanics, Euro Tasks transfer-market gating, sponsor/endorsement duplicate protection, direct Euro FA signings without NBA cap/MLE blocks, generated coach bio display, and FIBA 200-minute gameplan budgets. See `TODO.md` and `docs/superpowers/plans/2026-05-14-euro-setup-hybrid.md` before continuing Euro setup work.
+**Euro-Isolated worktree recovery (May 15–20, 2026):** Euro mode is being repaired directly in the main worktree. Current in-flight wiring seeds setup tier/budget, owner, six-role staff, sponsor slots, `INIT_EURO_CAREER` save state, LOAD_GAME healing for older Euro GM saves, generated staff free-agent pools for Front Office hiring, year-end owner patience/cash-injection mechanics, Euro Tasks transfer-market gating, sponsor/endorsement duplicate protection, direct Euro FA signings without NBA cap/MLE blocks, generated coach bio display, FIBA 200-minute gameplan budgets, Endesa/EuroLeague postseason completion gates before offseason, EuroLeague PlayButton eligibility filtering, and a player-facing cleanup pass on Euro offseason copy/row ordering. See `TODO.md` and `docs/superpowers/plans/2026-05-14-euro-setup-hybrid.md` before continuing Euro setup work.
 
 ## Architektur in einer Minute
 
@@ -187,6 +187,7 @@ src/
 | [`EXTERNAL_ROSTERS.md`](./EXTERNAL_ROSTERS.md) | Auslandsliga-Integration — TID-Offsets, Scaling, Checkliste |
 | [`LEAGUE_RULES_README.md`](./LEAGUE_RULES_README.md) | Commissioner-Regeln in die Sim-Engine wiren |
 | [`docs/simulator-guide.md`](./docs/simulator-guide.md) | `Realistic` vs `Fast` erklärt: Verhalten, Tradeoffs, Empfehlungen |
+| [`docs/travel-fatigue-spec.md`](./docs/travel-fatigue-spec.md) | Design für Travel-Fatigue, Schedule-Stress und spätere Route-Visualisierung |
 | [`AI_AND_ECONOMY_PLAN.md`](./AI_AND_ECONOMY_PLAN.md) | AI-Trade-Engine + Wirtschafts-Design |
 | [`TODO.md`](./TODO.md) | Aktive Bugs, verify-on-new-save, Feature-Backlog |
 | [`NEW_FEATURES.md`](./NEW_FEATURES.md) | Feature-Ideen und Wunschliste |

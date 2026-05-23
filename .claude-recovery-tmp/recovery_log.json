@@ -1,0 +1,105 @@
+[
+  {
+    "rel": "plans\\europe-ui-phase1.md",
+    "wrote": true,
+    "size": 4612,
+    "lines": 75,
+    "notes": [
+      "  Write @ 2026-05-11T02:36:55.300Z: 75 lines (replaces)",
+      "  Write @ 2026-05-11T02:36:55.300Z: 75 lines (replaces)"
+    ]
+  },
+  {
+    "rel": "plans\\europe-ui-phase2.md",
+    "wrote": true,
+    "size": 4910,
+    "lines": 68,
+    "notes": [
+      "  Write @ 2026-05-11T02:50:15.488Z: 68 lines (replaces)",
+      "  Write @ 2026-05-11T02:50:15.488Z: 68 lines (replaces)"
+    ]
+  },
+  {
+    "rel": "plans\\CODEX_HANDOFF_EURO_MVP.md",
+    "wrote": true,
+    "size": 25171,
+    "lines": 410,
+    "notes": [
+      "  Write @ 2026-05-10T20:35:30.254Z: 410 lines (replaces)"
+    ]
+  },
+  {
+    "rel": "src\\services\\logic\\EuroAwardService.ts",
+    "wrote": true,
+    "size": 18779,
+    "lines": 430,
+    "notes": [
+      "  Write @ 2026-05-11T02:47:44.106Z: 430 lines (replaces)"
+    ]
+  },
+  {
+    "rel": "src\\services\\logic\\euroAwardAnnouncer.ts",
+    "wrote": true,
+    "size": 7054,
+    "lines": 157,
+    "notes": [
+      "  Write @ 2026-05-11T02:48:14.095Z: 157 lines (replaces)"
+    ]
+  },
+  {
+    "rel": "src\\components\\view\\EuroAwardRacesView.tsx",
+    "wrote": true,
+    "size": 16357,
+    "lines": 327,
+    "notes": [
+      "  Write @ 2026-05-11T02:49:10.926Z: 327 lines (replaces)"
+    ]
+  },
+  {
+    "rel": "src\\components\\competition\\EuroleagueHistoryView.tsx",
+    "wrote": true,
+    "size": 10340,
+    "lines": 222,
+    "notes": [
+      "  Write @ 2026-05-11T04:10:45.193Z: 222 lines (replaces)"
+    ]
+  },
+  {
+    "rel": "plans\\league-profile-refactor.md",
+    "wrote": true,
+    "size": 13409,
+    "lines": 266,
+    "notes": [
+      "  Write @ 2026-05-11T10:33:58.083Z: 266 lines (replaces)"
+    ]
+  },
+  {
+    "rel": "plans\\euro-sponsorship-phase1.md",
+    "wrote": true,
+    "size": 8136,
+    "lines": 104,
+    "notes": [
+      "  Write @ 2026-05-11T21:24:10.963Z: 93 lines (replaces)",
+      "  Edit @ 2026-05-11T21:29:17.187Z: applied",
+      "  Edit @ 2026-05-11T21:29:25.323Z: applied",
+      "  Edit @ 2026-05-11T21:29:37.940Z: applied"
+    ]
+  },
+  {
+    "rel": "src\\components\\tycoon\\TravelLogisticsPage.tsx",
+    "wrote": true,
+    "size": 19208,
+    "lines": 451,
+    "notes": [
+      "  Write @ 2026-05-13T17:58:58.409Z: 451 lines (replaces)"
+    ]
+  },
+  {
+    "rel": "GameContext.tsx",
+    "wrote": false,
+    "edits_only": true,
+    "notes": [
+      "  Edit @ 2026-05-13T18:14:19.910Z: SKIPPED (no base content; file presumably existed on disk)"
+    ]
+  }
+]

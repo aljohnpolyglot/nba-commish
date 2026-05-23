@@ -1,0 +1,12 @@
+# Codex hunks NOT found on current disk for src/components/central/view/PlayerBiosView.tsx
+# 2 hunks unapplied. Total ops: 1
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=438 ts=2026-05-10T20:59:56.731Z ---
+ import { useGame } from '../../../store/GameContext';
++import { isEuroIsolatedMode } from '../../../utils/uiMode';
+
+--- HUNK [op#0 hunk#1] session=8 line=438 ts=2026-05-10T20:59:56.731Z ---
+-  const [league, setLeague] = useState('NBA');
++  const [league, setLeague] = useState(isEuroIsolatedMode(state) ? 'All' : 'NBA');

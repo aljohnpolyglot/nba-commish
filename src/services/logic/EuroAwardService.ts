@@ -30,7 +30,8 @@
  * We approximate FoulsDrawn ≈ FTA × 0.4 (real-life ratio), ShotsRejected
  * is dropped (we don't track), Fouls = personal fouls.
  */
-import type { NBAPlayer, NBATeam, NBAGMStat, StaffData } from '../../types';
+import type { NBAPlayer, NBATeam, NBAGMStat, StaffData, NonNBATeam } from '../../types';
+import { resolveAnyTeam } from '../../utils/teamLookup';
 
 export interface EuroAwardCandidate {
   player: NBAPlayer;
@@ -76,6 +77,17 @@ export interface EndesaAwardRaces {
   pirLeader: EuroAwardCandidate[];
   bestCoach: EuroCoachCandidate[];
 }
+
+type CompetitionBoxScore = {
+  competitionId?: string;
+  competitionPhase?: string;
+  season?: number;
+  date?: string;
+  homeTeamId: number;
+  awayTeamId: number;
+  homeScore: number;
+  awayScore: number;
+};
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -140,7 +152,7 @@ export class EuroAwardService {
    *  ≥ 1000 < 2000. Helps narrow the player pool. */
   static getCompetitionTeamIds(
     teams: NBATeam[],
-    nonNBATeams: { tid: number; league?: string }[],
+    nonNBATeams: NonNBATeam[],
     competitionId: 'euroleague' | 'endesa',
   ): Set<number> {
     const ids = new Set<number>();
@@ -166,21 +178,23 @@ export class EuroAwardService {
   static calculateEuroleagueRaces(
     players: NBAPlayer[],
     teams: NBATeam[],
-    nonNBATeams: { tid: number; league?: string; name: string }[],
+    nonNBATeams: NonNBATeam[],
     season: number,
     staff?: StaffData | null,
     minGamesOverride?: number,
+    boxScores: CompetitionBoxScore[] = [],
   ): EuroleagueAwardRaces {
     this.MIN_GAMES = minGamesOverride ?? 20;
     const euroIds = this.getCompetitionTeamIds(teams, nonNBATeams, 'euroleague');
+    const competitionTeams = this.buildCompetitionTeamMap('euroleague', euroIds, teams, nonNBATeams, season, boxScores);
 
     return {
-      mvp: this.calcEuroMVP(players, teams, euroIds, season),
-      defender: this.calcEuroDefender(players, teams, euroIds, season),
-      risingStar: this.calcEuroRisingStar(players, teams, euroIds, season),
-      topScorer: this.calcEuroTopScorer(players, teams, euroIds, season),
-      coy: this.calcEuroCOY(teams, euroIds, season, staff),
-      allEuroLeague: this.calcAllEuroLeague(players, teams, euroIds, season),
+      mvp: this.calcEuroMVP(players, competitionTeams, euroIds, season),
+      defender: this.calcEuroDefender(players, competitionTeams, euroIds, season),
+      risingStar: this.calcEuroRisingStar(players, competitionTeams, euroIds, season),
+      topScorer: this.calcEuroTopScorer(players, competitionTeams, euroIds, season),
+      coy: this.calcEuroCOY(competitionTeams, euroIds, season, staff),
+      allEuroLeague: this.calcAllEuroLeague(players, competitionTeams, euroIds, season),
     };
   }
 
@@ -189,22 +203,24 @@ export class EuroAwardService {
   static calculateEndesaRaces(
     players: NBAPlayer[],
     teams: NBATeam[],
-    nonNBATeams: { tid: number; league?: string; name: string }[],
+    nonNBATeams: NonNBATeam[],
     season: number,
     staff?: StaffData | null,
     minGamesOverride?: number,
+    boxScores: CompetitionBoxScore[] = [],
   ): EndesaAwardRaces {
     this.MIN_GAMES = minGamesOverride ?? 20;
     const endesaIds = this.getCompetitionTeamIds(teams, nonNBATeams, 'endesa');
+    const competitionTeams = this.buildCompetitionTeamMap('endesa', endesaIds, teams, nonNBATeams, season, boxScores);
 
     return {
-      mvp: this.calcEndesaMVP(players, teams, endesaIds, season),
-      bestYoungPlayer: this.calcBestYoungPlayer(players, teams, endesaIds, season),
-      topScorer: this.calcTopScorer(players, teams, endesaIds, season),
-      topRebounder: this.calcTopRebounder(players, teams, endesaIds, season),
-      topAssister: this.calcTopAssister(players, teams, endesaIds, season),
-      pirLeader: this.calcPIRLeader(players, teams, endesaIds, season),
-      bestCoach: this.calcBestCoach(teams, endesaIds, season, staff),
+      mvp: this.calcEndesaMVP(players, competitionTeams, endesaIds, season),
+      bestYoungPlayer: this.calcBestYoungPlayer(players, competitionTeams, endesaIds, season),
+      topScorer: this.calcTopScorer(players, competitionTeams, endesaIds, season),
+      topRebounder: this.calcTopRebounder(players, competitionTeams, endesaIds, season),
+      topAssister: this.calcTopAssister(players, competitionTeams, endesaIds, season),
+      pirLeader: this.calcPIRLeader(players, competitionTeams, endesaIds, season),
+      bestCoach: this.calcBestCoach(competitionTeams, endesaIds, season, staff),
     };
   }
 
@@ -405,6 +421,57 @@ export class EuroAwardService {
   }
 
   // ─── Util ────────────────────────────────────────────────────────────────
+
+  private static buildCompetitionTeamMap(
+    competitionId: 'euroleague' | 'endesa',
+    ids: Set<number>,
+    teams: NBATeam[],
+    nonNBATeams: NonNBATeam[],
+    season: number,
+    boxScores: CompetitionBoxScore[],
+  ): NBATeam[] {
+    const rows = new Map<number, { wins: number; losses: number }>();
+    ids.forEach(tid => rows.set(tid, { wins: 0, losses: 0 }));
+    const isRegularPhase = (phase?: string) => !phase || phase === 'group' || phase.startsWith('r');
+    const matchesSeason = (game: CompetitionBoxScore) => {
+      if (typeof game.season === 'number') return game.season === season;
+      const match = String(game.date ?? '').match(/(20\d{2})/);
+      if (!match) return false;
+      const year = Number(match[1]);
+      return year === season || year === season - 1;
+    };
+    boxScores
+      .filter(game => game.competitionId === competitionId && isRegularPhase(game.competitionPhase) && matchesSeason(game))
+      .forEach(game => {
+        const home = rows.get(game.homeTeamId) ?? { wins: 0, losses: 0 };
+        const away = rows.get(game.awayTeamId) ?? { wins: 0, losses: 0 };
+        const homeWon = game.homeScore > game.awayScore;
+        home.wins += homeWon ? 1 : 0;
+        home.losses += homeWon ? 0 : 1;
+        away.wins += homeWon ? 0 : 1;
+        away.losses += homeWon ? 1 : 0;
+        rows.set(game.homeTeamId, home);
+        rows.set(game.awayTeamId, away);
+      });
+    return [...ids].map(tid => {
+      const directTeam = teams.find(team => team.id === tid) as any;
+      const resolved = (directTeam ?? resolveAnyTeam(tid, teams, nonNBATeams)) as any;
+      const row = rows.get(tid);
+      const wins = row && row.wins + row.losses > 0 ? row.wins : (directTeam?.wins ?? 0);
+      const losses = row && row.wins + row.losses > 0 ? row.losses : (directTeam?.losses ?? 0);
+      if (!resolved) {
+        return { ...this.buildStubTeam(tid), wins, losses };
+      }
+      return {
+        ...(resolved as object),
+        id: resolved.id ?? resolved.tid ?? tid,
+        abbrev: resolved.abbrev ?? resolved.name?.slice(0, 3)?.toUpperCase() ?? '?',
+        logoUrl: resolved.logoUrl ?? resolved.imgURL,
+        wins,
+        losses,
+      } as NBATeam;
+    });
+  }
 
   private static buildStubTeam(tid: number): NBATeam {
     return { id: tid, name: 'Unknown', abbrev: '?', wins: 0, losses: 0 } as unknown as NBATeam;

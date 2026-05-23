@@ -7,14 +7,22 @@ import { getInsiderHandle } from '../../../data/social/handles';
 import { calculateSocialEngagement } from '../../../utils/helpers';
 import { NewsGenerator } from '../../../services/news/NewsGenerator';
 import { buildFullDraftSlotMap, formatPickLabel } from '../../../services/draft/draftClassStrength';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
 
 export const handleExecutiveTrade = async (stateWithSim: GameState, action: UserAction, executiveTradeTransactionRef: { current: any }, simResults: any[], recentDMs: any[]) => {
     const currentYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
-    const lotterySlotByTid = buildFullDraftSlotMap((stateWithSim as any).draftLotteryResult, stateWithSim.teams);
-    const tradeResult = executeExecutiveTrade(action.payload, stateWithSim.players, stateWithSim.teams, stateWithSim.draftPicks, currentYear, lotterySlotByTid, stateWithSim.leagueType);
+    const knownTeams = [
+        ...stateWithSim.teams,
+        ...((stateWithSim.nonNBATeams ?? [])
+            .map(t => resolveAnyTeam(t.tid, stateWithSim.teams, stateWithSim.nonNBATeams ?? []))
+            .filter((t): t is NonNullable<ReturnType<typeof resolveAnyTeam>> => t !== null)
+            .filter(t => !stateWithSim.teams.some(nba => nba.id === t.id))),
+    ];
+    const lotterySlotByTid = buildFullDraftSlotMap((stateWithSim as any).draftLotteryResult, knownTeams);
+    const tradeResult = executeExecutiveTrade(action.payload, stateWithSim.players, knownTeams, stateWithSim.draftPicks, currentYear, lotterySlotByTid, stateWithSim.leagueType);
     executiveTradeTransactionRef.current = tradeResult.transaction;
-    const teamA = stateWithSim.teams.find(t => t.id === action.payload.teamAId);
-    const teamB = stateWithSim.teams.find(t => t.id === action.payload.teamBId);
+    const teamA = resolveAnyTeam(action.payload.teamAId, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
+    const teamB = resolveAnyTeam(action.payload.teamBId, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
     
     const playersA = stateWithSim.players.filter(p => action.payload.teamAPlayers.includes(p.internalId)).map(p => p.name);
     const playersB = stateWithSim.players.filter(p => action.payload.teamBPlayers.includes(p.internalId)).map(p => p.name);
@@ -24,7 +32,7 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
     const pickLabel = (dpid: number): string => {
         const pk = stateWithSim.draftPicks.find(p => p.dpid === dpid);
         if (!pk) return 'pick';
-        const orig = stateWithSim.teams.find(t => t.id === pk.originalTid);
+        const orig = resolveAnyTeam(pk.originalTid, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
         return `${formatPickLabel(pk, currentYear, lotterySlotByTid, true)} (${orig?.abbrev ?? '?'})`;
     };
     const picksA = (action.payload.teamAPicks ?? []).map(pickLabel);

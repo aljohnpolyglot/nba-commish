@@ -1,11 +1,6 @@
 import { SocialTemplate, SocialContext } from '../types';
 import { getCurrentSeasonStats, calculateAge, get2KRating } from '../helpers';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GAMES → HUMAN TIME CONVERTER
-// Real Shams never says "X games" — he says "two weeks" / "a month" / "rest of season"
-// ─────────────────────────────────────────────────────────────────────────────
-
 function gamesToTime(games: number, remainingInSeason?: number): string {
     if (games <= 0)   return 'day-to-day';
     if (games === 1)  return 'one game';
@@ -21,7 +16,6 @@ function gamesToTime(games: number, remainingInSeason?: number): string {
     if (games <= 45)  return 'approximately two months';
     if (games <= 55)  return 'multiple months';
     if (games <= 65)  return 'at least three months';
-    // Season-ending threshold — if remaining games is close, call it
     if (remainingInSeason && games >= remainingInSeason * 0.85) return 'the remainder of the season';
     if (games >= 80)  return 'the remainder of the season';
     return 'significant time';
@@ -47,11 +41,6 @@ function isMajorInjury(games: number): boolean {
     return games >= 25;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// INJURY SEVERITY CLASSIFIER
-// Determines the "story" of the injury for template selection
-// ─────────────────────────────────────────────────────────────────────────────
-
 type InjurySeverity = 'day_to_day' | 'short_term' | 'mid_term' | 'long_term' | 'season_ending';
 
 function getSeverity(games: number): InjurySeverity {
@@ -61,11 +50,6 @@ function getSeverity(games: number): InjurySeverity {
     if (games <= 55) return 'long_term';
     return 'season_ending';
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// INJURY TYPE → TONE ADAPTER
-// Some injuries have known implications Shams always contextualizes
-// ─────────────────────────────────────────────────────────────────────────────
 
 function getInjuryContext(injuryType: string, games: number): string | null {
     const type = injuryType.toLowerCase();
@@ -87,11 +71,6 @@ function getInjuryContext(injuryType: string, games: number): string | null {
         return 'He will be evaluated daily and is considered day-to-day.';
     return null;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SEASON STATS CONTEXT
-// Shams often includes what the player was averaging — pulled from real data
-// ─────────────────────────────────────────────────────────────────────────────
 
 function getSeasonContext(ctx: SocialContext): string | null {
     const player = ctx.player;
@@ -117,22 +96,12 @@ function getSeasonContext(ctx: SocialContext): string | null {
     return `He had been averaging ${parts[0]}, ${parts[1]} and ${parts[2]} per game.`;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TEAM RECORD CONTEXT
-// "Kings are 3-6 without Sabonis" style lines
-// ─────────────────────────────────────────────────────────────────────────────
-
 function getTeamRecordContext(ctx: SocialContext): string | null {
     const team = ctx.team;
     if (!team || team.wins == null || team.losses == null) return null;
     if (Math.random() > 0.35) return null; // only include sometimes
     return `${team.name} are ${team.wins}-${team.losses} on the season.`;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SOURCE ATTRIBUTION
-// Real Shams rotates between these
-// ─────────────────────────────────────────────────────────────────────────────
 
 const SOURCES = [
     'sources tell ESPN.',
@@ -146,11 +115,6 @@ const SOURCES = [
 function getSource(): string {
     return SOURCES[Math.floor(Math.random() * SOURCES.length)];
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MAIN TEMPLATE BUILDER
-// Single function that reads all context and produces the right Shams post
-// ─────────────────────────────────────────────────────────────────────────────
 
 function buildShamsPost(ctx: SocialContext): string {
     const { player, team, injury } = ctx;

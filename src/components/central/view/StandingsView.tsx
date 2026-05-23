@@ -6,6 +6,7 @@ import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
 import { getTeamFullName } from '../../../utils/teamNames';
 import { selectCompetitionTeamTids } from '../../../services/competition/competitionScheduler';
+import { classifyBoxScoreGame } from '../../../utils/gameClassification';
 
 type StandingsViewType = 'league' | 'conf' | 'div';
 
@@ -68,15 +69,6 @@ export const StandingsView: React.FC = () => {
     // Fast team lookup for conf/div comparisons
     const teamMap = new Map(state.teams.map(t => [t.id, t]));
 
-    // Build exclusion set: preseason, playoff, play-in game IDs from the schedule
-    // (GameResult has no isPreseason flag — must cross-reference state.schedule)
-    // Mirror simulationService W/L exclusion: preseason, playoff, playin, exhibition, excludeFromRecord.
-    const nonRegularGids = new Set(
-      state.schedule
-        .filter(g => g.isPreseason || g.isPlayoff || g.isPlayIn || (g as any).isExhibition || (g as any).excludeFromRecord)
-        .map(g => g.gid)
-    );
-
     // Per-team accumulators derived from box scores
     const acc: Record<number, {
       totalWins: number; totalLosses: number;
@@ -98,20 +90,14 @@ export const StandingsView: React.FC = () => {
       };
     });
 
-    // Regular season only — exclude preseason/playoff/play-in/all-star.
-    // Filter to selected season year. Regular season runs ~Oct 24 → Apr 13.
-    const regSeasonStart = `${currentYear - 1}-10-24`;
-    const regSeasonEnd   = `${currentYear}-04-20`; // buffer past Apr 13
+    // Regular season only. Cup group/QF games count toward the regular season;
+    // Cup Final, playoffs, play-in, preseason, and exhibition games do not.
     state.boxScores
       .filter(g => {
         if (g.isAllStar || g.isRisingStars || g.isCelebrityGame) return false;
-        if (nonRegularGids.has(g.gameId)) return false;
-        // Also check isPlayoff/isPlayIn directly on box score (may not be in schedule after rollover)
-        if ((g as any).isPlayoff || (g as any).isPlayIn) return false;
-        try {
-          const dateNorm = new Date(g.date).toISOString().slice(0, 10);
-          return dateNorm >= regSeasonStart && dateNorm <= regSeasonEnd;
-        } catch { return true; }
+        const meta = classifyBoxScoreGame(g as any, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, leagueYear);
+        if (meta.seasonYear !== currentYear) return false;
+        return !meta.isPreseason && !meta.isPlayoff && !meta.isPlayIn && !meta.isAllStar && !meta.excludeFromRecord;
       })
       .forEach(g => {
         const homeAcc = acc[g.homeTeamId];
@@ -160,16 +146,18 @@ export const StandingsView: React.FC = () => {
         games: [],
       };
 
-      // W/L: source-of-truth from team.wins/losses (simulationService already
-      // skips preseason/playoff/playin/exhibition/excludeFromRecord). Box-score
-      // derivation is only for splits (home/road/conf/div, PS/PA/MOV, L10).
-      const wins = team.wins ?? s.totalWins;
-      const losses = team.losses ?? s.totalLosses;
-      const totalGames = (s.totalWins + s.totalLosses) || (wins + losses);
+      const derivedGames = s.totalWins + s.totalLosses;
+      const teamGames = (team.wins ?? 0) + (team.losses ?? 0);
+      const useLiveTeamRecord = currentYear === leagueYear && teamGames > 0;
+      const wins = useLiveTeamRecord ? team.wins : s.totalWins;
+      const losses = useLiveTeamRecord ? team.losses : s.totalLosses;
+      const totalGames = useLiveTeamRecord ? teamGames : derivedGames;
+      const splitWins = derivedGames > 0 ? s.totalWins : wins;
+      const splitLosses = derivedGames > 0 ? s.totalLosses : losses;
       const winPct = totalGames > 0 ? wins / totalGames : 0;
 
-      const roadWins = wins - s.homeWins;
-      const roadLosses = losses - s.homeLosses;
+      const roadWins = Math.max(0, splitWins - s.homeWins);
+      const roadLosses = Math.max(0, splitLosses - s.homeLosses);
 
       const avgPtsFor = totalGames > 0 ? (s.ptsFor / totalGames).toFixed(1) : '0.0';
       const avgPtsAgainst = totalGames > 0 ? (s.ptsAgainst / totalGames).toFixed(1) : '0.0';
@@ -177,7 +165,7 @@ export const StandingsView: React.FC = () => {
       const mov = movNum.toFixed(1);
 
       // streak is { type: 'W' | 'L', count: number } on NBATeam
-      const streakObj = team.streak;
+      const streakObj = totalGames > 0 ? team.streak : undefined;
       const streakStr = streakObj
         ? `${streakObj.type === 'W' ? 'Won' : 'Lost'} ${streakObj.count}`
         : '-';
@@ -229,7 +217,7 @@ export const StandingsView: React.FC = () => {
         teams: teams.filter(t => t.division === div),
       }));
     }
-  }, [state.teams, state.boxScores, state.schedule, state.leagueStats.divs, viewType, currentYear]);
+  }, [state.teams, state.boxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats.divs, viewType, currentYear, leagueYear]);
 
   const renderTable = (group: { title: string; teams: any[] }) => {
     const leader = group.teams[0];

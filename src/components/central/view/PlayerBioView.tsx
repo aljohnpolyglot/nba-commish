@@ -15,6 +15,8 @@ import { TradeDetailView } from './TradeDetailView';
 import { PlayerBioInjuriesTab } from './PlayerBioInjuriesTab';
 import { PlayerBioMoraleTab } from './PlayerBioMoraleTab';
 import { PlayerBioFamilyTreeTab } from './PlayerBioFamilyTreeTab';
+import { findCollegeTeamProfile, getCollegeTeamLabel } from '../../../services/collegeTeamCatalog';
+import { getProspectCollege, isDraftProspectLike } from '../../../utils/prospectUtils';
 
 interface PlayerBioViewProps {
   player: NBAPlayer;
@@ -30,6 +32,7 @@ interface PlayerBioViewProps {
 import { memCache, isCacheValid, fetchWithDedup, prefetchPlayerBio, getNonNBABioData } from './bioCache';
 import { ensureNonNBAFetched, getNonNBAGistData } from './nonNBACache';
 import { extractNbaId, hdPortrait } from '../../../utils/helpers';
+import { classifyBoxScoreGame } from '../../../utils/gameClassification';
 import {
   ensureBiosLoaded, getBioBySlug, fmtHeight,
 } from '../../../data/realPlayerDataFetcher';
@@ -52,11 +55,98 @@ function deepGet(obj: any, ...paths: string[][]): any {
   return null;
 }
 
-const getBestStat = (stats: any[] | undefined, season: number) => {
-  if (!stats) return undefined;
-  const seasonStats = stats.filter(s => s.season === season && !s.playoffs);
-  if (seasonStats.length === 0) return undefined;
-  return seasonStats.reduce((prev, current) => (prev.gp >= current.gp) ? prev : current);
+const buildHeroStatsFromSave = (stats: any[] | undefined, season: number) => {
+  const seasonStats = (stats ?? []).filter(s => s.season === season && !s.playoffs && (s.gp ?? 0) > 0);
+  if (seasonStats.length > 0) {
+    const totals = seasonStats.reduce((acc: any, s: any) => ({
+      gp: acc.gp + (s.gp || 0),
+      pts: acc.pts + (s.pts || 0),
+      trb: acc.trb + (s.trb ?? s.reb ?? ((s.orb ?? 0) + (s.drb ?? 0))),
+      ast: acc.ast + (s.ast || 0),
+      stl: acc.stl + (s.stl || 0),
+      blk: acc.blk + (s.blk || 0),
+    }), { gp: 0, pts: 0, trb: 0, ast: 0, stl: 0, blk: 0 });
+    const gp = totals.gp || 1;
+    return {
+      PTS: (totals.pts / gp).toFixed(1),
+      REB: (totals.trb / gp).toFixed(1),
+      AST: (totals.ast / gp).toFixed(1),
+      STL: (totals.stl / gp).toFixed(1),
+      BLK: (totals.blk / gp).toFixed(1),
+      fromSeason: true,
+    };
+  }
+
+  const regStats = (stats || []).filter((s: any) => !s.playoffs && (s.tid ?? -1) >= 0);
+  if (regStats.length === 0) return null;
+  const totals = regStats.reduce((acc: any, s: any) => ({
+    gp:  acc.gp  + (s.gp  || 0),
+    pts: acc.pts + (s.pts || 0),
+    trb: acc.trb + (s.trb ?? s.reb ?? ((s.orb ?? 0) + (s.drb ?? 0))),
+    ast: acc.ast + (s.ast || 0),
+    stl: acc.stl + (s.stl || 0),
+    blk: acc.blk + (s.blk || 0),
+  }), { gp: 0, pts: 0, trb: 0, ast: 0, stl: 0, blk: 0 });
+  const gp = totals.gp || 1;
+  return {
+    PTS: (totals.pts / gp).toFixed(1),
+    REB: (totals.trb / gp).toFixed(1),
+    AST: (totals.ast / gp).toFixed(1),
+    STL: (totals.stl / gp).toFixed(1),
+    BLK: (totals.blk / gp).toFixed(1),
+    fromSeason: false,
+  };
+};
+
+const buildHeroStatsFromBoxScores = (
+  playerId: string,
+  season: number,
+  boxScores: any[] | undefined,
+  schedule: Game[] | undefined,
+  playoffs: any,
+  nbaCup: any,
+  nbaCupHistory: any,
+) => {
+  let gp = 0;
+  let pts = 0;
+  let trb = 0;
+  let ast = 0;
+  let stl = 0;
+  let blk = 0;
+
+  for (const box of boxScores ?? []) {
+    const meta = classifyBoxScoreGame(box as any, schedule ?? [], playoffs, nbaCup, nbaCupHistory, season);
+    if (meta.seasonYear !== season || meta.isPreseason || meta.isPlayoff || meta.isPlayIn || meta.isCupFinal) {
+      continue;
+    }
+
+    const phase = String((box as any).competitionPhase ?? '').toLowerCase();
+    if (['play-in', 'qf', 'quarterfinals', 'sf', 'semifinals', 'final', 'final-four'].includes(phase)) {
+      continue;
+    }
+
+    const line = [...((box as any).homeStats ?? []), ...((box as any).awayStats ?? [])]
+      .find((stat: any) => stat.playerId === playerId);
+    if (!line) continue;
+
+    gp += 1;
+    pts += Number(line.pts ?? 0);
+    trb += Number(line.reb ?? line.trb ?? ((line.orb ?? 0) + (line.drb ?? 0)));
+    ast += Number(line.ast ?? 0);
+    stl += Number(line.stl ?? 0);
+    blk += Number(line.blk ?? 0);
+  }
+
+  if (gp <= 0) return null;
+
+  return {
+    PTS: (pts / gp).toFixed(1),
+    REB: (trb / gp).toFixed(1),
+    AST: (ast / gp).toFixed(1),
+    STL: (stl / gp).toFixed(1),
+    BLK: (blk / gp).toFixed(1),
+    fromSeason: true,
+  };
 };
 
 function calcAge(birthStr: string, currentYear: number): { label: string; age: string } {
@@ -68,6 +158,22 @@ function calcAge(birthStr: string, currentYear: number): { label: string; age: s
     label: bD.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
     age:   `${age} years`,
   };
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function bulletList(items: Array<string | null | undefined>): string {
+  return items
+    .filter((item): item is string => !!item && item.trim().length > 0)
+    .map(item => `<li>${escapeHtml(item)}</li>`)
+    .join('');
 }
 
 
@@ -110,8 +216,23 @@ function calcAge(birthStr: string, currentYear: number): { label: string; age: s
 
 export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, onGameClick, onTeamClick }) => {
   const { state } = useGame();
+  const currentYear = state.leagueStats?.year ?? new Date().getUTCFullYear();
+  const isProspectProfile = useMemo(
+    () => isDraftProspectLike(player, currentYear),
+    [player, currentYear],
+  );
+  const collegeName = useMemo(
+    () => getProspectCollege(player),
+    [player],
+  );
+  const collegeProfile = useMemo(
+    () => findCollegeTeamProfile(collegeName),
+    [collegeName],
+  );
   const [bioData,     setBioData]    = useState<any>(null);
-  const [isSyncing, setIsSyncing] = useState(() => !!extractNbaId(player.imgURL || "", player.name));
+  const [isSyncing, setIsSyncing] = useState(() =>
+    !isDraftProspectLike(player, currentYear) && !!extractNbaId(player.imgURL || "", player.name),
+  );
   const [fetchDone, setFetchDone] = useState(false);
   const [portraitSrc, setPortraitSrc] = useState<string>(() => {
     const u = player.imgURL?.trim();
@@ -123,17 +244,40 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
     const u = player.imgURL?.trim();
     setPortraitSrc((u && !u.includes('head-par-defaut')) ? u : "");
     setFetchDone(false);
-  }, [player.internalId]);
+    setIsSyncing(!isDraftProspectLike(player, currentYear) && !!extractNbaId(player.imgURL || "", player.name));
+  }, [player.internalId, player.imgURL, player.name, currentYear, player]);
   const [activeTab, setActiveTab] = useState<'Overview' | 'Historical Data' | 'Game Log' | 'Awards' | 'Ratings' | 'Salaries' | 'Transactions' | 'Injuries' | 'Morale' | 'Family Tree'>('Historical Data');
   const [selectedTrade, setSelectedTrade] = useState<{ text: string; date: string; legs?: { text: string; date: string }[] } | null>(null);
+  useEffect(() => {
+    setActiveTab(isProspectProfile ? 'Overview' : 'Historical Data');
+  }, [isProspectProfile, player.internalId]);
   const team = useMemo(() => {
     const isNBA = !["WNBA","Euroleague","PBA","B-League","G-League","Endesa","China CBA","NBL Australia","Draft Prospect","Prospect"].includes(player.status || "");
-    const current = isNBA
-      ? state.teams.find(t => t.id === player.tid)
-      : state.nonNBATeams.find(t => t.tid === player.tid && t.league === player.status);
-    if (current) return current;
+    // NBA tid range is [0,99]; everything else lives on nonNBATeams keyed by tid.
+    // Don't gate the lookup on league === status — `player.status` is often
+    // "Free Agent" / unset for non-NBA players, which previously left the header
+    // without color/logo. Match by tid first, then prefer league-matching when
+    // multiple share a tid (legacy +1000/+2000/etc. offsets).
+    if (player.tid >= 0 && player.tid < 100 && isNBA) {
+      const current = state.teams.find(t => t.id === player.tid);
+      if (current) return current;
+    } else {
+      const tid = player.tid;
+      const candidates = (state.nonNBATeams ?? []).filter(t => t.tid === tid);
+      if (candidates.length > 0) {
+        return candidates.find(t => t.league === player.status) ?? candidates[0];
+      }
+      // Legacy offset fallback (+1000/+2000/.../+8000)
+      const offsets = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000];
+      for (const off of offsets) {
+        if (tid >= off && tid < off + 1000) {
+          const hit = (state.nonNBATeams ?? []).find(t => t.tid === tid - off);
+          if (hit) return hit;
+        }
+      }
+    }
     // Retired / Free Agent — use team with most career regular-season GP
-    if (isNBA && player.stats?.length) {
+    if (player.stats?.length) {
       const gpByTid = new Map<number, number>();
       for (const s of player.stats) {
         if (s.playoffs || (s.tid ?? -1) < 0) continue;
@@ -141,18 +285,50 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
       }
       let bestTid = -1, bestGP = 0;
       gpByTid.forEach((gp, tid) => { if (gp > bestGP) { bestGP = gp; bestTid = tid; } });
-      if (bestTid >= 0) return state.teams.find(t => t.id === bestTid) ?? null;
+      if (bestTid >= 0) {
+        if (bestTid < 100) return state.teams.find(t => t.id === bestTid) ?? null;
+        return (state.nonNBATeams ?? []).find(t => t.tid === bestTid) ?? null;
+      }
     }
     return null;
   }, [player.tid, player.status, player.stats, state.teams, state.nonNBATeams]);
 
-  const teamColor = team?.colors?.[0] || "#CE1141";
-  const teamLogo  = (team as any)?.logoUrl || (team as any)?.imgURL;
+  const teamColor = isProspectProfile
+    ? (collegeProfile?.primaryColor || collegeProfile?.secondaryColor || "#1d4ed8")
+    : (team?.colors?.[0] || "#CE1141");
+  const teamLogo  = isProspectProfile
+    ? collegeProfile?.logoUrl
+    : ((team as any)?.logoUrl || (team as any)?.imgURL);
   // NBATeam.name already includes city ("Cleveland Cavaliers"); NonNBATeam stores region+name separately
   const isNBATeam = !["WNBA","Euroleague","PBA","B-League","G-League","Endesa","China CBA","NBL Australia","Draft Prospect","Prospect"].includes(player.status || "");
-  const teamFullName = team
-    ? (!isNBATeam && (team as any).region ? `${(team as any).region} ${team.name}`.trim() : team.name)
-    : null;
+  const teamFullName = isProspectProfile
+    ? (collegeProfile ? getCollegeTeamLabel(collegeProfile) : collegeName)
+    : (team
+      ? (!isNBATeam && (team as any).region ? `${(team as any).region} ${team.name}`.trim() : team.name)
+      : null);
+
+  const visibleTabs = useMemo(() => {
+    if (isProspectProfile) {
+      return [
+        { id: 'Overview', label: 'Overview' },
+        { id: 'Awards', label: 'Awards' },
+        ...((player.relatives && player.relatives.length > 0) ? [{ id: 'Family Tree', label: 'Family Tree' }] : []),
+      ];
+    }
+
+    return [
+      { id: 'Historical Data', label: 'Historical Data' },
+      { id: 'Ratings', label: 'Ratings' },
+      { id: 'Overview', label: 'Overview' },
+      { id: 'Game Log', label: 'Game Log' },
+      { id: 'Salaries', label: 'Salaries' },
+      { id: 'Transactions', label: 'Transactions' },
+      { id: 'Injuries', label: 'Injuries' },
+      { id: 'Morale', label: 'Morale' },
+      { id: 'Awards', label: 'Awards' },
+      ...((player.relatives && player.relatives.length > 0) ? [{ id: 'Family Tree', label: 'Family Tree' }] : []),
+    ];
+  }, [isProspectProfile, player.relatives]);
 
   const maxSeason = useMemo(() => {
     return state.players.reduce((max, p) => {
@@ -160,6 +336,56 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
       return Math.max(max, pMax);
     }, state.leagueStats.year);
   }, [state.players, state.leagueStats.year]);
+
+  const liveHeroStats = useMemo(() => {
+    const season = state.leagueStats?.year ?? maxSeason;
+    return buildHeroStatsFromBoxScores(
+      player.internalId,
+      season,
+      state.boxScores,
+      state.schedule,
+      state.playoffs,
+      state.nbaCup,
+      state.nbaCupHistory,
+    ) ?? buildHeroStatsFromSave(player.stats, season);
+  }, [
+    maxSeason,
+    player.internalId,
+    player.stats,
+    state.boxScores,
+    state.schedule,
+    state.playoffs,
+    state.nbaCup,
+    state.nbaCupHistory,
+    state.leagueStats?.year,
+  ]);
+
+  useEffect(() => {
+    const nextStats = liveHeroStats
+      ? {
+          PTS: liveHeroStats.PTS,
+          REB: liveHeroStats.REB,
+          AST: liveHeroStats.AST,
+          STL: liveHeroStats.STL,
+          BLK: liveHeroStats.BLK,
+        }
+      : { PTS: '0.0', REB: '0.0', AST: '0.0', STL: '0.0', BLK: '0.0' };
+
+    setBioData((prev: any) => {
+      if (!prev) return prev;
+      const currentStats = prev.stats ?? {};
+      if (
+        currentStats.PTS === nextStats.PTS &&
+        currentStats.REB === nextStats.REB &&
+        currentStats.AST === nextStats.AST &&
+        currentStats.STL === nextStats.STL &&
+        currentStats.BLK === nextStats.BLK
+      ) {
+        return prev;
+      }
+      return { ...prev, stats: nextStats };
+    });
+  }, [liveHeroStats]);
 
   useEffect(() => {
     let isMounted = true;
@@ -172,36 +398,37 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
       const curYear = maxSeason;
       const bY = player.born?.year  || 1995;
       const dY = player.draft?.year || 2026;
-      const ss = getBestStat(player.stats, curYear);
+      const heroStats = liveHeroStats;
 
       const nonNBABio = getNonNBABioData(player);
-      const isProspect = player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect';
-      // College: use BBGM college field, or parse "School (Yr)" from pre_draft e.g. "North Carolina (Sr)"
       const preDraftRaw = (player as any).pre_draft as string | undefined;
-      const collegeName = (player as any).college
-        || (preDraftRaw ? preDraftRaw.replace(/\s*\([^)]*\)\s*$/, '').trim() : null)
-        || "None";
-      // For prospects, show college as team label
-      const teamLabel = isProspect ? (collegeName !== "None" ? collegeName : "Draft Prospect") : (teamFullName || "Free Agent");
+      const collegeDisplay = collegeName || "None";
+      const teamLabel = isProspectProfile ? (collegeDisplay !== "None" ? collegeDisplay : "Draft Prospect") : (teamFullName || "Free Agent");
       const diedYear: number | undefined = (player as any).diedYear;
       const ageYear = diedYear ? Math.min(curYear, diedYear) : curYear;
+      const metaLine = [
+        teamLabel,
+        ...(!isProspectProfile && player.jerseyNumber ? [`#${player.jerseyNumber}`] : []),
+        ...(isProspectProfile ? ['Draft Prospect'] : []),
+        player.pos,
+      ].filter(Boolean).join(' | ');
       const baseData = {
         n: player.name,
-        m: `${teamLabel} | #${player.jerseyNumber || "—"} | ${player.pos}`,
+        m: metaLine,
         h: player.hgt    ? `${Math.floor(player.hgt / 12)}'${player.hgt % 12}"` : "Unknown",
         w: player.weight ? `${player.weight}lb` : "Unknown",
         c: player.born?.loc || "Unknown",
-        s: collegeName,
+        s: collegeDisplay,
         a: diedYear ? `${ageYear - bY} († ${diedYear})` : `${ageYear - bY} years`,
         b: `${bY}`,
-        d: isProspect
+        d: isProspectProfile
           ? (player.draft?.year ? `Draft Eligible: ${player.draft.year}` : 'Draft Prospect')
           : (player.draft?.year
             ? (player.draft.round && player.draft.pick
               ? `${player.draft.year} R${player.draft.round} P${player.draft.pick}`
               : `Undrafted (${player.draft.year})`)
             : "Undrafted"),
-        e: (() => {
+        e: isProspectProfile ? 'Pre-NBA' : (() => {
           // Experience = NBA seasons with at least 1 game played, not
           // calendar years since draft. Essengue (0 career GP) was showing
           // "5 Years" despite never touching the floor.
@@ -210,40 +437,45 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
           ).length;
           return `${played} Year${played === 1 ? '' : 's'}`;
         })(),
-        stats: (() => {
-          if (ss) {
-            const g = ss.gp || 1;
-            return {
-              PTS: ((ss.pts || 0) / g).toFixed(1),
-              REB: (((ss.trb || (ss as any).reb || (ss.orb || 0) + (ss.drb || 0))) / g).toFixed(1),
-              AST: ((ss.ast || 0) / g).toFixed(1),
-              STL: ((ss.stl || 0) / g).toFixed(1),
-              BLK: ((ss.blk || 0) / g).toFixed(1),
-            };
-          }
-          // No current-season stats → compute career averages (retired players)
-          const regStats = (player.stats || []).filter((s: any) => !s.playoffs && (s.tid ?? -1) >= 0);
-          const tot = regStats.reduce((acc: any, s: any) => ({
-            gp:  acc.gp  + (s.gp  || 0),
-            pts: acc.pts + (s.pts || 0),
-            trb: acc.trb + (s.trb ?? s.reb ?? ((s.orb ?? 0) + (s.drb ?? 0))),
-            ast: acc.ast + (s.ast || 0),
-            stl: acc.stl + (s.stl || 0),
-            blk: acc.blk + (s.blk || 0),
-          }), { gp: 0, pts: 0, trb: 0, ast: 0, stl: 0, blk: 0 });
-          const g = tot.gp || 1;
-          return {
-            PTS: (tot.pts / g).toFixed(1),
-            REB: (tot.trb / g).toFixed(1),
-            AST: (tot.ast / g).toFixed(1),
-            STL: (tot.stl / g).toFixed(1),
-            BLK: (tot.blk / g).toFixed(1),
-          };
-        })(),
-        bio: nonNBABio?.bio || { pro: "", pre: "", per: "" },
+        stats: heroStats
+          ? {
+              PTS: heroStats.PTS,
+              REB: heroStats.REB,
+              AST: heroStats.AST,
+              STL: heroStats.STL,
+              BLK: heroStats.BLK,
+            }
+          : { PTS: '0.0', REB: '0.0', AST: '0.0', STL: '0.0', BLK: '0.0' },
+        bio: isProspectProfile
+          ? {
+              pro: bulletList([
+                `${player.name} enters the ${dY} draft cycle as a ${player.pos} prospect.`,
+                collegeDisplay !== 'None' ? `Last program on file: ${teamLabel}.` : 'No college program has been attached to this prospect yet.',
+                collegeProfile?.conferenceName ? `${teamLabel} competes in the ${collegeProfile.conferenceName}.` : null,
+              ]),
+              pre: bulletList([
+                preDraftRaw ? `Source listing: ${preDraftRaw}.` : null,
+                player.born?.loc ? `Hometown / birth location on file: ${player.born.loc}.` : null,
+                player.hgt ? `Listed measurements: ${Math.floor(player.hgt / 12)}'${player.hgt % 12}" and ${player.weight || 'unknown'} pounds.` : null,
+              ]),
+              per: bulletList([
+                player.draft?.year ? `Draft class: ${player.draft.year}.` : 'Draft class not yet attached.',
+                player.age != null ? `Current listed age: ${player.age}.` : null,
+                collegeDisplay !== 'None' ? `${player.name} has not been drafted yet and is shown under college branding.` : null,
+              ]),
+            }
+          : (nonNBABio?.bio || { pro: "", pre: "", per: "" }),
       };
 
       if (isMounted) setBioData(baseData);
+
+      if (isProspectProfile) {
+        if (isMounted) {
+          setIsSyncing(false);
+          setFetchDone(true);
+        }
+        return;
+      }
 
       // ── Non-NBA players: enrich hero stats + info + bio from gist ─────────
       if (nonNBABio) {
@@ -254,14 +486,15 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
           if (isMounted && gist) {
             setBioData((prev: any) => ({
               ...prev,
-              // Override hero stats bar with real league stats
-              stats: {
-                PTS: gist.stats.PTS,
-                REB: gist.stats.REB,
-                AST: gist.stats.AST,
-                STL: gist.stats.STL ?? prev.stats.STL,
-                BLK: gist.stats.BLK ?? prev.stats.BLK,
-              },
+              ...(heroStats ? {} : {
+                stats: {
+                  PTS: gist.stats.PTS,
+                  REB: gist.stats.REB,
+                  AST: gist.stats.AST,
+                  STL: gist.stats.STL ?? prev.stats.STL,
+                  BLK: gist.stats.BLK ?? prev.stats.BLK,
+                },
+              }),
               // Override info grid fields if gist has better data
               ...(gist.h && { h: gist.h }),
               ...(gist.w && { w: gist.w }),
@@ -360,7 +593,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
 
     run();
     return () => { isMounted = false; controller.abort(); };
-  }, [player, team]);
+  }, [player, team, maxSeason, state.leagueStats?.year, liveHeroStats, teamFullName, isProspectProfile, collegeName, collegeProfile]);
 
   if (!bioData) return null;
 
@@ -393,23 +626,14 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
           fetchDone={fetchDone}
           isHoF={!!player.hof}
           face={(player as any).face}
+          showStatsBar={!isProspectProfile}
+          schoolLabel={isProspectProfile ? 'College' : 'Last Attended'}
         />
 
         {/* ── TABS ── */}
         <TabBar
           className="px-4 md:px-8 mt-5"
-          tabs={[
-            { id: 'Historical Data', label: 'Historical Data' },
-            { id: 'Ratings',         label: 'Ratings' },
-            { id: 'Overview',        label: 'Overview' },
-            { id: 'Game Log',        label: 'Game Log' },
-            { id: 'Salaries',        label: 'Salaries' },
-            { id: 'Transactions',    label: 'Transactions' },
-            { id: 'Injuries',        label: 'Injuries' },
-            { id: 'Morale',          label: 'Morale' },
-            { id: 'Awards',          label: 'Awards' },
-            ...((player.relatives && player.relatives.length > 0) ? [{ id: 'Family Tree', label: 'Family Tree' }] : []),
-          ]}
+          tabs={visibleTabs}
           active={activeTab}
           onChange={id => setActiveTab(id as typeof activeTab)}
         />
@@ -423,17 +647,17 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
           />
         )}
         
-        {activeTab === 'Historical Data' && (
+        {!isProspectProfile && activeTab === 'Historical Data' && (
           <div className="bg-[#080808]">
             <PlayerBioStatsHistory player={player} />
           </div>
         )}
 
-        {activeTab === 'Game Log' && (
+        {!isProspectProfile && activeTab === 'Game Log' && (
           <PlayerBioGameLogTab player={player} onGameClick={onGameClick} onTeamClick={onTeamClick} />
         )}
 
-        {activeTab === 'Ratings' && (
+        {!isProspectProfile && activeTab === 'Ratings' && (
           <PlayerBioRatingsTab
             player={player}
             currentYear={state.leagueStats?.year ?? new Date().getFullYear()}
@@ -441,19 +665,19 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
           />
         )}
 
-        {activeTab === 'Salaries' && (
+        {!isProspectProfile && activeTab === 'Salaries' && (
           <PlayerBioContractTab player={player} />
         )}
 
-        {activeTab === 'Transactions' && (
+        {!isProspectProfile && activeTab === 'Transactions' && (
           <PlayerBioTransactionsTab player={player} onTradeClick={setSelectedTrade} />
         )}
 
-        {activeTab === 'Injuries' && (
+        {!isProspectProfile && activeTab === 'Injuries' && (
           <PlayerBioInjuriesTab player={player} />
         )}
 
-        {activeTab === 'Morale' && (
+        {!isProspectProfile && activeTab === 'Morale' && (
           <PlayerBioMoraleTab player={player} />
         )}
 

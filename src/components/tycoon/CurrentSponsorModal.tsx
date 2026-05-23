@@ -7,6 +7,7 @@ import { SponsorLogo } from './SponsorLogo';
 import { getBrandMeta } from '../../data/sponsorCatalogFetcher';
 import type { SponsorshipSlot, Sponsorship } from '../../types/tycoon';
 import { formatCurrencyWithCode } from '../../utils/helpers';
+import { isSponsorDueForRenewal } from '../../services/tycoon/sponsorshipEngine';
 import {
   SLOT_PLACEMENT_LABEL, SLOT_VISIBILITY, INDUSTRY_PROFILE_LABEL,
   describeBrand, getSponsorPerks, breakdownAnnualValue,
@@ -39,6 +40,7 @@ export const CurrentSponsorModal: React.FC<Props> = ({
   const yearsRemaining = sponsor.yearsRemaining;
   const totalValue = sponsor.valuePerYear * yearsRemaining;
   const contractEndYear = sponsor.signedYear + yearsRemaining;
+  const renewalWindowOpen = isSponsorDueForRenewal(sponsor, currentYear);
   const breakdown = breakdownAnnualValue(sponsor.valuePerYear, archetype);
   const breakdownPct = {
     baseFee: (breakdown.baseFee / sponsor.valuePerYear) * 100,
@@ -76,7 +78,7 @@ export const CurrentSponsorModal: React.FC<Props> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-3 flex-wrap">
                 <h2 className="text-3xl font-black text-white">{sponsor.sponsor}</h2>
-                <span className="inline-flex items-center rounded-md border border-emerald-400/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-black tracking-widest text-emerald-300">Active</span>
+                <span className={`inline-flex items-center rounded-md px-2.5 py-1 text-[11px] font-black tracking-widest ${renewalWindowOpen ? 'border border-rose-400/40 bg-rose-500/15 text-rose-200' : 'border border-emerald-400/40 bg-emerald-500/15 text-emerald-300'}`}>{renewalWindowOpen ? 'Renewal Due' : 'Active'}</span>
               </div>
               <div className="text-sm font-bold text-violet-300 mt-1">{SLOT_PLACEMENT_LABEL[slot]}</div>
               <p className="text-sm text-slate-400 mt-2 max-w-[640px]">{describeBrand(industry)}</p>
@@ -85,7 +87,7 @@ export const CurrentSponsorModal: React.FC<Props> = ({
               <KpiCell label="Value per Year" value={fmt(sponsor.valuePerYear)} sub="Fixed Fee" tint="text-emerald-300" />
               <KpiCell label="Contract Length" value={`${yearsRemaining} Years`} sub={`Ends Jun 30, ${contractEndYear}`} tint="text-white" />
               <KpiCell label="Total Contract Value" value={fmt(totalValue)} sub="" tint="text-sky-300" />
-              <KpiCell label="Status" value="Active" sub={`${yearsRemaining} year${yearsRemaining === 1 ? '' : 's'} remaining`} tint="text-emerald-300" />
+              <KpiCell label="Status" value={renewalWindowOpen ? 'Renewal Due' : 'Active'} sub={renewalWindowOpen ? `Ends Jun 30, ${contractEndYear}` : `${yearsRemaining} year${yearsRemaining === 1 ? '' : 's'} remaining`} tint={renewalWindowOpen ? 'text-rose-300' : 'text-emerald-300'} />
               <KpiCell label="Renewal Option" value="1 Year" sub="Club Option" tint="text-white" />
             </div>
           </div>
@@ -243,14 +245,14 @@ export const CurrentSponsorModal: React.FC<Props> = ({
             </div>
           </div>
           <div className="flex-1 flex items-center justify-end gap-3">
-            {yearsRemaining <= 1 && (
-              <FooterButton icon={<RefreshCw size={14} />} label="Renegotiate Deal" onClick={onRenegotiate} hint="Final contract year — renewal window open" />
+            {renewalWindowOpen && (
+              <FooterButton icon={<RefreshCw size={14} />} label="Renegotiate Deal" onClick={onRenegotiate} hint="Contract ends this year — renewal window open" />
             )}
             <button
               onClick={onFindNewSponsors}
               className="px-5 py-2.5 rounded-lg bg-violet-500 hover:bg-violet-400 text-white text-sm font-bold flex items-center gap-2"
             >
-              <Search size={14} /> Find New Sponsors <ArrowRight size={14} />
+              <Search size={14} /> Replace Sponsor <ArrowRight size={14} />
             </button>
           </div>
         </div>

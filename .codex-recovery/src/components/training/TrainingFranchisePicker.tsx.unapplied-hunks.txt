@@ -1,0 +1,19 @@
+# Codex hunks NOT found on current disk for src/components/training/TrainingFranchisePicker.tsx
+# 3 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#1 hunk#0] session=8 line=148 ts=2026-05-10T20:52:01.387Z ---
+ import { calculateTeamStrength } from '../../utils/playerRatings';
+ import { getActiveLeagueTeams, isOnRoster, resolveAnyTeam } from '../../utils/teamLookup';
++import { getTeamFullName } from '../../utils/teamNames';
+
+--- HUNK [op#1 hunk#1] session=8 line=148 ts=2026-05-10T20:52:01.387Z ---
+-    const fullName = team.region && !team.name.includes(team.region) ? `${team.region} ${team.name}` : team.name;
++    const fullName = getTeamFullName(team);
+
+--- HUNK [op#1 hunk#2] session=8 line=148 ts=2026-05-10T20:52:01.387Z ---
+-                  {userTeam.region && !userTeam.name.includes(userTeam.region)
+-                    ? `${userTeam.region} ${userTeam.name}`
+-                    : userTeam.name}
++                  {getTeamFullName(userTeam)}

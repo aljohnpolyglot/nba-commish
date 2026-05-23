@@ -3,107 +3,21 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeftRight, UserPlus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
-import { calculateK2, K2_CATS } from '../../../services/simulation/convert2kAttributes';
 import { getDisplayOverall, getDisplayPotential } from '../../../utils/playerRatings';
 import { PlayerSelectorGrid, PlayerSelectorItem } from '../../shared/PlayerSelectorGrid';
 import { getDomesticPlayerStatus } from '../../../utils/euroLeagueDefaults';
 import { isEuroIsolatedMode } from '../../../utils/uiMode';
-
-const cn = (...classes: (string | boolean | undefined)[]) => classes.filter(Boolean).join(' ');
-
-const K2_DISPLAY_CATS = K2_CATS.filter(c => c.k !== 'MI');
-
-type StatMode = 'perGame' | 'advanced';
-
-const EXTERNAL_STATUSES = ['WNBA','Euroleague','PBA','B-League','G-League','Endesa','China CBA','NBL Australia'];
-const MODAL_LEAGUES = ['NBA', 'Draft Prospects', ...EXTERNAL_STATUSES, 'Retired'] as const;
-type ModalLeague = typeof MODAL_LEAGUES[number];
-
-function getPlayerLeague(p: NBAPlayer): ModalLeague {
-  if (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') return 'Draft Prospects';
-  if (p.status === 'Retired') return 'Retired';
-  if (EXTERNAL_STATUSES.includes(p.status ?? '')) return p.status as ModalLeague;
-  return 'NBA';
-}
-
-interface Metric {
-  id: string;
-  label: string;
-  title?: string;
-  getValue: (p: NBAPlayer, season: number) => number;
-  format: (v: number) => string;
-  isBetterHigher: boolean;
-}
-
-// Raw totals → per-game
-function pg(p: NBAPlayer, s: number, key: keyof typeof p.stats[0]): number {
-  const stat = p.stats?.find(x => x.season === s && !x.playoffs);
-  if (!stat || !stat.gp) return 0;
-  return (stat[key] as number ?? 0) / stat.gp;
-}
-// Pre-computed rates (not per-gp)
-function rate(p: NBAPlayer, s: number, key: keyof typeof p.stats[0]): number {
-  return (p.stats?.find(x => x.season === s && !x.playoffs)?.[key] as number) ?? 0;
-}
-
-const fmt1 = (v: number) => v.toFixed(1);
-const fmtSign = (v: number) => (v >= 0 ? '+' : '') + v.toFixed(1);
-const fmtPct3 = (v: number) => v > 0 ? '.' + Math.round(v * 1000).toString().padStart(3, '0') : '—';
-
-const PG_METRICS: Metric[] = [
-  { id: 'pts',  label: 'PTS',  isBetterHigher: true,  format: fmt1,    getValue: (p, s) => pg(p, s, 'pts') },
-  { id: 'reb',  label: 'REB',  isBetterHigher: true,  format: fmt1,    getValue: (p, s) => pg(p, s, 'trb') },
-  { id: 'ast',  label: 'AST',  isBetterHigher: true,  format: fmt1,    getValue: (p, s) => pg(p, s, 'ast') },
-  { id: 'stl',  label: 'STL',  isBetterHigher: true,  format: fmt1,    getValue: (p, s) => pg(p, s, 'stl') },
-  { id: 'blk',  label: 'BLK',  isBetterHigher: true,  format: fmt1,    getValue: (p, s) => pg(p, s, 'blk') },
-  { id: 'tov',  label: 'TOV',  isBetterHigher: false, format: fmt1,    getValue: (p, s) => pg(p, s, 'tov') },
-  { id: 'min',  label: 'MIN',  isBetterHigher: true,  format: fmt1,    getValue: (p, s) => pg(p, s, 'min') },
-  { id: 'gp',   label: 'GP',   isBetterHigher: true,  format: v => String(Math.round(v)), getValue: (p, s) => rate(p, s, 'gp') },
-  { id: 'ts',   label: 'TS%',  isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'tsPct') },
-  { id: 'rts',  label: 'rTS%', isBetterHigher: true,  format: v => (v > 0 ? '+' : '') + fmt1(v), getValue: (p, s) => rate(p, s, 'tsPct') - 58.0 },
-  { id: 'tpp',  label: '3P%',  isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'tpp') },
-  { id: 'ftp',  label: 'FT%',  isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'ftp') },
-];
-
-const ADV_METRICS: Metric[] = [
-  { id: 'gp',    label: 'GP',     isBetterHigher: true,  format: v => String(Math.round(v)), getValue: (p, s) => rate(p, s, 'gp') },
-  { id: 'min',   label: 'MIN',    isBetterHigher: true,  format: fmt1,    getValue: (p, s) => pg(p, s, 'min') },
-  { id: 'per',   label: 'PER',    title: 'Player Efficiency Rating',         isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'per') },
-  { id: 'ewa',   label: 'EWA',    title: 'Estimated Wins Added',             isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'ewa') },
-  { id: 'ts',    label: 'TS%',    title: 'True Shooting %',                  isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'tsPct') },
-  { id: 'usg',   label: 'USG%',   title: 'Usage Rate',                       isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'usgPct') },
-  { id: 'pm',    label: '+/-',    title: 'Plus/Minus per game',              isBetterHigher: true,  format: fmtSign, getValue: (p, s) => pg(p, s, 'pm') },
-  { id: 'ortg',  label: 'ORtg',   title: 'Offensive Rating',                 isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'ortg') },
-  { id: 'drtg',  label: 'DRtg',   title: 'Defensive Rating (lower = better)',isBetterHigher: false, format: fmt1,    getValue: (p, s) => rate(p, s, 'drtg') },
-  { id: 'orbp',  label: 'ORB%',   title: 'Offensive Rebound %',              isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'orbPct') },
-  { id: 'drbp',  label: 'DRB%',   title: 'Defensive Rebound %',              isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'drbPct') },
-  { id: 'trbp',  label: 'TRB%',   title: 'Total Rebound %',                  isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'rebPct') },
-  { id: 'astp',  label: 'AST%',   title: 'Assist %',                         isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'astPct') },
-  { id: 'stlp',  label: 'STL%',   title: 'Steal %',                          isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'stlPct') },
-  { id: 'blkp',  label: 'BLK%',   title: 'Block %',                          isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'blkPct') },
-  { id: 'tovp',  label: 'TOV%',   title: 'Turnover %',                       isBetterHigher: false, format: fmt1,    getValue: (p, s) => rate(p, s, 'tovPct') },
-  { id: 'obpm',  label: 'OBPM',   title: 'Offensive Box Plus-Minus',         isBetterHigher: true,  format: fmtSign, getValue: (p, s) => rate(p, s, 'obpm') },
-  { id: 'dbpm',  label: 'DBPM',   title: 'Defensive Box Plus-Minus',         isBetterHigher: true,  format: fmtSign, getValue: (p, s) => rate(p, s, 'dbpm') },
-  { id: 'bpm',   label: 'BPM',    title: 'Box Plus-Minus',                   isBetterHigher: true,  format: fmtSign, getValue: (p, s) => rate(p, s, 'bpm') },
-  { id: 'ws',    label: 'WS',     title: 'Win Shares',                       isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'ws') },
-  { id: 'ws48',  label: 'WS/48',  title: 'Win Shares per 48 min',            isBetterHigher: true,  format: v => v.toFixed(3), getValue: (p, s) => {
-    const stat = p.stats?.find(x => x.season === s && !x.playoffs);
-    if (!stat || !stat.min) return 0;
-    return (stat.ws ?? 0) / (stat.min / 48);
-  }},
-  { id: 'vorp',  label: 'VORP',   title: 'Value Over Replacement Player',    isBetterHigher: true,  format: fmt1,    getValue: (p, s) => rate(p, s, 'vorp') },
-];
-
-function getK2(player: NBAPlayer) {
-  const r = player.ratings?.[player.ratings.length - 1];
-  if (!r) return null;
-  return calculateK2(r as any, {
-    pos: player.pos,
-    heightIn: player.hgt,
-    weightLbs: player.weight,
-    age: player.age,
-  });
-}
+import {
+  ADV_METRICS,
+  cn,
+  getK2,
+  getPlayerLeague,
+  K2_DISPLAY_CATS,
+  MODAL_LEAGUES,
+  type ModalLeague,
+  type StatMode,
+  PG_METRICS,
+} from './PlayerComparisonMetrics';
 
 export const PlayerComparisonView: React.FC = () => {
   const { state } = useGame();

@@ -1,16 +1,7 @@
 import React from 'react';
 import { Crown, Clock, AlertTriangle } from 'lucide-react';
 import { useGame } from '../../../../../store/GameContext';
-import { normalizeDate } from '../../../../../utils/helpers';
-
-/** Mirrors NBACupTab.useGracePeriod — schedule lock cutoff is the upcoming
- *  season's Aug 14, after which the schedule is already generated and any
- *  toggle change here applies to the FOLLOWING season. */
-function useGracePeriod(seasonYear: number, currentDateRaw: string) {
-  const currentIso = normalizeDate(currentDateRaw);
-  const graceCloseIso = `${seasonYear - 1}-08-14`;
-  return currentIso < graceCloseIso;
-}
+import { getCommissionerSettingsWindow } from '../../../../../utils/commissionerSettings';
 
 interface ThroneSectionProps {
   enabled: boolean;
@@ -81,7 +72,7 @@ const Select: React.FC<{ label: string; value: string; onChange: (v: any) => voi
 export const ThroneSection: React.FC<ThroneSectionProps> = (props) => {
   const { state } = useGame();
   const seasonYear = state.leagueStats.year ?? new Date().getFullYear() + 1;
-  const inGrace = useGracePeriod(seasonYear, state.date ?? '');
+  const inGrace = getCommissionerSettingsWindow(state).isOpen;
 
   return (
     <div className="bg-gradient-to-br from-yellow-500/5 via-amber-900/5 to-slate-800/40 p-6 rounded-3xl border border-yellow-500/20 space-y-6">

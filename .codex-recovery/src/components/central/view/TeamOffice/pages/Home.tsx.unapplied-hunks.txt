@@ -1,0 +1,79 @@
+# Codex hunks NOT found on current disk for src/components/central/view/TeamOffice/pages/Home.tsx
+# 6 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#1] session=5 line=395 ts=2026-05-10T04:37:25.145Z ---
+   /** Header subtitle override — defaults to the front-office copy. */
+   subtitle?: string;
++  /** Optional team ids to visually call out in picker mode. */
++  highlightedTeamIds?: number[];
++  /** Label for highlighted teams. */
++  highlightedLabel?: string;
+ }
+ 
+-export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pickerMode, selectedTid, title, subtitle }: HomeProps) {
++export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pickerMode, selectedTid, title, subtitle, highlightedTeamIds, highlightedLabel }: HomeProps) {
+   const { state, dispatchAction } = useGame();
+   const teams = teamsProp ?? state.teams ?? [];
+   const players = playersProp ?? state.players ?? [];
+   const isGM = state.gameMode === 'gm';
+   const userTid = pickerMode ? (selectedTid ?? null) : (isGM ? state.userTeamId ?? null : null);
+   const needsTeamPick = pickerMode || (isGM && state.userTeamId == null);
++  const highlightedSet = new Set(highlightedTeamIds ?? []);
+
+--- HUNK [op#0 hunk#2] session=5 line=395 ts=2026-05-10T04:37:25.145Z ---
+         {sortedTeams.map((team) => {
+           const roster = players.filter(p => p.tid === team.id && p.status === 'Active');
+           const teamOverall = calculateTeamStrength(team.id, players);
+           const teamColor = team.colors?.[0] || '#552583';
+           const isUserTeam = team.id === userTid;
++          const isHighlighted = highlightedSet.has(team.id);
+ 
+           return (
+             <button
+               key={team.id}
+               onClick={() => handleSelect(team.id)}
+               className={cn(
+                 "group relative flex flex-col items-center p-4 rounded-xl border transition-all duration-300 overflow-hidden text-left",
+                 isUserTeam
+                   ? "bg-[#1a1a2e]/80 border-2"
++                  : isHighlighted
++                    ? "bg-[#161b22]/70 border-[#c0841a] hover:border-[#fbbf24] hover:bg-[#1b2130]"
+                   : "bg-[#161b22]/40 border-[#30363d] hover:border-[#8b949e] hover:bg-[#161b22]/80"
+               )}
+-              style={isUserTeam ? { borderColor: teamColor, boxShadow: `0 0 24px ${teamColor}80` } : undefined}
++              style={isUserTeam
++                ? { borderColor: teamColor, boxShadow: `0 0 24px ${teamColor}80` }
++                : isHighlighted
++                  ? { boxShadow: '0 0 20px rgba(251, 191, 36, 0.16)' }
++                  : undefined}
+             >
+
+--- HUNK [op#1 hunk#0] session=8 line=143 ts=2026-05-10T20:51:54.518Z ---
+ import { NBATeam, NBAPlayer } from '../../../../../types';
+ import { getActiveLeagueTeams, isOnRoster } from '../../../../../utils/teamLookup';
++import { getTeamFullName } from '../../../../../utils/teamNames';
++import { TeamSelector } from '../../../../shared/TeamSelector';
+
+--- HUNK [op#1 hunk#1] session=8 line=143 ts=2026-05-10T20:51:54.518Z ---
+-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
++      {!teamsProp ? (
++        <TeamSelector variant="grid" value={userTid} onChange={handleSelect} scope="active" />
++      ) : (
++      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+         {sortedTeams.map((team) => {
+
+--- HUNK [op#1 hunk#2] session=8 line=143 ts=2026-05-10T20:51:54.518Z ---
+                 <h3 className="font-black uppercase tracking-tight text-sm text-[#e6edf3] leading-tight mb-1">
+-                  {team.region && !team.name.includes(team.region) ? `${team.region} ${team.name}` : team.name}
++                  {getTeamFullName(team)}
+                 </h3>
+
+--- HUNK [op#1 hunk#3] session=8 line=143 ts=2026-05-10T20:51:54.518Z ---
+         })}
+       </div>
++      )}
+     </div>
+   );
+ }

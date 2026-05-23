@@ -49,8 +49,8 @@ function awardPlayer(state: GameState, key: EuroAwardKey, players: any[]): Parti
   const nonNba = (state.nonNBATeams ?? []) as any;
   const isEuroleague = key.startsWith('EUROLEAGUE_');
   const races = isEuroleague
-    ? EuroAwardService.calculateEuroleagueRaces(state.players, state.teams, nonNba, season, state.staff)
-    : EuroAwardService.calculateEndesaRaces(state.players, state.teams, nonNba, season, state.staff);
+    ? EuroAwardService.calculateEuroleagueRaces(state.players, state.teams, nonNba, season, state.staff, undefined, state.boxScores ?? [])
+    : EuroAwardService.calculateEndesaRaces(state.players, state.teams, nonNba, season, state.staff, undefined, state.boxScores ?? []);
 
   let winner: { player?: any; team?: any; coachName?: string } | undefined;
   switch (key) {
@@ -107,7 +107,7 @@ function awardAllEuroLeague(state: GameState): Partial<GameState> {
   if (existing.some(a => a.type === STORED_TYPE.ALL_EUROLEAGUE)) return {};
 
   const nonNba = (state.nonNBATeams ?? []) as any;
-  const races = EuroAwardService.calculateEuroleagueRaces(state.players, state.teams, nonNba, season, state.staff);
+  const races = EuroAwardService.calculateEuroleagueRaces(state.players, state.teams, nonNba, season, state.staff, undefined, state.boxScores ?? []);
   const [first, second] = races.allEuroLeague;
 
   const newAwards: HistoricalAward[] = [];

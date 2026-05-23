@@ -1,0 +1,17 @@
+# Codex hunks NOT found on current disk for src/components/commissioner/rules/view/RulesHeader.tsx
+# 1 hunks unapplied. Total ops: 3
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#1 hunk#2] session=7 line=824 ts=2026-05-10T12:55:08.869Z ---
+                     <div className="flex items-center gap-2 mr-2">
++                        <button
++                            onClick={handleApplyEuroDefaults}
++                            className="px-3 py-2 text-xs font-semibold text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-lg hover:bg-amber-500/20 transition-colors"
++                            title="Apply Euro Defaults"
++                        >
++                            Apply Euro Defaults
++                        </button>
+                         <button
+                             onClick={handleResetConfig}
+                             className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"

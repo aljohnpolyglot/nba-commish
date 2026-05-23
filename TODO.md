@@ -1,257 +1,153 @@
 # NBA Commish — TODO
 
-# QUICK FIXXES- MAY 15, 2026
+# QUICK FIXXES — MAY 15, 2026
 
-**Status 2026-05-16:** Main quick-fix sweep shipped in worktree. See `CHANGELOG.md` Session 62.
-- Endorsement duplicate signing guarded and legacy duplicate display/load cleanup added.
+**Status 2026-05-16:** Cleared and shipped. See `CHANGELOG.md` Session 62 plus commit `2c6bec3`.
+- Endorsement duplicate signing guarded; legacy duplicate display/load cleanup added.
+- Coaching and support-staff offseason rows auto-complete once visible role coverage is full, including the third-assistant case.
 - Euro signing path no longer applies NBA cap/MLE hard blocks or player/team-option incentives; cash deficit is a notice.
 - Euro Team Intel FA shortlist uses direct signing instead of NBA bid-market auto-bids.
-- Transfer Market `Mark Done` is gated behind the other Euro offseason tasks; premature `Sim to Opening Night` auto-resolve is hidden in Euro mode.
-- Empty Youth Promotion auto-completes; Preseason Friendlies opens an in-place game list modal.
-- Finance overview now states Euro deficits are normal owner-supported operating risk.
-
-Endorsement singing duplication:
-
-Extra Endorsement
-Local City Bank
-Financial Partnership Campaign
-Value
-€119.66K
-Contract
-One Year
-Signed
-
-Extra Endorsement
-Local City Bank
-Financial Partnership Campaign
-Value
-€119.66K
-Contract
-One Year
-Signed
-
-Extra Endorsement
-Supermercado del Centro
-Retail Promotion
-Value
-€25.66K
-Contract
-One Year
-Signed
-
-Extra Endorsement
-Supermercado del Centro
-Retail Promotion
-Value
-€25.66K
-Contract
-One Year
-Signed
-
-Coaching Signings not being
-Complete after i signed the 3rd assistant coach, needs to reaload the game for it to update.
-
-This modal starts at Transfer Window
-Day 31/92
-Sim Day
-Mark Done but sidebar shows Transfer Market
-In progress
-Review transfer listings, bids, and release-clause activity before preseason.
-
-Transfer Window Day
-1/62
-Resume
-Mark Done
-
-
-
-Remove thsi button if checklist is not complete yet Sim to Opening Night..
-
-TEAMS STILL NOT MAKING PROFIT BY DEFAULT
-
-#	Team	The Money Comes From	Projected Profit	The Money Goes To	Wage / Rev	Health
-Matchday	Sponsors	TV Rights	Total Rev	Wages	Staff	Facility	Scouting	Travel	Medical	Academy	Total Exp
-1	
-
-Joventut Badalona
-€8.03M	€6.00M	€4.50M	€18.53M	-€1.51M	€12.11M	€3.83M	€600K	€850K	€500K	€650K	€1.50M	€20.04M	65.3%	
-Critical
-2	
-
-Dreamland Gran Canaria
-€4.06M	€3.20M	€2.70M	€9.95M	-€1.72M	€6.61M	€2.61M	€360K	€550K	€350K	€450K	€750K	€11.68M	66.4%	
-Critical
-3	
-
-UCAM Murcia
-€4.06M	€3.11M	€2.70M	€9.87M	-€1.82M	€6.52M	€2.71M	€360K	€550K	€350K	€450K	€750K	€11.69M	66.1%	
-Critical
-4	
-
-Movistar Estudiantes
-€2.35M	€2.33M	€2.00M	€6.68M	-€2.36M	€5.88M	€1.80M	€240K	€320K	€250K	€300K	€250K	€9.04M	88.0%	
-Critical
-5	
-
-Casademont Zaragoza
-€4.06M	€3.22M	€2.70M	€9.97M	-€3.63M	€8.35M	€2.79M	€360K	€550K	€350K	€450K	€750K	€13.60M	83.7%	
-Critical
-6	
-
-MoraBanc Andorra
-€2.35M	€2.33M	€2.00M	€6.69M	-€5.37M	€8.90M	€1.79M	€240K	€320K	€250K	€300K	€250K	€12.05M	133.1%	
-Critical
-7	
-
-Unicaja Malaga
-€8.03M	€6.42M	€4.50M	€18.95M	-€5.57M	€16.40M	€4.03M	€600K	€850K	€500K	€650K	€1.50M	€24.52M	86.5%	
-Critical
-8	
-
-Hiopos Lleida
-€2.35M	€2.34M	€2.00M	€6.70M	-€5.70M	€9.34M	€1.70M	€240K	€320K	€250K	€300K	€250K	€12.40M	139.5%	
-Critical
-9	
-
-Basquet Girona
-€2.35M	€2.46M	€2.00M	€6.81M	-€6.00M	€9.72M	€1.73M	€240K	€320K	€250K	€300K	€250K	€12.81M	142.7%	
-Critical
-10	
-
-La Laguna Tenerife
-€4.06M	€2.99M	€2.70M	€9.74M	-€6.33M	€11.16M	€2.44M	€360K	€550K	€350K	€450K	€750K	€16.07M	114.6%	
-Critical
-11	
-
-Surne Bilbao
-€4.06M	€2.95M	€2.70M	€9.70M	-€6.49M	€11.08M	€2.65M	€360K	€550K	€350K	€450K	€750K	€16.19M	114.2%	
-Critical
-12	
-
-Coviran Granada
-€2.35M	€2.37M	€2.00M	€6.72M	-€6.59M	€10.08M	€1.88M	€240K	€320K	€250K	€300K	€250K	€13.31M	149.9%	
-Critical
-13	
-
-BAXI Manresa
-€2.35M	€2.44M	€2.00M	€6.80M	-€6.66M	€10.23M	€1.88M	€240K	€320K	€250K	€300K	€250K	€13.46M	150.5%	
-Critical
-14	
-
-FC Barcelona
-€17.21M	€12.89M	€8.00M	€38.10M	-€7.02M	€31.50M	€6.51M	€1.20M	€1.20M	€800K	€900K	€3.00M	€45.12M	82.7%	
-Critical
-15	
-
-Rio Breogan
-€2.35M	€2.57M	€2.00M	€6.92M	-€8.94M	€13.02M	€1.48M	€240K	€320K	€250K	€300K	€250K	€15.86M	188.2%	
-Critical
-16	
-
-San Pablo Burgos
-€4.06M	€3.02M	€2.70M	€9.78M	-€9.50M	€14.14M	€2.68M	€360K	€550K	€350K	€450K	€750K	€19.28M	144.6%	
-Critical
-17	
-
-Real Madrid
-€17.21M	€13.96M	€8.00M	€39.17M	-€11.35M	€37.04M	€6.39M	€1.20M	€1.20M	€800K	€900K	€3.00M	€50.53M	94.5%	
-Critical
-18	
-
-Baskonia Vitoria-Gasteiz
-€8.03M	€6.24M	€4.50M	€18.78M	-€16.49M	€27.16M	€4.00M	€600K	€850K	€500K	€650K	€1.50M	€35.27M	144.7%	
-
-
-
-here is real data.
-but turns out it wa srealistic! No, EuroLeague and Liga Endesa (ACB) teams generally do not make an annual profit. Most professional basketball clubs in Europe operate at a deficit. While exact figures fluctuate, annual losses per team commonly range from €1 million to over €9 million.These financial shortfalls are primarily due to high player salaries, international travel, and operating costs that heavily outpace standard matchday and broadcasting revenues. The ecosystem relies on a different financial model compared to leagues like the NBA:Shareholder Coverage: Most top-tier teams rely on wealthy owners, corporate sponsors, or parent sports clubs (like FC Barcelona and Real Madrid in soccer) to inject money and cover these annual losses.Budget Limits: Because of systemic unprofitability, EuroLeague regulations currently limit direct shareholder investments to a maximum of 50% of a team's total budget.Self-Sustainable Exceptions: Only a few clubs, such as Lithuania's Zalgiris Kaunas, operate with a highly self-sustainable model where revenues from sold-out arenas and sponsorships closely align with their budgets.For a deeper dive into the financial health and valuations of European basketball, you can review the full BasketNews EuroLeague Valuations Report.
-
-
-
-CIRICTAL:??
-
-no free agents bidding in team intel where we can bid against even nba teams on free agency  season simultanous with nba?? of course they most likely will ignore my offer, but yeah...
-
-
-also freeagency tab there is misisng? this is useful when we are nba free agent big names are gones, and left overs are in fa pool that we can ick up to go to ourleague, remove now free agency bidding logic for euromode. just mkae them autosign. add auto resign as well.
-
-
-ALSO IN PLAYER SIGNING MDOAL?? why is incentive still there.. like palyer option when we are in euroomde?? also in
-
-
-CRICITAL! i am in gm mode! and my ai asistnag tgm were maing bids for my end?? wtf..!
-
-Makt his am modal after submit offer"Cash warning - this deal projects year-end cash €10.60M below zero. Submit again to override with an owner-confidence hit."" make this more like hmmm.....  just a notice but just sign them anyways we dont care.
-
-
-
-
-ALSO IDK IF THIS SI A BUG FOR YEAR1: Offseason · Youth Promotion
-
-Breogan Promotion Window
-
-Eligible Players
-0
-Youth roster
-Recommended
-0
-Selected
-0
-To promote
-Slots
-15/15
-0 available
-Offseason Promotion
-Select players to promote to the main roster.
-
-No youth players in the academy.
-
-Youth prospects are generated each season based on your academy level.
-
-Youth Development Tip
-Promoting players at the right time is key. Keep an eye on their potential and playing time opportunities.
-
-
-
-no youth academy players graduation..
-also remove mark as doen for transfer market, if you are not yet finsihed in others like staff nad budget renewal and others.. i mean facilites. czu that will auto transfer you to a new date. which si pre preseason  or training camp, but still offseason mode, you can t sim or anything.... also weh nno promotion eligible detected, auto makr as done.. or if no more rows of players eligible.
-
-
-make this a modal. with list of games then click done, this is atutomatic. cuz this is a bottleneck lmao no more transport to calendar view Offseason Flow
-
-Preseason Friendlies
-Open the schedule desk to review preseason and friendly slots before camp.
-
-Cancel
-Open Schedule  also wtf ?? 
-Jaden Ivey no logner fits your cap room as if we are the NBA after that lmaoo.... we are in europe we dont have cap space!!
-
-
-
-ASLO Preseason bug.. sim to preseason , of finish offseason tasks transfered me to thi sBasketCommissionerSim
-Jul 11, 2025 • Season 2026
-and 2026 european playoffs lmaoo. wtf.
-
-GAME STILL BUGGY AF LMAo
-
-
-
-
-ALSO CRITICAL>>maybe add first in heads up or yearly ledger or finance review... dont worry, ebasketball is not football. it is okay to lose money, here in Europe.. bla bla bla... this is our pride.. bla bla..
-
-
-
-youtha cademy spawns, auto generates from the budget you will set in the phase before which is budget review. to make it simpler..
-
-also, hmm. maybe for jaden ivey signing or every fa , since we odnt amke profit anyway.. just have owner modal messagege.. if you pay player and offered for market value. so there are two blockers that could happen..
-
-player  accept/reject first] not yet fully accepted
-[owner modal first, you slightly overpaid for that can you make it lower, or lets go! sign this nba player welcome to europe something since we dont have cap logic, the owner knows if you overpay or underpay in market value... owner knows if offer strenght maybe like preference a player interset or offer strenght at 80-85 not at 100% if the ownr personality is thrifty. but if crazy rich asians, then he might let you go 100%]
-
-[player accetps// oay thanks for offer so excited t oplay, ]
+- Transfer Market `Mark Done` is available after the parallel staff/sponsor/facility reviews; premature `Sim to Opening Night` auto-resolve is hidden in Euro mode.
+- Empty Youth Promotion auto-completes; promoted academy players no longer keep the row alive; Preseason Friendlies opens an in-place game list modal.
+- Facility Upgrades and Annual Budget Review use the read-only operating-plan modal; Facility Review still has `Open Sliders`, Budget Review only locks final values.
+- Finance overview states Euro deficits are normal owner-supported operating risk.
+
+**Worktree follow-up 2026-05-20:** Euro offseason board is getting one more polish pass: `My Free Agents` should not start pre-skipped in the Euro checklist, and visible offseason copy should read like in-game summer tasks instead of internal dev labels.
 
 
 > Geshippte Sessions liegen in [CHANGELOG.md](./CHANGELOG.md). Dort prüfen, bevor ein Item unten als offen angenommen wird.
+
+---
+
+## 🔴 NEXT SESSION FIRST — Jersey Retirement Save Audit / Debug Cheats
+
+**Status 2026-05-18:** Worktree has fixes for raw alexnoob `stats[].jerseyNumber`, blank `pid`/`playerId` matching, stricter auto-retirement scoring, Bill Russell `#6` Team History display, and manual Team History retirement modal separation. Next session should start with real-save DevTools verification, not more guessing.
+
+**First step tomorrow:** run/extend `debugCheats.ts` diagnostics:
+- `JERSEYHEAL` then `JERSEYAUDIT` on the affected save.
+- Confirm CP3/KLove/Klay/Conley/Horford rows show raw team numbers, sane `scheduledYear`, and no `skip_existing` from blank IDs.
+- Add a focused debug table for Team History modal candidates by `teamId`, including `player`, `team`, `number`, `retiredYear`, `scheduledYear`, `outcome`, `source` (`auto` vs `manual-save-era`), and raw `stats.tid` counts.
+- Specifically verify Memphis does not surface Phoenix-only old legends (Steve Nash/Jason Kidd), and Warriors does not surface Elvin Hayes in the Klay modal.
+
+**Open risk:** old imported/historical retired players may have shifted `stats.tid` in existing saves. If audit confirms contaminated saved stats, add a targeted save-heal cheat before changing UI rules again.
+
+---
+
+## 🟡 IN PROGRESS — Long File Refactor Pass
+
+**Status 2026-05-21:** Started with a dedicated plan in `LONG_FILES_REFACTOR_PLAN.md`.
+
+- Phase 1 targets `src/components/offseason/OffseasonAufgaben.tsx` first.
+- Goal: extract shared helper logic and row-signal/date utilities without changing offseason behavior.
+- Follow-up phases will cover `AIFreeAgentHandler`, `simulationHandler`, `GameContext`, `useRulesState`, `SigningModal`, `EuroTransferMarketView`, and finally `types.ts`.
+
+**Status 2026-05-23 handoff:** marathon pass paused here by user after verified reductions to `GameplanTab`, `OpenMarketModal`, `DraftSimulatorView`, `CoachingView`, `DefenseTab`, `FreeAgentsView`, `PlayerCreatorView`, `CalendarView`, `PlayButton`, `EuroTransferMarketModals`, `PersonSelectorModal`, `externalRosterService`, and `PlayerBioMoraleTab`. Current evidence:
+- `npm run lint` passes.
+- `src` files over `499` lines: `41` total.
+- `src/components/central/view/PlayerBioMoraleTab.tsx` is now `258`; shared extract `src/components/central/view/playerBioMoraleShared.tsx` is `473`.
+- `src/components/central/view/LeagueFinancesView.tsx` is now `257`; shared extract `src/components/central/view/LeagueFinancesViewShared.tsx` is `499`.
+- `src/components/central/view/RealStern.tsx` is now `334`; extracts: `realSternShared.tsx` `96`, `realSternCards.tsx` `377`, `realSternViews.tsx` `294`.
+- `src/components/central/view/SportsBookView.tsx` is now `305`; extracts: `SportsbookViewSections.tsx` `344`, `SportsbookMyBetsTab.tsx` `200`.
+- `src/components/training/TrainingCenterView.tsx` is now `499`; extracts: `trainingCenterShared.ts` `151`, `TrainingCenterChrome.tsx` `256`.
+- Large generated/data blobs still above the gate are expected separate work: `src/data/names.json`, `src/data/2kImport/captions.ts`, `src/data/collegeTeamCatalog.json`, `src/data/coaches/nbacoachesratings.json`, and raw `src/data/2kImport/raw/...` text dumps.
+
+**Remaining runtime/source hotspot queue from actual measurement on 2026-05-23:**
+- `src/utils/debugCheats/implementation.ts` — `2793`
+- `src/store/logic/gameLogic.ts` — `1320`
+- `src/throne/components/TheThroneGame/index.tsx` — `925`
+- `src/services/simulation/GameSimulator/engine.ts` — `899`
+- `src/services/scoutingReport.ts` — `884`
+- `src/components/expansion/ExpansionDraftSetupModal.tsx` — `861`
+- `src/TeamTraining/components/SystemProficiencyView.tsx` — `841`
+- `src/services/news/lazySimNewsGenerator.ts` — `812`
+- `src/utils/helpers.ts` — `808`
+- `src/services/playerDevelopment/ProgressionEngine.ts` — `804`
+- `src/constants.ts` — `797`
+- `src/constants/ruleDefinitions.ts` — `793`
+- `src/components/central/view/TeamOffice/pages/TradingBlock.tsx` — `791`
+- `src/components/commissioner/rules/view/EconomyTab.tsx` — `782`
+- `src/components/CommissionerSetup.tsx` — `768`
+- `src/components/shared/GameSimulatorScreen.tsx` — `767`
+- `src/components/modals/SettingsModal.tsx` — `756`
+- `src/services/genDraftPlayers.ts` — `754`
+- `src/components/international/InternationalLeagueHub.tsx` — `751`
+- `src/services/simulation/StatGenerator/initial.ts` — `745`
+- `src/components/central/view/FrontOffice/sections/StaffSection.tsx` — `745`
+
+**Next-session advice:**
+- Resume from the measured queue above, not memory.
+- Prioritize runtime/UI/service files before data/generated blobs.
+- Rerun `npm run lint` after every integration and refresh the over-500 count before claiming progress.
+
+---
+
+## 🟡 FOLLOW-UP — AI Staff Firing Logic
+
+**Status 2026-05-19:** Deferred for a future session. Staff FA backfill, rollover expiries, and commissioner-fire autofill are handled in worktree; this follow-up is only about smarter AI decision-making.
+
+- Add AI staff/coaching firings driven by performance vs expectations instead of only contract expiry/retirement churn.
+- Core signals to weigh:
+  - actual wins / playoff result vs owner or board expectations
+  - repeated losing seasons / patience counters
+  - roster quality underperforming results
+  - financial stress for Euro clubs
+- Expected behavior:
+  - impatient owners should fire weak-performing head coaches sooner
+  - stable owners should tolerate short slumps and youth-rebuild seasons
+  - replacement hiring should reuse the existing `staffFreeAgents` + backfill pipeline, not a separate one-off path
+- Scope to inspect when this is picked up:
+  - `src/services/staff/nbaRealStaffSeed.ts`
+  - `src/services/euro/evaluateSeasonForOwner.ts`
+  - `src/store/logic/seasonRollover.ts`
+  - `src/store/logic/actions/playerActions.ts`
+
+---
+
+## 🟡 FOLLOW-UP — Euro Rotation Depth / Minutes Distribution
+
+**Status 2026-05-20:** User-requested gameplay tuning. EuroLeague / ACB rotation logic should reflect deeper European bench usage instead of NBA-style starter overload.
+
+- Enforce a minimum of 8 players at roughly `12+ MPG` in EuroLeague / ACB rotation builds.
+- Flatten the minutes cliff between starters and bench so the `6th` and `7th` men land closer to `18-24 MPG`, not token `5-6` minute scraps.
+- Keep the Euro/FIBA team minute budget behavior, but distribute it across a deeper playable group by design.
+- Expected behavior:
+  - Euro rotations should look deeper and flatter than NBA rotations.
+  - Bench specialists should stay in the real rotation instead of being functionally unused.
+  - Auto-generated rotations, ideal rotations, and any coach/gameplan reseed path should agree on the deeper Euro pattern.
+- Scope to inspect when this is picked up:
+  - `src/services/simulation/StarterService.ts`
+  - `src/components/central/view/TeamOffice/pages/CoachingView/IdealRotationTab.tsx`
+  - `src/store/idealRotationStore.ts`
+  - `src/store/logic/gameLogic.ts`
+
+---
+
+## 🟡 FOLLOW-UP — Retired Jersey Number Guard Everywhere
+
+**Status 2026-05-18:** Low-priority hardening. Draft picks, FA signings, and roster normalization already route through retired/reserved jersey-number checks. Later, audit the lower-probability write paths (`PlayerCreatorView`, external-league generated fillers, one-off manual roster moves) so every path that assigns a player to a team avoids `team.retiredJerseyNumbers` and reserved future-retirement numbers.
+
+---
+
+## ✅ FIXED — Euro Offseason Starts While Endesa Playoffs Are Still Active
+
+**Status 2026-05-18:** Fixed in worktree. `competitionResolver` now exposes unresolved Euro season-competition detection; `GameContext` and `offseasonPlan` treat active Endesa/EuroLeague completion as postseason-active, blocking Offseason Tasks and rollover until champions resolve. `debugCheats.ts` now surfaces the condition in `STUCK`/`PHASEDUMP`, and PlayButton hides EuroLeague jumps for non-qualified Euro GMs.
+
+**Observed 2026-05-16:** On `Jun 18, 2026`, the Liga Endesa bracket is still visible/in progress (QF complete, semifinals not started), but the right sidebar already shows **Offseason Tasks** (`Transfer Market`, sponsor renewals, facility upgrades, annual budget review, youth promotion, preseason friendlies, training camp). Bottom CTA says transfer window closed / finish staff-sponsors-facilities.
+
+**Bug:** Euro isolated mode can enter offseason-task mode before domestic postseason completion/champion resolution.
+
+**Expected invariant:**
+- Do not mount/show offseason checklist rows until all active Euro competitions that define season completion are resolved, especially Liga Endesa playoffs/finals.
+- `Transfer Market`, sponsor review, budget review, youth promotion, preseason friendlies, and training camp must remain hidden/locked while the Endesa bracket still has unplayed knockout games.
+- `Sim to Champion` / bracket simulation should stay the primary flow until Endesa champion is resolved.
+- After champion resolution, then enter offseason task mode and open the correct July transfer-market/offseason sequence.
+
+**Likely files to inspect:**
+- `src/services/offseason/offseasonState.ts`
+- `src/components/offseason/OffseasonAufgaben.tsx`
+- `src/store/logic/seasonRollover.ts`
+- `src/components/competition/CompetitionBracketView.tsx`
+- `src/services/competition/competitionResolver.ts`
 
 ---
 
@@ -277,6 +173,33 @@ player  accept/reject first] not yet fully accepted
 - Soll User-Team-Player **automatisch** declared werden wenn 100-Cap noch nicht erreicht und Recommendation = "NBA Caliber"? Oder immer manuell?
 - Was passiert mit `contractYears` und `salary` beim Declare? Free-Agent-Status für den Spieler bis er gedraftet wird, oder fix beendet?
 - Soll die Row in NBA-Mode auch sichtbar sein (NBA-Team mit Youth-Academy)? Wenn User-Team NBA ist, brauchen sie keine "declare" — der Spieler ist ja schon im System.
+
+---
+
+## 🆕 PLANNED — Travel Fatigue + Route Visualization
+
+**Spec:** `docs/travel-fatigue-spec.md`
+
+**Why now:** the repo already has `travelPreferences` UI/ledger plumbing and a real `trainingFatigue` simulation path. The missing work is the bridge between schedule travel and existing fatigue systems.
+
+### V1 target
+- Compute team-level travel stress from distance, timezone shift, back-to-backs, compressed road stretches, altitude, and international travel.
+- Feed that stress into `trainingFatigue` as a small additive daily modifier instead of creating a second fatigue system.
+- Surface the impact in Schedule and Front Office with badges like `Jet lag risk`, `Cross-country`, and `3 in 4`.
+
+### Files likely involved
+- `src/services/training/trainingTick.ts`
+- `src/utils/playerRatings.ts`
+- `src/services/simulation/InjurySystem.ts`
+- `src/services/simulation/GameSimulator/engine.ts`
+- `src/components/central/view/FrontOffice/sections/TravelSection.tsx`
+- `src/components/tycoon/TravelLogisticsCard.tsx`
+- `src/components/schedule/...`
+
+### Important constraint
+- Build the mechanic first.
+- Add the route map second.
+- Full Three.js globe is polish, not phase 1.
 
 ---
 

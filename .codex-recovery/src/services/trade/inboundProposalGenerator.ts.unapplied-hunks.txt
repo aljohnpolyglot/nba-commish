@@ -1,0 +1,8 @@
+# Codex hunks NOT found on current disk for src/services/trade/inboundProposalGenerator.ts
+# 1 hunks unapplied. Total ops: 1
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#1] session=8 line=330 ts=2026-05-10T20:56:49.819Z ---
+   } = input;
++  if ((leagueStats as any)?.tradesAllowed === false) return [];

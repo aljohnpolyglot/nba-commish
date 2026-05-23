@@ -1,0 +1,156 @@
+# Codex hunks NOT found on current disk for src/components/schedule/view/components/CalendarView.tsx
+# 6 hunks unapplied. Total ops: 7
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#1] session=8 line=1232 ts=2026-05-11T02:04:16.352Z ---
+   const seasonYear: number = state.leagueStats?.year ?? new Date().getFullYear();
++  const euroIsolated = isEuroIsolatedMode(state);
++  const noDraft = isNoDraftLeague(state.leagueStats);
++  const visibleSchedule = euroIsolated
++    ? (state.schedule ?? []).filter((g: Game) => !!g.competitionId)
++    : (state.schedule ?? []);
+
+--- HUNK [op#1 hunk#0] session=8 line=1903 ts=2026-05-11T02:49:46.566Z ---
+ import { isNoDraftLeague } from '../../../../services/offseason/offseasonState';
+ import { isEuroIsolatedMode } from '../../../../utils/uiMode';
++import { resolveAnyTeam } from '../../../../utils/teamLookup';
+
+--- HUNK [op#3 hunk#0] session=10 line=706 ts=2026-05-13T08:07:26.925Z ---
+   const isLatestMonth = year > maxScheduleDate.getUTCFullYear() ||
+     (year === maxScheduleDate.getUTCFullYear() && month >= maxScheduleDate.getUTCMonth());
++  const monthGames = visibleSchedule.filter((g: Game) => {
++    const d = new Date(g.date);
++    return d.getUTCFullYear() === year && d.getUTCMonth() === month;
++  });
++  const ownMonthGames = monthGames.filter((g: Game) => {
++    const ownTid = getOwnTeamId(state);
++    return ownTid !== null && ownTid !== undefined && (g.homeTid === ownTid || g.awayTid === ownTid);
++  });
++  const euroGames = monthGames.filter((g: Game) => g.competitionId === 'euroleague').length;
++  const domesticGames = monthGames.filter((g: Game) => g.competitionId === 'endesa').length;
++  const congestion = ownMonthGames.length >= 8 ? 'High' : ownMonthGames.length >= 5 ? 'Medium' : 'Low';
+ 
+   return (
+-    <div className="flex-1 flex flex-col p-4 md:p-6 bg-[#0a0a0a]">
+-      <div className="w-full">
+-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
++    <div className="flex-1 flex flex-col p-4 md:p-6 bg-slate-950 text-white">
++      <div className="w-full max-w-[1680px] mx-auto space-y-5">
++        <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+           <div>
+-            <h1 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight">{title}</h1>
+-            <p className="text-slate-500 font-medium mt-1 text-[10px] md:text-sm">Current Date: {formatDateDisplay(state.date)}</p>
++            <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tight">{title === 'Season Schedule' ? 'Schedule' : title}</h1>
++            <p className="text-slate-400 font-medium mt-1 text-sm">View all fixtures, results and calendar across all competitions.</p>
++          </div>
++          <div className="grid sm:grid-cols-3 gap-3 w-full xl:w-auto">
++            <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-5 py-3 min-w-[170px]">
++              <div className="text-xs font-black uppercase tracking-widest text-slate-500">Season</div>
++              <div className="text-lg font-black text-white">{seasonYear}-{String(seasonYear + 1).slice(-2)}</div>
++            </div>
++            <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-5 py-3 min-w-[190px]">
++              <div className="text-xs font-black uppercase tracking-widest text-slate-500">Fixture Congestion</div>
++              <div className={`text-lg font-black ${congestion === 'High' ? 'text-rose-300' : congestion === 'Medium' ? 'text-amber-300' : 'text-emerald-300'}`}>{congestion}</div>
++            </div>
++            <button
++              onClick={() => setViewMode('day')}
++              className="rounded-xl border border-amber-400/50 bg-amber-400/10 px-5 py-3 text-left hover:bg-amber-400/15"
++            >
++              <div className="text-xs font-black uppercase tracking-widest text-slate-500">Current Date</div>
++              <div className="text-lg font-black text-amber-300">{formatDateDisplay(state.date).replace(',', '')}</div>
++            </button>
+           </div>
+-          <div className="flex items-center gap-2 bg-[#111] p-1 rounded-xl border border-white/5">
++        </div>
++
++        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden">
++          <div className="px-4 pt-3 border-b border-slate-800">
++            <div className="flex gap-3 overflow-x-auto">
++              {['Overview', 'Calendar', 'Endesa', 'EuroLeague', 'Copa del Rey', 'Supercopa', 'All Fixtures'].map(tab => (
++                <button
++                  key={tab}
++                  className={`px-5 py-3 text-xs font-black uppercase tracking-widest border-b-2 whitespace-nowrap ${
++                    tab === 'Calendar' ? 'border-amber-400 text-amber-300' : 'border-transparent text-slate-400 hover:text-white'
++                  }`}
++                >
++                  {tab}
++                </button>
++              ))}
++            </div>
++          </div>
++
++          <div className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800">
++          <div className="flex items-center gap-2 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+             <button
+               onClick={() => setCalendarMonth(new Date(year, month - 1, 1))}
+               disabled={isEarliestMonth}
+-              className={`p-2 rounded-lg transition-colors ${isEarliestMonth ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
++              className={`p-2 rounded-lg transition-colors ${isEarliestMonth ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
+             >
+               <ChevronLeft size={18} />
+             </button>
+             <div className="text-sm md:text-lg font-black text-white uppercase tracking-tight min-w-[120px] text-center">
+
+--- HUNK [op#3 hunk#1] session=10 line=706 ts=2026-05-13T08:07:26.925Z ---
+             >
+               <ChevronRight size={18} />
+             </button>
+           </div>
++            <div className="flex flex-wrap items-center gap-4 text-xs">
++              <span className="inline-flex items-center gap-2 text-slate-300"><i className="w-3 h-3 rounded-full bg-sky-500" /> Endesa {domesticGames}</span>
++              <span className="inline-flex items-center gap-2 text-slate-300"><i className="w-3 h-3 rounded-full bg-orange-500" /> EuroLeague {euroGames}</span>
++              <span className="inline-flex items-center gap-2 text-slate-300"><i className="w-3 h-3 rounded-full bg-amber-400" /> Cup</span>
++              <button className="ml-auto rounded-lg border border-slate-700 px-4 py-2 text-slate-300 hover:text-white">Filter</button>
++            </div>
+         </div>
+ 
+-        <div className="grid grid-cols-7 gap-1 md:gap-2">
++        <div className="grid grid-cols-7 gap-px bg-slate-800">
+           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+-            <div key={day} className="text-center text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">{day}</div>
++            <div key={day} className="bg-slate-950/95 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest py-3">{day}</div>
+           ))}
+ 
+           {Array.from({ length: firstDay }).map((_, i) => (
+-            <div key={`empty-${i}`} className="aspect-square bg-white/[0.02] rounded-lg border border-white/[0.02]" />
++            <div key={`empty-${i}`} className="aspect-square bg-slate-950/70" />
+           ))}
+
+--- HUNK [op#4 hunk#0] session=10 line=717 ts=2026-05-13T08:08:19.559Z ---
+         </div>
+       </div>
+     </div>
++    </div>
+   );
+ };
+
+--- HUNK [op#5 hunk#3] session=11 line=207 ts=2026-05-13T17:22:29.424Z ---
+               {['Overview', 'Calendar', 'Endesa', 'EuroLeague', 'Copa del Rey', 'Supercopa', 'All Fixtures'].map(tab => (
+                 <button
+                   key={tab}
++                  onClick={() => setActiveTab(tab)}
+                   className={`px-5 py-3 text-xs font-black uppercase tracking-widest border-b-2 whitespace-nowrap ${
+-                    tab === 'Calendar' ? 'border-amber-400 text-amber-300' : 'border-transparent text-slate-400 hover:text-white'
++                    tab === activeTab ? 'border-amber-400 text-amber-300' : 'border-transparent text-slate-400 hover:text-white'
+                   }`}
+                 >
+                   {tab}
+                 </button>
+               ))}
+             </div>
+           </div>
+ 
++          {competitionTabId ? (
++            <CompetitionDetailPanel
++              competitionId={competitionTabId}
++              state={state}
++              seasonYear={seasonYear}
++              onJumpToDate={(date) => {
++                setSelectedDate(date);
++                setViewMode('day');
++              }}
++            />
++          ) : (
++            <>
+           <div className="p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800">

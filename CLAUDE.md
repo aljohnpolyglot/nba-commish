@@ -22,6 +22,8 @@ If you feel the urge to invoke `superpowers:*` skills or dispatch reviewer subag
 - NEVER split a 20-line helper into its own file + `__tests__/` folder unless the helper is genuinely reused in 3+ places.
 - NEVER bundle "parallel WIP" into a commit unless the user explicitly says so in *this* session — past approval doesn't carry over.
 - BEFORE writing a new file, grep the codebase for the symbol/feature. If it already exists, extend it instead of duplicating.
+- Offseason UI copy must read like player-facing game text, not internal pipeline/dev-tool wording. Avoid labels like "Offseason Flow", "Phase", "task resolver", or other implementation language when the user will see it.
+- NEVER hardcode gameplay/economy settings (salary cap, contract scales, league toggles, commissioner-configurable rules). Read them from `leagueStats`, setup payload/state, or commissioner settings flow.
 
 The `AskUserQuestion` rule in the next section applies ONLY to genuinely novel architecture work where the plan file is silent. If the plan file or TODO answers the question, skip the prompt.
 
@@ -80,6 +82,23 @@ These bugs have shipped multiple times across sessions. Before writing code, sca
 10. **Auto-Seed effects need a persistent seed-flag, not just an existence-check.**
     If you seed `state.expansionSchedule` and the user cancels, your existence-check (`!schedule`) re-fires and seeds again. Persist `auto<feature>Seeded: true` in `leagueStats` and check that flag.
 
+11. **Offseason Aufgaben regressions — do not repeat these.**
+    - Never compare raw `state.date` display strings to ISO dates. Always normalize with `normalizeDate()` or parse with `parseGameDate()` before comparisons. Symptom: `Jul 7, 2026 >= 2026-09-29` lexically evaluates wrong and skips Free Agency.
+    - `faTagCounter > 0` means Free Agency is active. Do not mark `freeAgency` skipped before training camp; reducers and UI recovery must force it back to `in-progress`.
+    - Timed footers (`Day 1/13`, transfer-window `Day 1/x`) should use a generic **Next Task** action, not "To Training Camp". It must stop at the next unresolved offseason task before camp.
+    - Retired Players and Hall of Fame must stay visible in the NBA offseason checklist. The row click can simulate to its event date, but the row itself must not be hidden as a "grand reveal".
+    - Retired/HOF views must derive the visible class year from the current calendar date in offseason, not blindly from `leagueStats.year - 1`.
+    - My Free Agents should only reopen before FA opens. Never reopen it once phase is `moratorium`, `birdRights`, `openFA`, or `preCamp`.
+    - Assistant GM must not bypass CBA. No-Bird/no-cap asking-price rows count as resolved blockers, are excluded from assistant offers, and should recompute only if cap clears before FA.
+    - Expansion Draft row appears only when `expansionSchedule.year === leagueStats.year`; future expansions live in the pin, not as a skipped task row.
+
+12. **CRITICAL: retired-jersey/player matching must never match blank IDs.**
+    - Never compare `String(record.pid ?? '') === String(player.pid ?? '')` or equivalent. If both sides are missing, every old retired-jersey record matches every player on that team.
+    - Same rule for `playerId`: only compare when both sides are non-empty.
+    - Safe fallback is exact `record.text === player.name` only when the retired-jersey record explicitly has a player name.
+    - Symptom: `JERSEYAUDIT` shows Chris Paul/Klay/Kevin Love as `skip_existing` with wrong historical team numbers and impossible `scheduledYear` values like 1967/1979/2000.
+    - Raw alexnoob jersey fields live in `players[].stats[].jerseyNumber`; use those raw fields, not hardcoded fallback maps.
+
 ## Project
 
 ## Project
@@ -98,6 +117,10 @@ The signing/cap system runs in this **execution order** inside `src/services/AIF
 **Critical:** if you reorder these passes, the two-way pool starves. Pass 4 sorts by salary ASC, which prefers the lowest-OVR FAs — exactly the players Pass 2 needs.
 
 ## Economy audit scripts
+
+## Debug cheat entrypoint
+
+`src/utils/debugCheats.ts` is the first place to inspect for in-app repro/diagnostics. When a TODO bug mentions PlayButton, phase drift, offseason, Euro mode, or stuck simulation state, check existing cheats (`STUCK`, `PHASEDUMP`, `EUROAUDIT`, `WARP`, `WARPSLOW`) and extend them with targeted output before guessing from UI symptoms.
 
 Two browser-console scripts validate fixes against a real save (`scripts/`):
 
@@ -120,7 +143,9 @@ Both auto-load the newest save from IndexedDB via `keyval-store`. To target a sp
 
 ## Debugging save-state bugs — STOP and ask first
 
-For every data-corruption / contract / FA-pool / roster / Bird-Rights / mood / trade bug, **STOP after stating the suspected mechanism. Ask the user to paste the DevTools snippet below and wait for the output before reading more code.** Code reads without the actual save state are guesswork — the `releaseDeclinedExtensionPlayer` fix only landed because the user pulled `{tid: -1, contract.exp: 2028, contractYears[14] valid}` straight out of the save, which contradicted the player-option theory I'd been chasing. Don't repeat that — ask up-front.
+For every data-corruption / contract / FA-pool / roster / Bird-Rights / mood / trade bug, **STOP after stating the suspected mechanism. Ask the user to paste the full DevTools load snippet below and wait for the output before reading more code.** Code reads without the actual save state are guesswork — the `releaseDeclinedExtensionPlayer` fix only landed because the user pulled `{tid: -1, contract.exp: 2028, contractYears[14] valid}` straight out of the save, which contradicted the player-option theory I'd been chasing. Don't repeat that — ask up-front.
+
+**Critical ordering rule:** Always provide the full IndexedDB + gzip load snippet first. Never begin with a snippet that assumes `window.__lastSaveState` already exists. `window.__lastSaveState` is only valid after the user has successfully run the full load snippet in the current browser tab.
 
 ### Save format (critical — saves are GZIPPED)
 
@@ -128,7 +153,7 @@ For every data-corruption / contract / FA-pool / roster / Bird-Rights / mood / t
 - Save IDs follow pattern `nba_commish_<timestamp>_<id>` (e.g. `nba_commish_1778078108571_mvnxqj`)
 - Metadata index key: `nba_commish_metadata` → array of `{ id, name, dateSaved, gameDate, commissionerName, day }`
 - **Save value is `{ __gz: true, data: ArrayBuffer }` — gzipped JSON.** Reading it raw shows `{__gz, data}` with no `players` field. You must `DecompressionStream('gzip')` it first.
-- `state` is **NOT** a global. Reading from IDB + decompressing is the only console path.
+- `state` is **NOT** a global. `window.__lastSaveState` is also **NOT** guaranteed. Reading from IDB + decompressing is the first console path for every new save-debugging exchange.
 
 See `src/services/SaveManager.ts` for the canonical compress/decompress helpers, and `scripts/audit-economy.js` for the audit-script pattern (older audit scripts predate the gzip wrapper — check before reusing).
 
@@ -165,7 +190,7 @@ See `src/services/SaveManager.ts` for the canonical compress/decompress helpers,
 })();
 ```
 
-After running once, `window.__lastSaveState` is hot — follow-ups can skip the IDB+gunzip dance and just read `__lastSaveState.players.find(...)` directly.
+Only after this snippet has printed successfully in the same tab, `window.__lastSaveState` is hot. Follow-ups may then use `__lastSaveState.players.find(...)`; if the user reports `Cannot read properties of undefined (reading 'players')`, immediately give the full load snippet again.
 
 **Console usage note:** paste the JavaScript block only. Do not paste surrounding prose like "Then run:" or quoted assistant text, or DevTools will throw a syntax error before the snippet executes.
 

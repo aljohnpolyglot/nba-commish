@@ -1,0 +1,92 @@
+# Codex hunks NOT found on current disk for src/store/GameContext.tsx
+# 6 hunks unapplied. Total ops: 12
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=2 line=98 ts=2026-05-09T23:32:17.460Z ---
+ import {
+   defaultOffseasonChecklist,
+   initialPreseasonChecklist,
+   setRowStatus,
+   OFFSEASON_ROW_TAB,
+   getOffseasonState,
++  computeUpcomingSeasonYear,
+ } from '../services/offseason/offseasonState';
+
+--- HUNK [op#1 hunk#0] session=4 line=356 ts=2026-05-09T23:57:30.112Z ---
+       const migratedLeagueStats = { ...ls };
+       let staleRulesMigrated = false;
++      if (migratedLeagueStats.allStarGameTargetScore == null) {
++        migratedLeagueStats.allStarGameTargetScore =
++          ls.allStarGameFormat === 'target_score'
++            ? Math.max(40, ls.allStarOvertimeTargetPoints ?? 40)
++            : 40;
++        staleRulesMigrated = true;
++      }
++      if (migratedLeagueStats.gameTargetScore == null || migratedLeagueStats.gameTargetScore <= 0) {
++        migratedLeagueStats.gameTargetScore = 100;
++      }
+       if (ls.allStarMirrorLeagueRules === true && ls.allStarQuarterLength === 12) {
+         migratedLeagueStats.allStarMirrorLeagueRules = false;
+         migratedLeagueStats.allStarQuarterLength = 3;
+
+--- HUNK [op#2 hunk#1] session=4 line=371 ts=2026-05-09T23:57:44.720Z ---
+       setState({
+         ...initialState,
+         ...loaded,
+         leagueStats: migratedLeagueStats,
++        schedule: healedSchedule,
+         players: playersWithAISetup,
+         teams: teamsWithFreshTraining as any,
+
+--- HUNK [op#8 hunk#0] session=8 line=2826 ts=2026-05-11T12:23:11.765Z ---
+     if (action.type === 'OFFSEASON_AUTO_RESOLVE_ALL') {
+       // Same outcome as Enter Preseason BUT with assistantGM=true so the AI
+       // handles every user-team transaction (re-signs, FA bids, options,
+       // even trades) under the hood. OFFSEASON_EXIT does the actual sim +
+       // gate teardown; the explicit flag distinguishes this path from a
+       // user-driven manual Enter Preseason (which should NOT let the AI
+       // trade for the user's roster).
++      setState(prev => {
++        if (!prev.offseasonChecklist) return prev;
++        const nextChecklist = { ...prev.offseasonChecklist };
++        for (const row of Object.keys(nextChecklist) as OffseasonChecklistRow[]) {
++          if (nextChecklist[row] === 'pending' || nextChecklist[row] === 'in-progress') {
++            nextChecklist[row] = 'skipped';
++          }
++        }
++        return { ...prev, offseasonChecklist: nextChecklist };
++      });
+       await dispatchAction({ type: 'OFFSEASON_EXIT', payload: { assistantGM: true } } as any);
+       return;
+     }
+
+--- HUNK [op#8 hunk#1] session=8 line=2826 ts=2026-05-11T12:23:11.765Z ---
+-      const scheduledPreseason = (stateRef.current.schedule ?? [])
++      const scheduledPreseason = (stateRef.current.schedule ?? [])
+         .filter((g: any) => g.isPreseason && !g.played)
+         .map((g: any) => normalizeDate(g.date))
+         .filter((d: string) => !!d && (!todayStr || d > todayStr))
+         .sort()[0];
+-      const target = scheduledPreseason ?? `${preseasonYear}-10-01`;
++      const scheduledOpeningNight = (stateRef.current.schedule ?? [])
++        .filter((g: any) =>
++          !g.played &&
++          !g.isPreseason &&
++          !g.isExhibition &&
++          !g.isAllStar &&
++          !g.isRisingStars &&
++          !g.isCelebrity
++        )
++        .map((g: any) => normalizeDate(g.date))
++        .filter((d: string) => !!d && (!todayStr || d > todayStr))
++        .sort()[0];
++      const target = useAssistantGM
++        ? (scheduledOpeningNight ?? `${preseasonYear}-10-24`)
++        : (scheduledPreseason ?? scheduledOpeningNight ?? `${preseasonYear}-10-01`);
+
+--- HUNK [op#9 hunk#0] session=8 line=2860 ts=2026-05-11T12:24:31.458Z ---
+-    const isInitialFirstSeason = !state.seasonHistory || state.seasonHistory.length === 0;
++    const cMonthForInitial = state.date ? new Date(state.date).getUTCMonth() + 1 : 0;
++    const isInitialImportWindow = cMonthForInitial >= 7;
++    const isInitialFirstSeason = (!state.seasonHistory || state.seasonHistory.length === 0) && isInitialImportWindow;

@@ -1,0 +1,12 @@
+# Codex hunks NOT found on current disk for src/components/commissioner/rules/view/EconomyTab.tsx
+# 1 hunks unapplied. Total ops: 3
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#2 hunk#0] session=9 line=251 ts=2026-05-12T21:38:04.280Z ---
+                     <EconomyContractsSection
+                         props={props}
+                         setIsMinContractModalOpen={setIsMinContractModalOpen}
+                         setIsMaxContractModalOpen={setIsMaxContractModalOpen}
++                        euroMode={euroMode}
+                     />

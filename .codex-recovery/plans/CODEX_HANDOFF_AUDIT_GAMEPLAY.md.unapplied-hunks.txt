@@ -1,0 +1,50 @@
+# Codex hunks NOT found on current disk for plans/CODEX_HANDOFF_AUDIT_GAMEPLAY.md
+# 4 hunks unapplied. Total ops: 3
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=2266 ts=2026-05-11T08:52:57.270Z ---
+ > **Read this file in full before touching anything.** Then read `plans/euro-isolated-spain-mvp.md` (the master plan) and `plans/CODEX_HANDOFF_EURO_MVP.md` (the original handoff with autonomy rules + decision principles — those rules still apply verbatim here).
+ 
+ ---
+ 
++## Fix Pass Status (Codex, 2026-05-11)
++
++**Shipped in current worktree:**
++
++- `P0-A partial/fixed for visible symptom`: `LeagueFinancesView` Euro branch now sources Endesa clubs through the Endesa `CompetitionSpec`/`nonNBATeams`, not `state.teams`, so NBA teams no longer render in League Finances while NBA remains available for background sim. Budget tier and sponsorship come from `team.tycoon`; profit uses latest `ledgerHistory` when available and falls back to sponsorship minus wage bill.
++- `P0-B partial`: Euro schedule/day surfaces now show competition phase badges/banner, watched Euro games keep `competitionId`/`competitionPhase`, scores show W/L, and stale past competition fixtures are picked up by the next simulation tick instead of staying `Scheduled` forever. Euro `Playoffs` route now opens the Liga Endesa competition hub rather than NBA playoffs.
++- `P0-D fixed for background trade engine`: `AITradeHandler.generateAIDayTradeProposals` no longer short-circuits on `leagueStats.tradesAllowed === false`. The flag still gates user-facing trade UI surfaces, so Euro saves can hide Trade Machine/Finder/Proposals while NBA-background AI trades continue.
++- `P0-H fixed at resolver/lazy-sim layer`: `resolveCompetitionSeason` no longer awards a knockout champion until the final is actually won from box scores. `phaseSeriesResults` now respects Best-of win thresholds, and `lazySimRunner` repairs/injects Euro postseason fixtures before rollover and skips rollover while due Euro competition games remain unplayed.
++- Schedule bugfix: `simulateDayGames` now also simulates unplayed past-dated competition games during a normal sim tick. This directly addresses the Nov 25 games still showing scheduled on Nov 27; the stale results resolve when the user advances/sims again.
++- Navigation UX: `Euroleague`, `Liga Endesa`, and stale Euro `Playoffs` routes now use `CompetitionHubLayout`, making Bracket/Standings/Central reachable from the main route.
++
++**Verification:**
++
++- `npx tsc --noEmit` was run after the fix pass. No errors remain in the touched Euro gameplay files.
++- Remaining TypeScript failures are the known baseline: `DraftSimulatorView.tsx` missing face helpers, `fictionalLeagueGenerator.ts` old `NBAPlayer.id/firstName` assumptions, `GameContext.tsx` expansion action comparison errors, and `initialization.ts` `NonNBATeam.cid` optional mismatch.
++
++**Still open after this pass:**
++
++- Full browser playthrough is still required: fresh Spain save, simulate through Endesa regular season, EuroLeague postseason, rollover, and next preseason.
++- `P0-C`, `P0-E`, `P0-I`, tutorial/onboarding polish, and deep two-season service-year/contract validation are not completed by this fix pass.
++- `P0-G` domestic-only/non-EuroLeague test path remains a design/implementation follow-up.
++
++---
++
+ ## Top-priority blockers (from user, 2026-05-11 session)
+
+--- HUNK [op#1 hunk#0] session=8 line=2433 ts=2026-05-11T09:06:03.865Z ---
+ - `P0-D fixed for background trade engine`: `AITradeHandler.generateAIDayTradeProposals` no longer short-circuits on `leagueStats.tradesAllowed === false`. The flag still gates user-facing trade UI surfaces, so Euro saves can hide Trade Machine/Finder/Proposals while NBA-background AI trades continue.
+ - `P0-H fixed at resolver/lazy-sim layer`: `resolveCompetitionSeason` no longer awards a knockout champion until the final is actually won from box scores. `phaseSeriesResults` now respects Best-of win thresholds, and `lazySimRunner` repairs/injects Euro postseason fixtures before rollover and skips rollover while due Euro competition games remain unplayed.
+ - Schedule bugfix: `simulateDayGames` now also simulates unplayed past-dated competition games during a normal sim tick. This directly addresses the Nov 25 games still showing scheduled on Nov 27; the stale results resolve when the user advances/sims again.
+ - Navigation UX: `Euroleague`, `Liga Endesa`, and stale Euro `Playoffs` routes now use `CompetitionHubLayout`, making Bracket/Standings/Central reachable from the main route.
++- Logic hardening follow-up: Euro KO fixtures are now marked/processed as postseason stats, not regular-season stats; NBA playoff generation is gated off in both simulation paths for Euro saves; NBA All-Star/Draft/HOF/Christmas/global auto events are skipped in Euro lazy and normal sim paths; CompetitionBracketView only renders rounds that have materialized in schedule/boxScores, so future SF/Final projections do not appear as fake not-started rounds.
+
+--- HUNK [op#1 hunk#1] session=8 line=2433 ts=2026-05-11T09:06:03.865Z ---
+-- `P0-C`, `P0-E`, `P0-I`, tutorial/onboarding polish, and deep two-season service-year/contract validation are not completed by this fix pass.
++- `P0-C`, `P0-I`, tutorial/onboarding polish, and deep two-season validation are not completed by this fix pass. `P0-E` has stronger coverage now because existing rollover/external-FA paths already age and expire Euro contracts, and simulated Euro games append stats; still needs browser/save-state proof over 2 seasons.
+
+--- HUNK [op#2 hunk#0] session=8 line=2491 ts=2026-05-11T10:11:19.080Z ---
+ - `P0-H fixed at resolver/lazy-sim layer`: `resolveCompetitionSeason` no longer awards a knockout champion until the final is actually won from box scores. `phaseSeriesResults` now respects Best-of win thresholds, and `lazySimRunner` repairs/injects Euro postseason fixtures before rollover and skips rollover while due Euro competition games remain unplayed.
++- `P0-H follow-up fix`: round advancement now requires completed series counts from the previous phase. The old check treated "no unplayed games" as "round complete", which failed when a series was never injected and allowed impossible finals/champions while semifinals were still `NOT STARTED`.

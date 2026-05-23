@@ -39,7 +39,9 @@ npm run lint         # tsc --noEmit (kanonischer Type-Check)
 npm run build        # Vite-Bundle
 ```
 
-Save-State-Audit aus DevTools-Konsole: Snippet in `CLAUDE.md` → "Standard snippet". Beide `scripts/audit-economy*.js` lassen sich direkt in DevTools paste-und-runnen (laden den neuesten Save automatisch).
+Save-State-Audit aus DevTools-Konsole: Snippet in `CLAUDE.md` → "Standard snippet". Bei Save-/Contract-/Roster-Debugging immer zuerst den vollständigen IndexedDB+Gzip-Load-Snippet geben; nie voraussetzen, dass `window.__lastSaveState` bereits existiert. Beide `scripts/audit-economy*.js` lassen sich direkt in DevTools paste-und-runnen (laden den neuesten Save automatisch).
+
+Für In-App-Repro/Diagnose ist `src/utils/debugCheats.ts` der zentrale Einstiegspunkt. Wenn ein TODO-Bug auf PlayButton, Phase, Offseason, Euro-Mode oder Stuck-State verweist, zuerst dort nach vorhandenen Cheats (`STUCK`, `PHASEDUMP`, `EUROAUDIT`, `WARP`, `WARPSLOW`) suchen und neue Diagnoseausgabe dort ergänzen statt zu raten.
 
 ## Planning and Change Intake
 
@@ -56,6 +58,8 @@ ExecPlan-Format (light): Bei mehrtägigen Refactors einen `MULTI_SESSION_*.md` o
 
 - TypeScript strict, keine `any` außer an externen Daten-Boundaries (Gist-Fetch).
 - React Functional Components mit Hooks, Tailwind für Styling.
+- Niemals commissioner-/league-konfigurierbare Settings hardcoden (z.B. Salary Cap, Contract-Scale, Toggles). Immer `leagueStats`, Setup-State oder den Commissioner-Settings-Flow als Source of Truth verwenden.
+- Nutzer-sichtbare Offseason-/Phase-Copy soll wie Spieltext klingen, nicht wie interne Pipeline-/Dev-Labels. Begriffe wie `Offseason Flow`, `Phase`, `resolver`, `gate` etc. in sichtbarer UI vermeiden, wenn eine natürliche Formulierung möglich ist.
 - **Default: keine Kommentare.** Nur das Warum dokumentieren wenn nicht offensichtlich (versteckter Constraint, Workaround, surprising Behavior).
 - Keine Multi-Paragraph-Docstrings. Ein-Zeile-Max.
 - Datei-Größe: <600 Zeilen Hand-Code bevorzugt; bestehende größere Files (z.B. `GameContext.tsx`, `simulationHandler.ts`) werden inkrementell aufgespalten — keine Vergrößerung ohne Grund.

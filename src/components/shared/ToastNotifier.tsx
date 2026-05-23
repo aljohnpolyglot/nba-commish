@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle, XCircle, TrendingDown, Bandage, AlertTriangle, Zap, Star, Heart, Trophy, Award, FileSignature } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 
-// ── Toast item types ────────────────────────────────────────────────────────
 type ToastItem =
   | { type: 'fa-accepted'; playerName: string; annualM: number; years: number }
   | { type: 'fa-rejected'; playerName: string; winnerTeamName: string; rejectionReason?: string }

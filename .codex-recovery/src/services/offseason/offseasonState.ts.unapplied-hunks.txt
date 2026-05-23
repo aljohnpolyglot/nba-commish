@@ -1,0 +1,96 @@
+# Codex hunks NOT found on current disk for src/services/offseason/offseasonState.ts
+# 10 hunks unapplied. Total ops: 6
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#1 hunk#1] session=5 line=137 ts=2026-05-10T04:24:00.180Z ---
+ import type { OffseasonChecklist, OffseasonChecklistRow, OffseasonRowStatus, Tab } from '../../types';
++
++const NO_DRAFT_ROWS: readonly OffseasonChecklistRow[] = [
++  'draftLottery',
++  'draft',
++  'rookieContracts',
++] as const;
++
++export function isNoDraftLeague(
++  leagueStats?: { draftType?: string } | null,
++): boolean {
++  return leagueStats?.draftType === 'no_draft';
++}
++
++export function getVisibleOffseasonRows(
++  leagueStats?: { draftType?: string } | null,
++): readonly OffseasonChecklistRow[] {
++  return isNoDraftLeague(leagueStats)
++    ? OFFSEASON_ROW_ORDER.filter(row => !NO_DRAFT_ROWS.includes(row))
++    : OFFSEASON_ROW_ORDER;
++}
+
+--- HUNK [op#1 hunk#2] session=5 line=137 ts=2026-05-10T04:24:00.180Z ---
+ export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab> = {
+
+--- HUNK [op#1 hunk#3] session=5 line=137 ts=2026-05-10T04:24:00.180Z ---
+ };
+ 
+-/** Default — every row 'pending'. Created when offseason begins. */
+-export function defaultOffseasonChecklist(): OffseasonChecklist {
+-  return {
++function baseOffseasonChecklist(): OffseasonChecklist {
++  return {
+     draftLottery:     'pending',
+     expansionDraft:   'skipped', // nur 'pending' wenn expansionSchedule für aktuelle Saison gesetzt
+     options:          'pending',
+
+--- HUNK [op#2 hunk#1] session=8 line=265 ts=2026-05-10T20:55:36.587Z ---
+ export function getVisibleOffseasonRows(
+-  leagueStats?: { draftType?: string } | null,
++  leagueStats?: { draftType?: string; uiMode?: string } | null,
+ ): readonly OffseasonChecklistRow[] {
++  if (isEuroIsolatedMode({ leagueStats })) {
++    return ['options', 'qualifyingOffers', 'myFAs', 'freeAgency', 'sponsorRenewals', 'facilityUpgrades', 'preseasonFriendlies', 'trainingCamp'];
++  }
+   return isNoDraftLeague(leagueStats)
+
+--- HUNK [op#2 hunk#2] session=8 line=265 ts=2026-05-10T20:55:36.587Z ---
+   freeAgency:       'Free Agency',
++  sponsorRenewals:  'Sponsor Renewals',
++  facilityUpgrades: 'Facility Upgrades',
++  preseasonFriendlies: 'Preseason Friendlies',
+   trainingCamp:     'Training Camp',
+ };
+
+--- HUNK [op#2 hunk#3] session=8 line=265 ts=2026-05-10T20:55:36.587Z ---
+   freeAgency:       'Negotiate with free agents over the 13-day signing window.',
++  sponsorRenewals:  'Review sponsorship placeholders for the next operating year.',
++  facilityUpgrades: 'Plan facility work before players report.',
++  preseasonFriendlies: 'Review Supercopa and preseason friendly slots.',
+   trainingCamp:     'Set your training camp drills and finalize your opening-night roster.',
+ };
+
+--- HUNK [op#2 hunk#4] session=8 line=265 ts=2026-05-10T20:55:36.587Z ---
+   freeAgency:       'Team Office',
++  sponsorRenewals:  'Team Finances',
++  facilityUpgrades: 'Team Office',
++  preseasonFriendlies: 'Schedule',
+   trainingCamp:     'Training Center',
+ };
+
+--- HUNK [op#2 hunk#5] session=8 line=265 ts=2026-05-10T20:55:36.587Z ---
+     rookieContracts:  'pending',
+     freeAgency:       'pending',
++    sponsorRenewals:  'pending',
++    facilityUpgrades: 'pending',
++    preseasonFriendlies: 'pending',
+     trainingCamp:     'pending',
+
+--- HUNK [op#2 hunk#6] session=8 line=265 ts=2026-05-10T20:55:36.587Z ---
+     rookieContracts:  'skipped',
+     freeAgency:       'skipped',
++    sponsorRenewals:  'skipped',
++    facilityUpgrades: 'skipped',
++    preseasonFriendlies: 'skipped',
+     trainingCamp:     'pending',
+
+--- HUNK [op#3 hunk#0] session=10 line=491 ts=2026-05-13T07:46:54.095Z ---
+-  const openingNight = getOpeningNightDate(upcomingSeasonYear);
++  const openingNight = getOpeningNightDate(upcomingSeasonYear, ls, schedule);

@@ -1,186 +1,65 @@
 import type { NBAPlayer, DraftPick, LeagueStats } from '../../types';
-import { convertTo2KRating } from '../../utils/helpers';
+import { getDisplayAge, getDisplayOverall, getDisplayPotential } from '../../store/playerRatingStore';
 import { getPlayerInjuryProfile } from '../../data/playerInjuryData';
 import { formatPickLabel } from '../draft/draftClassStrength';
 import { isTradeEligible } from '../../utils/signingMoratorium';
-import { isFranchiseLifer } from '../../utils/playerTenure';
-import { daysBetweenGameDates } from '../../utils/dateUtils';
-
-export type TeamMode = 'contend' | 'rebuild' | 'presti';
-
-// ── Untouchable / Trading Block classification ──────────────────────────────
-// Used by AI trades, TradeFinder, and TradingBlock UI for consistent behavior.
-
-/** Check if a player is untouchable (should NOT be included in trade offers).
- *  `mvpRank` (player.internalId → 1-based MVP-race rank) flags top-30 MVP
- *  candidates as franchise pieces — top-10 are off-limits in any mode, top-30
- *  are off-limits for contenders. Rebuilders may still consider trading a
- *  top-30 vet if they're pivoting timelines. */
-export function isUntouchable(
-  player: NBAPlayer,
-  mode: TeamMode,
-  currentYear: number,
-  mvpRank?: Map<string, number>,
-): boolean {
-  const ovr = calcOvr2K(player);
-  const pot = calcPot2K(player, currentYear);
-  const age = player.born?.year ? currentYear - player.born.year : (player.age ?? 27);
-
-  // Loyalty rule: 10+ distinct regular seasons with the same team.
-  // Count distinct seasons so split/duplicate stat rows do not make 5-year
-  // players look like Curry/Dirk/Duncan lifers.
-  if (isFranchiseLifer(player)) return true;
-
-  // MVP-race protection: real GMs do not part with a top-MVP candidate at fair
-  // value. Top-10 untouchable globally, top-30 untouchable for contenders.
-  const rank = mvpRank?.get(player.internalId);
-  if (rank !== undefined) {
-    if (rank <= 10) return true;
-    if (mode === 'contend' && rank <= 30) return true;
-  }
-
-  if (mode === 'contend') return ovr >= 82;             // core rotation pieces
-  if (mode === 'rebuild' || mode === 'presti') return age < 25 && pot >= 85;  // young + high ceiling
-  return ovr >= 85 || (age < 24 && pot >= 88);          // neutral: stars or elite prospects
-}
-
-/**
- * Young-core protection: contending teams whose active roster averages under 27 years
- * old still lock up high-ceiling prospects (POT ≥ 90). Captures OKC-style teams winning
- * now but whose young talent hasn't fully cooked yet. Call alongside isUntouchable.
- */
-export function isYoungContenderCore(
-  player: NBAPlayer,
-  teamRoster: NBAPlayer[],
-  mode: TeamMode,
-  currentYear: number,
-): boolean {
-  if (mode !== 'contend') return false;
-  const pot = calcPot2K(player, currentYear);
-  if (pot < 90) return false;
-  if (teamRoster.length === 0) return false;
-  const sumAge = teamRoster.reduce((s, p) => {
-    const age = p.born?.year ? currentYear - p.born.year : (p.age ?? 27);
-    return s + age;
-  }, 0);
-  return (sumAge / teamRoster.length) < 27;
-}
-
-/**
- * Walking-expiring guard — returns true when a player is on a contract that ends
- * THIS season (exp <= currentYear) AND we're past the trade deadline. In that
- * window the player will hit FA before the next season starts, so the acquirer
- * gets nothing tradable in return — same reason real NBA front offices stop
- * shopping expirings after the deadline. Pass `isPostDeadlinePreFA` from the caller
- * (component or AI handler computes this from the league calendar).
- */
-export function isWalkingExpiring(
-  player: NBAPlayer,
-  currentYear: number,
-  isPostDeadlinePreFA: boolean,
-): boolean {
-  if (!isPostDeadlinePreFA) return false;
-  const exp = player.contract?.exp ?? currentYear + 5;
-  return exp <= currentYear;
-}
-
-/**
- * Post-signing trade moratorium per real NBA CBA rules.
- * Reads `player.tradeEligibleDate` (stamped at signing time per Dec 15 / Jan 15 /
- * 3-month / 6-month rules). Falls back to legacy 30-day window when the field is
- * absent (pre-feature saves).
- */
-export function isRecentlySignedLocked(
-  player: NBAPlayer,
-  currentDate: string,
-  leagueStats?: LeagueStats,
-): boolean {
-  if (leagueStats?.postSigningMoratoriumEnabled === false) return false;
-  if (!currentDate) return false;
-  const eligible = (player as any).tradeEligibleDate as string | undefined;
-  if (eligible) return !isTradeEligible(player, currentDate, leagueStats);
-  const signedDate = (player as any).signedDate as string | undefined;
-  if (!signedDate) return false;
-  const days = daysBetweenGameDates(signedDate, currentDate);
-  return Number.isFinite(days) && days >= 0 && days < 30;
-}
-
-export { isTradeEligible };
-
-/** Check if a player is on the trading block (AI is willing to trade). */
-export function isOnTradingBlock(
-  player: NBAPlayer,
-  mode: TeamMode,
-  currentYear: number,
-  isPostDeadlinePreFA: boolean = false,
-  mvpRank?: Map<string, number>,
-): boolean {
-  if (isUntouchable(player, mode, currentYear, mvpRank)) return false;
-  // Walking expirings come off the block — nobody's acquiring a player who'll
-  // be a free agent in days. Caller decides if we're in the dead window.
-  if (isWalkingExpiring(player, currentYear, isPostDeadlinePreFA)) return false;
-  const ovr = calcOvr2K(player);
-  const age = player.born?.year ? currentYear - player.born.year : (player.age ?? 27);
-
-  if (mode === 'contend') return ovr < 78 || ((player.contract?.exp ?? currentYear + 5) <= currentYear + 1);
-  if (mode === 'rebuild' || mode === 'presti') return age >= 28 && ovr >= 75;
-  return (player.contract?.amount ?? 0) > 15000 && ovr < 82;
-}
-
-// ── Player display ratings ────────────────────────────────────────────────────
-
-export function calcOvr2K(player: NBAPlayer): number {
-  const r = player.ratings?.[player.ratings.length - 1];
-  return convertTo2KRating(player.overallRating ?? r?.ovr ?? 50, r?.hgt ?? 50, r?.tp);
-}
-
-export function calcPot2K(player: NBAPlayer, currentYear: number): number {
-  const r = player.ratings?.[player.ratings.length - 1];
-  const rawOvr = player.overallRating ?? r?.ovr ?? 50;
-  const age = player.born?.year ? currentYear - player.born.year : 26;
-  const potBbgm = age >= 29
-    ? rawOvr
-    : Math.max(rawOvr, Math.round(72.314 + (-2.331 * age) + (0.833 * rawOvr)));
-  return convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), r?.hgt ?? 50, r?.tp);
-}
-
-// ── Internal TV (never shown to user — used for auto-balance only) ────────────
-
-/** Context for in-season PER adjustment. Passed through by callers that know the
- * league PER average and whether the sim is currently in regular season. */
-export interface TVContext {
-  leaguePerAvg: number;
-  isRegularSeason: boolean;
-  /** Optional: player.internalId → 1-based MVP-race rank (lower = better).
-   *  When present, calcPlayerTV applies a tiered premium and isUntouchable
-   *  treats top-30 MVP candidates as franchise pieces. Built once per turn
-   *  via AwardService.calculateMVPRankings. */
-  mvpRank?: Map<string, number>;
-}
-
-/** League-average PER across qualified regular-season players this season.
- * Qualification: >10 GP AND >12 MPG (matches PlayerStatsView convention).
- * Weighted by minutes so bench warmers don't skew the average down. */
-export function computeLeaguePerAvg(players: NBAPlayer[], currentYear: number): number {
-  let perTimesMin = 0;
-  let totalMin = 0;
-  for (const p of players) {
-    if (p.tid < 0) continue;
-    const stats = p.stats?.filter((s: any) => s.season === currentYear && !s.playoffs && (s.gp ?? 0) > 0) ?? [];
-    if (stats.length === 0) continue;
-    const gp = stats.reduce((s: number, x: any) => s + (x.gp ?? 0), 0);
-    const minSum = stats.reduce((s: number, x: any) => s + (x.min ?? 0), 0);
-    if (gp <= 10 || (gp > 0 && minSum / gp <= 12)) continue;
-    perTimesMin += stats.reduce((s: number, x: any) => s + (x.per ?? 0) * (x.min ?? 0), 0);
-    totalMin += minSum;
-  }
-  return totalMin > 0 ? perTimesMin / totalMin : 15; // 15 = classic NBA PER baseline
-}
+import {
+  calcCashTV,
+  CASH_TRADE_CAP_USD,
+  computeLeagueAvg,
+  getOvrTailwind,
+  getPotColor,
+  getTeamMode,
+  getTradeCandidateFloor,
+  getTradeGapTolerance,
+  getTradeOvershootMargin,
+  getTradeRatioThreshold,
+  getTradeValueFloor,
+  isSalaryLegal,
+} from './tradeValueHelpers';
+import {
+  calcOvr2K,
+  calcPot2K,
+  computeLeaguePerAvg,
+  isOnTradingBlock,
+  isRecentlySignedLocked,
+  isUntouchable,
+  isWalkingExpiring,
+  isYoungContenderCore,
+  type TeamMode,
+  type TVContext,
+} from './tradeValueCore';
+export {
+  calcCashTV,
+  CASH_TRADE_CAP_USD,
+  computeLeagueAvg,
+  getOvrTailwind,
+  getPotColor,
+  getTeamMode,
+  getTradeCandidateFloor,
+  getTradeGapTolerance,
+  getTradeOvershootMargin,
+  getTradeRatioThreshold,
+  getTradeValueFloor,
+  isSalaryLegal,
+} from './tradeValueHelpers';
+export {
+  calcOvr2K,
+  calcPot2K,
+  computeLeaguePerAvg,
+  isOnTradingBlock,
+  isRecentlySignedLocked,
+  isTradeEligible,
+  isUntouchable,
+  isWalkingExpiring,
+  isYoungContenderCore,
+};
+export type { TeamMode, TVContext } from './tradeValueCore';
 
 export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: number, ctx?: TVContext): number {
   const ovr = calcOvr2K(player);
   const pot = calcPot2K(player, currentYear);
-  const age = player.born?.year ? currentYear - player.born.year : 26;
+  const age = getDisplayAge(player, currentYear);
 
   const ovrBase = ovr >= 68 ? 10 : ovr >= 60 ? 3 : 0;
   const potBase = pot >= 68 ? 10 : pot >= 60 ? 3 : 0;
@@ -191,14 +70,14 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
   const potPart = potBase + Math.pow(Math.max(0, pot - 68) / 31, 2.0) * 160;
 
   let val: number;
-  if (mode === 'rebuild')       val = Math.round(ovrPart * 0.6 + potPart * 1.4);
-  else if (mode === 'contend')  val = Math.round(ovrPart * 1.4 + potPart * 0.6);
-  else /* presti */              val = Math.round(ovrPart * 0.5 + potPart * 1.5);
+  if (mode === 'rebuild')       val = ovrPart * 0.6 + potPart * 1.4;
+  else if (mode === 'contend')  val = ovrPart * 1.4 + potPart * 0.6;
+  else /* presti */              val = ovrPart * 0.5 + potPart * 1.5;
 
   // Age nerf — minimal global decay. OVR already declines naturally with age in the
   // ratings engine, so a 41yo still sitting at 94 OVR is a genuine outlier (LeBron, KJ
   // types) and their TV should reflect that they're still elite. Start at 39, gentle decay, 72% floor.
-  if (age >= 39) val = Math.round(val * Math.max(0.72, Math.pow(0.97, age - 38)));
+  if (age >= 39) val *= Math.max(0.72, Math.pow(0.97, age - 38));
 
   // Mode-aware age + contract handling. Rebuilders heavily discount aging ROLE-PLAYER
   // vets on multi-year deals (toxic salary they can't shed) but still value expirings
@@ -213,16 +92,16 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
     // Age penalty applies only to non-star OVR — once a player is below 80 OVR, the
     // rebuilder sees them as either flip asset (expiring) or toxic salary (multi-year).
     if (ovr < 80) {
-      if (age >= 33)      val = Math.round(val * (isExpiring ? 0.55 : 0.28));
-      else if (age >= 30) val = Math.round(val * (isExpiring ? 0.75 : 0.50));
-      else if (age >= 28) val = Math.round(val * (isExpiring ? 0.92 : 0.75));
+      if (age >= 33)      val *= isExpiring ? 0.55 : 0.28;
+      else if (age >= 30) val *= isExpiring ? 0.75 : 0.50;
+      else if (age >= 28) val *= isExpiring ? 0.92 : 0.75;
     } else if (ovr < 85) {
       // 80-84 OVR starters: gentler curve, still discount real graybeards.
-      if (age >= 35)      val = Math.round(val * (isExpiring ? 0.70 : 0.50));
-      else if (age >= 32) val = Math.round(val * (isExpiring ? 0.85 : 0.70));
+      if (age >= 35)      val *= isExpiring ? 0.70 : 0.50;
+      else if (age >= 32) val *= isExpiring ? 0.85 : 0.70;
     } else {
       // 85+ OVR stars: only the deepest twilight (37+) gets a small haircut.
-      if (age >= 37) val = Math.round(val * 0.80);
+      if (age >= 37) val *= 0.80;
     }
     // Prime-age stars are the literal foundation a rebuilder builds around — Herro
     // (26y/87 OVR signed through 2031), SGA-tier guys, etc. The rebuilder values
@@ -231,22 +110,22 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
     //   * 26-27 + 85+ OVR → moderate cornerstone premium (Herro tier)
     //   * ≤25 + 85+ OVR → strong cornerstone premium (true young stars)
     //   * ≤23 + 88+ POT → developmental-cornerstone premium
-    if (age <= 25 && ovr >= 85)      val = Math.round(val * 1.30);
-    else if (age <= 27 && ovr >= 86) val = Math.round(val * 1.20);
-    else if (age <= 23 && pot >= 88) val = Math.round(val * 1.15);
+    if (age <= 25 && ovr >= 85)      val *= 1.30;
+    else if (age <= 27 && ovr >= 86) val *= 1.20;
+    else if (age <= 23 && pot >= 88) val *= 1.15;
   } else if (mode === 'contend') {
     // Contenders fairly value their veterans but slightly under-value pure projects
     // (need NOW production). Mild — they still see role-player upside, just not full.
-    if (age <= 21 && ovr < 70 && isFutureMultiYear) val = Math.round(val * 0.85);
+    if (age <= 21 && ovr < 70 && isFutureMultiYear) val *= 0.85;
     // Toxic multi-year role-player vet contracts (34+, ovr<82, 2+yr deal) are a drag
     // for contenders trying to stay flexible. High-OVR stars are exempt — a 35yo 88
     // OVR is still a championship piece.
-    if (age >= 34 && ovr < 82 && isFutureMultiYear) val = Math.round(val * 0.85);
+    if (age >= 34 && ovr < 82 && isFutureMultiYear) val *= 0.85;
   }
 
   // Walk-year stub: contract already past expiry (data lag). Flat half — keeps the
   // pre-existing safety net for malformed contract data.
-  if (expYear <= currentYear) val = Math.round(val * 0.5);
+  if (expYear <= currentYear) val *= 0.5;
 
   // In-season PER adjustment — regular season only, auto-resets on rollover.
   // Qualified: >10 GP AND >12 MPG. Cap ±20% (up from ±10%); scaling is perDelta/60
@@ -262,7 +141,7 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
           : ctx.leaguePerAvg;
         const perDelta = playerPer - ctx.leaguePerAvg;
         const mult = 1 + Math.max(-0.20, Math.min(0.20, perDelta / 60));
-        val = Math.round(val * mult);
+        val *= mult;
       }
     }
   }
@@ -278,10 +157,10 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
       ? Math.max(0, Math.min(99, Math.round(99 - ((profile.careerCount / careerGP) * 100) * 5)))
       : (player as any).durability ?? 75;
     // Glass (< 30): 0.65x, Injury-Prone (30-44): 0.75x, Fragile (45-59): 0.85x, Average (60-74): 0.93x, Durable (75+): no penalty
-    if (durability < 30)       val = Math.round(val * 0.65);
-    else if (durability < 45)  val = Math.round(val * 0.75);
-    else if (durability < 60)  val = Math.round(val * 0.85);
-    else if (durability < 75)  val = Math.round(val * 0.93);
+    if (durability < 30)       val *= 0.65;
+    else if (durability < 45)  val *= 0.75;
+    else if (durability < 60)  val *= 0.85;
+    else if (durability < 75)  val *= 0.93;
   }
 
   // MVP-race premium — Luka/Joker/SGA-tier guys do not move at fair OVR/POT
@@ -295,10 +174,10 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
       rank <= 10 ? 1.32 :  // MVP fringe / All-NBA 1st team
       rank <= 20 ? 1.18 :  // All-NBA 2nd-3rd team anchors
                    1.10;   // 21-30: high-end All-Stars
-    val = Math.round(val * mvpMult);
+    val *= mvpMult;
   }
 
-  return Math.max(0, val);
+  return Math.max(0, Number(val.toFixed(2)));
 }
 
 // ── Pick value (power-ranking aware) ─────────────────────────────────────────
@@ -316,15 +195,6 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
 export interface PickTVOpts {
   classStrength?: number;
   actualSlot?: number;
-}
-
-/** NBA cap on cash sent in trades per team per season (USD). */
-export const CASH_TRADE_CAP_USD = 7_500_000;
-
-/** Convert cash USD into trade value units. ~1.5 TV per $1M (full $7.5M ≈ 11 TV — late 2nd-round-pick tier). */
-export function calcCashTV(usd: number): number {
-  if (!usd || usd <= 0) return 0;
-  return Math.round((usd / 1_000_000) * 1.5);
 }
 
 export function calcPickTV(
@@ -405,53 +275,6 @@ export function getPickTV(
 
 // ── Team mode ─────────────────────────────────────────────────────────────────
 
-export function computeLeagueAvg(players: NBAPlayer[], teams: { id: number }[]): number {
-  let total = 0, count = 0;
-  teams.forEach(t => {
-    const roster = players.filter(p => p.tid === t.id).sort((a, b) => b.overallRating - a.overallRating).slice(0, 8);
-    if (roster.length > 0) {
-      total += roster.reduce((s, p) => s + p.overallRating, 0) / roster.length;
-      count++;
-    }
-  });
-  return count > 0 ? total / count : 50;
-}
-
-export function getTeamMode(teamId: number, players: NBAPlayer[], leagueAvg: number): TeamMode {
-  const roster = players.filter(p => p.tid === teamId).sort((a, b) => b.overallRating - a.overallRating).slice(0, 8);
-  if (roster.length === 0) return 'rebuild';
-  const avg = roster.reduce((s, p) => s + p.overallRating, 0) / roster.length;
-  return avg >= leagueAvg ? 'contend' : 'rebuild';
-}
-
-// ── OVR colors (K2 scale) ─────────────────────────────────────────────────────
-
-export function getOvrTailwind(v: number): { bg: string; text: string } {
-  if (v >= 95) return { bg: 'bg-violet-900/50', text: 'text-violet-300' };
-  if (v >= 90) return { bg: 'bg-blue-900/50',   text: 'text-blue-300'   };
-  if (v >= 85) return { bg: 'bg-emerald-900/50', text: 'text-emerald-300' };
-  if (v >= 78) return { bg: 'bg-amber-900/50',   text: 'text-amber-300'  };
-  if (v >= 72) return { bg: 'bg-slate-700',       text: 'text-slate-300'  };
-  return       { bg: 'bg-red-900/40',             text: 'text-red-300'    };
-}
-
-export function getPotColor(v: number): string {
-  if (v >= 95) return 'text-violet-400';
-  if (v >= 90) return 'text-blue-400';
-  if (v >= 85) return 'text-emerald-400';
-  if (v >= 78) return 'text-amber-400';
-  if (v >= 72) return 'text-slate-400';
-  return 'text-red-400';
-}
-
-// ── Salary match (NBA 125% rule) ─────────────────────────────────────────────
-
-export function isSalaryLegal(salaryA: number, salaryB: number): boolean {
-  if (salaryA === 0 && salaryB === 0) return true;
-  if (salaryA === 0 || salaryB === 0) return true; // one-sided (pick-only side)
-  return Math.max(salaryA, salaryB) <= Math.min(salaryA, salaryB) * 1.25 + 100; // +100 buffer (units = thousands)
-}
-
 // ── Auto-balance logic ────────────────────────────────────────────────────────
 
 interface BalanceItem {
@@ -518,6 +341,7 @@ export function autoBalance(
   let gap = Math.max(valA, valB) - Math.min(valA, valB);
   const originalGap = gap;
   const usedIds = new Set([...basketA, ...basketB].map(i => i.id));
+  const gapTolerance = getTradeGapTolerance(originalGap);
 
   // 1. Find a player to fill the gap (exclude untouchables — they're off-limits)
   const available = players
@@ -549,11 +373,11 @@ export function autoBalance(
 
   let picksAdded = 0;
   let safety = 0;
-  while (gap > 2 && safety++ < 10 && picksAdded < 4) {
+  while (gap > gapTolerance && safety++ < 10 && picksAdded < 4) {
     const nextPick = availPicks[0];
     const peekR1 = { round: 1, season: nextPick?.season ?? currentYear + 1, originalTid: nextPick?.originalTid ?? targetTid };
     const pickVal = getPickTV(peekR1, pickCtx);
-    if (pickVal > gap + 12) break;
+    if (pickVal > gap + getTradeOvershootMargin(originalGap, 12, 4)) break;
 
     const pick = availPicks.shift();
     if (!pick) {

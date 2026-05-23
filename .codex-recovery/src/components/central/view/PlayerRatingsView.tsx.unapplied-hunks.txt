@@ -1,0 +1,53 @@
+# Codex hunks NOT found on current disk for src/components/central/view/PlayerRatingsView.tsx
+# 5 hunks unapplied. Total ops: 4
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=452 ts=2026-05-10T21:00:13.979Z ---
+ import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
++import { isEuroIsolatedMode } from '../../../utils/uiMode';
+
+--- HUNK [op#0 hunk#1] session=8 line=452 ts=2026-05-10T21:00:13.979Z ---
+-      .filter(p => p.status === 'Active' || p.status === 'Free Agent' || p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect')
++      .filter(p => isEuroIsolatedMode(state)
++        ? p.status === 'Euroleague' || p.status === 'Endesa'
++        : p.status === 'Active' || p.status === 'Free Agent' || p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect')
+
+--- HUNK [op#1 hunk#0] session=8 line=461 ts=2026-05-10T21:00:23.903Z ---
+-  }, [state.players, season]); // currentYear is stable within a session
++  }, [state, state.players, season]); // currentYear is stable within a session
+
+--- HUNK [op#2 hunk#0] session=11 line=567 ts=2026-05-13T17:43:25.110Z ---
+ import { getRealDurability, applyDurabilityToK2 } from '../../../utils/durabilityUtils';
+ import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
+ import { isEuroIsolatedMode } from '../../../utils/uiMode';
++import { fuzzRatingValue } from '../../../utils/scoutingFuzz';
+
+--- HUNK [op#2 hunk#1] session=11 line=567 ts=2026-05-13T17:43:25.110Z ---
+-        const ovr = getDisplayOverall(player, season);
+-        const pot = getDisplayPotential(player, currentYear, season);
++        const ovr = fuzzRatingValue(getDisplayOverall(player, season), state, player);
++        const pot = fuzzRatingValue(getDisplayPotential(player, currentYear, season), state, player, 'pot');
+         return {
+           player,
+           age,
+           ovr,
+           pot,
+-          k2,
+-          OS: k2.OS.ovr,
+-          AT: k2.AT.ovr,
+-          IS: k2.IS.ovr,
+-          PL: k2.PL.ovr,
+-          DF: k2.DF.ovr,
+-          RB: k2.RB.ovr,
+-          MI: k2.MI.ovr,
++          k2,
++          OS: fuzzRatingValue(k2.OS.ovr, state, player, 'OS'),
++          AT: fuzzRatingValue(k2.AT.ovr, state, player, 'AT'),
++          IS: fuzzRatingValue(k2.IS.ovr, state, player, 'IS'),
++          PL: fuzzRatingValue(k2.PL.ovr, state, player, 'PL'),
++          DF: fuzzRatingValue(k2.DF.ovr, state, player, 'DF'),
++          RB: fuzzRatingValue(k2.RB.ovr, state, player, 'RB'),
++          MI: fuzzRatingValue(k2.MI.ovr, state, player, 'MI'),
+         };
+       });

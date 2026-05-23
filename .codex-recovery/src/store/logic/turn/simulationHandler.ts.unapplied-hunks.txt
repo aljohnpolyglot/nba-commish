@@ -1,0 +1,133 @@
+# Codex hunks NOT found on current disk for src/store/logic/turn/simulationHandler.ts
+# 11 hunks unapplied. Total ops: 5
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=1463 ts=2026-05-11T02:24:22.808Z ---
+ import { getOffseasonDayPlan } from '../../../services/offseason/offseasonPlan';
+ import { clearWaiverMarkers, stripLiveContractAfterWaive } from '../../../utils/contractCleanup';
++import { injectCompetitionPostseasonGames } from '../../../services/competition/competitionResolver';
+
+--- HUNK [op#0 hunk#1] session=8 line=1463 ts=2026-05-11T02:24:22.808Z ---
+         // Apply playoff/play-in bracket logic before simulating this day's games
+         // so that injected play-in/playoff games are in the schedule when simulateDayGames runs.
+         stateWithSim = applyPlayoffLogic(stateWithSim, [], numGamesPerRound);
++        stateWithSim = {
++            ...stateWithSim,
++            schedule: injectCompetitionPostseasonGames(
++                stateWithSim,
++                stateWithSim.activeCompetitions ?? [],
++                stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
++            ),
++        };
+
+--- HUNK [op#1 hunk#0] session=8 line=1747 ts=2026-05-11T02:37:53.459Z ---
+ import { injectCompetitionPostseasonGames } from '../../../services/competition/competitionResolver';
++import { repairCompetitionSchedules } from '../../../services/competition/competitionScheduler';
+
+--- HUNK [op#1 hunk#1] session=8 line=1747 ts=2026-05-11T02:37:53.459Z ---
+         // Apply playoff/play-in bracket logic before simulating this day's games
+         // so that injected play-in/playoff games are in the schedule when simulateDayGames runs.
+         stateWithSim = applyPlayoffLogic(stateWithSim, [], numGamesPerRound);
++        stateWithSim = {
++            ...stateWithSim,
++            schedule: repairCompetitionSchedules(
++                stateWithSim,
++                stateWithSim.activeCompetitions ?? [],
++                stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
++            ),
++        };
+         stateWithSim = {
+             ...stateWithSim,
+             schedule: injectCompetitionPostseasonGames(
+
+--- HUNK [op#2 hunk#0] session=8 line=1956 ts=2026-05-11T02:52:28.671Z ---
+ import { injectCompetitionPostseasonGames } from '../../../services/competition/competitionResolver';
+ import { repairCompetitionSchedules } from '../../../services/competition/competitionScheduler';
++import { resolveAnyTeam } from '../../../utils/teamLookup';
+
+--- HUNK [op#2 hunk#1] session=8 line=1956 ts=2026-05-11T02:52:28.671Z ---
+-            const homeTeam = stateWithSim.teams.find(t => t.id === r.homeTeamId);
+-            const awayTeam = stateWithSim.teams.find(t => t.id === r.awayTeamId);
++            const homeTeam = resolveAnyTeam(r.homeTeamId, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
++            const awayTeam = resolveAnyTeam(r.awayTeamId, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
+
+--- HUNK [op#2 hunk#2] session=8 line=1956 ts=2026-05-11T02:52:28.671Z ---
+-                    const team = stateWithSim.teams.find((t: any) => t.id === teamId);
+-                    const opp = stateWithSim.teams.find((t: any) => t.id === oppId);
++                    const team = resolveAnyTeam(teamId, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
++                    const opp = resolveAnyTeam(oppId, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
+
+--- HUNK [op#3 hunk#0] session=8 line=2371 ts=2026-05-11T09:01:04.453Z ---
+ function applyPlayoffLogic(stateWithSim: GameState, dayResults: any[], numGamesPerRound: number[]): GameState {
++    if (stateWithSim.leagueStats?.uiMode === 'euro_isolated') return stateWithSim;
+     let playoffs = stateWithSim.playoffs;
+
+--- HUNK [op#4 hunk#1] session=8 line=2733 ts=2026-05-11T12:19:53.559Z ---
+     const effectiveRiggedForTid: number | undefined = action?.payload?.riggedForTid ?? undefined;
+     const numGamesPerRound: number[] = state.leagueStats.numGamesPlayoffSeries ?? [7, 7, 7, 7];
++    const stateWithBatchCompetitionResults = () => ({
++        ...stateWithSim,
++        boxScores: [...(stateWithSim.boxScores ?? []), ...allSimResults],
++    });
+ 
+     for (let i = 0; i < daysToSimulate; i++) {
+
+--- HUNK [op#4 hunk#2] session=8 line=2733 ts=2026-05-11T12:19:53.559Z ---
+         stateWithSim = {
+             ...stateWithSim,
+             schedule: injectCompetitionPostseasonGames(
+-                stateWithSim,
++                stateWithBatchCompetitionResults(),
+                 stateWithSim.activeCompetitions ?? [],
+                 stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
+             ),
+         };
+         stateWithSim = {
+             ...stateWithSim,
+             schedule: injectSingleEliminationProgression(
+-                stateWithSim,
++                stateWithBatchCompetitionResults(),
+                 stateWithSim.activeCompetitions ?? [],
+                 stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
+             ),
+
+--- HUNK [op#4 hunk#3] session=8 line=2733 ts=2026-05-11T12:19:53.559Z ---
+-        allSimResults.push(...simPatch.results);
+-        perDayResults.push({ date: stateWithSim.date, results: simPatch.results });
++        const datedSimResults = simPatch.results.map((result: any) => ({
++            ...result,
++            date: result.date ?? stateWithSim.date,
++            season: result.season ?? stateWithSim.leagueStats?.year,
++        }));
++
++        allSimResults.push(...datedSimResults);
++        perDayResults.push({ date: stateWithSim.date, results: datedSimResults });
+ 
+         if (i === daysToSimulate - 1) {
+-            lastDaySimResults = simPatch.results;
++            lastDaySimResults = datedSimResults;
+         }
+ 
+         // Advance playoff bracket after today's results (handles play-in advancement + round injection)
+-        if (simPatch.results.length > 0) {
+-            stateWithSim = applyPlayoffLogic(stateWithSim, simPatch.results, numGamesPerRound);
++        if (datedSimResults.length > 0) {
++            stateWithSim = applyPlayoffLogic(stateWithSim, datedSimResults, numGamesPerRound);
++            stateWithSim = {
++                ...stateWithSim,
++                schedule: injectCompetitionPostseasonGames(
++                    stateWithBatchCompetitionResults(),
++                    stateWithSim.activeCompetitions ?? [],
++                    stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
++                ),
++            };
++            stateWithSim = {
++                ...stateWithSim,
++                schedule: injectSingleEliminationProgression(
++                    stateWithBatchCompetitionResults(),
++                    stateWithSim.activeCompetitions ?? [],
++                    stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
++                ),
++            };
+         }

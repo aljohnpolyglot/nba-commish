@@ -17,6 +17,7 @@ import type { NBAPlayer } from '../../types';
 import { convertTo2KRating } from '../../utils/helpers';
 import { hasFamilyOnRoster } from '../../utils/familyTies';
 import { getDisplayPotential } from '../../utils/playerRatings';
+import { getDisplayAge } from '../../store/playerRatingStore';
 import { getTeamFullName } from '../../utils/teamNames';
 import {
   autoSelectAllTeams,
@@ -48,12 +49,6 @@ type SortDir = 'asc' | 'desc';
 function teamDisplayName(team: ExistingTeam | undefined, fallbackTid: number): string {
   if (!team) return `Team ${fallbackTid}`;
   return getTeamFullName(team) || `Team ${fallbackTid}`;
-}
-
-function computeAge(player: NBAPlayer, leagueYear: number): number | '—' {
-  if (player.born?.year) return leagueYear - player.born.year;
-  if (typeof player.age === 'number') return player.age;
-  return '—';
 }
 
 export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) => {
@@ -134,7 +129,7 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
         player,
         k2: convertTo2KRating(player.overallRating ?? 60, 50),
         pot: getDisplayPotential(player, currentYear),
-        age: computeAge(player, currentYear),
+        age: getDisplayAge(player, currentYear),
         yearsLeft,
         salaryUSD: (player.contract?.amount ?? 0) * 1_000,
         score: computeProtectScore(player, { phase: activePhase, currentYear }),

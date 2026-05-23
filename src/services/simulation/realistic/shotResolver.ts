@@ -2,8 +2,8 @@ import { OnCourt, PlayerComposite, ShotZone } from './types';
 
 const ZONE_DISTRIBUTION: Record<ShotZone, number> = {
   rim: 0.30,
-  midRange: 0.15,
-  three: 0.50,
+  midRange: 0.13,
+  three: 0.52,
   lowPost: 0.05,
 };
 
@@ -69,8 +69,8 @@ export function resolveShot(
   // Power-law on defender.block so elite shot-blockers (Wembanyama 4.0 BPG,
   // Holmgren 2.8) actually dominate their tier — linear scaling only gave them
   // ~1.7x the average defender's block rate, far short of their real ~4x edge.
-  const blockChance = (zone === 'rim' ? 0.082 : zone === 'lowPost' ? 0.052 : 0.024)
-    * (0.4 + 1.8 * Math.pow(defender.block, 1.7));
+  const blockChance = (zone === 'rim' ? 0.090 : zone === 'lowPost' ? 0.058 : 0.022)
+    * (0.34 + 2.20 * Math.pow(defender.block, 1.8));
   if (Math.random() < blockChance) {
     return { made: false, pts: 0, blockerId: defender.id, fouled: false, ftAttempts: 0, ftMade: 0 };
   }
@@ -129,18 +129,18 @@ function pickDefender(defense: OnCourt, zone: ShotZone): PlayerComposite {
   const sorted = [...defense.composites].sort((a, b) =>
     interior ? b.defRim - a.defRim : b.defPerimeter - a.defPerimeter,
   );
-  // 78% top defender / 15% #2 / 7% rest. Stronger primary lock so secondary rim
+  // 82% top defender / 13% #2 / 5% rest. Stronger primary lock so secondary rim
   // protectors (Holmgren, Clingan) actually accrue blocks instead of getting
   // diluted across a uniform [#2..#5] mismatch pool.
   const roll = Math.random();
-  if (roll < 0.78) return sorted[0];
+  if (roll < 0.79) return sorted[0];
   if (roll < 0.93) return sorted[1] ?? sorted[0];
   return sorted[2 + Math.floor(Math.random() * 3)] ?? sorted[1] ?? sorted[0];
 }
 
 function rollFt(shooter: PlayerComposite, attempts: number): number {
   let made = 0;
-  const p = 0.55 + 0.35 * shooter.ft; // 0.55..0.90
+  const p = 0.57 + 0.35 * shooter.ft; // 0.57..0.92
   for (let i = 0; i < attempts; i++) if (Math.random() < p) made++;
   return made;
 }

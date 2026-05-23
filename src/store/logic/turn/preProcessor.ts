@@ -3,6 +3,7 @@ import { executeForcedTrade, executeExecutiveTrade } from '../../../services/tra
 import { buildFullDraftSlotMap } from '../../../services/draft/draftClassStrength';
 import { generateTPEsFromTrade } from '../../../utils/tradeExceptionUtils';
 import { applyTradeToPlayer } from '../../../utils/playerBirdRights';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
 
 export const preProcessAction = async (state: GameState, action: UserAction): Promise<{ stateForSim: GameState, executiveTradeTransaction?: any }> => {
     let stateForSim = state;
@@ -41,8 +42,15 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
         };
     } else if (action.type === 'EXECUTIVE_TRADE') {
         const _ptCurrentYear = state.leagueStats?.year ?? new Date().getFullYear();
-        const _ptLotterySlots = buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams);
-        const tradeResult = executeExecutiveTrade(action.payload, state.players, state.teams, state.draftPicks, _ptCurrentYear, _ptLotterySlots, state.leagueType);
+        const knownTeams = [
+            ...state.teams,
+            ...((state.nonNBATeams ?? [])
+                .map(t => resolveAnyTeam(t.tid, state.teams, state.nonNBATeams ?? []))
+                .filter((t): t is NonNullable<ReturnType<typeof resolveAnyTeam>> => t !== null)
+                .filter(t => !state.teams.some(nba => nba.id === t.id))),
+        ];
+        const _ptLotterySlots = buildFullDraftSlotMap((state as any).draftLotteryResult, knownTeams);
+        const tradeResult = executeExecutiveTrade(action.payload, state.players, knownTeams, state.draftPicks, _ptCurrentYear, _ptLotterySlots, state.leagueType);
         executiveTradeTransaction = tradeResult.transaction;
 
         let p = [...state.players];

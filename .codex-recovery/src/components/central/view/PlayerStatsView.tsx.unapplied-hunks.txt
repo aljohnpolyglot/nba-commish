@@ -1,0 +1,36 @@
+# Codex hunks NOT found on current disk for src/components/central/view/PlayerStatsView.tsx
+# 6 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=466 ts=2026-05-10T21:00:33.151Z ---
+ import { matchCheat, triggerCheat } from '../../../utils/debugCheats';
++import { getActiveLeagueTeams } from '../../../utils/teamLookup';
++import { isEuroIsolatedMode } from '../../../utils/uiMode';
+
+--- HUNK [op#0 hunk#1] session=8 line=466 ts=2026-05-10T21:00:33.151Z ---
+-    [...state.teams]
+-      .filter(t => t.conference === 'East' || t.conference === 'West')
++    (isEuroIsolatedMode(state) ? getActiveLeagueTeams(state) : [...state.teams])
++      .filter(t => isEuroIsolatedMode(state) || t.conference === 'East' || t.conference === 'West')
+       .sort((a, b) => a.abbrev.localeCompare(b.abbrev)),
+-    [state.teams]
++    [state]
+   );
+
+--- HUNK [op#1 hunk#0] session=8 line=704 ts=2026-05-11T01:26:43.438Z ---
+-import { getActiveLeagueTeams } from '../../../utils/teamLookup';
++import { getActiveLeagueTeams, resolveAnyTeam } from '../../../utils/teamLookup';
+
+--- HUNK [op#1 hunk#1] session=8 line=704 ts=2026-05-11T01:26:43.438Z ---
+-      const currentTeam = state.teams.find(t => t.id === player.tid);
++      const currentTeam = resolveAnyTeam(player.tid, state.teams, state.nonNBATeams ?? []);
+       const currentTeamAbbrev = currentTeam?.abbrev ?? (player.tid < 0 ? 'FA' : '?');
+
+--- HUNK [op#1 hunk#2] session=8 line=704 ts=2026-05-11T01:26:43.438Z ---
+-  }, [state.players, state.teams, state.leagueStats.year, season, phase, statType, teamFilter, brefRows, cupStatsByPlayer, currentSeasonStatsByPhase]);
++  }, [state.players, state.teams, state.nonNBATeams, state.leagueStats.year, season, phase, statType, teamFilter, brefRows, cupStatsByPlayer, currentSeasonStatsByPhase]);
+
+--- HUNK [op#1 hunk#3] session=8 line=704 ts=2026-05-11T01:26:43.438Z ---
+-                      const t = state.teams.find(t2 => t2.abbrev === r.teamAbbrev);
++                      const t = [...state.teams, ...getActiveLeagueTeams(state)].find(t2 => t2.abbrev === r.teamAbbrev);

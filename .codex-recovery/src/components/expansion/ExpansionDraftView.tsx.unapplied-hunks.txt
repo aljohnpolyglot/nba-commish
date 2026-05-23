@@ -1,0 +1,171 @@
+# Codex hunks NOT found on current disk for src/components/expansion/ExpansionDraftView.tsx
+# 9 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#1] session=6 line=128 ts=2026-05-10T05:18:37.682Z ---
+-interface PickedSlot {
+-  slot: number;       // 1-indexed
+-  tid: number;        // expansion team tid
+-  playerId: string;
+-}
++type DraftBoardTeam = Pick<NBATeam, 'id' | 'name' | 'abbrev' | 'region' | 'logoUrl'> & {
++  tid?: number;
++};
++type DraftableExpansionPlayer = NBAPlayer & { _k2: number };
++type SimSpeed = 'fastest' | 'normal' | 'slow';
++
++const SIM_SPEED_MS: Record<SimSpeed, number> = {
++  fastest: 200,
++  normal: 800,
++  slow: 1500,
++};
+
+--- HUNK [op#0 hunk#4] session=6 line=128 ts=2026-05-10T05:18:37.682Z ---
+-  const draftOrderTeams = useMemo(() => {
++  const draftOrderTeams = useMemo<DraftBoardTeam[]>(() => {
++    const teams = (state.teams ?? []) as DraftBoardTeam[];
+     return pickOrder.map(tid => {
+-      const t = (state.teams ?? []).find((tm: any) => (tm.id ?? tm.tid) === tid);
+-      return t ?? { id: tid, name: `Team ${tid}`, abbrev: '?', logoUrl: undefined };
++      const team = teams.find(entry => findTeamId(entry) === tid);
++      return team ?? { id: tid, name: `Team ${tid}`, abbrev: '?', logoUrl: undefined };
+     });
+   }, [pickOrder, state.teams]);
+ 
+-  // Pool: unprotected players, sortiert nach K2-OVR desc
+-  const pool = useMemo(() => {
++  const pool = useMemo<DraftableExpansionPlayer[]>(() => {
+     const eligibleIds = new Set(state.expansionEligiblePlayers ?? []);
+     return (state.players ?? [])
+-      .filter((p: any) => eligibleIds.has(p.internalId))
+-      .map((p: any) => ({
+-        ...p,
+-        _k2: convertTo2KRating(p.overallRating ?? 60, 50),
++      .filter(player => eligibleIds.has(player.internalId))
++      .map(player => ({
++        ...player,
++        _k2: convertTo2KRating(player.overallRating ?? 60, 50),
+       }))
+-      .sort((a: any, b: any) => b._k2 - a._k2);
++      .sort((a, b) => b._k2 - a._k2);
+   }, [state.players, state.expansionEligiblePlayers]);
+
+--- HUNK [op#0 hunk#6] session=6 line=128 ts=2026-05-10T05:18:37.682Z ---
+-    Object.values(picked).forEach((p: any) => {
+-      // Fish original tid aus den letzten Transaction-Einträgen vor expansion-draft
+-      const origTid = p.transactions?.find((t: any) => t.type !== 'expansion-draft')?.tid ?? p.tid;
+-      counts[origTid] = (counts[origTid] ?? 0) + 1;
++    Object.values(picked).forEach(player => {
++      const originalTid = getOriginalTeamId(player);
++      counts[originalTid] = (counts[originalTid] ?? 0) + 1;
+     });
+     return counts;
+   }, [picked]);
+ 
+   const teamOnClock = draftOrderTeams[currentPick - 1];
+-  const isUserOnClock = isGM && teamOnClock && (teamOnClock as any).id === userTid;
++  const isUserOnClock = isGM && teamOnClock && teamOnClock.id === userTid;
+ 
+-  // Helper: kann ein Spieler gepicked werden? (maxPerTeam-Constraint)
+-  const canPickPlayer = useCallback((p: any): boolean => {
+-    if (drainedByOriginalTid[p.tid] >= maxPerTeam) return false;
+-    return true;
++  const canPickPlayer = useCallback((player: DraftableExpansionPlayer): boolean => {
++    return (drainedByOriginalTid[getOriginalTeamId(player)] ?? 0) < maxPerTeam;
+   }, [drainedByOriginalTid, maxPerTeam]);
+ 
+-  // Pick a player
+-  const pickPlayer = useCallback((player: any) => {
++  const pickPlayer = useCallback((player: DraftableExpansionPlayer) => {
+     const tidOnClock = pickOrder[currentPick - 1];
+     if (tidOnClock == null) return;
+
+--- HUNK [op#0 hunk#8] session=6 line=128 ts=2026-05-10T05:18:37.682Z ---
+-    const speedMs: Record<string, number> = { fastest: 200, normal: 800, slow: 1500 };
+     const timer = setTimeout(() => {
+-      // Pick top eligible player respecting maxPerTeam
+-      const candidate = pool.find((p: any) => !draftedIds.has(p.internalId) && canPickPlayer(p));
++      const candidate = pool.find(player => !draftedIds.has(player.internalId) && canPickPlayer(player));
+       if (candidate) pickPlayer(candidate);
+-      else setIsSimulating(false); // Pool erschöpft
+-    }, speedMs[simSpeed]);
++      else setIsSimulating(false);
++    }, SIM_SPEED_MS[simSpeed]);
+     return () => clearTimeout(timer);
+   }, [isSimulating, isComplete, isUserOnClock, isGM, pool, draftedIds, canPickPlayer, pickPlayer, simSpeed]);
+
+--- HUNK [op#0 hunk#9] session=6 line=128 ts=2026-05-10T05:18:37.682Z ---
+     if (isComplete && hasStarted && !completedDispatched) {
+-      dispatch({ type: 'EXPANSION_DRAFT_COMPLETE' } as any);
++      dispatch({ type: 'EXPANSION_DRAFT_COMPLETE' } as never);
+       setCompletedDispatched(true);
+     }
+   }, [isComplete, hasStarted, completedDispatched, dispatch]);
+
+--- HUNK [op#0 hunk#10] session=6 line=128 ts=2026-05-10T05:18:37.682Z ---
+     setHasStarted(true);
+     let cur = currentPick;
+     const newPicked = { ...picked };
+-    const usedIds = new Set(Object.values(newPicked).map((p: any) => p.internalId));
++    const usedIds = new Set(Object.values(newPicked).map(player => player.internalId));
+     const localCounts = { ...drainedByOriginalTid };
+     while (cur <= totalPicks) {
+-      const candidate = pool.find((p: any) =>
+-        !usedIds.has(p.internalId) && (localCounts[p.tid] ?? 0) < maxPerTeam
++      const candidate = pool.find(player =>
++        !usedIds.has(player.internalId) && (localCounts[getOriginalTeamId(player)] ?? 0) < maxPerTeam
+       );
+       if (!candidate) break;
+       newPicked[cur] = candidate;
+       usedIds.add(candidate.internalId);
+-      localCounts[candidate.tid] = (localCounts[candidate.tid] ?? 0) + 1;
++      const originalTid = getOriginalTeamId(candidate);
++      localCounts[originalTid] = (localCounts[originalTid] ?? 0) + 1;
+       const tidOnClock = pickOrder[cur - 1];
+       dispatch({
+         type: 'EXPANSION_DRAFT_PICK',
+         payload: { tid: tidOnClock, playerId: candidate.internalId },
+-      } as any);
++      } as never);
+       cur++;
+     }
+
+--- HUNK [op#0 hunk#13] session=6 line=128 ts=2026-05-10T05:18:37.682Z ---
+-              {availableForUser.map((p: any, i: number) => (
++              {availableForUser.map((player, i) => (
+                 <PoolRow
+-                  key={p.internalId}
+-                  player={p}
++                  key={player.internalId}
++                  player={player}
+                   rank={i + 1}
+                   canPick={!isComplete && (!isGM || isUserOnClock)}
+-                  onPick={() => pickPlayer(p)}
++                  onPick={() => pickPlayer(player)}
+                 />
+               ))}
+
+--- HUNK [op#0 hunk#15] session=6 line=128 ts=2026-05-10T05:18:37.682Z ---
+ const PoolRow: React.FC<{
+-  player: any;
++  player: DraftableExpansionPlayer;
+   rank: number;
+   canPick: boolean;
+   onPick: () => void;
+ }> = ({ player, rank, canPick, onPick }) => {
+-  const yearsLeft = Math.max(0, (player.contract?.exp ?? 0) - (player.draft?.year ?? 0));
+   const salaryM = ((player.contract?.amount ?? 0) * 1000) / 1_000_000;
+
+--- HUNK [op#1 hunk#1] session=6 line=221 ts=2026-05-10T05:21:11.732Z ---
+     while (cur <= totalPicks) {
+       const candidate = pool.find(player =>
+-        !usedIds.has(player.internalId) && (localCounts[getOriginalTeamId(player)] ?? 0) < maxPerTeam
++        !usedIds.has(player.internalId) && (localCounts[player.tid] ?? 0) < maxPerTeam
+       );
+       if (!candidate) break;
+       newPicked[cur] = candidate;
+       usedIds.add(candidate.internalId);
+-      const originalTid = getOriginalTeamId(candidate);
+-      localCounts[originalTid] = (localCounts[originalTid] ?? 0) + 1;
++      localCounts[candidate.tid] = (localCounts[candidate.tid] ?? 0) + 1;

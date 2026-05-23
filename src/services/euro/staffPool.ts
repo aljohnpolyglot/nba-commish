@@ -32,6 +32,10 @@ export function inferEuroStaffLeagueId(teamId: number): string {
   return 'endesa';
 }
 
+export function normalizeStaffPoolRole(role: string | undefined | null): string {
+  return String(role ?? '').replace(/ \d+$/, '').trim();
+}
+
 function hashSeed(key: string): number {
   let h = 2166136261;
   for (let i = 0; i < key.length; i++) {
@@ -86,6 +90,23 @@ function freeAgentize(member: StaffMember & { reputation?: number }, id: string,
     playerPortraitUrl: undefined,
     isPlaceholder: true,
   };
+}
+
+export function toStaffFreeAgent(
+  member: StaffMember & { reputation?: number },
+  leagueId: string,
+  id: string,
+): StaffMember & { id: string; reputation?: number; leagueId: string } {
+  const poolRole = normalizeStaffPoolRole((member as any).role ?? member.position ?? member.jobTitle);
+  return freeAgentize(
+    {
+      ...member,
+      position: poolRole || member.position,
+      jobTitle: poolRole || member.jobTitle,
+    } as StaffMember & { reputation?: number },
+    id,
+    leagueId,
+  );
 }
 
 export function generateInitialStaffPool(

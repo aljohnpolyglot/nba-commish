@@ -1,4 +1,3 @@
-//see @playerratingsmodal for visual consistency.
 import React, { useState, useMemo } from 'react';
 import { Player, Team, TrainingParadigm } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -220,8 +219,8 @@ export function PlayerProgressionModal({ player, nbaPlayer, currentYear, team, c
           <Calendar size={16} className="text-indigo-400" />
         </div>
         <div>
-          <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">Training Programs Undertook</h4>
-          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Historical Development Focus</p>
+          <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">Training History</h4>
+          <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Past player and team focus</p>
         </div>
       </div>
 
@@ -301,7 +300,7 @@ export function PlayerProgressionModal({ player, nbaPlayer, currentYear, team, c
               </div>
               <div>
                  <h3 className="text-xl font-black text-white uppercase tracking-tight">{player.name}</h3>
-                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Player Progression & Development Tracker</p>
+                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Player growth snapshot</p>
               </div>
            </div>
            
@@ -358,8 +357,8 @@ export function PlayerProgressionModal({ player, nbaPlayer, currentYear, team, c
                     <TrendingUp size={16} className="text-emerald-400" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">OVR / POT Growth Curve</h4>
-                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Historical Development Trajectory</p>
+                    <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">Overall Trend</h4>
+                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Career growth over time</p>
                   </div>
                 </div>
                 
@@ -453,19 +452,19 @@ export function PlayerProgressionModal({ player, nbaPlayer, currentYear, team, c
               {trainingHistorySection}
             </div>
 
-            {/* Right Col: Delta Attributes */}
+            {/* Right Col: Attribute Snapshot */}
             <div className="flex flex-col gap-4 bg-slate-950/40 border border-slate-800/50 rounded-3xl p-6">
                <div className="flex items-center justify-between mb-2">
                  <div className="flex items-center gap-3">
                    <div className="bg-purple-600/20 p-2 rounded-lg">
                      <Activity size={16} className="text-purple-400" />
                    </div>
-                   <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">Attribute Deltas</h4>
+                   <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">Attribute Snapshot</h4>
                  </div>
                </div>
 
                <p className="text-[10px] text-slate-500 font-bold leading-relaxed mb-4">
-                 Changes in key K2 sub-attributes since <span className="text-slate-300">{comparisonTarget}</span>.
+                 Current key ratings next to the <span className="text-slate-300">{comparisonTarget}</span> version of this player.
                </p>
 
                <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
@@ -475,20 +474,13 @@ export function PlayerProgressionModal({ player, nbaPlayer, currentYear, team, c
                      {Object.keys((K2_DATA.current ?? K2_MOCK.current)[category] ?? {}).map(attr => {
                        const curr = (K2_DATA.current ?? K2_MOCK.current)[category]?.[attr] ?? 50;
                        const prev = (K2_DATA[comparisonTarget] ?? K2_MOCK[comparisonTarget])?.[category]?.[attr] ?? curr;
-                       const diff = curr - prev;
-
                        return (
                          <div key={attr} className="flex justify-between items-center py-2 px-3 bg-slate-900 border border-slate-800/80 rounded-xl">
                            <span className="text-[9px] font-bold uppercase text-slate-300 tracking-widest">{attr}</span>
                            <div className="flex items-center gap-3">
+                              <span className="text-[9px] font-bold text-slate-500 tabular-nums">{prev}</span>
+                              <span className="text-slate-700">→</span>
                               <span className="text-[10px] font-black text-white w-5 text-right tabular-nums">{curr}</span>
-                              <div className={`flex items-center justify-center min-w-[32px] px-1.5 py-0.5 rounded text-[9px] font-black tabular-nums ${
-                                diff > 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                                diff < 0 ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 
-                                'bg-slate-800 text-slate-500 border border-slate-700'
-                              }`}>
-                                {diff > 0 ? '+' : ''}{diff}
-                              </div>
                            </div>
                          </div>
                        );

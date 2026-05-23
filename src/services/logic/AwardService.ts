@@ -1,65 +1,23 @@
 import { NBAPlayer, NBATeam, NBAGMStat, StaffData } from '../../types';
 import { getAllCoaches as getAllCoachBios } from '../staffService';
-
-export interface AwardCandidate {
-  player: NBAPlayer;
-  team: NBATeam;
-  score: number;
-  odds: string;
-  stats: NBAGMStat;
-}
-
-/** Coach of the Year candidate */
-export interface CoachCandidate {
-  coachName: string;
-  team: NBATeam;
-  score: number;
-  odds: string;
-  wins: number;
-  losses: number;
-  improvement: number; // wins above previous season
-}
-
-/** One spot on an All-NBA / All-Defense / All-Rookie team */
-export interface AllNBASpot {
-  player: NBAPlayer;
-  team: NBATeam;
-  pos: string;   // G | F | C
-  score: number;
-  stats: NBAGMStat;
-}
-
-/** All team selections for one season */
-export interface AllNBATeams {
-  allNBA: [AllNBASpot[], AllNBASpot[], AllNBASpot[]];         // 1st, 2nd, 3rd
-  allDefense: [AllNBASpot[], AllNBASpot[]];                   // 1st, 2nd
-  allRookie: [AllNBASpot[], AllNBASpot[]];                    // 1st, 2nd
-}
-
-export interface AwardRaces {
-  mvp: AwardCandidate[];
-  dpoy: AwardCandidate[];
-  roty: AwardCandidate[];
-  smoy: AwardCandidate[];
-  mip: AwardCandidate[];
-  coy: CoachCandidate[];
-  allNBATeams: AllNBATeams;
-}
-
-const getTrb = (stat: any) => stat.trb || stat.reb || (stat.orb || 0) + (stat.drb || 0);
-
-const getBestStat = (stats: NBAGMStat[] | undefined, season: number) => {
-  if (!stats) return undefined;
-  // Try current season first, fall back to previous season (handles day-1 where season stats don't exist yet)
-  const trySeasons = [season, season - 1];
-  for (const s of trySeasons) {
-    const seasonStats = stats.filter(st => st.season === s && !st.playoffs);
-    if (seasonStats.length > 0) {
-      return seasonStats.reduce((prev, current) => (prev.gp >= current.gp) ? prev : current);
-    }
-  }
-  return undefined;
-};
+import {
+  type AllNBASpot,
+  type AllNBATeams,
+  type AwardCandidate,
+  type AwardRaces,
+  type CoachCandidate,
+  assignCoachOdds,
+  assignOdds,
+  getBestStat,
+  getTrb,
+} from './AwardServiceShared';
+export type {
+  AllNBASpot,
+  AllNBATeams,
+  AwardCandidate,
+  AwardRaces,
+  CoachCandidate,
+} from './AwardServiceShared';
 
 export class AwardService {
   // Configurable minimum-games threshold (default: NBA 65-game rule)
@@ -90,12 +48,12 @@ export class AwardService {
     const allNBATeams = this.calculateAllNBATeams(players, teams, maxSeason);
 
     return {
-      mvp: this.assignOdds(mvpCandidates),
-      dpoy: this.assignOdds(dpoyCandidates),
-      roty: this.assignOdds(rotyCandidates),
-      smoy: this.assignOdds(smoyCandidates),
-      mip: this.assignOdds(mipCandidates),
-      coy: this.assignCoachOdds(coyCandidates),
+      mvp: assignOdds(mvpCandidates),
+      dpoy: assignOdds(dpoyCandidates),
+      roty: assignOdds(rotyCandidates),
+      smoy: assignOdds(smoyCandidates),
+      mip: assignOdds(mipCandidates),
+      coy: assignCoachOdds(coyCandidates),
       allNBATeams,
     };
   }
@@ -520,43 +478,5 @@ export class AwardService {
       }
     }
     return team;
-  }
-
-  private static assignCoachOdds(candidates: CoachCandidate[]): CoachCandidate[] {
-    if (candidates.length === 0) return [];
-    const maxScore = candidates[0].score;
-    if (maxScore <= 0 || isNaN(maxScore)) return candidates;
-    return candidates.map((c, i) => {
-      let odds = '';
-      if (i === 0) {
-        odds = `-${Math.round(110 + (c.score / maxScore) * 40)}`;
-      } else {
-        const gap = maxScore / (c.score || 1);
-        odds = `+${Math.round(100 + (gap - 1) * 2000)}`;
-      }
-      return { ...c, odds };
-    });
-  }
-
-  private static assignOdds(candidates: AwardCandidate[]): AwardCandidate[] {
-    if (candidates.length === 0) return [];
-
-    const maxScore = candidates[0].score;
-    if (maxScore <= 0 || isNaN(maxScore)) return candidates;
-    
-    return candidates.map((c, i) => {
-      let odds = '';
-      if (i === 0) {
-        // Leader gets - odds
-        const val = Math.round(110 + (c.score / maxScore) * 40);
-        odds = `-${val}`;
-      } else {
-        // Others get + odds based on gap
-        const gap = maxScore / (c.score || 1);
-        const val = Math.round(100 + (gap - 1) * 2000);
-        odds = `+${val}`;
-      }
-      return { ...c, odds };
-    });
   }
 }

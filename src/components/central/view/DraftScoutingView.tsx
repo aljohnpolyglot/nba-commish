@@ -2,8 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import type { NBAPlayer } from '../../../types';
 import { ChevronLeft, ChevronRight, Search, Target } from 'lucide-react';
-import { convertTo2KRating } from '../../../utils/helpers';
-import { getDisplayAge, estimatePotentialBbgm } from '../../../utils/playerRatings';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { DraftScoutingModal } from '../../draft/DraftScoutingModal';
 import { PlayerBioView } from './PlayerBioView';
@@ -13,7 +11,6 @@ import { getCapThresholds } from '../../../utils/salaryUtils';
 import {
   ensureDraftScouting,
   getCachedDraftScouting,
-  matchProspectToGist,
   type GistProspect,
 } from '../../../services/draftScoutingGist';
 import {
@@ -25,33 +22,14 @@ import {
   type ClassPercentileMaps,
   type SkillAxis,
 } from '../../../services/scoutingReport';
-
-// ── Re-export for backward compat (initialization.ts used to import from here) ──
-// We extracted the gist logic; keep the symbol exported so any older callers
-// continue to resolve.
+import {
+  buildMockProspects,
+  matchesPosFilter,
+  MockProspect,
+  PosFilter,
+  POS_FILTERS,
+} from './draftScoutingViewShared';
 export { prefetchDraftScouting } from '../../../services/draftScoutingGist';
-
-interface MockProspect extends NBAPlayer {
-  displayOvr: number;
-  displayPot: number;
-  derivedAge: number;
-  consensusRank: number;
-  espnRank?: number;
-  noCeilingsRank?: number;
-  gistMatch?: GistProspect | null;
-}
-
-const POS_FILTERS = ['All', 'Guard', 'Forward', 'Center'] as const;
-type PosFilter = typeof POS_FILTERS[number];
-
-const matchesPosFilter = (p: NBAPlayer, f: PosFilter): boolean => {
-  if (f === 'All') return true;
-  const pos = p.pos ?? '';
-  if (f === 'Guard') return pos.includes('G');
-  if (f === 'Forward') return pos.includes('F') && !pos.includes('FC');
-  if (f === 'Center') return pos.includes('C');
-  return true;
-};
 
 export const DraftScoutingView: React.FC = () => {
   const { state } = useGame();
@@ -66,10 +44,6 @@ export const DraftScoutingView: React.FC = () => {
   const [skillFilter, setSkillFilter] = useState<SkillAxis | null>(null);
   const [gistData, setGistData] = useState<GistProspect[] | null>(getCachedDraftScouting(selectedYear) ?? null);
   const [error, setError] = useState<string | null>(null);
-
-  // Browse range:
-  //   minYear = lowest tid=-2 draft.year still in state (or current floor when class is drafted out)
-  //   maxYear = max(highest tid=-2 draft.year, floor + 4)
   const { minYear, maxYear } = useMemo(() => {
     const floor = state.draftComplete ? baseYear + 1 : baseYear;
     let lo = floor, hi = floor, seen = false;
@@ -86,8 +60,6 @@ export const DraftScoutingView: React.FC = () => {
 
   const draftYear = selectedYear;
   const currentLeagueYear = state.leagueStats?.year ?? new Date().getFullYear();
-
-  // Lazy gist fetch per draft year
   useEffect(() => {
     setError(null);
     const cached = getCachedDraftScouting(draftYear);
@@ -105,59 +77,8 @@ export const DraftScoutingView: React.FC = () => {
     });
     return () => { cancelled = true; };
   }, [draftYear]);
-
-  // Raw prospects for the selected year — converted to display OVR/POT (K2 scale)
   const prospects = useMemo<MockProspect[]>(() => {
-    const raw = state.players.filter(p =>
-      (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') &&
-      (p as any).draft?.year === draftYear,
-    );
-    if (raw.length === 0) return [];
-    const enriched = raw.map(p => {
-      const last = p.ratings?.[p.ratings.length - 1];
-      const rawOvr = p.overallRating || (last?.ovr ?? 0);
-      const hgt = last?.hgt ?? 50;
-      const tp = last?.tp;
-      const displayOvr = convertTo2KRating(rawOvr, hgt, tp);
-      const age = getDisplayAge(p, currentLeagueYear);
-      const storedPot = last?.pot;
-      const rawPot = (storedPot != null && storedPot > 0)
-        ? storedPot
-        : (age >= 29 ? rawOvr : Math.max(rawOvr, estimatePotentialBbgm(rawOvr, age)));
-      const potBbgm = Math.max(rawOvr, rawPot);
-      const displayPot = convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), hgt, tp);
-      return {
-        ...p,
-        displayOvr,
-        displayPot,
-        derivedAge: age,
-      } as MockProspect;
-    }).sort((a, b) => b.displayOvr - a.displayOvr);
-
-    // Consensus rank = sort order. ESPN/NoCeilings come from gist when available;
-    // a stable seeded offset is used as the fallback for prospects not in the gist
-    // so the rank chips don't disappear off the deep board.
-    return enriched.map((p, i) => {
-      const gistMatch = matchProspectToGist(p, gistData);
-      const seed = p.name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-      const rand = (offset: number) => {
-        const x = Math.sin(seed + offset) * 10000;
-        return x - Math.floor(x);
-      };
-      const espnRank = gistMatch?.externalRanks?.espn
-        ? parseInt(gistMatch.externalRanks.espn, 10) || undefined
-        : Math.max(1, Math.round(i + 1 + (rand(1) * 10 - 5)));
-      const noCeilingsRank = gistMatch?.externalRanks?.noCeilings
-        ? parseInt(gistMatch.externalRanks.noCeilings, 10) || undefined
-        : Math.max(1, Math.round(i + 1 + (rand(2) * 14 - 7)));
-      return {
-        ...p,
-        consensusRank: i + 1,
-        espnRank,
-        noCeilingsRank,
-        gistMatch,
-      };
-    });
+    return buildMockProspects(state.players, currentLeagueYear, draftYear, gistData);
   }, [state.players, draftYear, currentLeagueYear, gistData]);
 
   // Active NBA players — the comparison pool for findTopComparisons in the modal.
@@ -169,8 +90,6 @@ export const DraftScoutingView: React.FC = () => {
       ((p as any).draft?.year ?? 0) < currentLeagueYear,
     ),
   [state.players, currentLeagueYear]);
-
-  // Class percentile maps + averages — modal data, computed once per class.
   const classAverages = useMemo(() => getClassAverages(prospects), [prospects]);
   const percentilesByPos = useMemo(() => {
     const m = new Map<string, ClassPercentileMaps>();
@@ -180,18 +99,12 @@ export const DraftScoutingView: React.FC = () => {
     m.set('Class', getClassPercentiles(prospects, 'Class'));
     return m;
   }, [prospects]);
-
-  // Batch comps: computed once per class so the modal just reads from the map.
-  // Prospects are already sorted by consensusRank, so priority order is correct.
   const batchComps = useMemo(
     () => batchComparisonsDeduped(prospects, activePlayers),
     [prospects, activePlayers],
   );
-
-  // Build the projected draft order (mirrors DraftSimulatorView's logic).
   const draftOrder = useMemo(() => {
     if (draftYear !== currentLeagueYear) {
-      // Future class — fall back to current standings as a generic order
       return [...state.teams]
         .filter(t => t.id >= 0 && t.id < 100)
         .sort((a, b) => {
@@ -199,7 +112,7 @@ export const DraftScoutingView: React.FC = () => {
           const wb = b.wins / Math.max(1, b.wins + b.losses);
           return wa - wb;
         })
-        .flatMap(t => [t, t]); // R1 + R2 same order
+        .flatMap(t => [t, t]);
     }
     const draftPicks: any[] = (state as any).draftPicks ?? [];
     const eligibleTeams = state.teams.filter(t => t.id >= 0 && t.id < 100);
@@ -208,8 +121,6 @@ export const DraftScoutingView: React.FC = () => {
       const wb = b.wins / Math.max(1, b.wins + b.losses);
       return wa - wb;
     });
-    // Use the shared slot resolver — covers partial lottery arrays AND extends
-    // through non-lottery teams (#15-30). Empty map → lottery hasn't fired.
     const slotMap = buildFullDraftSlotMap(state.draftLotteryResult as any, state.teams);
     let r1Source: any[];
     if (slotMap.size > 0) {
@@ -237,9 +148,6 @@ export const DraftScoutingView: React.FC = () => {
     const r2 = r1Source.map(t => ({ ...resolveOwner(2, t), _r2: true }));
     return [...r1, ...r2];
   }, [state.teams, state.draftLotteryResult, (state as any).draftPicks, draftYear, currentLeagueYear]);
-
-  // Stable hashes prevent the mock-draft useMemo from rebuilding when unrelated
-  // player state shifts (e.g. an extension on a non-prospect updates state.players).
   const prospectsHash = useMemo(
     () => prospects.map(p => `${p.internalId}:${p.displayOvr}:${p.displayPot}`).join('|'),
     [prospects],
@@ -254,8 +162,6 @@ export const DraftScoutingView: React.FC = () => {
   );
 
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
-
-  // The mock-draft simulation. Cached on viewYear + stable input hashes.
   const mockDraft = useMemo(() => {
     if (prospects.length === 0 || draftOrder.length === 0) return [];
     return buildMockDraft({
@@ -269,11 +175,7 @@ export const DraftScoutingView: React.FC = () => {
       userTeamId: state.userTeamId ?? null,
       currentYear: currentLeagueYear,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftYear, prospectsHash, teamsHash, draftOrderHash]);
-
-  // Top-33% set for the active skill filter — recomputed only when the skill
-  // changes or the prospect pool refreshes (year change).
   const skillTopSet = useMemo(() => {
     if (!skillFilter) return null;
     const scored = prospects.map(p => ({
@@ -284,9 +186,6 @@ export const DraftScoutingView: React.FC = () => {
     const cut = Math.max(1, Math.ceil(scored.length / 3));
     return new Set(scored.slice(0, cut).map(s => s.id));
   }, [skillFilter, prospects]);
-
-  // Highlight predicate — search + pos + skill filters intersect. When none
-  // are active, every slot is "matched" so dimming never kicks in.
   const isFilterActive = !!searchTerm || posFilter !== 'All' || !!skillFilter;
   const matchesHighlight = (p: NBAPlayer | null): boolean => {
     if (!p) return false;
@@ -298,8 +197,6 @@ export const DraftScoutingView: React.FC = () => {
   };
 
   const hasRawProspects = prospects.length > 0;
-
-  // Undrafted prospects — those in the class but not in the mock draft
   const draftedIds = useMemo(() => {
     const ids = new Set<string>();
     for (const slot of mockDraft) {
@@ -314,15 +211,12 @@ export const DraftScoutingView: React.FC = () => {
     prospects.filter(p => !draftedIds.has(p.internalId)),
     [prospects, draftedIds],
   );
-
-  // Comp-card click in the scouting modal jumps to that player's bio view.
   if (viewingBioPlayer) {
     return <PlayerBioView player={viewingBioPlayer} onBack={() => setViewingBioPlayer(null)} />;
   }
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-200 overflow-hidden">
-      {/* Header */}
       <div className="flex-shrink-0 bg-slate-950 border-b border-slate-800 p-4 sm:p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -379,7 +273,6 @@ export const DraftScoutingView: React.FC = () => {
           </div>
         </div>
 
-        {/* Skill highlight chips — top 33% in the chosen skill glow, rest dim */}
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mr-1">Highlight skill</span>
           {SKILL_AXES.map(skill => (
@@ -410,7 +303,6 @@ export const DraftScoutingView: React.FC = () => {
         )}
       </div>
 
-      {/* Mock draft body */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
         {!hasRawProspects ? (
           <div className="text-center p-12 text-slate-400 space-y-2">
@@ -423,7 +315,6 @@ export const DraftScoutingView: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-8">
-            {/* Drafted prospects */}
             {mockDraft.length > 0 && (
               <div>
                 <h2 className="text-sm font-black text-slate-300 uppercase tracking-widest mb-3 px-1">Projected Picks</h2>
@@ -442,7 +333,6 @@ export const DraftScoutingView: React.FC = () => {
                           p ? 'cursor-pointer hover:border-indigo-600' : 'cursor-default'
                         } ${dim ? 'opacity-25' : 'opacity-100'} ${matched && isFilterActive && p ? 'border-amber-500/70 shadow-[0_0_14px_rgba(245,158,11,0.25)]' : ''}`}
                       >
-                        {/* Pick # */}
                         <div className="w-11 flex items-center justify-center shrink-0 bg-indigo-900/60">
                           <span className="text-xl font-black text-white">{String(slot.pick).padStart(2, '0')}</span>
                         </div>

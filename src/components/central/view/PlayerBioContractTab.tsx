@@ -101,11 +101,14 @@ export const PlayerBioContractTab: React.FC<PlayerBioContractTabProps> = ({ play
           (player.contract?.rookie && yr === currentYear) ? 'Rookie' : null;
 
         const currentYearRow = yr === currentYear;
+        const salaryUSD = currentYearRow && isNonGuaranteed && (cy.guaranteed ?? 0) <= 0 && player.contract?.amount
+          ? contractToUSD(player.contract.amount)
+          : cy.guaranteed;
         return {
           season: yr,
           teamName,
           tid: rowTid,
-          salaryUSD: cy.guaranteed,
+          salaryUSD,
           isFuture: isFutureRow,
           option: currentYearRow && isNonGuaranteed && !optionLabel ? 'Non-Guaranteed' : optionLabel,
         };

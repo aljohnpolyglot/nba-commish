@@ -1,0 +1,98 @@
+# Codex hunks NOT found on current disk for src/store/logic/initialization.ts
+# 9 hunks unapplied. Total ops: 7
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=1 line=128 ts=2026-05-09T22:52:28.306Z ---
+ interface StartGamePayload {
+     name: string;
+     startScenario?: string;
+     skipLLM?: boolean;
+     startDate?: string;
+     jumpRequired?: boolean;
+     onProgress?: (progress: LazySimProgress) => void;
+     gameMode?: 'commissioner' | 'gm';
+     userTeamId?: number;
+     assistantGM?: boolean;
+     leagueType?: LeagueType;
++    fictionalLeagueSeed?: number;
+ }
+
+--- HUNK [op#0 hunk#1] session=1 line=128 ts=2026-05-09T22:52:28.306Z ---
+     let teams: any[], rawNbaPlayers: any[], draftPicks: DraftPick[];
+     if (isFictional) {
+-        const fic = generateFictionalLeague(2025);
++        const fic = generateFictionalLeague(2025, payload.fictionalLeagueSeed);
+         teams = fic.teams;
+         rawNbaPlayers = fic.players;
+         draftPicks = [];
+
+--- HUNK [op#1 hunk#0] session=5 line=265 ts=2026-05-10T04:28:46.853Z ---
+-import type { LeagueType } from '../../components/setup/LeagueTypeSelector';
++import type { LeagueType, ModdedLeagueBase } from '../../components/setup/LeagueTypeSelector';
+
+--- HUNK [op#1 hunk#1] session=5 line=265 ts=2026-05-10T04:28:46.853Z ---
+     assistantGM?: boolean;
+     leagueType?: LeagueType;
++    moddedLeagueBase?: ModdedLeagueBase;
+     fictionalLeagueSeed?: number;
+ }
+
+--- HUNK [op#1 hunk#2] session=5 line=265 ts=2026-05-10T04:28:46.853Z ---
+ export const handleStartGame = async (payload: StartGamePayload): Promise<Partial<GameState>> => {
+     const { name: commissionerName } = payload;
+     const isFictional = payload.leagueType === 'fictional';
++    const isEuropeModded = payload.leagueType === 'modded' && payload.moddedLeagueBase === 'europe';
+     const SHADOWED_ENDESA_TEAM_TIDS = new Set([5006, 5012]); // FC Barcelona, Real Madrid — use Euroleague club only
+
+--- HUNK [op#1 hunk#4] session=5 line=265 ts=2026-05-10T04:28:46.853Z ---
+         gameMode: payload.gameMode ?? 'commissioner',
+         userTeamId: payload.userTeamId,
+         leagueType: payload.leagueType ?? 'modded',
++        moddedLeagueBase: payload.leagueType === 'modded' ? (payload.moddedLeagueBase ?? 'nba') : undefined,
+         allStar: initialAllStar as any,
+         leagueStats: {
+             ...INITIAL_LEAGUE_STATS,
+             mediaRights: DEFAULT_MEDIA_RIGHTS,
++            draftType: isEuropeModded ? 'no_draft' : INITIAL_LEAGUE_STATS.draftType,
+         },
+     };
+
+--- HUNK [op#2 hunk#2] session=5 line=368 ts=2026-05-10T04:35:25.338Z ---
+     const { name: commissionerName } = payload;
+     const isFictional = payload.leagueType === 'fictional';
+     const isEuropeModded = payload.leagueType === 'modded' && payload.moddedLeagueBase === 'europe';
++    const isSpainEurope = isEuropeModded && payload.europeMarket === 'spain';
+     const SHADOWED_ENDESA_TEAM_TIDS = new Set([5006, 5012]); // FC Barcelona, Real Madrid — use Euroleague club only
+
+--- HUNK [op#2 hunk#3] session=5 line=368 ts=2026-05-10T04:35:25.338Z ---
+-    const filteredEndesaTeams = endesaTeams
+-        .filter(t => !SHADOWED_ENDESA_TEAM_TIDS.has(t.tid));
++    const filteredEndesaTeams = isSpainEurope
++        ? endesaTeams
++        : endesaTeams.filter(t => !SHADOWED_ENDESA_TEAM_TIDS.has(t.tid));
+ 
+     const uniqueEndesaPlayers = endesaPlayers
+         .filter(p =>
+-            !SHADOWED_ENDESA_TEAM_TIDS.has(p.tid) &&
++            (isSpainEurope || !SHADOWED_ENDESA_TEAM_TIDS.has(p.tid)) &&
+             !existingNbaNames.has(normName(p.name)) &&
+-            !euroNames.has(normName(p.name))
++            (isSpainEurope || !euroNames.has(normName(p.name)))
+         )
+         .map(p => ({ ...p, status: 'Endesa' as const }));
+
+--- HUNK [op#2 hunk#4] session=5 line=368 ts=2026-05-10T04:35:25.338Z ---
+         leagueType: payload.leagueType ?? 'modded',
+         moddedLeagueBase: payload.leagueType === 'modded' ? (payload.moddedLeagueBase ?? 'nba') : undefined,
++        europeMarket: payload.leagueType === 'modded' ? payload.europeMarket : undefined,
+         allStar: initialAllStar as any,
+         leagueStats: {
+             ...INITIAL_LEAGUE_STATS,
+             mediaRights: DEFAULT_MEDIA_RIGHTS,
+             draftType: isEuropeModded ? 'no_draft' : INITIAL_LEAGUE_STATS.draftType,
++            tradableDraftPickSeasons: isEuropeModded ? 0 : INITIAL_LEAGUE_STATS.tradableDraftPickSeasons,
++            stepienRuleEnabled: isEuropeModded ? false : INITIAL_LEAGUE_STATS.stepienRuleEnabled,
++            rookieScaleType: isEuropeModded ? 'none' : INITIAL_LEAGUE_STATS.rookieScaleType,
+         },
+     };

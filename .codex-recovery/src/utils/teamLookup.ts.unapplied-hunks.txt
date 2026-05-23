@@ -1,0 +1,12 @@
+# Codex hunks NOT found on current disk for src/utils/teamLookup.ts
+# 1 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#1] session=8 line=2157 ts=2026-05-11T08:47:41.892Z ---
+- *   teams of the user's league (Endesa, Euroleague, …) wrapped in
+- *   NBATeam-shape stubs so existing iteration patterns keep working.
++ * - Euro-isolated mode may keep NBA teams in `state.teams` for background
++ *   simulation. In that mode, Euro UI must source active clubs from
++ *   `nonNBATeams`; this helper returns the user's domestic/continental pool
++ *   as NBATeam-shape stubs so old iteration patterns keep working.

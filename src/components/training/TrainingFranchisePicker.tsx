@@ -71,7 +71,7 @@ export const TrainingFranchisePicker: React.FC<Props> = ({ onSelectTeam }) => {
             {planCount > 0 && (
               <>
                 <span className="text-slate-700 mx-1">·</span>
-                <span className="text-[#FDB927]/70">{planCount} plans</span>
+                <span className="text-[#FDB927]/70">{planCount} days planned</span>
               </>
             )}
           </div>
@@ -108,7 +108,7 @@ export const TrainingFranchisePicker: React.FC<Props> = ({ onSelectTeam }) => {
             </div>
           </div>
           <p className="text-[10px] md:text-xs text-slate-500 font-bold uppercase tracking-widest mt-3">
-            Open a team's training calendar, paradigm, and player development queue
+            Open a team's practice calendar, game prep, and player programs
           </p>
         </div>
 
@@ -146,7 +146,7 @@ export const TrainingFranchisePicker: React.FC<Props> = ({ onSelectTeam }) => {
                   <span className="text-slate-700">·</span>
                   <span>{userData.roster.length} Players</span>
                   <span className="text-slate-700">·</span>
-                  <span className="text-[#FDB927]/80">{userData.planCount} Plans Set</span>
+                  <span className="text-[#FDB927]/80">{userData.planCount} Days Planned</span>
                 </div>
               </div>
               <div className="flex flex-col items-end shrink-0 relative z-10">

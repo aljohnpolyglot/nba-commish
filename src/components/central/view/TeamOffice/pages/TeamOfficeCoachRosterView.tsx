@@ -7,9 +7,12 @@ import { convertTo2KRating } from '../../../../../utils/helpers';
 import { calculatePlayerOverallForYear, getDisplayPotential } from '../../../../../utils/playerRatings';
 import { computeMoodScore } from '../../../../../utils/mood/moodScore';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
+import { formatPlayerSalaryDisplay, getPlayerCurrentSalaryUSD } from '../../../../../utils/salaryUtils';
 import type { NBAPlayer } from '../../../../../types';
 import { isOnRoster, resolveAnyTeam } from '../../../../../utils/teamLookup';
 import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
+import { getDisplayAge } from '../../../../../store/playerRatingStore';
+import { getFatigueBarColor, getFatigueTextColor, getInjuryRisk, getMoodBarColor } from '../../../../shared/playerWellness';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -55,7 +58,7 @@ const fmt1 = (v: number) => (Number.isFinite(v) && v > 0 ? v.toFixed(1) : '—')
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type SortCol = 'name' | 'num' | 'pos' | 'age' | 'k2' | 'pot' | 'salary' | 'exp' | 'g' | 'mp' | 'pts' | 'reb' | 'ast' | 'per' | 'mood';
+type SortCol = 'name' | 'num' | 'pos' | 'age' | 'k2' | 'pot' | 'salary' | 'exp' | 'g' | 'mp' | 'pts' | 'reb' | 'ast' | 'per' | 'fatigue' | 'mood';
 
 interface RowData {
   player: NBAPlayer;
@@ -65,6 +68,7 @@ interface RowData {
   pot: number;
   age: number;
   currentSalaryUSD: number;
+  currentSalaryLabel: string;
   yearsLeft: number;
   g: number;
   mp: number;
@@ -72,6 +76,7 @@ interface RowData {
   reb: number;
   ast: number;
   per: number;
+  trainingFatigue: number;
   moodScore: number;
   isTwoWay: boolean;
   isNonGuaranteed: boolean;
@@ -150,8 +155,9 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
         k2,
         k2Delta,
         pot: getDisplayPotential(p, currentYear),
-        age: p.born?.year ? currentYear - p.born.year : (p.age ?? 0),
-        currentSalaryUSD: (p.contract?.amount ?? 0) * 1_000,
+        age: getDisplayAge(p, currentYear),
+        currentSalaryUSD: getPlayerCurrentSalaryUSD(p as any, currentYear),
+        currentSalaryLabel: formatPlayerSalaryDisplay(p as any, currentYear, state.nonNBATeams ?? []),
         yearsLeft,
         g: stats?.g ?? 0,
         mp: stats?.mp ?? 0,
@@ -159,6 +165,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
         reb: stats?.reb ?? 0,
         ast: stats?.ast ?? 0,
         per: stats?.per ?? 0,
+        trainingFatigue: Math.max(0, Math.min(100, Math.round((p as any).trainingFatigue ?? 0))),
         moodScore,
         isTwoWay: !hideNbaContractBadges && !!(p as any).twoWay,
         isNonGuaranteed: !hideNbaContractBadges && !!(p as any).nonGuaranteed,
@@ -166,7 +173,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
         isStarter: starterIds.has(p.internalId),
       };
     });
-  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, teamId, hideNbaContractBadges]);
+  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, teamId, hideNbaContractBadges, state.nonNBATeams]);
 
   const rows = useMemo((): RowData[] => {
     if (starterOrder) {
@@ -193,6 +200,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
       else if (col === 'reb')    { av = a.reb;  bv = b.reb; }
       else if (col === 'ast')    { av = a.ast;  bv = b.ast; }
       else if (col === 'per')    { av = a.per;  bv = b.per; }
+      else if (col === 'fatigue'){ av = a.trainingFatigue; bv = b.trainingFatigue; }
       else if (col === 'mood')   { av = a.moodScore; bv = b.moodScore; }
       if (typeof av === 'string') return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       return dir === 'asc' ? av - bv : bv - av;
@@ -327,6 +335,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
                   <SortTh col="reb"    label="TRB" />
                   <SortTh col="ast"    label="AST" />
                   <SortTh col="per"    label="PER" />
+                  <SortTh col="fatigue" label="Fatigue" cls="text-left" />
                   <SortTh col="mood"   label="Mood" cls="text-left" />
                 </tr>
               </thead>
@@ -335,10 +344,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
                   const p = r.player;
                   const isExpiring = r.yearsLeft === 0;
                   const moodPct = Math.round(((r.moodScore + 10) / 20) * 100);
-                  const moodBarColor =
-                    r.moodScore >= 5 ? 'bg-emerald-400' :
-                    r.moodScore >= 1 ? 'bg-amber-400' :
-                    r.moodScore >= -1 ? 'bg-slate-400' : 'bg-rose-400';
+                  const fatigueRisk = getInjuryRisk(r.trainingFatigue);
 
                   // Show divider between starters and bench in starter order mode
                   const prevRow = rows[idx - 1];
@@ -348,7 +354,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
                     <React.Fragment key={p.internalId}>
                       {showBenchDivider && (
                         <tr>
-                          <td colSpan={15} className="py-0.5 px-3">
+                          <td colSpan={16} className="py-0.5 px-3">
                             <div className="flex items-center gap-2">
                               <div className="flex-1 h-px bg-slate-700/50" />
                               <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">Bench</span>
@@ -408,7 +414,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
                         )}>{r.pot}</td>
 
                         <td className="text-right tabular-nums px-1.5 whitespace-nowrap text-slate-300">
-                          {r.currentSalaryUSD > 0 ? fmtSalary(r.currentSalaryUSD) : <span className="text-slate-600">—</span>}
+                          {r.currentSalaryUSD > 0 ? r.currentSalaryLabel : <span className="text-slate-600">—</span>}
                         </td>
 
                         <td className="text-center tabular-nums px-1.5">
@@ -426,10 +432,24 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
                         <td className="text-right tabular-nums px-1 text-slate-300">{fmt1(r.ast)}</td>
                         <td className="text-right tabular-nums px-1 text-slate-300">{fmt1(r.per)}</td>
 
+                        <td className="px-2 py-1.5" style={{ minWidth: 120 }}>
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                                <span className={getFatigueTextColor(r.trainingFatigue)}>{r.trainingFatigue}</span>
+                                <span className={`px-1 py-0.5 rounded border text-[7px] ${fatigueRisk.color}`}>{fatigueRisk.label}</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                                <div className={`h-full transition-all ${getFatigueBarColor(r.trainingFatigue)}`} style={{ width: `${Math.max(2, r.trainingFatigue)}%` }} />
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
                         <td className="px-2 py-1.5" style={{ minWidth: 80 }}>
                           <div className="flex items-center gap-1.5">
                             <div className="flex-1 h-1.5 bg-slate-800 rounded overflow-hidden">
-                              <div className={cn('h-full rounded transition-all', moodBarColor)} style={{ width: `${moodPct}%` }} />
+                              <div className={cn('h-full rounded transition-all', getMoodBarColor(r.moodScore))} style={{ width: `${moodPct}%` }} />
                             </div>
                             <span className="text-[9px] text-slate-500 tabular-nums w-6 text-right shrink-0">
                               {r.moodScore >= 0 ? '+' : ''}{r.moodScore.toFixed(1)}

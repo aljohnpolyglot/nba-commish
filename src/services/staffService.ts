@@ -76,15 +76,7 @@ const enrichStaffMember = (
     return enriched;
   }
 
-  // 1. RealGM image pattern
-  const nameParts = staffMember.name.split(' ');
-  if (nameParts.length >= 2) {
-    const firstName = nameParts[0];
-    const lastName = nameParts[nameParts.length - 1];
-    enriched.playerPortraitUrl = `https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/${lastName}_${firstName}.jpg`;
-  }
-
-  // 2. Fallback: match a player portrait
+  // 1. Fallback: match a player portrait
   if (!enriched.playerPortraitUrl) {
     const playerRecord = allPlayers.find(
       p => p.name.toLowerCase() === staffMember.name.toLowerCase()
@@ -92,7 +84,7 @@ const enrichStaffMember = (
     if (playerRecord) enriched.playerPortraitUrl = playerRecord.imgURL;
   }
 
-  // 3. Fallback: team logo — use position (new format) or team (legacy)
+  // 2. Fallback: team logo — use position (new format) or team (legacy)
   const teamName = staffMember.position || staffMember.team;
   if (!enriched.playerPortraitUrl && teamName) {
     const teamRecord = teamNameMap.get(teamName.toLowerCase());
@@ -194,6 +186,22 @@ export interface CoachContractData {
   history: CoachContractHistory[];
 }
 
+export interface CoachContractSnapshot {
+  annualSalary: number | null;
+  endYear: number | null;
+  yearsLeft: number | null;
+  isExpiring: boolean;
+}
+
+export interface StaffCareerSnapshot {
+  bornYear: number | null;
+  age: number | null;
+  careerStartYear: number | null;
+  hiredYear: number | null;
+  yearsWithTeam: number;
+  yearsExperience: number;
+}
+
 /** Per-coach 15-attribute rating record. Mirrors the StaffAttributes type but
  *  kept structurally typed here to avoid a circular import from TeamTraining. */
 export interface CoachAttributes {
@@ -224,6 +232,23 @@ function normalizeName(name: string): string {
   return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 }
 
+function parseNumberish(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const match = value.match(/\d{4}/) ?? value.match(/\d+/);
+    if (!match) return null;
+    const parsed = Number(match[0]);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function parseStartYear(value: unknown): number | null {
+  const parsed = parseNumberish(value);
+  if (parsed == null || parsed < 1900 || parsed > 2100) return null;
+  return parsed;
+}
+
 export const fetchCoachData = async (): Promise<void> => {
   if (_coachDataFetched) return;
   try {
@@ -252,6 +277,69 @@ export const getAllCoaches = (): CoachData[] => _coachBios;
 export const getNBA2KCoach = (name: string): NBA2KCoachData | undefined => _nba2kCoaches.find(c => normalizeName(c.name) === normalizeName(name));
 export const getTeamStaff = (teamName: string): NBA2KCoachData[] => _nba2kCoaches.filter(c => c.team === teamName);
 export const getCoachContract = (name: string): CoachContractData | undefined => _coachContracts.find(c => normalizeName(c.name) === normalizeName(name));
+export const getCoachContractSnapshot = (name: string | undefined, currentYear: number): CoachContractSnapshot | null => {
+  if (!name) return null;
+  const contract = getCoachContract(name);
+  const current = [...(contract?.history ?? [])]
+    .filter((entry): entry is CoachContractHistory => !!entry && Number.isFinite(entry.end_year))
+    .sort((a, b) => b.end_year - a.end_year || b.start_year - a.start_year)[0];
+  if (!current) return null;
+  const endYear = current.end_year;
+  const yearsLeft = Math.max(0, endYear - currentYear);
+  return {
+    annualSalary: Number.isFinite(current.annual_salary) ? current.annual_salary : null,
+    endYear,
+    yearsLeft,
+    isExpiring: yearsLeft <= 0,
+  };
+};
+
+export const getStaffCareerSnapshot = (person: {
+  yearsWithTeam?: number | null;
+  hiredYear?: number | null;
+  careerStartYear?: number | null;
+  startSeason?: string | null;
+  coaching_career?: string | null;
+  bornYear?: number | null;
+  born?: { year?: number | null } | string | null;
+  age?: number | string | null;
+} | null | undefined, currentYear: number): StaffCareerSnapshot => {
+  const hiredYear = parseNumberish(person?.hiredYear);
+  const bornYear = parseStartYear(
+    typeof person?.born === 'string'
+      ? person.born
+      : person?.born?.year ?? person?.bornYear ?? null,
+  );
+  const age = bornYear != null
+    ? Math.max(0, currentYear - bornYear)
+    : parseNumberish(person?.age);
+  const careerStartYear = parseStartYear(person?.careerStartYear ?? person?.startSeason ?? person?.coaching_career ?? null);
+  const derivedYearsWithTeam = hiredYear != null ? Math.max(0, currentYear - hiredYear) : null;
+  const yearsWithTeam = Math.max(
+    0,
+    Math.round(
+      parseNumberish(person?.yearsWithTeam)
+      ?? derivedYearsWithTeam
+      ?? 0,
+    ),
+  );
+  const yearsExperience = Math.max(
+    yearsWithTeam,
+    careerStartYear != null
+      ? Math.max(0, currentYear - careerStartYear)
+      : age != null
+        ? Math.max(0, Math.min(35, age - 22))
+        : yearsWithTeam,
+  );
+  return {
+    bornYear,
+    age,
+    careerStartYear,
+    hiredYear,
+    yearsWithTeam,
+    yearsExperience,
+  };
+};
 
 /** Returns the 15 staff attributes for a coach (HC or AC). Curated HC values
  *  take precedence; ACs fall back to seeded values baked into the gist.

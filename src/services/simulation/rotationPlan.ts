@@ -2,7 +2,7 @@ import { NBAPlayer as Player, NBATeam as Team } from '../../types';
 import { getGameplan } from '../../store/gameplanStore';
 import { getIdealRotation, reconcileIdealMinutes } from '../../store/idealRotationStore';
 import { MinutesPlayedService } from './MinutesPlayedService';
-import { SimulatorKnobs } from './SimulatorKnobs';
+import { SimulatorKnobs, isEuroClubCompetitionGame } from './SimulatorKnobs';
 
 interface RotationPlanResult {
   rotation: Player[];
@@ -105,6 +105,7 @@ export function resolveRotationPlan(
   const numQuarters = knobs.numQuarters ?? 4;
   const overtimeDuration = knobs.overtimeDuration ?? 5;
   const targetTotal = (knobs.quarterLength * numQuarters) * 5;
+  const minuteProfile = isEuroClubCompetitionGame(team, knobs) ? 'euro_club' : 'default';
   const { minutes: baseMinutes } = MinutesPlayedService.allocateMinutes(
     rotation,
     season,
@@ -115,6 +116,7 @@ export function resolveRotationPlan(
     knobs.quarterLength,
     overtimeDuration,
     numQuarters,
+    minuteProfile,
   );
 
   if (savedPlan?.minuteOverrides && Object.keys(savedPlan.minuteOverrides).length > 0) {

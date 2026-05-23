@@ -1,16 +1,13 @@
 /**
  * transferCaps.ts — per-club season caps + floors for the Euro transfer market.
  *
- * Numbers anchored on real-world data:
- *   Euroleague — 3-5 transfers/club off-season, ~50-70 league-wide. Mid-season
- *     window (Dec-Feb) is tightly regulated: 1-2 emergency moves per club.
- *   Liga Endesa (ACB) — heavier overhaul, 4-6 transfers/club off-season,
- *     100+ league-wide. Late-spring local signings push mid-season higher.
+ * Numbers anchored on real-world behavior: summer permits roster churn, while
+ * winter is an emergency patch window rather than a league-wide reshuffle.
  *
  * Both buys (player acquired) and sells (player listed/sold) are capped
  * separately so a roster-shuffle club doesn't blow past both directions.
- * A floor (minBuysSummer / minSellsSummer) is also tracked so quiet clubs
- * still hit at least 1-2 moves per off-season instead of going dormant.
+ * Floors exist as config hooks, but default to 0 because forced activity made
+ * every club churn players even when its roster should have stayed stable.
  *
  * Architecturally this file is the single source of truth — the ticker reads
  * from it for refill, bid, and accept decisions. Tune one place, behavior
@@ -37,22 +34,22 @@ export interface TransferCaps {
 
 const EUROLEAGUE_CAPS: TransferCaps = {
   league: 'Euroleague',
-  maxBuysSummer: 5,
-  maxBuysWinter: 2,
-  maxSellsSummer: 5,
-  maxSellsWinter: 2,
-  minBuysSummer: 2,
-  minSellsSummer: 2,
+  maxBuysSummer: 3,
+  maxBuysWinter: 1,
+  maxSellsSummer: 3,
+  maxSellsWinter: 1,
+  minBuysSummer: 0,
+  minSellsSummer: 0,
 };
 
 const ENDESA_CAPS: TransferCaps = {
   league: 'Liga Endesa',
-  maxBuysSummer: 6,
-  maxBuysWinter: 2,
-  maxSellsSummer: 6,
-  maxSellsWinter: 2,
-  minBuysSummer: 3,
-  minSellsSummer: 3,
+  maxBuysSummer: 4,
+  maxBuysWinter: 1,
+  maxSellsSummer: 4,
+  maxSellsWinter: 1,
+  minBuysSummer: 0,
+  minSellsSummer: 0,
 };
 
 const DEFAULT_CAPS: TransferCaps = {

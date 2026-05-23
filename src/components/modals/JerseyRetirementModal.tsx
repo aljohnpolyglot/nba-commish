@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Star, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import {
-  explainJerseyRetirementCandidates,
   deriveLeagueStartYearFromHistory,
+  explainJerseyRetirementCandidates,
   type JerseyRetirementDebugRow,
 } from '../../services/playerDevelopment/jerseyRetirementChecker';
 import type { RetiredJerseyRecord } from '../../types';
@@ -24,6 +24,31 @@ function tierLabel(tier: RetiredJerseyRecord['tier']): string {
   return 'Honorary';
 }
 
+function playerMatchesRetiredRecord(record: RetiredJerseyRecord, player: any): boolean {
+  const playerId = String(player?.internalId ?? '').trim();
+  const recordPlayerId = String(record?.playerId ?? '').trim();
+  if (playerId && recordPlayerId && playerId === recordPlayerId) return true;
+  const pid = String(player?.pid ?? '').trim();
+  const recordPid = String(record?.pid ?? '').trim();
+  if (pid && recordPid && pid === recordPid) return true;
+  const text = String(record?.text ?? '').trim().toLowerCase();
+  return !!text && text === String(player?.name ?? '').trim().toLowerCase();
+}
+
+function latestTeamJerseyNumber(player: any, teamId: number): string | undefined {
+  const stats = [...(player?.stats ?? [])]
+    .filter((s: any) => !s?.playoffs && Number(s?.tid) === teamId && s?.jerseyNumber !== undefined && s?.jerseyNumber !== null && s?.jerseyNumber !== '')
+    .sort((a: any, b: any) => Number(b?.season ?? 0) - Number(a?.season ?? 0));
+  return stats[0]?.jerseyNumber !== undefined ? String(stats[0].jerseyNumber) : undefined;
+}
+
+function countAwardInSeasons(player: any, needle: string, seasons: Set<number>, exact = true): number {
+  return (player?.awards ?? []).filter((a: any) => {
+    const type = String(a?.type ?? '');
+    return seasons.has(Number(a?.season)) && (exact ? type === needle : type.includes(needle));
+  }).length;
+}
+
 export const JerseyRetirementModal: React.FC<Props> = ({
   teamId, isOpen, onClose, accent, findPlayerImg,
 }) => {
@@ -38,16 +63,59 @@ export const JerseyRetirementModal: React.FC<Props> = ({
     () => deriveLeagueStartYearFromHistory(state.history as any, currentYear),
     [state.history, currentYear],
   );
-
   const candidates = useMemo(() => {
     if (!isOpen) return [] as JerseyRetirementDebugRow[];
-    return explainJerseyRetirementCandidates(
-      state.players, state.teams, currentYear, { leagueStartYear },
+    const autoRows = explainJerseyRetirementCandidates(
+      state.players, state.teams, currentYear, { leagueStartYear, previewFreshRetirees: true },
     ).filter(r => r.teamId === teamId);
+    const autoByPlayer = new Map(autoRows.map(r => [r.playerId, r]));
+    const team = state.teams.find(t => t.id === teamId);
+    const existing = ((team as any)?.retiredJerseyNumbers ?? []) as RetiredJerseyRecord[];
+    const rows = new Map<string, JerseyRetirementDebugRow>();
+
+    for (const r of autoRows) rows.set(r.playerId, r);
+
+    for (const player of state.players ?? []) {
+      if ((player as any).status !== 'Retired') continue;
+      if (!player.retiredYear || player.retiredYear < leagueStartYear) continue;
+      if (existing.some(record => playerMatchesRetiredRecord(record, player))) continue;
+
+      const regStats = ((player as any).stats ?? []).filter((s: any) => !s?.playoffs && Number(s?.tid) === teamId && (s?.gp ?? 0) > 0);
+      if (regStats.length === 0) continue;
+      const number = latestTeamJerseyNumber(player, teamId);
+      if (!number) continue;
+
+      const seasons = new Set<number>(regStats.map((s: any) => Number(s?.season)).filter(Boolean));
+      const auto = autoByPlayer.get(player.internalId);
+      rows.set(player.internalId, {
+        playerId: player.internalId,
+        name: player.name,
+        status: String((player as any).status ?? ''),
+        retiredYear: player.retiredYear,
+        teamId,
+        teamName: team?.name ?? '',
+        number,
+        score: auto?.score,
+        scheduledYear: auto?.scheduledYear,
+        seasonsWithTeam: seasons.size,
+        gamesWithTeam: regStats.reduce((sum: number, s: any) => sum + Number(s?.gp ?? 0), 0),
+        allStarAppearances: countAwardInSeasons(player, 'All-Star', seasons),
+        championships: countAwardInSeasons(player, 'Champion', seasons) + countAwardInSeasons(player, 'Won Championship', seasons),
+        tier: auto?.tier ?? 'late_honor',
+        reason: auto?.reason ?? 'honorary',
+        outcome: auto?.outcome === 'skip_not_due' || auto?.outcome === 'candidate' ? auto.outcome : 'candidate',
+      });
+    }
+
+    return Array.from(rows.values());
   }, [isOpen, state.players, state.teams, currentYear, leagueStartYear, teamId]);
 
-  const ready      = candidates.filter(r => r.outcome === 'candidate');
-  const scheduled  = candidates.filter(r => r.outcome === 'skip_not_due');
+  const ready = candidates.filter(r =>
+    r.outcome === 'candidate' && !r.scheduledYear
+  );
+  const scheduled = candidates.filter(r =>
+    (r.outcome === 'skip_not_due' || r.outcome === 'candidate') && !!r.scheduledYear
+  );
   const ineligible = candidates.filter(r =>
     r.outcome === 'skip_not_qualified' || r.outcome === 'skip_missing_number',
   );

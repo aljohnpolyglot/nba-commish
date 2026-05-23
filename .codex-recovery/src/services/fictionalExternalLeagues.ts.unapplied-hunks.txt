@@ -1,0 +1,75 @@
+# Codex hunks NOT found on current disk for src/services/fictionalExternalLeagues.ts
+# 5 hunks unapplied. Total ops: 1
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=10 line=103 ts=2026-05-13T07:14:28.747Z ---
+-import type { NBAPlayer } from '../types';
++import type { NBAPlayer, NonNBATeam } from '../types';
+
+--- HUNK [op#0 hunk#1] session=10 line=103 ts=2026-05-13T07:14:28.747Z ---
+-// NonNBATeam is the shape the rest of the codebase expects.
+-interface NonNBATeam {
+-  tid: number;
+-  cid?: number;
+-  did?: number;
+-  region?: string;
+-  name: string;
+-  abbrev?: string;
+-  pop?: number;
+-  stadiumCapacity?: number;
+-  imgURL?: string;
+-  colors?: string[];
+-  league: string;
+-}
+-
+ interface LeagueResult {
+   players: NBAPlayer[];
+   teams: NonNBATeam[];
+ }
++
++type ExternalLeagueName = NonNBATeam['league'];
+
+--- HUNK [op#0 hunk#2] session=10 line=103 ts=2026-05-13T07:14:28.747Z ---
+ function makeTeamsFromObject(
+   obj: Record<string, string | { name: string; country?: string }>,
+-  league: string,
++  league: ExternalLeagueName,
+   tidOffset: number,
+ ): NonNBATeam[] {
+
+--- HUNK [op#0 hunk#3] session=10 line=103 ts=2026-05-13T07:14:28.747Z ---
+       region,
+       name,
+       abbrev,
++      cid: 0,
++      did: 0,
+       pop: 0.5 + Math.random() * 2,
++      stadiumCapacity: 8_000,
+       league,
+     };
+   });
+ }
+ 
+ function makeTeamsFromList(
+   list: Array<{ region: string; name: string; abbrev: string }>,
+-  league: string,
++  league: ExternalLeagueName,
+   tidOffset: number,
+ ): NonNBATeam[] {
+
+--- HUNK [op#0 hunk#4] session=10 line=103 ts=2026-05-13T07:14:28.747Z ---
+     region: t.region,
+     name: `${t.region} ${t.name}`,
+     abbrev: t.abbrev,
++    cid: 0,
++    did: 0,
+     pop: 0.5 + Math.random() * 2,
++    stadiumCapacity: 8_000,
+     league,
+   }));
+ }
+ 
+ function generateLeague(
+-  league: string,
++  league: ExternalLeagueName,

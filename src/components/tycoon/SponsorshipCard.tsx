@@ -28,6 +28,7 @@ const SLOT_LABELS: Partial<Record<SponsorshipSlot, string>> = {
 
 export const SponsorshipCard: React.FC<Props> = ({ tycoon, currency, onNegotiate }) => {
   const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
+  const sponsorships = tycoon.sponsorships ?? {};
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
       <h2 className="font-black uppercase tracking-widest mb-4 text-sm flex items-center gap-2">
@@ -45,7 +46,7 @@ export const SponsorshipCard: React.FC<Props> = ({ tycoon, currency, onNegotiate
       </h2>
       <div className="space-y-3">
         {(['kit', 'sleeve', 'stadium'] as SponsorshipSlot[]).map((slot) => {
-          const s = tycoon.sponsorships[slot];
+          const s = sponsorships[slot];
           const expired = s === null;
           return (
             <div key={slot} className={`rounded-xl border p-3 ${expired ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-700 bg-slate-900/40'}`}>

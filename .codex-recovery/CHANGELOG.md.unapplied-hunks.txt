@@ -1,0 +1,178 @@
+# Codex hunks NOT found on current disk for CHANGELOG.md
+# 21 hunks unapplied. Total ops: 22
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=1 line=187 ts=2026-05-09T23:08:34.812Z ---
+ Historical bug fixes, session notes, and architecture discoveries.
++
++## Session 58 (May 10, 2026) — Fictional league hardening + docs cleanup / handoff
++
++- `src/services/fictionalLeagueGenerator.ts` — fictional league generation now accepts a seed and uses deterministic RNG, so setup preview and the actually started save produce the same teams/players/contracts instead of regenerating a different league on `START_GAME`.
++- `src/components/CommissionerSetup.tsx`, `src/store/logic/initialization.ts` — the fictional-league seed now flows through setup into game initialization. Setup copy also distinguishes fictional vs modded starts more clearly.
++- `src/components/players/view/FreeAgentsView.tsx` — fictional saves now use neutral free-agent wording instead of hardcoded NBA phrasing in the summary strip.
++- `README.md`, `AGENTS.md`, `TODO.md` — repo docs cleaned up to reflect the current split between committed simulator work and in-flight fictional-league/doc work. Added explicit handoff notes so the next session can see what is shipped, what is only in the worktree, and which cleanup remains open.
+ 
+ ## Session 57 (May 8, 2026) — Trade Bird Rights transfer + stale-save heal
+
+--- HUNK [op#3 hunk#0] session=8 line=994 ts=2026-05-11T01:57:00.627Z ---
+ Historical bug fixes, session notes, and architecture discoveries.
+ 
++## Session 60 (May 11, 2026) — Euro isolated Spain MVP gates and roster fixes
++
++- `src/components/central/view/TeamOffice/pages/TeamNeeds.tsx` — Team Needs now uses active-league teams plus `isOnRoster`, so Endesa/Euroleague rostered players are included instead of being filtered out by the NBA-only `status === 'Active'` check.
++- `src/components/central/view/TeamOffice/TeamOfficeView.tsx`, `src/components/central/view/TeamOffice/pages/TeamIntel.tsx`, `src/components/central/view/LeagueFinancesView.tsx`, `src/components/layout/MainContent.tsx` — trade surfaces are hidden or centrally blocked when `leagueStats.tradesAllowed === false`, including stale Trade Hub/Trade Board/Trade Machine deep-links.
++- `src/components/sidebar/NavigationMenu.tsx`, `src/components/layout/MainContent.tsx`, `src/components/central/view/LeagueHistoryView.tsx` — Euro-isolated mode no longer exposes NBA Playoffs or NBA historical gist data; stale Playoffs routes land on the Endesa competition view and League History renders Euro competition history only.
++
+ ## Session 59 (May 10, 2026) — Commissioner Elam/target-score rules wired into saves, sim, and live UI
+ 
+ - `src/types.ts`, `src/services/simulation/types.ts`, `src/services/simulation/SimulatorKnobs.ts` — added explicit `gameFormat` / `targetScore` support for schedule games and sim results, plus Elam-capable sim knobs so non-timed formats are first-class state instead of UI-only values.
+
+--- HUNK [op#4 hunk#0] session=8 line=1193 ts=2026-05-11T02:02:55.307Z ---
+ - `src/components/central/view/TeamOffice/pages/TeamNeeds.tsx` — Team Needs now uses active-league teams plus `isOnRoster`, so Endesa/Euroleague rostered players are included instead of being filtered out by the NBA-only `status === 'Active'` check.
+-- `src/components/central/view/TeamOffice/TeamOfficeView.tsx`, `src/components/central/view/TeamOffice/pages/TeamIntel.tsx`, `src/components/central/view/LeagueFinancesView.tsx`, `src/components/layout/MainContent.tsx` — trade surfaces are hidden or centrally blocked when `leagueStats.tradesAllowed === false`, including stale Trade Hub/Trade Board/Trade Machine deep-links.
+-- `src/components/sidebar/NavigationMenu.tsx`, `src/components/layout/MainContent.tsx`, `src/components/central/view/LeagueHistoryView.tsx` — Euro-isolated mode no longer exposes NBA Playoffs or NBA historical gist data; stale Playoffs routes land on the Endesa competition view and League History renders Euro competition history only.
++- `src/components/central/view/TeamOffice/TeamOfficeView.tsx`, `src/components/central/view/TeamOffice/pages/TeamIntel.tsx`, `src/components/central/view/LeagueFinancesView.tsx`, `src/components/layout/MainContent.tsx` — trade surfaces are hidden or centrally blocked when `leagueStats.tradesAllowed === false`, including stale Trade Hub/Trade Board/Trade Machine deep-links.
++- `src/components/sidebar/NavigationMenu.tsx`, `src/components/layout/MainContent.tsx`, `src/components/central/view/LeagueHistoryView.tsx`, `src/hooks/useDraftEventGate.tsx`, `src/components/offseason/OffseasonAufgaben.tsx` — Euro-isolated mode no longer exposes NBA-only seasonal, draft, playoff, central, Hall of Fame, or legacy-history surfaces; stale routes now land on European competition/schedule views or product-language placeholders.
++- `src/components/competition/CompetitionView.tsx`, `src/components/central/view/TeamOffice/pages/TeamIntelFreeAgency.tsx` — competition tables now seed all clubs before games are played and highlight the user club; Euro free-agency scouting hides NBA-only Bird Rights and formats asking prices in the active currency.
+
+--- HUNK [op#5 hunk#0] session=8 line=1249 ts=2026-05-11T02:04:57.642Z ---
+ - `src/components/sidebar/NavigationMenu.tsx`, `src/components/layout/MainContent.tsx`, `src/components/central/view/LeagueHistoryView.tsx`, `src/hooks/useDraftEventGate.tsx`, `src/components/offseason/OffseasonAufgaben.tsx` — Euro-isolated mode no longer exposes NBA-only seasonal, draft, playoff, central, Hall of Fame, or legacy-history surfaces; stale routes now land on European competition/schedule views or product-language placeholders.
+ - `src/components/competition/CompetitionView.tsx`, `src/components/central/view/TeamOffice/pages/TeamIntelFreeAgency.tsx` — competition tables now seed all clubs before games are played and highlight the user club; Euro free-agency scouting hides NBA-only Bird Rights and formats asking prices in the active currency.
++- `src/components/schedule/view/components/CalendarView.tsx`, `src/components/schedule/view/components/DayView.tsx` — Euro schedules now render only competition fixtures and suppress NBA Draft/Lottery/All-Star/Playoff event cards in calendar and day views.
+
+--- HUNK [op#6 hunk#0] session=8 line=1299 ts=2026-05-11T02:16:35.289Z ---
+-- `src/components/competition/CompetitionView.tsx`, `src/components/central/view/TeamOffice/pages/TeamIntelFreeAgency.tsx` — competition tables now seed all clubs before games are played and highlight the user club; Euro free-agency scouting hides NBA-only Bird Rights and formats asking prices in the active currency.
++- `src/components/competition/CompetitionView.tsx`, `src/components/central/view/TeamOffice/pages/TeamIntelFreeAgency.tsx` — competition tables now seed all clubs before games are played, highlight the user club, show qualification status, prize pool, recent results, and an "if season ended today" playoff/play-in projection; Euro free-agency scouting hides NBA-only Bird Rights and formats asking prices in the active currency.
+
+--- HUNK [op#7 hunk#0] session=8 line=1410 ts=2026-05-11T02:21:38.423Z ---
+ - `src/components/competition/CompetitionView.tsx`, `src/components/central/view/TeamOffice/pages/TeamIntelFreeAgency.tsx` — competition tables now seed all clubs before games are played, highlight the user club, show qualification status, prize pool, recent results, and an "if season ended today" playoff/play-in projection; Euro free-agency scouting hides NBA-only Bird Rights and formats asking prices in the active currency.
+ - `src/components/schedule/view/components/CalendarView.tsx`, `src/components/schedule/view/components/DayView.tsx` — Euro schedules now render only competition fixtures and suppress NBA Draft/Lottery/All-Star/Playoff event cards in calendar and day views.
++- `src/services/competition/competitionResolver.ts`, `src/services/logic/seasonRollover.ts` — Euro season rollover now resolves competition standings plus deterministic play-in/playoff/final outcomes from box scores, archives them in `competitionHistory`, and writes Champion/Runner Up entries into both `history` and `historicalAwards`.
+
+--- HUNK [op#8 hunk#0] session=8 line=1505 ts=2026-05-11T02:26:31.949Z ---
+-- `src/services/competition/competitionResolver.ts`, `src/services/logic/seasonRollover.ts` — Euro season rollover now resolves competition standings plus deterministic play-in/playoff/final outcomes from box scores, archives them in `competitionHistory`, and writes Champion/Runner Up entries into both `history` and `historicalAwards`.
++- `src/services/competition/competitionResolver.ts`, `src/store/logic/turn/simulationHandler.ts`, `src/store/logic/gameLogic.ts`, `src/services/logic/seasonRollover.ts`, `src/types.ts` — Euro competitions now inject postseason QF/SF/Final games into the simulation schedule, resolve real played postseason outcomes when present, archive typed `competitionHistory`, and write Champion/Runner Up entries into both `history` and `historicalAwards`.
+
+--- HUNK [op#9 hunk#0] session=8 line=1593 ts=2026-05-11T02:30:26.483Z ---
+-- `src/services/competition/competitionResolver.ts`, `src/store/logic/turn/simulationHandler.ts`, `src/store/logic/gameLogic.ts`, `src/services/logic/seasonRollover.ts`, `src/types.ts` — Euro competitions now inject postseason QF/SF/Final games into the simulation schedule, resolve real played postseason outcomes when present, archive typed `competitionHistory`, and write Champion/Runner Up entries into both `history` and `historicalAwards`.
++- `src/services/competition/competitionResolver.ts`, `src/store/logic/turn/simulationHandler.ts`, `src/store/logic/gameLogic.ts`, `src/services/logic/seasonRollover.ts`, `src/types.ts` — Euro competitions now inject postseason Play-In/QF/SF/Final games into the simulation schedule, resolve real played postseason outcomes when present, keep regular-season tables isolated from KO games, archive typed `competitionHistory`, and write Champion/Runner Up entries into both `history` and `historicalAwards`.
+
+--- HUNK [op#10 hunk#0] session=8 line=1768 ts=2026-05-11T02:38:47.667Z ---
+ - `src/components/sidebar/NavigationMenu.tsx`, `src/components/layout/MainContent.tsx`, `src/components/central/view/LeagueHistoryView.tsx`, `src/hooks/useDraftEventGate.tsx`, `src/components/offseason/OffseasonAufgaben.tsx` — Euro-isolated mode no longer exposes NBA-only seasonal, draft, playoff, central, Hall of Fame, or legacy-history surfaces; stale routes now land on European competition/schedule views or product-language placeholders.
+-- `src/components/competition/CompetitionView.tsx`, `src/components/central/view/TeamOffice/pages/TeamIntelFreeAgency.tsx` — competition tables now seed all clubs before games are played, highlight the user club, show qualification status, prize pool, recent results, and an "if season ended today" playoff/play-in projection; Euro free-agency scouting hides NBA-only Bird Rights and formats asking prices in the active currency.
++- `src/components/competition/CompetitionView.tsx`, `src/components/central/view/TeamOffice/pages/TeamIntelFreeAgency.tsx` — competition tables now seed all clubs before games are played, highlight the user club, show qualification status, prize pool, and recent results; the confusing early-season "if season ended today" projection was removed. Euro free-agency scouting hides NBA-only Bird Rights and formats asking prices in the active currency.
+ - `src/components/schedule/view/components/CalendarView.tsx`, `src/components/schedule/view/components/DayView.tsx` — Euro schedules now render only competition fixtures and suppress NBA Draft/Lottery/All-Star/Playoff event cards in calendar and day views.
++- `src/services/competition/competitionScheduler.ts`, `src/store/logic/turn/simulationHandler.ts`, `src/components/central/view/StandingsView.tsx` — Endesa/Euroleague scheduling now uses true round-robin rounds for all AI clubs, centralizes competition team selection including merged Euroleague clubs via `clubAliasMap`, caps seeded tables to the spec team count, and repairs malformed in-flight schedules without deleting already-played results.
+ - `src/services/competition/competitionResolver.ts`, `src/store/logic/turn/simulationHandler.ts`, `src/store/logic/gameLogic.ts`, `src/services/logic/seasonRollover.ts`, `src/types.ts` — Euro competitions now inject postseason Play-In/QF/SF/Final games into the simulation schedule, resolve real played postseason outcomes when present, keep regular-season tables isolated from KO games, archive typed `competitionHistory`, and write Champion/Runner Up entries into both `history` and `historicalAwards`.
+
+--- HUNK [op#11 hunk#0] session=8 line=1837 ts=2026-05-11T02:47:40.418Z ---
+ - `src/components/schedule/view/components/CalendarView.tsx`, `src/components/schedule/view/components/DayView.tsx` — Euro schedules now render only competition fixtures and suppress NBA Draft/Lottery/All-Star/Playoff event cards in calendar and day views.
+ - `src/services/competition/competitionScheduler.ts`, `src/store/logic/turn/simulationHandler.ts`, `src/components/central/view/StandingsView.tsx` — Endesa/Euroleague scheduling now uses true round-robin rounds for all AI clubs, centralizes competition team selection including merged Euroleague clubs via `clubAliasMap`, caps seeded tables to the spec team count, and repairs malformed in-flight schedules without deleting already-played results.
++- `src/components/shared/PlayButton.tsx` — Euro-isolated saves now get a competition-aware PlayButton branch sourced from `competitionId`/`competitionPhase` fixtures: next fixture, competition regular-season ends, EuroLeague play-in/playoffs/Final Four, and through Endesa/EuroLeague/all competitions. NBA-only skips for trade deadline, All-Star, draft lottery, draft, and NBA playoffs are suppressed in no-draft/Euro saves.
+ - `src/services/competition/competitionResolver.ts`, `src/store/logic/turn/simulationHandler.ts`, `src/store/logic/gameLogic.ts`, `src/services/logic/seasonRollover.ts`, `src/types.ts` — Euro competitions now inject postseason Play-In/QF/SF/Final games into the simulation schedule, resolve real played postseason outcomes when present, keep regular-season tables isolated from KO games, archive typed `competitionHistory`, and write Champion/Runner Up entries into both `history` and `historicalAwards`.
+
+--- HUNK [op#12 hunk#0] session=8 line=1978 ts=2026-05-11T02:53:27.939Z ---
+ - `src/services/competition/competitionScheduler.ts`, `src/store/logic/turn/simulationHandler.ts`, `src/components/central/view/StandingsView.tsx` — Endesa/Euroleague scheduling now uses true round-robin rounds for all AI clubs, centralizes competition team selection including merged Euroleague clubs via `clubAliasMap`, caps seeded tables to the spec team count, and repairs malformed in-flight schedules without deleting already-played results.
+ - `src/components/shared/PlayButton.tsx` — Euro-isolated saves now get a competition-aware PlayButton branch sourced from `competitionId`/`competitionPhase` fixtures: next fixture, competition regular-season ends, EuroLeague play-in/playoffs/Final Four, and through Endesa/EuroLeague/all competitions. NBA-only skips for trade deadline, All-Star, draft lottery, draft, and NBA playoffs are suppressed in no-draft/Euro saves.
++- `src/components/schedule/view/components/CalendarView.tsx`, `src/components/shared/GameSimulatorScreen.tsx`, `src/store/GameContext.tsx`, `src/store/logic/actionProcessor.ts`, `src/components/NewsFeed.tsx`, `src/components/layout/Twitterlayout.tsx` — Euro schedule calendar cells, watched-game screens, watched-game boxscores, news/social photo lookups, and game recap story seeds now resolve Endesa/Euroleague clubs through `resolveAnyTeam`; watched Euro boxscores keep `competitionId`/`competitionPhase` so recaps, standings, and competition history do not lose the game.
+ - `src/services/competition/competitionResolver.ts`, `src/store/logic/turn/simulationHandler.ts`, `src/store/logic/gameLogic.ts`, `src/services/logic/seasonRollover.ts`, `src/types.ts` — Euro competitions now inject postseason Play-In/QF/SF/Final games into the simulation schedule, resolve real played postseason outcomes when present, keep regular-season tables isolated from KO games, archive typed `competitionHistory`, and write Champion/Runner Up entries into both `history` and `historicalAwards`.
+
+--- HUNK [op#13 hunk#0] session=8 line=2266 ts=2026-05-11T08:52:57.270Z ---
+ Historical bug fixes, session notes, and architecture discoveries.
+ 
++## Session 63 (May 11, 2026) — Euro gameplay audit fix pass
++
++- `src/components/central/view/LeagueFinancesView.tsx`, `src/utils/teamLookup.ts` — Euro League Finances now renders Endesa clubs from the competition/non-NBA pool and reads tier/sponsorship/profit from `team.tycoon` instead of showing NBA teams with payroll-derived fake EUR numbers.
++- `src/services/logic/simulationRunner.ts`, `src/components/schedule/view/components/DayView.tsx` — unplayed past-dated competition games are simulated on the next sim tick, and DayView now shows final score plus W/L badges for completed games.
++- `src/components/layout/MainContent.tsx` — Euro `Playoffs` now routes to the Liga Endesa competition hub, so Bracket/Standings/Central are reachable from the main playoff route instead of leaking NBA playoff UI.
++- `src/services/competition/competitionResolver.ts`, `src/services/logic/lazySimRunner.ts` — Euro knockout champions are no longer projected before games are played; Best-of series only resolve after the required wins; lazy-sim repairs/injects Euro postseason games before rollover and blocks rollover while due competition games are still unplayed.
++- `src/services/AITradeHandler.ts` — NBA-background AI trades no longer depend on the Euro user-facing `tradesAllowed` flag. Trade UI remains gated elsewhere, but the silent NBA world can trade again.
++- Verification: `npx tsc --noEmit` still reports only the known baseline failures in `DraftSimulatorView.tsx`, `fictionalLeagueGenerator.ts`, `GameContext.tsx` expansion action comparisons, and `initialization.ts`; no new errors from these gameplay-audit files.
++
+ ## Session 62 (May 11, 2026) — Europe UI Phase 2: Drei-Tab League-Splits + SportsBook Hook
+
+--- HUNK [op#14 hunk#0] session=8 line=2433 ts=2026-05-11T09:06:03.865Z ---
+ - `src/services/competition/competitionResolver.ts`, `src/services/logic/lazySimRunner.ts` — Euro knockout champions are no longer projected before games are played; Best-of series only resolve after the required wins; lazy-sim repairs/injects Euro postseason games before rollover and blocks rollover while due competition games are still unplayed.
++- `src/store/logic/turn/postProcessor.ts`, `src/services/competition/competitionResolver.ts`, `src/store/logic/turn/simulationHandler.ts`, `src/store/logic/gameLogic.ts`, `src/services/logic/lazySimRunner.ts`, `src/components/competition/CompetitionBracketView.tsx` — Euro postseason games are tagged/processed as postseason stats, NBA playoff generation and NBA seasonal auto-events are gated off in Euro saves, and the bracket UI only renders phases that have actually materialized in schedule or box scores.
+ - `src/services/AITradeHandler.ts` — NBA-background AI trades no longer depend on the Euro user-facing `tradesAllowed` flag. Trade UI remains gated elsewhere, but the silent NBA world can trade again.
+
+--- HUNK [op#15 hunk#0] session=8 line=2491 ts=2026-05-11T10:11:19.080Z ---
+ - `src/services/competition/competitionResolver.ts`, `src/services/logic/lazySimRunner.ts` — Euro knockout champions are no longer projected before games are played; Best-of series only resolve after the required wins; lazy-sim repairs/injects Euro postseason games before rollover and blocks rollover while due competition games are still unplayed.
++- `src/services/competition/competitionResolver.ts`, `src/components/competition/CompetitionBracketView.tsx` — tightened Euro playoff round gates: QF/SF/Final injection now requires the previous phase's required series wins, not just "no unplayed games"; champion display requires a valid completed path through Play-In/QF/SF/Final. This prevents impossible states like Champion + Final while a semifinal is still `NOT STARTED`.
+ - `src/store/logic/turn/postProcessor.ts`, `src/services/competition/competitionResolver.ts`, `src/store/logic/turn/simulationHandler.ts`, `src/store/logic/gameLogic.ts`, `src/services/logic/lazySimRunner.ts`, `src/components/competition/CompetitionBracketView.tsx` — Euro postseason games are tagged/processed as postseason stats, NBA playoff generation and NBA seasonal auto-events are gated off in Euro saves, and the bracket UI only renders phases that have actually materialized in schedule or box scores.
+
+--- HUNK [op#16 hunk#0] session=10 line=258 ts=2026-05-13T07:23:23.256Z ---
+ Historical bug fixes, session notes, and architecture discoveries.
+ 
++## Session 64 (May 13, 2026) — Euro tycoon cash gate and bankruptcy handoff
++
++- `src/components/commissioner/rules/view/EconomyContractsSection.tsx`, `src/components/commissioner/rules/view/useRulesState.ts`, `src/components/commissioner/rules/view/EconomyTab.tsx` — Euro Mode salary override controls are wired into commissioner rules.
++- `src/services/tycoon/medicalEngine.ts`, `src/services/simulation/InjurySystem.ts`, `src/components/tycoon/MedicalCard.tsx` — medical budget helpers and injury-rate/recovery hooks are wired for Euro tycoon saves.
++- `src/services/tycoon/sponsorshipEngine.ts`, `src/services/tycoon/budgetEngine.ts` — sponsorship floors now respond to objective club levers, and projected year-end cash is available for signing checks.
++- `src/components/modals/SigningModal/SigningModal.tsx`, `src/services/AIFreeAgentHandler.ts` — user signings show a cash-gate override path, while AI Euro signings hard-block if the deal would project year-end cash below zero.
++- `src/services/logic/seasonRollover.ts`, `src/components/tycoon/EuroBankruptcyModal.tsx`, `src/App.tsx`, `src/types.ts` — negative year-end cash in Euro GM mode now triggers a Game Over bankruptcy handoff where the user picks a new Euro club; UI copy is English.
++- `plans/euro-hotel-mood.md` — brainstorm-only plan for travel-quality mood pressure and low-cash survival downgrade.
++- Verification: `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass.
++
+ ## Session 63 (May 11, 2026) — Euro gameplay audit fix pass
+ 
+ - `src/components/central/view/LeagueFinancesView.tsx`, `src/utils/teamLookup.ts` — Euro League Finances now renders Endesa clubs from the competition/non-NBA pool and reads tier/sponsorship/profit from `team.tycoon` instead of showing NBA teams with payroll-derived fake EUR numbers.
+
+--- HUNK [op#17 hunk#0] session=10 line=510 ts=2026-05-13T07:49:23.263Z ---
+ ## Session 64 (May 13, 2026) — Euro tycoon cash gate and bankruptcy handoff
+ 
+ - `src/components/commissioner/rules/view/EconomyContractsSection.tsx`, `src/components/commissioner/rules/view/useRulesState.ts`, `src/components/commissioner/rules/view/EconomyTab.tsx` — Euro Mode salary override controls are wired into commissioner rules.
+
+--- HUNK [op#17 hunk#1] session=10 line=510 ts=2026-05-13T07:49:23.263Z ---
+ - `src/services/logic/seasonRollover.ts`, `src/components/tycoon/EuroBankruptcyModal.tsx`, `src/App.tsx`, `src/types.ts` — negative year-end cash in Euro GM mode now triggers a Game Over bankruptcy handoff where the user picks a new Euro club; UI copy is English.
+ - `plans/euro-hotel-mood.md` — brainstorm-only plan for travel-quality mood pressure and low-cash survival downgrade.
++- `src/components/sidebar/NavigationMenu.tsx`, `src/components/layout/MainContent.tsx`, `src/components/central/view/FrontOfficeView.tsx` — Euro GM Front Office now splits into individual Overview, Finances, Sponsorships, Travel, Medical, Facilities, Staff, and Scouting routes.
++- `src/App.tsx` — Euro GM top bar now includes a cash chip that opens Front Office.
++- `src/components/tycoon/TravelLogisticsCard.tsx`, `src/types/tycoon.ts`, `src/services/tycoon/migrate.ts`, `src/services/tycoon/budgetEngine.ts` — travel preferences persist per club and feed annual ledger projections.
++- `src/components/tycoon/SponsorshipNegotiationModal.tsx`, `src/services/tycoon/sponsorshipEngine.ts` — sponsorship negotiation now has slot rail, stance selector, annual value/bonus/years sliders, competitive score, brand impact, current-vs-new diff, and relationship history.
++- `src/utils/dateUtils.ts`, `src/components/shared/PlayButton.tsx`, `src/components/sidebar/NavigationMenu.tsx`, `src/services/offseason/offseasonState.ts` — regular-season start is now league-aware; Euro mode uses scheduled competition games or Sep 28 fallback instead of NBA October.
+ - Verification: `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass.
+
+--- HUNK [op#18 hunk#0] session=10 line=772 ts=2026-05-13T08:16:00.513Z ---
+ - `src/components/tycoon/SponsorshipNegotiationModal.tsx`, `src/services/tycoon/sponsorshipEngine.ts` — sponsorship negotiation now has slot rail, stance selector, annual value/bonus/years sliders, competitive score, brand impact, current-vs-new diff, and relationship history.
+ - `src/utils/dateUtils.ts`, `src/components/shared/PlayButton.tsx`, `src/components/sidebar/NavigationMenu.tsx`, `src/services/offseason/offseasonState.ts` — regular-season start is now league-aware; Euro mode uses scheduled competition games or Sep 28 fallback instead of NBA October.
+-- Verification: `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass.
++- `src/components/central/view/FrontOfficeView.tsx` — Front Office canvas now uses the wider mockup frame; the financial projection is a KPI snapshot plus cash-in/cash-out flow, the Medical route has a full-page recovery layout, and the Sponsorships route has KPI tiles, brand banner, portfolio grid, selected-sponsor rail, breakdown panel, and next actions.
++- `src/components/schedule/view/components/CalendarView.tsx` — Schedule calendar view now has the mockup-style header, season/congestion/current-date KPI tiles, competition tab strip, legend/filter row, and wider dashboard shell while preserving Euro competition filtering.
++- Verification: `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass after the latest UI pass.
+
+--- HUNK [op#19 hunk#0] session=11 line=356 ts=2026-05-13T17:31:58.973Z ---
+ Historical bug fixes, session notes, and architecture discoveries.
+ 
++## Session 65 (May 14, 2026) — Euro Front Office mockup convergence
++
++- `src/components/central/view/FrontOfficeView.tsx` — Staff route now has grouped coaching/performance and scouting/analytics sections, staff KPI tiles, facesjs portraits, attribute bars, a hire panel, and a staff-signing detail modal shell.
++- `src/services/staff/staffFallback.ts`, `src/types.ts` — generated non-NBA staff can carry facesjs descriptors so Euro staff cards render consistent portraits without static image assets.
++- `src/components/schedule/view/components/NextFixturesAside.tsx` — Schedule right rail now has a next-match card, congestion/travel tiles, competition status cards, mini standings, and the fixture list.
++- `src/components/schedule/view/components/CalendarView.tsx` — Endesa/EuroLeague/Copa/Supercopa tabs now render competition-detail dashboards with next match, fixtures, standings, gauges, and top performers.
++- `src/components/central/view/FrontOfficeView.tsx` — Finances route now has Overview/Graphs/Spreadsheet tabs, cash history bars, revenue-vs-expense bars, sponsorship-by-slot bars, and CSV export.
++- `src/components/central/view/FrontOfficeView.tsx` — Facilities action buttons now open contextual detail/report/masterplan/comparison modals instead of inert placeholders.
++- `src/types/tycoon.ts`, `src/services/tycoon/migrate.ts`, `src/components/central/view/FrontOfficeView.tsx` — Scouting route now persists `scoutingInvestment`, migrates tier defaults, and presents investment, report-depth, and uncertainty-band panels.
++- Verification: `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass after the Scouting checkpoint. Build still reports the existing Vite dynamic-import/chunk-size warnings.
++
+ ## Session 64 (May 13, 2026) — Euro tycoon cash gate and bankruptcy handoff
+
+--- HUNK [op#20 hunk#0] session=11 line=621 ts=2026-05-13T17:45:20.185Z ---
+ Historical bug fixes, session notes, and architecture discoveries.
+ 
++## Session 66 (May 14, 2026) — Euro tycoon persistence and drama hooks
++
++- `src/types/tycoon.ts`, `src/services/tycoon/migrate.ts` — Tycoon state now persists board promises, finance recap settings, staff hires, press conferences, sponsor reviews, payslip dates, and sponsor archetype metadata.
++- `src/services/tycoon/euroTycoonOps.ts`, `src/store/logic/gameLogic.ts` — Euro GM sim ticks now apply 14-day payroll cadence, board-promise updates, finance recap generation, player-drama press hooks, and sponsor review hooks.
++- `src/components/tycoon/FinanceRecapModal.tsx`, `src/components/tycoon/PressConferenceModal.tsx`, `src/App.tsx` — finance recaps and press conference responses are global Euro GM modals.
++- `src/components/central/view/FrontOfficeView.tsx` — Board confidence/promises render on the overview, staff hiring persists to `team.tycoon.staffMembers`, signing bonuses charge cash immediately, and sponsor hooks show archetypes/conflicts/offseason review counts.
++- `src/services/tycoon/sponsorshipEngine.ts` — sponsors now classify into industries/archetypes/personalities; gambling/premium/tech/local profiles affect offer value and negotiation evaluation.
++- `src/utils/scoutingFuzz.ts`, `src/components/players/view/FreeAgentCard.tsx`, `src/components/modals/PlayerRatingsModal.tsx`, `src/components/central/view/PlayerRatingsView.tsx` — non-own Euro ratings use deterministic scouting fuzz driven by scouting investment.
++- Verification: `npm run lint` passes for the mechanics checkpoint.
++
+ ## Session 65 (May 14, 2026) — Euro Front Office mockup convergence
+
+--- HUNK [op#21 hunk#0] session=11 line=642 ts=2026-05-13T17:46:01.664Z ---
+-- Verification: `npm run lint` passes for the mechanics checkpoint.
++- Verification: `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass for the mechanics checkpoint. Build still reports the existing Vite dynamic-import/chunk-size warnings.

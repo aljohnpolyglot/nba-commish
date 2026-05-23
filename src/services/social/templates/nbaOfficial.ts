@@ -1,32 +1,7 @@
 import { SocialTemplate, SocialContext } from '../types';
 import { isTripleDouble, isDoubleDouble, is5x5, getCurrentSeasonStats, get2KRating, getCareerHigh } from '../helpers';
 import { TEAM_HANDLES } from '../../../data/teamHandles';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// UTILITIES
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Games → human time (reused from Shams for injury updates) */
-function gamesToTime(games: number): string {
-    if (games <= 0)  return 'day-to-day';
-    if (games <= 2)  return 'the next two games';
-    if (games <= 7)  return 'approximately one week';
-    if (games <= 14) return 'approximately two weeks';
-    if (games <= 22) return 'approximately one month';
-    if (games <= 35) return '4-to-6 weeks';
-    if (games <= 55) return 'multiple months';
-    return 'the remainder of the season';
-}
-
-/** OT suffix: " (OT)" / " (2OT)" / " (3OT)" */
-function otSuffix(ctx: SocialContext): string {
-    if (!ctx.game?.isOT) return '';
-    const count = ctx.game.otCount ?? 1;
-    if (count === 1) return ' (OT)';
-    return ` (${count}OT)`;
-}
-
-/** Top N performers from the winning team, sorted by gameScore */
+import { gamesToTime, otSuffix, scores, teamName } from './templateCommon';
 function getWinnerTopPerformers(ctx: SocialContext, n = 4) {
     if (!ctx.game) return [];
     const winnerId = ctx.game.winnerId;
@@ -38,8 +13,6 @@ function getWinnerTopPerformers(ctx: SocialContext, n = 4) {
         .sort((a, b) => b.gameScore - a.gameScore)
         .slice(0, n);
 }
-
-/** Format a stat line for the FINAL SCORES multi-player template: "Name: 28 PTS, 9 REB, 3 3PM" */
 function formatFinalScoresLine(name: string, s: any, careerHighFlag = false): string {
     const parts: string[] = [`${s.pts} PTS`];
     if (s.reb >= 6)     parts.push(`${s.reb} REB`);
@@ -50,8 +23,6 @@ function formatFinalScoresLine(name: string, s: any, careerHighFlag = false): st
     const chFlag = careerHighFlag ? ' 🔥 (Career High)' : '';
     return `${name}: ${parts.join(', ')}${chFlag}`;
 }
-
-/** Top performer from the winning team */
 function getTopPerformer(ctx: SocialContext) {
     if (!ctx.game) return null;
     const winnerId = ctx.game.winnerId;
@@ -61,13 +32,9 @@ function getTopPerformer(ctx: SocialContext) {
     if (!winnerStats?.length) return null;
     return [...winnerStats].sort((a, b) => b.gameScore - a.gameScore)[0];
 }
-
-/** Find player object by id */
 function findPlayer(ctx: SocialContext, playerId: string) {
     return ctx.players?.find((p: any) => p.internalId === playerId) ?? null;
 }
-
-/** Format a statline for NBA official style: "26 PTS | 11 REB | 8 AST" */
 function formatStatline(s: any, short = false): string {
     if (!s) return '';
     const parts: string[] = [];
@@ -79,38 +46,11 @@ function formatStatline(s: any, short = false): string {
     if (s.threePm >= 4) parts.push(`${s.threePm} 3PM`);
     return parts.join(' | ');
 }
-
-/** Look up a team name from ctx.teams by id */
-function teamName(ctx: SocialContext, tid: number): string {
-    return ctx.teams?.find((t: any) => t.id === tid)?.name ?? 'Unknown';
-}
-
-/** Winner/loser scores in correct order */
-function scores(ctx: SocialContext): { winner: number; loser: number; winName: string; loseName: string } {
-    const g = ctx.game;
-    if (!g) return { winner: 0, loser: 0, winName: '', loseName: '' };
-    const homeWon = g.homeScore > g.awayScore;
-    const homeName = teamName(ctx, g.homeTeamId);
-    const awayName = teamName(ctx, g.awayTeamId);
-    return {
-        winner:   homeWon ? g.homeScore : g.awayScore,
-        loser:    homeWon ? g.awayScore : g.homeScore,
-        winName:  homeWon ? homeName    : awayName,
-        loseName: homeWon ? awayName    : homeName,
-    };
-}
-
-/** Relevant hashtag(s) for the game */
 function getHashtags(ctx: SocialContext): string {
     const tags = ['#NBA'];
     if (ctx.team?.abbrev) tags.push(`#${ctx.team.abbrev}`);
     return tags.join(' ');
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GAME DATA BUILDER — for game-level (no player) posts that use ImagnPhotoEditor
-// ─────────────────────────────────────────────────────────────────────────────
-
 function buildGameData(ctx: SocialContext): any | null {
     const g = ctx.game;
     if (!g) return null;
@@ -138,11 +78,6 @@ function buildGameData(ctx: SocialContext): any | null {
         isOT    : g.isOT ?? false,
     };
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STAT CARD DATA BUILDER
-// ─────────────────────────────────────────────────────────────────────────────
-
 function buildStatCardData(ctx: SocialContext): any | null {
     const s = ctx.stats;
     const p = ctx.player;
@@ -192,15 +127,7 @@ function buildStatCardData(ctx: SocialContext): any | null {
         otCount     : g.otCount ?? 1,
     };
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TEMPLATES
-// ─────────────────────────────────────────────────────────────────────────────
-
 export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
-
-    // ── STANDARD FINAL RECAP ─────────────────────────────────────────────────
-    // The core bread-and-butter post after every game
     {
         id: 'nba_final_recap',
         handle: 'nba_official',
@@ -228,8 +155,6 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
             };
         },
     },
-
-    // ── BUZZER BEATER / WALKOFF ───────────────────────────────────────────────
     {
         id: 'nba_buzzer_beater',
         handle: 'nba_official',
@@ -266,8 +191,6 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
             };
         },
     },
-
-    // ── OVERTIME THRILLER ─────────────────────────────────────────────────────
     {
         id: 'nba_overtime',
         handle: 'nba_official',
@@ -297,7 +220,6 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
         },
     },
 
-    // ── 50-POINT GAME ─────────────────────────────────────────────────────────
     {
         id: 'nba_fifty_points',
         handle: 'nba_official',
@@ -320,7 +242,6 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
         },
     },
 
-    // ── TRIPLE-DOUBLE ─────────────────────────────────────────────────────────
     {
         id: 'nba_triple_double',
         handle: 'nba_official',
@@ -333,7 +254,6 @@ export const NBA_OFFICIAL_TEMPLATES: SocialTemplate[] = [
             const name = ctx.player?.name ?? 'Unknown';
             const tags = getHashtags(ctx);
 
-            // Which three categories hit 10+
             const ddCats = [
                 s.pts  >= 10 ? `${s.pts} PTS`  : null,
                 s.reb  >= 10 ? `${s.reb} REB`  : null,

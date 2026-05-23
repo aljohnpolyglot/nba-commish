@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { NBAPlayer } from '../../types';
-import { convertTo2KRating } from '../../utils/helpers';
-import { getDisplayPotential } from '../../utils/playerRatings';
 import { useGame } from '../../store/GameContext';
+import { resolvePlayerRatingBundle } from '../../store/playerRatingStore';
 
 const ratingColor = (v: number) =>
   v >= 70 ? 'text-green-400' :
@@ -24,15 +23,16 @@ export const PlayerHoverCard: React.FC<{ player: NBAPlayer }> = ({ player }) => 
   const { state } = useGame();
   const season = state.leagueStats?.year ?? new Date().getFullYear();
   const team = state.teams.find(t => t.id === player.tid);
-  const age = (player as any).born?.year ? season - (player as any).born.year : (player.age ?? 0);
+  const ratingBundle = resolvePlayerRatingBundle(player, season, season);
+  const age = ratingBundle.age;
 
   const ratings = useMemo(() => {
     const r = (player.ratings?.find((r: any) => r.season === season) ?? player.ratings?.[player.ratings.length - 1] ?? {}) as Record<string, number>;
     return { hgt: 50, stre: 50, spd: 50, jmp: 50, endu: 50, ins: 50, dnk: 50, ft: 50, fg: 50, tp: 50, oiq: 50, diq: 50, drb: 50, pss: 50, reb: 50, ...r };
   }, [player, season]);
 
-  const k2Ovr = convertTo2KRating(player.overallRating ?? 60, ratings.hgt, ratings.tp);
-  const pot = getDisplayPotential(player, season);
+  const k2Ovr = ratingBundle.overall2k;
+  const pot = ratingBundle.potential2k;
 
   const stats = useMemo(() => {
     const all = ((player as any).stats ?? []) as any[];

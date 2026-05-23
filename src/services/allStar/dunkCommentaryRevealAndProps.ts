@@ -1,0 +1,421 @@
+export const DUNK_REVEAL: Record<string, string[]> = {
+  default: [
+    "OH MY GOODNESS! WHAT A FINISH!",
+    "HE THREW IT DOWN! UNBELIEVABLE!",
+    "DID YOU SEE THAT?! THE ARENA IS EXPLODING!",
+    "STOP THE CONTEST! IT'S OVER!",
+    "I CAN'T BELIEVE WHAT I JUST SAW!",
+    "THAT IS A STATEMENT DUNK!"
+  ],
+  two_hand: [
+    "THE TWO-HANDED POWER FLUSH! HE RATTLED THE RIM!",
+    "BOTH HANDS ON THE ROCK! HE SLAMMED IT HOME!",
+    "A CLASSIC TWO-HANDED FINISH! PURE STRENGTH!",
+    "HE GRABBED IT AND STUFFED IT! TWO HANDS!",
+    "THE DOUBLE-GRIP SLAM! THE BACKBOARD IS SHAKING!",
+    "HE USED BOTH PALMS TO PUNISH THE RIM!"
+  ],
+  one_hand: [
+    "THE ONE-HANDED HAMMER! HE REACHED THE SKY!",
+    "A SINGLE-HANDED STRIKE! UNBELIEVABLE ELEVATION!",
+    "HE THREW IT DOWN WITH ONE HAND! PURE POWER!",
+    "THE ONE-ARMED BANDIT STEALS THE SHOW!",
+    "HE REACHED UP AND RATTLED THE IRON! ONE HAND!",
+    "A MONSTROUS ONE-HANDED FINISH! LOOK AT THE HEIGHT!"
+  ],
+  tomahawk: [
+    "THE TOMAHAWK! HE BROUGHT THE AXE DOWN!",
+    "A VIOLENT TOMAHAWK FINISH! THE RIM IS IN TROUBLE!",
+    "HE COCKED IT BACK AND UNLEASHED THE TOMAHAWK!",
+    "THE CLASSIC TOMAHAWK! PURE ATHLETICISM!",
+    "HE SLAMMED IT HOME WITH THE TOMAHAWK MOTION!",
+    "THAT TOMAHAWK HAD SOME SERIOUS VENOM ON IT!"
+  ],
+  reverse: [
+    "THE REVERSE SLAM! HE TURNED HIS BACK ON THE RIM!",
+    "A BEAUTIFUL REVERSE FINISH! THE TWIST WAS PERFECT!",
+    "HE FLIPPED THE SCRIPT WITH THE REVERSE DUNK!",
+    "THE BACKWARDS FLUSH! UNBELIEVABLE COORDINATION!",
+    "HE REACHED BACK AND RATTLED THE IRON! REVERSE!",
+    "A STUNNING REVERSE DUNK! HE MADE IT LOOK EASY!"
+  ],
+  rim_grazer: [
+    "THE RIM GRAZER! HE JUST BARELY GOT IT OVER!",
+    "A SUBTLE FINISH! HE SCRAPED THE IRON!",
+    "HE JUST NICKED THE RIM ON THE WAY IN! GRAZER!",
+    "THE LOW-ALTITUDE FLUSH! IT COUNTS ALL THE SAME!",
+    "HE BARELY CLEARED THE CYLINDER! RIM GRAZER!",
+    "A QUIET FINISH BUT HE GOT THE JOB DONE!"
+  ],
+  back_scratcher: [
+    "THE BACK SCRATCHER! HE REACHED ALL THE WAY BACK!",
+    "A DEEP BACK-SCRATCHING SLAM! THE FLEXIBILITY!",
+    "HE TOUCHED HIS SPINE WITH THE BALL! BACK SCRATCHER!",
+    "THE OVER-THE-HEAD SPECIAL! UNBELIEVABLE STRETCH!",
+    "HE BENT THE BALL BACK TO THE LIMIT! BACK SCRATCHER!",
+    "A CLASSIC BACK-SCRATCHING FINISH! PURE STYLE!"
+  ],
+  windmill: [
+    "THE WINDMILL! HE TRACED THE FULL CIRCLE!",
+    "A MONSTROUS WINDMILL FINISH! THE TORQUE!",
+    "HE SWUNG THE ARM AND RATTLED THE RIM! WINDMILL!",
+    "THE PROPELLER SLAM! UNBELIEVABLE ROTATION!",
+    "HE CIRCLED THE ROCK AND STUFFED IT! WINDMILL!",
+    "THAT WINDMILL WAS ABSOLUTELY PICTURE PERFECT!"
+  ],
+  cradle: [
+    "THE CRADLE DUNK! HE ROCKED THE RIM TO SLEEP!",
+    "A SMOOTH CRADLE FINISH! THE CONTROL!",
+    "HE TUCKED IT AND TRUCKED IT! CRADLE SLAM!",
+    "THE BICEP-CRADLE SPECIAL! UNBELIEVABLE GRIP!",
+    "HE WRAPPED THE ARM AND FINISHED THE CRADLE!",
+    "A BEAUTIFUL CRADLE DUNK! PURE SHOWMANSHIP!"
+  ],
+  double_clutch: [
+    "THE DOUBLE CLUTCH! HE PUMPED IT IN MID-AIR!",
+    "A STUNNING DOUBLE-CLUTCH FINISH! THE HANG TIME!",
+    "HE DIPPED IT AND RIPPED IT! DOUBLE CLUTCH!",
+    "THE MID-AIR ADJUSTMENT! UNBELIEVABLE FOCUS!",
+    "HE PUMPED THE ROCK AND STUFFED IT! DOUBLE CLUTCH!",
+    "THAT DOUBLE CLUTCH WAS A WORK OF ART!"
+  ],
+  side_windmill: [
+    "THE SIDE WINDMILL! HE SWUNG IT FROM THE WING!",
+    "A LATERAL WINDMILL STRIKE! THE ARC WAS MASSIVE!",
+    "HE CIRCLED IT FROM THE SIDE! SIDE WINDMILL!",
+    "THE WIDE-ANGLE SLAM! UNBELIEVABLE REACH!",
+    "HE SWUNG IT OUT WIDE AND RATTLED THE IRON!",
+    "A MONSTROUS SIDE-WINDMILL FINISH! LOOK AT THE TORQUE!"
+  ],
+  leaner: [
+    "THE LEANER! HE DEFIED THE LAWS OF PHYSICS!",
+    "A SLANTED FINISH! THE ANGLE WAS INCREDIBLE!",
+    "HE LEANED INTO THE AIR AND STUFFED IT! LEANER!",
+    "THE OFF-BALANCE SPECIAL! UNBELIEVABLE CONTROL!",
+    "HE DRIFTED THROUGH THE PAINT AND FINISHED THE LEANER!",
+    "A STUNNING LEANER DUNK! HE MADE IT LOOK EASY!"
+  ],
+  front_windmill: [
+    "THE FRONT WINDMILL! HE SWUNG IT OVER THE TOP!",
+    "A FORWARD WINDMILL STRIKE! THE SYMMETRY!",
+    "HE CIRCLED IT IN FRONT! FRONT WINDMILL!",
+    "THE OVER-THE-HEAD CIRCLE! UNBELIEVABLE ROTATION!",
+    "HE SWUNG IT STRAIGHT AHEAD AND RATTLED THE RIM!",
+    "A MONSTROUS FRONT-WINDMILL FINISH! PURE POWER!"
+  ],
+  three_sixty: [
+    "THE 360! HE SPUN THE FULL CIRCLE!",
+    "A PERFECT 360 ROTATION! THE SPEED!",
+    "HE TWISTED IN THE AIR AND STUFFED IT! 360!",
+    "THE FULL REVOLUTION SLAM! UNBELIEVABLE SPIN!",
+    "HE SPUN LIKE A TOP AND RATTLED THE IRON! 360!",
+    "THAT 360 WAS ABSOLUTELY SEAMLESS!"
+  ],
+  elbow_hang: [
+    "THE ELBOW HANG! HE'S STUCK IN THE RIM!",
+    "A MONSTROUS ELBOW-IN-THE-HOOP FINISH! THE HANG!",
+    "HE HOOKED THE IRON WITH HIS ELBOW! ELBOW HANG!",
+    "THE VINCE CARTER SPECIAL! UNBELIEVABLE HEIGHT!",
+    "HE PUT THE WHOLE ARM IN THE CYLINDER! ELBOW HANG!",
+    "A STUNNING ELBOW-HANG DUNK! THE CROWD IS STUNNED!"
+  ],
+  behind_the_back: [
+    "THE BEHIND THE BACK! HE THREADED THE NEEDLE!",
+    "A SMOOTH BEHIND-THE-BACK FINISH! THE HANDLE!",
+    "HE WRAPPED IT AROUND HIS WAIST! BEHIND THE BACK!",
+    "THE NO-LOOK SPECIAL! UNBELIEVABLE COORDINATION!",
+    "HE PASSED IT TO HIMSELF BEHIND THE BACK! STUNNING!",
+    "A MONSTROUS BEHIND-THE-BACK SLAM! PURE STYLE!"
+  ],
+  super_scoop: [
+    "THE SUPER SCOOP! HE REACHED THE FLOOR!",
+    "A DEEP UNDERHAND SCOOP FINISH! THE LIFT!",
+    "HE DIPPED IT BELOW HIS KNEES! SUPER SCOOP!",
+    "THE LOW-TO-HIGH SPECIAL! UNBELIEVABLE ARC!",
+    "HE SCOOPED THE ROCK AND RATTLED THE IRON!",
+    "A STUNNING SUPER-SCOOP DUNK! THE CROWD IS LOSING IT!"
+  ],
+  wrong_way_360: [
+    "THE WRONG-WAY 360! HE FOUGHT THE PHYSICS!",
+    "A COUNTER-ROTATION STRIKE! THE TWIST!",
+    "HE SPUN THE WRONG WAY AND STUFFED IT! WRONG-WAY!",
+    "THE ANTI-SPIN SPECIAL! UNBELIEVABLE CONTROL!",
+    "HE TWISTED AGAINST THE MOMENTUM! WRONG-WAY 360!",
+    "A MONSTROUS WRONG-WAY 360 FINISH! PURE SKILL!"
+  ],
+  self_alley_reverse: [
+    "THE SELF-ALLEY REVERSE! THE TIMING WAS PERFECT!",
+    "A STUNNING OFF-THE-LOB REVERSE! THE CATCH!",
+    "HE TRACKED IT AND FLIPPED IT! SELF-ALLEY REVERSE!",
+    "THE BACKWARDS-LOB SPECIAL! UNBELIEVABLE FOCUS!",
+    "HE CAUGHT THE LOB AND RATTLED THE IRON! REVERSE!",
+    "A MONSTROUS SELF-ALLEY REVERSE FINISH! PURE ATHLETICISM!"
+  ],
+  eastbay: [
+    "THE EASTBAY FUNK! HE THREADED THE LEGS!",
+    "A MONSTROUS BETWEEN-THE-LEGS FINISH! THE SPEED!",
+    "HE WENT UNDER THE THIGH! EASTBAY SLAM!",
+    "THE THROUGH-THE-LEGS SPECIAL! UNBELIEVABLE TORQUE!",
+    "HE THREADED THE NEEDLE AND RATTLED THE RIM! EASTBAY!",
+    "THAT EASTBAY WAS ABSOLUTELY EXPLOSIVE!"
+  ],
+  under_legs: [
+    "UNDER BOTH LEGS! ARE YOU KIDDING ME?!",
+    "A DOUBLE-LEG THREADING FINISH! THE COORDINATION!",
+    "HE WENT UNDER THE ENTIRE LOWER BODY! DOUBLE EASTBAY!",
+    "THE FIGURE-EIGHT SPECIAL! UNBELIEVABLE SPEED!",
+    "HE CLEARED BOTH SHINS AND STUFFED IT! UNDER LEGS!",
+    "A STUNNING UNDER-BOTH-LEGS DUNK! PURE WIZARDRY!"
+  ],
+  soccer_flip: [
+    "THE SOCCER FLIP! HE KICKED IT TO HIMSELF!",
+    "A FOOT-FLICK FINISH! THE CREATIVITY!",
+    "HE USED HIS TOES TO LAUNCH THE ROCK! SOCCER FLIP!",
+    "THE BICYCLE-KICK SPECIAL! UNBELIEVABLE SKILL!",
+    "HE FLIPPED IT WITH HIS FEET AND RATTLED THE IRON!",
+    "A MONSTROUS SOCCER-FLIP DUNK! THE CROWD IS STUNNED!"
+  ],
+  spinning_honey: [
+    "THE SPINNING HONEY DIP! SPIN AND HANG!",
+    "A 360 ELBOW-HANG FINISH! THE DIFFICULTY!",
+    "HE TWISTED INTO THE RIM! SPINNING HONEY DIP!",
+    "THE ROTATING CYLINDER SPECIAL! UNBELIEVABLE HEIGHT!",
+    "HE SPUN AND HOOKED THE IRON! SPINNING HONEY DIP!",
+    "A STUNNING SPINNING HONEY DIP DUNK! PURE ATHLETICISM!"
+  ],
+  windmill_switch: [
+    "THE WINDMILL SWITCH! HE CHANGED HANDS!",
+    "A MID-AIR HAND-OFF WINDMILL! THE CONTROL!",
+    "HE SWUNG IT AND SWITCHED IT! WINDMILL SWITCH!",
+    "THE AMBIDEXTROUS SPECIAL! UNBELIEVABLE TORQUE!",
+    "HE TRANSFERRED THE ROCK AND RATTLED THE RIM!",
+    "A MONSTROUS WINDMILL-SWITCH FINISH! PURE SKILL!"
+  ],
+  three_sixty_windmill: [
+    "THE 360 WINDMILL! TWO CIRCLES AT ONCE!",
+    "A SPINNING WINDMILL STRIKE! THE COORDINATION!",
+    "HE SPUN AND SWUNG THE ROCK! 360 WINDMILL!",
+    "THE DUAL-ROTATION SPECIAL! UNBELIEVABLE SPIN!",
+    "HE TWISTED AND CIRCLED THE IRON! 360 WINDMILL!",
+    "THAT 360 WINDMILL WAS ABSOLUTELY PICTURE PERFECT!"
+  ],
+  scorpion: [
+    "THE SCORPION! HE STUNG THE RIM!",
+    "A REVERSE-OVERHEAD STRIKE! THE FLEXIBILITY!",
+    "HE BENT HIS BODY LIKE A SCORPION! STUNNING!",
+    "THE ARACHNID SPECIAL! UNBELIEVABLE REACH!",
+    "HE REACHED OVER HIS HEAD AND RATTLED THE IRON!",
+    "A MONSTROUS SCORPION DUNK! THE CROWD IS LOSING IT!"
+  ],
+  lost_and_found: [
+    "THE LOST AND FOUND! HE PLAYED CATCH WITH HIMSELF!",
+    "A MID-AIR RELEASE AND RETRIEVAL! THE FOCUS!",
+    "HE DROPPED IT AND FOUND IT! LOST AND FOUND!",
+    "THE SELF-PASS SPECIAL! UNBELIEVABLE COORDINATION!",
+    "HE RE-GRIPPED THE ROCK AND RATTLED THE RIM!",
+    "A STUNNING LOST-AND-FOUND DUNK! PURE WIZARDRY!"
+  ],
+  the_540: [
+    "THE 540! ONE AND A HALF REVOLUTIONS!",
+    "A SPIN BEYOND THE LIMIT! THE SPEED!",
+    "HE TWISTED 540 DEGREES! UNBELIEVABLE SPIN!",
+    "THE OVER-ROTATION SPECIAL! DEFYING PHYSICS!",
+    "HE SPUN ONE-AND-A-HALF TIMES AND RATTLED THE IRON!",
+    "THAT 540 WAS ABSOLUTELY SEAMLESS! PURE ATHLETICISM!"
+  ],
+  btl_btb: [
+    "BTL TO BEHIND-THE-BACK! THE TRIPLE THREAD!",
+    "A MULTI-PLANE MANIPULATION FINISH! THE HANDLE!",
+    "HE WENT UNDER AND AROUND! BTL TO BTB!",
+    "THE COMPLEXITY SPECIAL! UNBELIEVABLE COORDINATION!",
+    "HE THREADED THE LEGS AND WRAPPED THE BACK! STUNNING!",
+    "A MONSTROUS BTL-TO-BTB DUNK! PURE SKILL!"
+  ],
+  rivera_360_btb_btl: [
+    "THE 360 BTB TO BTL! THE IMPOSSIBLE SEQUENCE!",
+    "A TRIPLE-MANIPULATION SPIN! THE DIFFICULTY!",
+    "HE SPUN, WRAPPED, AND THREADED! UNBELIEVABLE!",
+    "THE RIVERA SPECIAL! DEFYING THE LAWS OF HANG TIME!",
+    "HE EXECUTED THREE MOVES IN ONE JUMP! STUNNING!",
+    "THAT 360 BTB TO BTL WAS ABSOLUTELY HISTORIC!"
+  ],
+  rivera_kamikaze: [
+    "THE KAMIKAZE! HE DIVED INTO HISTORY!",
+    "A HORIZONTAL PROJECTILE STRIKE! THE COMMITMENT!",
+    "HE LAUNCHED HIMSELF HEAD-FIRST! KAMIKAZE!",
+    "THE DIVE-BOMBER SPECIAL! UNBELIEVABLE BRAVERY!",
+    "HE FLEW LIKE A MISSILE AND RATTLED THE IRON!",
+    "A STUNNING KAMIKAZE DUNK! THE CROWD IS STUNNED!"
+  ],
+  rivera_double_btl: [
+    "DOUBLE BETWEEN THE LEGS! TWO THREADS IN ONE!",
+    "A DUAL-LEG CLEARANCE FINISH! THE SPEED!",
+    "HE WENT UNDER BOTH THIGHS INDIVIDUALLY! DOUBLE BTL!",
+    "THE DOUBLE-EASTBAY SPECIAL! UNBELIEVABLE TORQUE!",
+    "HE THREADED BOTH LEGS AND RATTLED THE RIM!",
+    "THAT DOUBLE BTL WAS ABSOLUTELY EXPLOSIVE!"
+  ],
+  double_spin: [
+    "THE 720! TWO FULL REVOLUTIONS!",
+    "A DOUBLE-SPIN STRIKE! THE SPEED!",
+    "HE TWISTED 720 DEGREES! UNBELIEVABLE SPIN!",
+    "THE TORNADO SPECIAL! DEFYING PHYSICS!",
+    "HE SPUN TWICE AND RATTLED THE IRON! 720!",
+    "THAT 720 WAS ABSOLUTELY HISTORIC! PURE ATHLETICISM!"
+  ],
+  double_spin_over_person_crouching: [
+    "A 720 OVER A HUMAN BEING! SHUT THE BUILDING DOWN!",
+    "HE SPUN TWICE OVER HIS TEAMMATE! UNREAL!",
+    "THE 720 OVER THE HELPER! THAT IS LEGENDARY!",
+    "HE CLEARED HIM AND SPUN 720 DEGREES! WOW!"
+  ],
+  double_spin_over_person_standing: [
+    "A 720 OVER A STANDING MAN! SHUT THE BUILDING DOWN!",
+    "HE SPUN TWICE OVER HIS TEAMMATE! UNREAL!",
+    "THE 720 OVER THE HELPER! THAT IS LEGENDARY!",
+    "HE CLEARED HIM AND SPUN 720 DEGREES! WOW!"
+  ],
+};
+
+// ── PROPS & HELPERS ──────────────────────────────────────────────────────────
+
+export interface PropDefinition {
+  id: string;
+  name: string;
+  difficulty: number;
+  minTier: number;
+  weight: number;
+  setup: string[];
+  execute: string[];
+  scoreCeilingMod: number;
+  probabilityMod: number;
+  helperReaction?: string;
+  executeLine: string; // fallback or base
+}
+
+export interface SelectedProp {
+  id: string;
+  name: string;
+  targetHeight?: string;
+  targetName?: string;
+  setupLine: string;
+  executeLine: string;
+  helperReaction?: string;
+  probabilityMod: number;
+  scoreCeilingMod: number;
+  helperName?: string;
+  helperHeight?: string;
+}
+
+export const DUNK_PROPS: PropDefinition[] = [
+  { 
+    id: 'leapover_short', 
+    name: 'Chair', 
+    difficulty: 5, 
+    minTier: 1, 
+    weight: 10, 
+    setup: ["He's bringing out a chair!", "A simple folding chair is placed in the lane."],
+    execute: ["HE CLEARS THE CHAIR!", "OVER THE CHAIR WITH EASE!"],
+    scoreCeilingMod: 2,
+    probabilityMod: -0.05,
+    executeLine: "HE CLEARS THE CHAIR!" 
+  },
+  { 
+    id: 'leapover_tall', 
+    name: 'Mascot', 
+    difficulty: 15, 
+    minTier: 3, 
+    weight: 8, 
+    setup: ["The mascot is out there!", "He's going to jump over the mascot!"],
+    execute: ["HE FLIES OVER THE MASCOT!", "THE MASCOT NEVER HAD A CHANCE!"],
+    scoreCeilingMod: 4,
+    probabilityMod: -0.10,
+    executeLine: "HE FLIES OVER THE MASCOT!" 
+  },
+  { 
+    id: 'over_car', 
+    name: 'Car', 
+    difficulty: 25, 
+    minTier: 4, 
+    weight: 5, 
+    setup: ["Is that a car?!", "They're driving a vehicle onto the court!"],
+    execute: ["HE JUMPS OVER THE KIA!", "HE CLEARED THE HOOD!"],
+    scoreCeilingMod: 5,
+    probabilityMod: -0.15,
+    executeLine: "HE JUMPS OVER THE KIA!" 
+  },
+  { 
+    id: 'over_person_crouching', 
+    name: 'Crouching Teammate', 
+    difficulty: 8, 
+    minTier: 2, 
+    weight: 12, 
+    setup: ["His teammate is crouching in the paint.", "He's using a helper for this one."],
+    execute: ["HE CLEARS THE CROUCHING HELPER!", "OVER HIS TEAMMATE!"],
+    scoreCeilingMod: 3,
+    probabilityMod: -0.08,
+    executeLine: "HE CLEARS THE CROUCHING HELPER!" 
+  },
+  { 
+    id: 'over_person_standing', 
+    name: 'Standing Teammate', 
+    difficulty: 20, 
+    minTier: 4, 
+    weight: 6, 
+    setup: ["He's going over a standing person!", "This is dangerous!"],
+    execute: ["HE FLIES OVER THE STANDING HELPER!", "ABSOLUTE INSANITY!"],
+    scoreCeilingMod: 5,
+    probabilityMod: -0.20,
+    executeLine: "HE FLIES OVER THE STANDING HELPER!" 
+  },
+  { 
+    id: 'jersey', 
+    name: 'Throwback Jersey', 
+    difficulty: 2, 
+    minTier: 1, 
+    weight: 15, 
+    setup: ["He's putting on a throwback jersey.", "Vintage vibes here."],
+    execute: ["HE FINISHES IN THE VINTAGE THREADS!", "OLD SCHOOL STYLE!"],
+    scoreCeilingMod: 1,
+    probabilityMod: -0.02,
+    executeLine: "HE FINISHES IN THE VINTAGE THREADS!" 
+  },
+  { 
+    id: 'cape', 
+    name: 'Superhero Cape', 
+    difficulty: 3, 
+    minTier: 1, 
+    weight: 10, 
+    setup: ["He's donning a cape!", "Superman returns!"],
+    execute: ["SUPERMAN IS IN THE BUILDING!", "HE FLIES WITH THE CAPE!"],
+    scoreCeilingMod: 1,
+    probabilityMod: -0.03,
+    executeLine: "SUPERMAN IS IN THE BUILDING!" 
+  },
+  { 
+    id: 'two_balls', 
+    name: 'Two Balls', 
+    difficulty: 18, 
+    minTier: 3, 
+    weight: 7, 
+    setup: ["He's got two basketballs!", "Double the trouble!"],
+    execute: ["HE STUFFS BOTH BALLS AT ONCE!", "TWO AT A TIME!"],
+    scoreCeilingMod: 4,
+    probabilityMod: -0.12,
+    executeLine: "HE STUFFS BOTH BALLS AT ONCE!" 
+  }
+];
+
+export function selectLeapoverTarget(difficulty: 'hard'|'medium'|'easy', tier: number, contestantNames: string[]): { name: string, heightFt: string, reaction: string } {
+  const name = contestantNames.length > 0 ? contestantNames[Math.floor(Math.random() * contestantNames.length)] : "a fan";
+  if (difficulty === 'hard' || tier >= 4) return { name, heightFt: '6\'10"', reaction: 'The big man is shaking!' };
+  if (difficulty === 'medium' || tier >= 2) return { name, heightFt: '6\'3"', reaction: 'He\'s ready for the flight!' };
+  return { name, heightFt: '5\'10"', reaction: 'Perfect height for a leap!' };
+}
+
+export const SANDBOX_ASSIST_NAMES = [
+  "Kevin Durant", "LeBron James", "Stephen Curry", "Giannis Antetokounmpo",
+  "Luka Doncic", "Nikola Jokic", "Joel Embiid", "Jayson Tatum",
+  "Kyrie Irving", "Damian Lillard", "Ja Morant", "Zion Williamson"
+];
+

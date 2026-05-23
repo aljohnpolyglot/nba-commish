@@ -70,6 +70,34 @@ const PBA_UPCOMING_ITEMS: UpcomingItem[] = [
   { date: '2026-12-28', label: '🏅 Season Awards',                sublabel: 'MVP, ROY, Grand Slam' },
 ];
 
+const EURO_AUTO_RESOLVED_ITEMS: ReviewItem[] = [
+  { date: '2025-07-01', label: '↔️ Transfer Market Opens',   how: 'AI listings, bids, and release-clause activity lazy-sim daily', status: 'live' },
+  { date: '2025-07-01', label: '💼 Staff + Sponsors',        how: 'Offseason front-office tasks are auto-resolved during the jump', status: 'live' },
+  { date: '2025-09-01', label: '💪 Training Camp Prep',       how: 'Camp and preseason task gates are resolved before fixtures', status: 'live' },
+  { date: '2025-09-22', label: '⭐ Supercopa',                how: 'Spanish curtain-raiser simulated if passed', status: 'live' },
+  { date: '2025-09-28', label: '🏀 Liga Endesa Opening',      how: 'Domestic fixtures simulate through the selected date', status: 'live' },
+  { date: '2025-10-01', label: '🏆 EuroLeague Opening',       how: 'Continental fixtures simulate for qualified clubs', status: 'live' },
+  { date: '2026-02-13', label: '🏆 Copa del Rey',             how: 'Cup bracket simulated if passed', status: 'live' },
+  { date: '2026-04-28', label: '⚡ EuroLeague Playoffs',      how: 'Postseason series inject and simulate through the jump', status: 'live' },
+  { date: '2026-05-22', label: '🏆 EuroLeague Final Four',    how: 'Final Four resolved if passed', status: 'live' },
+  { date: '2026-06-01', label: '⚡ Liga Endesa Playoffs',     how: 'Domestic postseason injects and simulates through the jump', status: 'live' },
+  { date: '2026-06-20', label: '🏆 Liga Endesa Finals',       how: 'ACB champion resolved if passed', status: 'live' },
+];
+
+const EURO_UPCOMING_ITEMS: UpcomingItem[] = [
+  { date: '2025-07-01', label: '↔️ Transfer Market Opens',    sublabel: 'Listings, bids, staff, sponsors, facilities' },
+  { date: '2025-09-01', label: '💪 Training Camp Prep',        sublabel: 'Camp setup and preseason friendlies' },
+  { date: '2025-09-22', label: '⭐ Supercopa',                 sublabel: 'Spanish curtain-raiser' },
+  { date: '2025-09-28', label: '🏀 Liga Endesa Opening',       sublabel: 'Domestic season starts' },
+  { date: '2025-10-01', label: '🏆 EuroLeague Opening',        sublabel: 'Continental season starts' },
+  { date: '2026-02-13', label: '🏆 Copa del Rey',              sublabel: 'Domestic cup weekend' },
+  { date: '2026-04-28', label: '⚡ EuroLeague Playoffs',       sublabel: 'Quarterfinals' },
+  { date: '2026-05-22', label: '🏆 EuroLeague Final Four',     sublabel: 'Semifinal and final weekend' },
+  { date: '2026-06-01', label: '⚡ Liga Endesa Playoffs',      sublabel: 'ACB postseason' },
+  { date: '2026-06-20', label: '🏆 Liga Endesa Finals',        sublabel: 'Domestic title series' },
+  { date: '2026-06-29', label: '🏁 Offseason',                 sublabel: 'Season complete' },
+];
+
 const UPCOMING_ITEMS: UpcomingItem[] = [
   { date: '2025-08-13', label: '📅 Set Christmas & Global Games',  sublabel: 'Planning window Aug 6-13' },
   { date: '2025-08-06', label: '📺 Broadcasting Deal',             sublabel: 'Default deal active — customize before Opening Night' },
@@ -102,13 +130,14 @@ export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, 
   const [assistantGM, setAssistantGM] = useState(true);
   const labels = getLeagueLabels(leagueType);
   const isPba = moddedLeagueBase === 'philippines';
-  const baseDate = isPba ? '2025-10-05' : '2025-08-06';
+  const isEuro = moddedLeagueBase === 'europe';
+  const baseDate = isEuro ? '2025-07-01' : isPba ? '2025-10-05' : '2025-08-06';
   const daysSkipped = daysBetween(baseDate, chosenDate);
   const estSeconds = Math.max(1, Math.ceil(daysSkipped / 25));
   const estGames = Math.round(daysSkipped * 1.2);
 
-  const autoItems = isPba ? PBA_AUTO_RESOLVED_ITEMS : AUTO_RESOLVED_ITEMS;
-  const upcomingItems = isPba ? PBA_UPCOMING_ITEMS : UPCOMING_ITEMS;
+  const autoItems = isEuro ? EURO_AUTO_RESOLVED_ITEMS : isPba ? PBA_AUTO_RESOLVED_ITEMS : AUTO_RESOLVED_ITEMS;
+  const upcomingItems = isEuro ? EURO_UPCOMING_ITEMS : isPba ? PBA_UPCOMING_ITEMS : UPCOMING_ITEMS;
 
   const resolved = autoItems
     .filter(item => item.date < chosenDate)
@@ -119,7 +148,7 @@ export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, 
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 6)
     .map(item => ({ ...item, daysAway: daysBetween(chosenDate, item.date) }));
-  const normalizedUpcoming = isPba ? upcoming : upcoming.map(item => ({
+  const normalizedUpcoming = isPba || isEuro ? upcoming : upcoming.map(item => ({
     ...item,
     label: item.label.replace('NBA Cup', labels.cupShort),
   }));

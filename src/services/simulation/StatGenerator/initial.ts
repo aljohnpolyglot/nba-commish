@@ -4,7 +4,7 @@ import { MinutesPlayedService } from '../MinutesPlayedService';
 import { getScaledRating, R } from './helpers';
 import { getVariance } from '../utils';
 import { getNightProfile } from './nightProfile';
-import { SimulatorKnobs, KNOBS_DEFAULT } from '../SimulatorKnobs';
+import { SimulatorKnobs, KNOBS_DEFAULT, isEuroClubCompetitionGame } from '../SimulatorKnobs';
 import { playThroughInjuriesFactor, injurySeverityLevel, minutesRestrictionFactor } from '../playThroughInjuriesFactor';
 import { generateGamePlan } from '../GamePlan';
 import { getGameplan } from '../../../store/gameplanStore';
@@ -25,6 +25,7 @@ export function generateStatsForTeam(
 ): PlayerGameStats[] {
   // ── Apply pace multiplier to scoring target ────────────────────────────────
   const adjustedScore = Math.round(totalScore * knobs.paceMultiplier);
+  const isEuroClubGame = isEuroClubCompetitionGame(team, knobs);
 
   // ── Rotation (WHO plays) + Minutes (HOW MANY) — both from MinutesPlayedService ──
   // Pass rotationDepthOverride into getRotation directly so exhibition games (All-Star: 12,
@@ -83,8 +84,9 @@ export function generateStatsForTeam(
     });
   } else {
     const mpgTarget = knobs.starMpgOverride ?? rotResult.starMpgTarget;
+    const minuteProfile = isEuroClubGame ? 'euro_club' : 'default';
     const { minutes } = MinutesPlayedService.allocateMinutes(
-      rotation, season, lead, otCount, mpgTarget, !!knobs.isPlayoffs, knobs.quarterLength, overtimeDuration, numQuarters
+      rotation, season, lead, otCount, mpgTarget, !!knobs.isPlayoffs, knobs.quarterLength, overtimeDuration, numQuarters, minuteProfile
     );
     playerMinutes = minutes;
 
@@ -177,11 +179,13 @@ export function generateStatsForTeam(
     // promoted players get +pts, demoted −pts, by slot-distance delta.
     const userPtsBias = scoringBiases?.get(p.internalId)?.ptsMult ?? 1;
     let rawTarget  = adjustedScore * share * gamePlan.ptsMult[i] * userPtsBias;
-    if (rawTarget > 27) {
-      const excess      = rawTarget - 27;
-      const shavedPoints = excess * 0.60;
+    const starThreshold = isEuroClubGame ? 22 : 27;
+    const shaveRate = isEuroClubGame ? 0.82 : 0.60;
+    if (rawTarget > starThreshold) {
+      const excess      = rawTarget - starThreshold;
+      const shavedPoints = excess * shaveRate;
       teamBonusBucket  += shavedPoints;
-      rawTarget          = 27 + (excess - shavedPoints);
+      rawTarget          = starThreshold + (excess - shavedPoints);
     }
     return { rawTarget, share };
   });
@@ -203,7 +207,7 @@ export function generateStatsForTeam(
     const gpElev = gamePlan.ptsMult[i];
     const dampF  = gpElev > 1.55 ? Math.max(0.50, 1.55 / gpElev) : 1.0;
     const nightM = 1.0 + (np.ptsTargetMult - 1.0) * dampF;
-    const ptsCap  = np.ptsTargetMult >= 1.45 ? 78 : 65;
+    const ptsCap  = isEuroClubGame ? 34 : (np.ptsTargetMult >= 1.45 ? 78 : 65);
     return { rawPts: Math.min(ptsCap, Math.max(0, Math.round(pts * nightM))), np, share };
   });
   const rawPtsSum   = pass1.reduce((s, r) => s + r.rawPts, 0) || 1;
@@ -218,7 +222,7 @@ export function generateStatsForTeam(
   const othersTarget   = Math.max(1, adjustedScore - protectedSum);
   const othersScale    = othersSum > 0 ? Math.min(1.0, othersTarget / othersSum) : 1;
   const finalPtsTargets = pass1.map(r => {
-    const ptsCap = isExp(r.np) ? 78 : 65;
+    const ptsCap = isEuroClubGame ? 34 : (isExp(r.np) ? 78 : 65);
     if (needsProtection && isExp(r.np)) {
       return Math.min(ptsCap, Math.max(0, Math.round(r.rawPts)));
     }
@@ -275,7 +279,7 @@ export function generateStatsForTeam(
     // Minutes-scaled FGA floor — kills the "Brunson 2-of-6 brickfest" pathology.
     // Even a star's worst real cold game is ~4-of-20 over 35 mins (~0.57 FGA/min).
     // Floor at 0.36 FGA/min: starter 35 mins → 12.6 FGA min, bench 15 mins → 5.4 FGA.
-    const fgaFloor = Math.floor(playerMinutes[i] * 0.36);
+    const fgaFloor = Math.floor(playerMinutes[i] * 0.38);
 
     // Volume-anchored FGA estimation: NBA-real volume tracks MINUTES/USAGE more than
     // pts target. Old formula (estimatedFga = baselinePts/1.1 * fgaMult) pumped FGA
@@ -286,9 +290,9 @@ export function generateStatsForTeam(
     // back partially. Surgical 80/20 bumps FGA league-mean toward NBA 89.1 — pts-anchored
     // dominance preserves star usage signal, min-anchor still prevents pure-pts pump.
     // Stars at 35min/30pts get ~25 FGA (NBA Doncic 22.8 — slightly above, then capped).
-    const minBased = playerMinutes[i] * 0.40 * nightProfile.fgaMult;
+    const minBased = playerMinutes[i] * 0.42 * nightProfile.fgaMult;
     const ptsBased = (baselinePts / 1.1) * nightProfile.fgaMult;
-    const blendedEstimate = ptsBased * 0.80 + minBased * 0.20;
+    const blendedEstimate = ptsBased * 0.78 + minBased * 0.22;
 
     // Hard cap: no player exceeds 0.72 FGA/min (Westbrook all-time peak ~0.71). Caps
     // the "Curry 30 FGA in 29 min" pathology (1.03 FGA/min) without choking realistic
@@ -353,7 +357,7 @@ export function generateStatsForTeam(
     // Constant tuned 0.42 → 0.38 → 0.35: first cut brought league FT% 82.5 → 81.0 (still 3pp
     // over NBA 78.3). Second surgical cut targets exactly that gap. Top1 should land at ~93%
     // (NBA Curry .921) instead of 99% outliers.
-    const ftpBase = (ft / 100) * 0.50 + 0.35;
+    const ftpBase = (ft / 100) * 0.50 + 0.36;
     let gameFtp = ftpBase * nightProfile.ftSkill * getVariance(1.0, 0.15) * (1.0 + (nightProfile.efficiencyMult - 1.0) * 0.2) * (knobs.ftEfficiencyMult ?? 1.0);
 
     // Bell curve cap — naturally creates authentic 6-for-6 or 8-for-8 nights

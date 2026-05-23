@@ -1,0 +1,126 @@
+# Codex hunks NOT found on current disk for src/components/central/view/LeagueHistoryView.tsx
+# 12 hunks unapplied. Total ops: 3
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#1 hunk#0] session=8 line=969 ts=2026-05-11T01:56:11.231Z ---
+ import { PlayerPortrait } from '../../shared/PlayerPortrait';
++import { getEffectiveUiMode } from '../../../utils/useEffectiveUiMode';
++import { resolveAnyTeam } from '../../../utils/teamLookup';
++import { getTeamFullName } from '../../../utils/teamNames';
+
+--- HUNK [op#1 hunk#1] session=8 line=969 ts=2026-05-11T01:56:11.231Z ---
+   const { state, dispatchAction } = useGame();
+   const isFictional = state.leagueType === 'fictional';
++  const euroIsolated = getEffectiveUiMode(state as any) === 'euro_isolated';
++  const disableNbaHistoricalData = isFictional || euroIsolated;
+
+--- HUNK [op#1 hunk#2] session=8 line=969 ts=2026-05-11T01:56:11.231Z ---
+-    if (isFictional) return;
++    if (disableNbaHistoricalData) return;
+
+--- HUNK [op#1 hunk#3] session=8 line=969 ts=2026-05-11T01:56:11.231Z ---
+-  }, [state.historicalAwards, isFictional]);
++  }, [state.historicalAwards, disableNbaHistoricalData]);
+
+--- HUNK [op#1 hunk#4] session=8 line=969 ts=2026-05-11T01:56:11.231Z ---
+-  const brefMap = useBRefSeasonsBatch(isFictional ? [] : historicalYears);
++  const brefMap = useBRefSeasonsBatch(disableNbaHistoricalData ? [] : historicalYears);
+
+--- HUNK [op#1 hunk#5] session=8 line=969 ts=2026-05-11T01:56:11.231Z ---
+-    if (!isFictional) {
++    if (!disableNbaHistoricalData) {
+
+--- HUNK [op#1 hunk#6] session=8 line=969 ts=2026-05-11T01:56:11.231Z ---
+-    if (!isFictional) {
++    if (!disableNbaHistoricalData) {
+
+--- HUNK [op#1 hunk#7] session=8 line=969 ts=2026-05-11T01:56:11.231Z ---
+-      const wikiSeason = isFictional ? undefined : (getAllCachedSeasons().get(season) ?? bref);
++      const wikiSeason = disableNbaHistoricalData ? undefined : (getAllCachedSeasons().get(season) ?? bref);
+
+--- HUNK [op#1 hunk#8] session=8 line=969 ts=2026-05-11T01:56:11.231Z ---
+-  }, [state.teams, state.players, state.historicalAwards, currentSeason, brefMap, coachPhotosReady, isFictional]);
++  }, [state.teams, state.players, state.historicalAwards, currentSeason, brefMap, coachPhotosReady, disableNbaHistoricalData]);
++
++  const euroHistoryRows = useMemo(() => {
++    if (!euroIsolated) return [];
++    return (state.history ?? [])
++      .filter((entry: any) => entry?.type === 'Champion' && entry.competitionId)
++      .map((entry: any) => {
++        const spec = state.activeCompetitions?.find(c => c.id === entry.competitionId);
++        const year = entry.date ? new Date(entry.date).getFullYear() : currentSeason;
++        const team = typeof entry.tid === 'number' ? resolveAnyTeam(entry.tid, state.teams, state.nonNBATeams ?? []) : null;
++        return {
++          id: `${entry.competitionId}-${entry.date}-${entry.tid}`,
++          season: year,
++          competition: spec?.displayName ?? entry.competitionId,
++          champion: getTeamFullName(team),
++          logoUrl: team?.logoUrl,
++        };
++      })
++      .sort((a, b) => b.season - a.season || a.competition.localeCompare(b.competition));
++  }, [euroIsolated, state.history, state.activeCompetitions, state.teams, state.nonNBATeams, currentSeason]);
+
+--- HUNK [op#1 hunk#9] session=8 line=969 ts=2026-05-11T01:56:11.231Z ---
+   if (quick.fullPageView) return quick.fullPageView;
++
++  if (euroIsolated) {
++    return (
++      <div className="h-full overflow-hidden p-4 md:p-8 flex flex-col">
++        <div className="max-w-5xl mx-auto w-full h-full flex flex-col">
++          <div className="mb-6 shrink-0">
++            <h2 className="text-3xl font-black text-white uppercase tracking-tight flex items-center gap-3">
++              <Trophy className="text-amber-400" size={32} />
++              Competition History
++            </h2>
++            <p className="text-slate-400 font-medium mt-1">
++              Euro-isolated saves do not load NBA historical gists.
++            </p>
++          </div>
++          <div className="flex-1 overflow-auto bg-slate-900/50 border border-slate-800 rounded-2xl">
++            {euroHistoryRows.length === 0 ? (
++              <div className="h-full min-h-[280px] flex items-center justify-center text-slate-500 text-sm">
++                No completed Euro competition seasons yet.
++              </div>
++            ) : (
++              <table className="w-full text-left border-collapse">
++                <thead className="bg-slate-900/80 sticky top-0 z-10">
++                  <tr>
++                    <th className="p-3 font-bold text-slate-300 border-b border-slate-800">Season</th>
++                    <th className="p-3 font-bold text-slate-300 border-b border-slate-800">Competition</th>
++                    <th className="p-3 font-bold text-amber-400 border-b border-slate-800">Champion</th>
++                  </tr>
++                </thead>
++                <tbody className="divide-y divide-slate-800/50">
++                  {euroHistoryRows.map(row => (
++                    <tr key={row.id} className="hover:bg-slate-800/30">
++                      <td className="p-3 font-black text-white">{row.season - 1}–{String(row.season).slice(-2)}</td>
++                      <td className="p-3 text-slate-300 font-bold">{row.competition}</td>
++                      <td className="p-3 text-amber-400 font-bold flex items-center gap-2">
++                        {row.logoUrl && <img src={row.logoUrl} alt="" className="w-5 h-5 object-contain" referrerPolicy="no-referrer" />}
++                        {row.champion}
++                      </td>
++                    </tr>
++                  ))}
++                </tbody>
++              </table>
++            )}
++          </div>
++        </div>
++      </div>
++    );
++  }
+
+--- HUNK [op#2 hunk#0] session=8 line=1032 ts=2026-05-11T01:57:45.793Z ---
+             </h2>
+             <p className="text-slate-400 font-medium mt-1">
+-              Euro-isolated saves do not load NBA historical gists.
++              Your European trophy archive will fill as Endesa, Euroleague and cup seasons finish.
+             </p>
+
+--- HUNK [op#2 hunk#1] session=8 line=1032 ts=2026-05-11T01:57:45.793Z ---
+               <div className="h-full min-h-[280px] flex items-center justify-center text-slate-500 text-sm">
+-                No completed Euro competition seasons yet.
++                No European trophies have been decided yet.
+               </div>

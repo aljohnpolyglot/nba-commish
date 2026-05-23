@@ -1,0 +1,85 @@
+import React, { useState, useRef } from 'react';
+import { useGame } from '../store/GameContext';
+import { getDraftLotteryDate, getDraftDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } from '../utils/dateUtils';
+import { DraftEventGateModal } from '../components/modals/DraftEventGateModal';
+import { normalizeDate } from '../utils/helpers';
+import { isNoDraftLeague } from '../services/offseason/offseasonState';
+
+interface DraftEventGateOptions {
+  onNavigateToDraftLottery?: () => void;
+  onNavigateToDraft?: () => void;
+}
+
+export function useDraftEventGate(options: DraftEventGateOptions = {}) {
+  const { state } = useGame();
+  const [open, setOpen] = useState(false);
+  const pendingRef = useRef<(() => void | Promise<void>) | null>(null);
+  const { onNavigateToDraftLottery, onNavigateToDraft } = options;
+
+  const eventType: 'lottery' | 'draft' | null = (() => {
+    if (state.gameMode !== 'gm' || !state.date) return null;
+    const ls = state.leagueStats as any;
+    if (isNoDraftLeague(ls)) return null;
+    const seasonYear: number = ls?.year ?? new Date().getFullYear();
+    const todayStr = normalizeDate(state.date);
+    const draftBlockedByPlayoffs = isDraftBlockedByUnresolvedPlayoffs(state);
+
+    // Lottery: only block if user's team is a lottery team (no playoff clinch)
+    const lotteryStr = toISODateString(getDraftLotteryDate(seasonYear, ls));
+    if (todayStr === lotteryStr && !(state.draftLotteryResult as any)?.length) {
+      const userTeam = state.teams?.find(t => t.id === state.userTeamId);
+      const clinched = (userTeam as any)?.clinchedPlayoffs as string | undefined;
+      const isLotteryTeam = !clinched || !['w', 'x', 'y', 'z'].includes(clinched);
+      if (isLotteryTeam) return 'lottery';
+    }
+
+    // Draft: all teams participate
+    const draftStr = toISODateString(getDraftDate(seasonYear, ls));
+    if (todayStr === draftStr && !state.draftComplete && !draftBlockedByPlayoffs) {
+      return 'draft';
+    }
+
+    return null;
+  })();
+
+  const attempt = (fn: () => void | Promise<void>): void => {
+    if (eventType) {
+      pendingRef.current = fn;
+      setOpen(true);
+      return;
+    }
+    void fn();
+  };
+
+  const handleAutoSim = async () => {
+    setOpen(false);
+    const pending = pendingRef.current;
+    pendingRef.current = null;
+    if (pending) await pending();
+  };
+
+  const handleWatch = () => {
+    pendingRef.current = null;
+    setOpen(false);
+    if (eventType === 'lottery') onNavigateToDraftLottery?.();
+    else if (eventType === 'draft') onNavigateToDraft?.();
+  };
+
+  const handleDismiss = () => {
+    pendingRef.current = null;
+    setOpen(false);
+  };
+
+  const modal = (
+    <DraftEventGateModal
+      isOpen={open}
+      eventType={eventType ?? 'draft'}
+      canNavigate={eventType === 'lottery' ? !!onNavigateToDraftLottery : !!onNavigateToDraft}
+      onAutoSim={handleAutoSim}
+      onWatch={handleWatch}
+      onDismiss={handleDismiss}
+    />
+  );
+
+  return { attempt, modal, isBlocked: !!eventType, eventType };
+}

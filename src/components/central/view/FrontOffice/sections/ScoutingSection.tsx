@@ -75,14 +75,6 @@ export const ScoutingSection: React.FC<{ tycoon: TycoonState; currency: string; 
         </div>
 
         <aside className="space-y-5">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Analytics Notes</div>
-            <div className="space-y-3 text-sm text-slate-300">
-              <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">Known players stay exact. Unknown non-own ratings should be read as a range, not a promise.</div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">Domestic coverage improves faster than EuroLeague coverage because reports are cheaper to refresh.</div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">At elite spend, hidden-market mistakes are rare but not impossible.</div>
-            </div>
-          </div>
           <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-5">
             <div className="text-xs font-black uppercase tracking-widest text-emerald-300">Report Depth</div>
             <div className="mt-4 space-y-3">

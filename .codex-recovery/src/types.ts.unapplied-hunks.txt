@@ -1,0 +1,72 @@
+# Codex hunks NOT found on current disk for src/types.ts
+# 10 hunks unapplied. Total ops: 19
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#2 hunk#1] session=4 line=252 ts=2026-05-09T23:52:16.615Z ---
+   isCupTBD?: boolean;
+   cupTBDForTid?: number;
++  gameFormat?: 'timed' | 'target_score' | 'elam_ending';
++  targetScore?: number;
+ }
+
+--- HUNK [op#3 hunk#1] session=4 line=469 ts=2026-05-10T00:01:42.381Z ---
+   gameFormat?: 'timed' | 'target_score' | 'elam_ending';
+   targetScore?: number;
++  round?: 'rr' | 'sf' | 'final';
+ }
+
+--- HUNK [op#6 hunk#0] session=7 line=496 ts=2026-05-10T12:39:18.474Z ---
+   rules: Rule[];
+   morale: Morale;
+   year: number;
++  uiMode?: 'nba' | 'euro_isolated';
++  currency?: 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CNY' | 'AUD' | 'PHP';
++  tradesAllowed?: boolean;
+   hofClassesInducted?: number[];
+
+--- HUNK [op#7 hunk#0] session=7 line=654 ts=2026-05-10T12:49:16.089Z ---
++import type { CompetitionSpec } from './services/competition/types';
++
+ export interface Game {
+   gid: number;
+   homeTid: number;
+   awayTid: number;
+
+--- HUNK [op#7 hunk#4] session=7 line=654 ts=2026-05-10T12:49:16.089Z ---
+   nonNBATeams: NonNBATeam[];
++  clubAliasMap?: Record<number, number>;
+   schedule: Game[];
++  activeCompetitions?: CompetitionSpec[];
+   players: NBAPlayer[];
+
+--- HUNK [op#8 hunk#0] session=8 line=125 ts=2026-05-10T20:51:32.663Z ---
+   activeCompetitions?: CompetitionSpec[];
++  portalTarget?: 'nba' | string | null;
+   players: NBAPlayer[];
+
+--- HUNK [op#9 hunk#0] session=8 line=162 ts=2026-05-10T20:52:31.158Z ---
+-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame' | 'Euroleague Hub' | 'Endesa Hub' | 'G-League Hub' | 'WNBA Hub' | 'B-League Hub' | 'China CBA Hub' | 'NBL Australia Hub' | 'PBA Hub';
++export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame' | 'Euroleague' | 'Euroleague Hub' | 'Endesa Hub' | 'G-League Hub' | 'WNBA Hub' | 'B-League Hub' | 'China CBA Hub' | 'NBL Australia Hub' | 'PBA Hub';
+
+--- HUNK [op#10 hunk#0] session=8 line=265 ts=2026-05-10T20:55:36.587Z ---
+   | 'rookieContracts'
+   | 'freeAgency'
++  | 'sponsorRenewals'
++  | 'facilityUpgrades'
++  | 'preseasonFriendlies'
+   | 'trainingCamp';
+
+--- HUNK [op#12 hunk#0] session=10 line=103 ts=2026-05-13T07:14:28.747Z ---
+   'OFFSEASON_ENTER_PHASE' | 'OFFSEASON_COMPLETE_PHASE' | 'OFFSEASON_SKIP_PHASE' |
+   'OFFSEASON_AUTO_RESOLVE_ALL' | 'OFFSEASON_ADVANCE_FA_TAG' | 'OFFSEASON_EXIT' |
+   'OFFSEASON_RESOLVE_DECISION' | 'OFFSEASON_RESET_CHECKLIST' |
+-  'SUBMIT_QUALIFYING_OFFER' | 'SKIP_QUALIFYING_OFFER';
++  'SUBMIT_QUALIFYING_OFFER' | 'SKIP_QUALIFYING_OFFER' |
++  'SCHEDULE_EXPANSION' | 'ACTIVATE_EXPANSION_NOW' | 'CLEAR_EXPANSION_SCHEDULE' |
++  'SET_EXPANSION_PROTECTIONS' | 'APPLY_EXPANSION_REALIGNMENT' |
++  'EXPANSION_DRAFT_PICK' | 'UPDATE_TEAM_POP' | 'EXPANSION_DRAFT_COMPLETE';
+
+--- HUNK [op#14 hunk#0] session=10 line=306 ts=2026-05-13T07:24:56.582Z ---
+-export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Front Office' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame' | 'Euroleague' | 'Liga Endesa' | 'Euroleague Hub' | 'Endesa Hub' | 'G-League Hub' | 'WNBA Hub' | 'B-League Hub' | 'China CBA Hub' | 'NBL Australia Hub' | 'PBA Hub';
++export type Tab = 'Inbox' | 'Messages' | 'Social Feed' | 'NBA Central' | 'Schedule' | 'Commissioner' | 'League News' | 'Player Stats' | 'Award Races' | 'Actions' | 'League Settings' | 'Personal' | 'Player Search' | 'Free Agents' | 'Team Stats' | 'All-Star' | 'NBA Cup' | 'Playoffs' | 'League Office' | 'League Leaders' | 'Injuries' | 'Broadcasting' | 'Approvals' | 'Viewership' | 'Finances' | 'League Finances' | 'Team Finances' | 'Front Office' | 'Front Office Finances' | 'Front Office Sponsorships' | 'Front Office Travel' | 'Front Office Medical' | 'Front Office Facilities' | 'Front Office Staff' | 'Front Office Scouting' | 'Draft Scouting' | 'Draft Lottery' | 'Standings' | 'Statistical Feats' | 'Transactions' | 'Trade Machine' | 'Trade Finder' | 'Trade Proposals' | 'Commish Store' | 'Events' | 'Seasonal' | 'Real Stern' | 'Sports Book' | 'Player Ratings' | 'Player Creator' | 'League History' | 'Player Bios' | 'Player Comparison' | 'Team History' | 'Season Preview' | 'Power Rankings' | 'Draft Board' | 'Draft History' | 'Team Office' | 'Coaching' | 'Training Center' | 'Hall of Fame' | 'Euroleague' | 'Liga Endesa' | 'Euroleague Hub' | 'Endesa Hub' | 'G-League Hub' | 'WNBA Hub' | 'B-League Hub' | 'China CBA Hub' | 'NBL Australia Hub' | 'PBA Hub';

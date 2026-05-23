@@ -21,6 +21,23 @@ type EuroleagueTab = 'mvp' | 'defender' | 'risingStar' | 'topScorer' | 'coy' | '
 type EndesaTab = 'mvp' | 'bestYoung' | 'topScorer' | 'topRebounder' | 'topAssister' | 'pirLeader' | 'bestCoach';
 type Competition = 'euroleague' | 'endesa';
 
+const isPostRegularPhase = (phase?: string): boolean => {
+  const normalized = String(phase ?? '').toLowerCase();
+  return normalized === 'play-in'
+    || normalized === 'qf'
+    || normalized === 'quarterfinal'
+    || normalized === 'sf'
+    || normalized === 'semifinal'
+    || normalized === 'final';
+};
+
+const competitionRoundStart = (season: number, month: number, day: number): number =>
+  Date.UTC(month >= 9 ? season - 1 : season, month - 1, day);
+
+interface EuroAwardRacesViewProps {
+  forcedCompetition?: Competition;
+}
+
 const STORED_TYPES = {
   euroleague: {
     mvp: 'Euroleague MVP',
@@ -41,26 +58,68 @@ const STORED_TYPES = {
   } as Record<EndesaTab, string>,
 };
 
-export const EuroAwardRacesView: React.FC = () => {
+export const EuroAwardRacesView: React.FC<EuroAwardRacesViewProps> = ({ forcedCompetition }) => {
   const { state } = useGame();
   const ownTid = getOwnTeamId(state);
-  const [competition, setCompetition] = useState<Competition>('euroleague');
+  const [competition, setCompetition] = useState<Competition>(forcedCompetition ?? 'euroleague');
   const [elTab, setELTab] = useState<EuroleagueTab>('mvp');
   const [endesaTab, setEndesaTab] = useState<EndesaTab>('mvp');
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
 
+  React.useEffect(() => {
+    if (!forcedCompetition) return;
+    setCompetition(forcedCompetition);
+  }, [forcedCompetition]);
+
   const seasonAwards = (state.historicalAwards ?? []).filter(a => a.season === state.leagueStats.year);
+  const competitionHistory = ((state as any).competitionHistory ?? {}) as Record<string, Array<{ season: number; championTid?: number | null }>>;
 
   const euroleagueRaces = useMemo(() => EuroAwardService.calculateEuroleagueRaces(
-    state.players, state.teams, state.nonNBATeams ?? [], state.leagueStats.year, state.staff,
-  ), [state.players, state.teams, state.nonNBATeams, state.leagueStats.year, state.staff]);
+    state.players, state.teams, state.nonNBATeams ?? [], state.leagueStats.year, state.staff, undefined, state.boxScores ?? [],
+  ), [state.players, state.teams, state.nonNBATeams, state.leagueStats.year, state.staff, state.boxScores]);
 
   const endesaRaces = useMemo(() => EuroAwardService.calculateEndesaRaces(
-    state.players, state.teams, state.nonNBATeams ?? [], state.leagueStats.year, state.staff,
-  ), [state.players, state.teams, state.nonNBATeams, state.leagueStats.year, state.staff]);
+    state.players, state.teams, state.nonNBATeams ?? [], state.leagueStats.year, state.staff, undefined, state.boxScores ?? [],
+  ), [state.players, state.teams, state.nonNBATeams, state.leagueStats.year, state.staff, state.boxScores]);
 
   const totalGP = state.teams.reduce((sum, t) => sum + (t.wins ?? 0) + (t.losses ?? 0), 0);
   const seasonNotStarted = totalGP === 0;
+
+  const competitionWindow = useMemo(() => {
+    const buildWindow = (id: Competition) => {
+      const currentSeason = state.leagueStats.year;
+      const spec = state.activeCompetitions?.find((entry: any) => entry.id === id);
+      const firstPostRegularRound = spec?.playoffFormat?.rounds?.[0];
+      const dateMs = state.date ? new Date(state.date).getTime() : 0;
+      const calendarGate = firstPostRegularRound
+        ? dateMs >= competitionRoundStart(currentSeason, firstPostRegularRound.start.month, firstPostRegularRound.start.day)
+        : false;
+      const postRegularGames = [
+        ...(state.schedule ?? []),
+        ...(state.boxScores ?? []),
+      ].some((game: any) =>
+        game.competitionId === id &&
+        (
+          game.season === currentSeason ||
+          (typeof game.season !== 'number' && String(game.date ?? '').includes(String(currentSeason)))
+        ) &&
+        isPostRegularPhase(game.competitionPhase),
+      );
+      const resolvedSeason = (competitionHistory[id] ?? []).some(entry =>
+        entry.season === currentSeason && entry.championTid != null,
+      );
+      return {
+        calendarGate,
+        postRegularGames,
+        resolvedSeason,
+        regularSeasonAwardsFinalized: calendarGate || postRegularGames || resolvedSeason,
+      };
+    };
+    return {
+      euroleague: buildWindow('euroleague'),
+      endesa: buildWindow('endesa'),
+    };
+  }, [state.schedule, state.boxScores, state.leagueStats.year, competitionHistory]);
 
   if (viewingPlayer) {
     return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
@@ -92,7 +151,7 @@ export const EuroAwardRacesView: React.FC = () => {
         <Trophy className="text-slate-700" size={48} />
         <h2 className="text-2xl font-black text-white uppercase tracking-tight">Award Races</h2>
         <p className="text-slate-500 text-sm max-w-md">
-          Award projections will be available once the {state.leagueStats.year - 1}–{String(state.leagueStats.year).slice(-2)} regular season begins and players accumulate stats.
+          Award projections will be available once Liga Endesa and EuroLeague games are underway and players have built a real stat sample.
         </p>
       </div>
     );
@@ -106,6 +165,20 @@ export const EuroAwardRacesView: React.FC = () => {
   const announced = seasonAwards.some(a => a.type === (competition === 'euroleague'
     ? STORED_TYPES.euroleague[elTab]
     : STORED_TYPES.endesa[endesaTab]));
+  const phaseFinalized = competition === 'euroleague'
+    ? competitionWindow.euroleague.regularSeasonAwardsFinalized
+    : competitionWindow.endesa.regularSeasonAwardsFinalized;
+  const finalized = announced || phaseFinalized;
+  const viewTitle = forcedCompetition === 'euroleague'
+    ? 'EuroLeague Awards'
+    : forcedCompetition === 'endesa'
+      ? 'Liga ACB Awards'
+      : 'European Awards';
+  const viewSubtitle = forcedCompetition === 'euroleague'
+    ? 'Regular-season honors, coaching awards, and All-EuroLeague selections.'
+    : forcedCompetition === 'endesa'
+      ? 'Regular-season honors and Liga ACB award results.'
+      : 'EuroLeague + Liga ACB award races and results.';
 
   // ─── Renderers ───────────────────────────────────────────────────────────
 
@@ -129,7 +202,7 @@ export const EuroAwardRacesView: React.FC = () => {
                   { label: 'REB', val: ((c.stats.trb || (c.stats as any).reb || (c.stats.orb || 0) + (c.stats.drb || 0)) / c.stats.gp).toFixed(1) },
                   { label: 'AST', val: (c.stats.ast / c.stats.gp).toFixed(1) },
                 ]}
-                odds={c.odds}
+                odds={finalized ? undefined : c.odds}
                 accentColor="indigo"
                 animDelay={idx * 0.05}
                 onClick={() => setViewingPlayer(c.player)}
@@ -154,7 +227,7 @@ export const EuroAwardRacesView: React.FC = () => {
             text: `${c.improvement > 0 ? `+${c.improvement}` : c.improvement < 0 ? `${c.improvement}` : '±0'} wins vs last season`,
             color: c.improvement > 0 ? 'text-emerald-400' : c.improvement < 0 ? 'text-red-400' : 'text-slate-500',
           }}
-          odds={c.odds}
+          odds={finalized ? undefined : c.odds}
           accentColor="teal"
           animDelay={i * 0.05}
         />
@@ -232,34 +305,36 @@ export const EuroAwardRacesView: React.FC = () => {
             <div>
               <h2 className="text-3xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
                 <Trophy className="text-yellow-500" size={32} />
-                European Awards
+                {viewTitle}
               </h2>
-              <p className="text-slate-400 text-sm mt-1">EuroLeague + Liga ACB award races and projections</p>
+              <p className="text-slate-400 text-sm mt-1">{viewSubtitle}</p>
             </div>
 
             {/* Competition toggle */}
-            <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 gap-0.5">
-              <button
-                onClick={() => setCompetition('euroleague')}
-                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
-                  competition === 'euroleague'
-                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'
-                }`}
-              >
-                EuroLeague
-              </button>
-              <button
-                onClick={() => setCompetition('endesa')}
-                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
-                  competition === 'endesa'
-                    ? 'bg-red-500 text-white shadow-lg shadow-red-500/20'
-                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'
-                }`}
-              >
-                Liga ACB
-              </button>
-            </div>
+            {!forcedCompetition && (
+              <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 gap-0.5">
+                <button
+                  onClick={() => setCompetition('euroleague')}
+                  className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                    competition === 'euroleague'
+                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'
+                  }`}
+                >
+                  EuroLeague
+                </button>
+                <button
+                  onClick={() => setCompetition('endesa')}
+                  className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                    competition === 'endesa'
+                      ? 'bg-red-500 text-white shadow-lg shadow-red-500/20'
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'
+                  }`}
+                >
+                  Liga ACB
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Award tabs */}
@@ -304,8 +379,8 @@ export const EuroAwardRacesView: React.FC = () => {
               <p className="text-slate-400">{selectedLabel.desc}</p>
             </div>
             <div className="ml-auto hidden md:flex flex-col items-end gap-1">
-              <span className={`text-xs font-bold uppercase tracking-widest ${announced ? 'text-amber-400' : 'text-indigo-400'}`}>
-                {announced ? 'Winner' : 'Projection'}
+              <span className={`text-xs font-bold uppercase tracking-widest ${finalized ? 'text-amber-400' : 'text-indigo-400'}`}>
+                {finalized ? 'Finalized' : 'Projection'}
               </span>
             </div>
           </motion.div>
@@ -315,9 +390,9 @@ export const EuroAwardRacesView: React.FC = () => {
           <div className="mt-12 p-4 rounded-xl bg-slate-900/30 border border-slate-800/50 flex items-start gap-3">
             <Info size={18} className="text-slate-600 shrink-0 mt-0.5" />
             <p className="text-xs text-slate-600 leading-relaxed">
-              EuroLeague & Liga ACB award projections use a proprietary algorithm weighing individual
-              performance, team success, PIR, and historical voting patterns. Final winners reflect
-              season-end stats and team performance.
+              {finalized
+                ? 'This board is no longer treated as a live race. Once the competition moves into play-in or playoffs, regular-season Euro awards lock to the finished result window.'
+                : 'These are live regular-season projections built from individual production, team success, PIR, and award-specific voting signals.'}
             </p>
           </div>
         </div>

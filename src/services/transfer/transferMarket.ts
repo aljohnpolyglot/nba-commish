@@ -125,6 +125,7 @@ export interface SubmitBidInput {
   sellerTid: number;
   bidType: TransferBidType;
   amountEUR: number;
+  userInitiated?: boolean;
   currentDate: string;
   validDays?: number;
 }
@@ -139,6 +140,7 @@ export function buildBid(input: SubmitBidInput): TransferBid {
     sellerTid: input.sellerTid,
     bidType: input.bidType,
     amountEUR: Math.max(50_000, Math.round(input.amountEUR / 50_000) * 50_000),
+    userInitiated: input.userInitiated === true ? true : undefined,
     receivedDate: toISO(input.currentDate),
     expiresDate: addDays(input.currentDate, days),
     status: 'active',

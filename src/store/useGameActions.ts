@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GameState, CommissionerLogEntry, SocialPost, NBAPlayer } from '../types';
 import { calculatePlayerOverallForYear } from '../utils/playerRatings';
+import { invalidatePlayerRatingCache } from './playerRatingStore';
 
 export const useGameActions = (setState: React.Dispatch<React.SetStateAction<GameState>>, getState: () => GameState) => {
   const [isGeneratingReplies, setIsGeneratingReplies] = useState<Record<string, boolean>>({});
@@ -98,6 +99,7 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
   };
 
   const updatePlayerRatings = (playerId: string, season: number, ratings: Record<string, number>) => {
+    invalidatePlayerRatingCache();
     setState(prev => ({
       ...prev,
       players: prev.players.map(p => {

@@ -129,7 +129,14 @@
       "WebFetch(domain:play.basketball-gm.com)",
       "Bash(xargs -I {} powershell -Command \"Get-Item '{}' | Select-Object LastWriteTime, FullName\")",
       "Bash(python .tmp-audit.py)",
-      "PowerShell($count = \\(Get-ChildItem 'public\\\\img\\\\jerseys' -Recurse -File | Measure-Object\\).Count; \"Files: $count\")"
+      "PowerShell($count = \\(Get-ChildItem 'public\\\\img\\\\jerseys' -Recurse -File | Measure-Object\\).Count; \"Files: $count\")",
+      "Bash(awk 'NR==2582,NR==2705 {print NR\": \"$0}' src/store/GameContext.tsx)",
+      "Bash(netstat -ano)",
+      "Bash(findstr -E \"LISTENING\")",
+      "Bash(findstr -E \":3000 :3001\")",
+      "Bash(netstat -ano -p TCP)",
+      "Bash(findstr LISTENING)",
+      "Bash(findstr \":300\")"
     ]
   }
 }

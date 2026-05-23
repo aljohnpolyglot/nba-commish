@@ -460,13 +460,13 @@ export const ENDESA_TEAM_COUNTRY = 'Spain';
  *
  * Example (NBA cap $154M, max contract 30% = $46.2M):
  *   Euroleague max = $46.2M × 0.108 ≈ $5.0M
- *   PBA max        = $46.2M × 0.0043 ≈ $200K
+ *   PBA max        ≈ $1.35M (about ₱75M)
  */
 export const EXTERNAL_SALARY_SCALE: Record<string, { maxPct: number; minPct: number }> = {
   Euroleague:       { maxPct: 0.032,  minPct: 0.003 },   // ~$5M max, ~$460K min at $154M cap
   Endesa:           { maxPct: 0.019,  minPct: 0.0019 },  // ~$3M max, ~$290K min
   'B-League':       { maxPct: 0.0065, minPct: 0.00065 }, // ~$1M max, ~$100K min
-  PBA:              { maxPct: 0.0013, minPct: 0.00013 }, // ~$200K max, ~$20K min
+  PBA:              { maxPct: 0.0088, minPct: 0.0010 },  // ~$1.36M max, ~$155K min
   'G-League':       { maxPct: 0.003,  minPct: 0.0003 },  // ~$460K max, ~$46K min
   'China CBA':      { maxPct: 0.019,  minPct: 0.0013 },  // ~$3M max, ~$200K min
   'NBL Australia':  { maxPct: 0.0065, minPct: 0.00065 }, // ~$1M max, ~$100K min
@@ -518,6 +518,8 @@ export const EURO_ISOLATED_DEFAULTS: Partial<LeagueStats> = {
   uiMode: 'euro_isolated',
   currency: 'EUR',
   tradesAllowed: false,
+  trainingCampMonth: 8,
+  trainingCampDay: 15,
   transferMarket: {
     enabled: true,
     summerStart: '07-01',
@@ -541,7 +543,7 @@ export const EURO_ISOLATED_DEFAULTS: Partial<LeagueStats> = {
   stepienRuleEnabled: false,
   salaryCapEnabled: false,
   salaryCapType: 'none',
-  salaryCap: 45_000_000,
+  salaryCap: 33_750_000,
   luxuryTaxEnabled: false,
   luxuryTaxThresholdPercentage: 0,
   luxuryPayroll: 0,
@@ -577,6 +579,7 @@ export const PBA_ISOLATED_DEFAULTS: Partial<import('./types').LeagueStats> = {
   uiMode: 'pba_isolated',
   currency: 'PHP',
   tradesAllowed: true,
+  salaryCap: 3_850_000,
   draftType: 'pba_draft',
   pbaConference: 'philippine',
   pbaConferencePhase: 'setup',
@@ -595,6 +598,10 @@ export const PBA_ISOLATED_DEFAULTS: Partial<import('./types').LeagueStats> = {
   maxTwoWayPlayersPerTeam: 0,
   salaryCapEnabled: false,
   salaryCapType: 'none',
+  minContractType: 'static',
+  minContractStaticAmount: 0.15,
+  maxContractType: 'static',
+  maxContractStaticPercentage: 35,
   luxuryTaxEnabled: false,
   apronsEnabled: false,
   minimumPayrollEnabled: false,

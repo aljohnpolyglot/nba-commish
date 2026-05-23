@@ -15,6 +15,8 @@ interface PlayerBioHeroProps {
   isHoF?: boolean;
   /** facesjs face descriptor — shown when no real portrait URL is available */
   face?: any;
+  showStatsBar?: boolean;
+  schoolLabel?: string;
 }
 
 /**
@@ -40,6 +42,8 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
   fetchDone,
   isHoF,
   face,
+  showStatsBar = true,
+  schoolLabel = 'Last Attended',
 }) => {
   return (
   <>
@@ -115,22 +119,24 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
 
     {/* ── Stats Bar ── */}
     <div className="flex flex-col md:flex-row border-y border-white/20" style={{ backgroundColor: teamColor }}>
-      <div className="flex flex-row w-full md:w-2/5 border-b md:border-b-0 md:border-r border-white/20 bg-black/20">
-        {(['PTS', 'REB', 'AST'] as const).map((key, i, arr) => (
-          <div key={key} className={`flex-1 flex flex-col justify-center items-center py-4 md:py-6 ${i < arr.length - 1 ? 'border-r border-white/20' : ''}`}>
-            <span className="text-[10px] text-white/80 uppercase mb-1 tracking-widest font-bold">
-              {key === 'PTS' ? 'PPG' : key === 'REB' ? 'RPG' : 'APG'}
-            </span>
-            <span className="text-2xl md:text-3xl font-black text-white">{bioData.stats[key]}</span>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 w-full md:w-3/5 bg-black/40">
+      {showStatsBar && (
+        <div className="flex flex-row w-full md:w-2/5 border-b md:border-b-0 md:border-r border-white/20 bg-black/20">
+          {(['PTS', 'REB', 'AST'] as const).map((key, i, arr) => (
+            <div key={key} className={`flex-1 flex flex-col justify-center items-center py-4 md:py-6 ${i < arr.length - 1 ? 'border-r border-white/20' : ''}`}>
+              <span className="text-[10px] text-white/80 uppercase mb-1 tracking-widest font-bold">
+                {key === 'PTS' ? 'PPG' : key === 'REB' ? 'RPG' : 'APG'}
+              </span>
+              <span className="text-2xl md:text-3xl font-black text-white">{bioData.stats[key]}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className={`grid grid-cols-2 md:grid-cols-4 w-full bg-black/40 ${showStatsBar ? 'md:w-3/5' : 'md:w-full'}`}>
         {[
           { label: 'Height',        val: bioData.h, border: 'border-r border-b' },
           { label: 'Weight',        val: bioData.w, border: 'border-r border-b' },
           { label: 'Country',       val: bioData.c, border: 'border-r border-b' },
-          { label: 'Last Attended', val: bioData.s, border: 'border-r border-b' },
+          { label: schoolLabel,     val: bioData.s, border: 'border-r border-b' },
           { label: 'Age',           val: bioData.a, border: 'border-r border-b' },
           { label: 'Birthdate',     val: bioData.b, border: 'border-b' },
           { label: 'Draft',         val: bioData.d, border: 'border-r' },

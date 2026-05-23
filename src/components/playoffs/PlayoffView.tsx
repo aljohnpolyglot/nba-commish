@@ -12,6 +12,7 @@ import { BracketLayout } from './bracket/BracketLayout';
 import { SeriesDetailPanel } from './detail/SeriesDetailPanel';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 import { useLeagueLabels } from '../../utils/leagueLabels';
+import { addDaysISO, shouldWarnForLottery } from './playoffDateGuards';
 
 export const PlayoffView: React.FC = () => {
   const { state, dispatchAction } = useGame();
@@ -20,7 +21,6 @@ export const PlayoffView: React.FC = () => {
   const playoffs = state.playoffs;
   const year = state.leagueStats.year;
 
-  // ─── State ────────────────────────────────────────────────────────────────
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
   const [selectedGameIdx, setSelectedGameIdx] = useState<number>(0);
   const [watchingGame, setWatchingGame] = useState<Game | null>(null);
@@ -54,20 +54,8 @@ export const PlayoffView: React.FC = () => {
   const [showLotteryWarning, setShowLotteryWarning] = useState(false);
   const [pendingSimFn, setPendingSimFn] = useState<(() => void) | null>(null);
 
-  const addDays = (dateStr: string, n = 1): string => {
-    const d = new Date(`${normalizeDate(dateStr)}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() + n);
-    return d.toISOString().slice(0, 10);
-  };
-
-  const needsLotteryWarning = (targetDate: string): boolean => {
-    if ((state as any).draftLotteryResult) return false;
-    const current = normalizeDate(state.date);
-    return current < lotteryDate && targetDate >= lotteryDate;
-  };
-
   const withLotteryGuard = (targetDate: string, fn: () => void) => {
-    if (needsLotteryWarning(targetDate)) {
+    if (shouldWarnForLottery(state.date, lotteryDate, targetDate, !!(state as any).draftLotteryResult)) {
       setPendingSimFn(() => fn);
       setShowLotteryWarning(true);
     } else {
@@ -114,7 +102,7 @@ export const PlayoffView: React.FC = () => {
   };
 
   const handleSimDay = () => {
-    const tomorrow = addDays(state.date);
+    const tomorrow = addDaysISO(state.date);
     withLotteryGuard(tomorrow, () => rosterGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY' } as any)));
   };
 
@@ -493,7 +481,7 @@ export const PlayoffView: React.FC = () => {
                     homeTeam, awayTeam, state.players,
                     pendingWatchGame.gid, pendingWatchGame.date,
                     state.stats.playerApproval,
-                    undefined, undefined, undefined, undefined, rig
+                    undefined, undefined, undefined, undefined, undefined, rig
                   );
                   setPrecomputedResult(preResult);
                 }

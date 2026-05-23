@@ -4,9 +4,6 @@ import type { TycoonState, TycoonTier } from '../../types/tycoon';
 import { TIER_BASE, getTierForClub } from '../../services/tycoon/specs/spain';
 import { academyBudgetCostEUR, sumStaffPayrollEUR } from '../../services/tycoon/economyScale';
 
-// Structural team shape — works for both NBATeam (`id`, `logoUrl`) and
-// NonNBATeam (`tid`, `imgURL`). The panel resolves the right field at
-// read time so callers don't need to adapt their team objects.
 export interface FinanceTeamLike {
   tid?: number;
   id?: number;
@@ -20,6 +17,18 @@ export interface FinanceTeamLike {
 
 const teamId   = (t: FinanceTeamLike): number => (t.tid ?? t.id ?? -1);
 const teamLogo = (t: FinanceTeamLike): string | undefined => t.imgURL ?? t.logoUrl;
+const teamStaffMarket = (t: FinanceTeamLike): 'nba' | 'euro' => {
+  const tid = teamId(t);
+  return tid >= 0 && tid < 100 ? 'nba' : 'euro';
+};
+const isACBClub = (t: FinanceTeamLike): boolean => {
+  const tid = teamId(t);
+  return tid >= 5000 && tid < 5100;
+};
+const isEuroLeagueClub = (t: FinanceTeamLike): boolean => {
+  const tid = teamId(t);
+  return tid >= 1000 && tid < 1100;
+};
 
 // ─── League Finances panel ────────────────────────────────────────────────────
 // Single-view finances overview (no nested subtabs). Mirrors the mockup's
@@ -55,7 +64,19 @@ const HEALTH_STYLES: Record<FinanceRow['health']['tone'], { dot: string; text: s
   critical:  { dot: 'bg-rose-500',    text: 'text-rose-400',    bg: 'bg-rose-500/10' },
 };
 
-function classifyHealth(profit: number): FinanceRow['health'] {
+function classifyHealth(team: FinanceTeamLike, profit: number, wageRevPct: number): FinanceRow['health'] {
+  if (isACBClub(team)) {
+    if (wageRevPct > 130 || profit < -8_000_000) return { label: 'Critical', tone: 'critical' };
+    if (profit < -4_000_000) return { label: 'Struggling', tone: 'risk' };
+    if (profit < -1_000_000) return { label: 'Caution', tone: 'stable' };
+    return { label: 'Healthy', tone: 'good' };
+  }
+  if (isEuroLeagueClub(team)) {
+    if (wageRevPct > 140 || profit < -20_000_000) return { label: 'Critical', tone: 'critical' };
+    if (profit < -10_000_000) return { label: 'Struggling', tone: 'risk' };
+    if (profit < -3_000_000) return { label: 'Caution', tone: 'stable' };
+    return { label: 'Healthy', tone: 'good' };
+  }
   if (profit < -1_000_000) return { label: 'Critical',  tone: 'critical' };
   if (profit < 250_000)    return { label: 'At Risk',   tone: 'risk' };
   if (profit < 1_000_000)  return { label: 'Stable',    tone: 'stable' };
@@ -77,6 +98,7 @@ function fmtMoney(value: number, symbol: string): string {
 function buildFinanceRow(team: FinanceTeamLike, players: NBAPlayer[]): FinanceRow {
   const t = team.tycoon ?? ((team as any).tycoon as TycoonState | undefined);
   const ledger = t?.ledgerHistory?.[t.ledgerHistory.length - 1];
+  const staffMarket = teamStaffMarket(team);
 
   let matchday = 0, sponsorship = 0, tv = 0;
   let wages = 0, staff = 0, facility = 0, scouting = 0, travel = 0, medical = 0, academy = 0;
@@ -92,7 +114,7 @@ function buildFinanceRow(team: FinanceTeamLike, players: NBAPlayer[]): FinanceRo
     sponsorship = ledger.revenue.sponsorship ?? 0;
     tv          = ledger.revenue.tv          ?? 0;
     wages       = ledger.expenses.wages      ?? liveWages;
-    staff       = sumStaffPayrollEUR(t) || (ledger.expenses.staff ?? 0);
+    staff       = sumStaffPayrollEUR(t, staffMarket) || (ledger.expenses.staff ?? 0);
     facility    = ledger.expenses.facility   ?? 0;
     scouting    = ledger.expenses.scouting   ?? 0;
     travel      = ledger.expenses.travel     ?? 0;
@@ -145,7 +167,7 @@ function buildFinanceRow(team: FinanceTeamLike, players: NBAPlayer[]): FinanceRo
       matchday = Math.round(wages * 0.32);
     }
 
-    staff = sumStaffPayrollEUR(t)
+    staff = sumStaffPayrollEUR(t, staffMarket)
          || Math.round(wages * 0.10);
 
     const facLevels = (t?.facilities?.stadium?.level ?? 1)
@@ -168,7 +190,7 @@ function buildFinanceRow(team: FinanceTeamLike, players: NBAPlayer[]): FinanceRo
   return {
     team, matchday, sponsorship, tv, totalRev,
     wages, staff, facility, scouting, travel, medical, academy, totalExp,
-    profit, wageRevPct, health: classifyHealth(profit),
+    profit, wageRevPct, health: classifyHealth(team, profit, wageRevPct),
   };
 }
 
@@ -249,6 +271,8 @@ export interface LeagueFinancesPanelProps {
 export const LeagueFinancesPanel: React.FC<LeagueFinancesPanelProps> = ({
   teams, players, displayName, shortName, currencySymbol: symbol, seasonYear,
 }) => {
+  const acbView = useMemo(() => teams.length > 0 && teams.every(isACBClub), [teams]);
+  const euroLeagueView = useMemo(() => teams.length > 0 && teams.every(isEuroLeagueClub), [teams]);
   const rows = useMemo(
     () => teams
       .map(team => buildFinanceRow(team, players))
@@ -295,6 +319,20 @@ export const LeagueFinancesPanel: React.FC<LeagueFinancesPanelProps> = ({
     { label: 'Medical',      value: totals.medical,  color: '#a855f7' },
     { label: 'Youth Academy', value: totals.academy, color: '#10b981' },
   ];
+  const healthLegend = (acbView || euroLeagueView)
+    ? [
+        { tone: 'good', label: 'Healthy' },
+        { tone: 'stable', label: 'Caution' },
+        { tone: 'risk', label: 'Struggling' },
+        { tone: 'critical', label: 'Critical' },
+      ] as const
+    : [
+        { tone: 'excellent', label: 'Excellent' },
+        { tone: 'good', label: 'Good' },
+        { tone: 'stable', label: 'Stable' },
+        { tone: 'risk', label: 'At Risk' },
+        { tone: 'critical', label: 'Critical' },
+      ] as const;
 
   return (
     <div className="space-y-5 p-4 md:p-6">
@@ -312,14 +350,14 @@ export const LeagueFinancesPanel: React.FC<LeagueFinancesPanelProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <SummaryCard
-          title="The money comes from"
+          title="Money in"
           total={totals.totalRev}
           totalColor="#34d399"
           symbol={symbol}
           slices={revenueSlices}
         />
         <SummaryCard
-          title="The money goes to"
+          title="Money out"
           total={totals.totalExp}
           totalColor="#f87171"
           symbol={symbol}
@@ -355,11 +393,11 @@ export const LeagueFinancesPanel: React.FC<LeagueFinancesPanelProps> = ({
               <tr className="text-[9px] uppercase tracking-widest text-slate-500 border-b border-white/5">
                 <th rowSpan={2} className="px-3 py-2 text-left font-bold">#</th>
                 <th rowSpan={2} className="px-3 py-2 text-left font-bold">Team</th>
-                <th colSpan={4} className="px-3 py-2 text-center font-bold border-l border-white/5">The Money Comes From</th>
+                <th colSpan={4} className="px-3 py-2 text-center font-bold border-l border-white/5">Money In</th>
                 <th rowSpan={2} className="px-3 py-2 text-right font-bold border-l border-white/5">Projected Profit</th>
-                <th colSpan={8} className="px-3 py-2 text-center font-bold border-l border-white/5">The Money Goes To</th>
+                <th colSpan={8} className="px-3 py-2 text-center font-bold border-l border-white/5">Money Out</th>
                 <th rowSpan={2} className="px-3 py-2 text-right font-bold border-l border-white/5">Wage / Rev</th>
-                <th rowSpan={2} className="px-3 py-2 text-center font-bold border-l border-white/5">Health</th>
+                <th rowSpan={2} className="px-3 py-2 text-center font-bold border-l border-white/5">Outlook</th>
               </tr>
               <tr className="text-[9px] uppercase tracking-widest text-slate-500 border-b border-white/5">
                 <th className="px-2 py-2 text-right font-bold border-l border-white/5">Matchday</th>
@@ -444,12 +482,14 @@ export const LeagueFinancesPanel: React.FC<LeagueFinancesPanelProps> = ({
           </table>
         </div>
         <div className="flex items-center justify-end gap-4 px-4 py-2.5 border-t border-white/5 text-[10px] font-bold uppercase tracking-widest">
-          {(Object.entries(HEALTH_STYLES) as Array<[FinanceRow['health']['tone'], typeof HEALTH_STYLES[FinanceRow['health']['tone']]]>).map(([tone, s]) => (
+          {healthLegend.map(({ tone, label }) => {
+            const s = HEALTH_STYLES[tone];
+            return (
             <span key={tone} className={`flex items-center gap-1.5 ${s.text}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-              {tone === 'risk' ? 'At Risk' : tone.charAt(0).toUpperCase() + tone.slice(1)}
+              {label}
             </span>
-          ))}
+          )})}
         </div>
       </div>
     </div>

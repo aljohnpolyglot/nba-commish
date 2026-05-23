@@ -201,6 +201,8 @@ function GameLayout() {
                 teamId: startPayload.userTeamId,
                 leagueId: euroCareerLeagueId ?? 'endesa',
                 seed: euroCareerSeed,
+                startDate: startPayload.startDate,
+                assistantGM: startPayload.assistantGM === true,
               },
             });
           }

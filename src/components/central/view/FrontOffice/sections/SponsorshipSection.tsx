@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Briefcase } from 'lucide-react';
+import { Briefcase } from 'lucide-react';
 import { formatCurrencyWithCode } from '../../../../../utils/helpers';
 import { ALL_SLOTS, type OneTimePayout, type SponsorshipSlot, type TycoonState } from '../../../../../types/tycoon';
 import { Line, SectionTitle } from '../shared/helpers';
@@ -7,6 +7,7 @@ import { SponsorLogo } from '../../../../tycoon/SponsorLogo';
 import { getIndustryLabel } from '../../../../../utils/sponsorLogos';
 import { getBrandMeta } from '../../../../../data/sponsorCatalogFetcher';
 import type { NegotiationMode } from '../../../../tycoon/SponsorshipNegotiationModal';
+import { getSponsorContractEndYear, isSponsorDueForRenewal } from '../../../../../services/tycoon/sponsorshipEngine';
 
 const SPONSOR_SLOT_LABELS: Record<SponsorshipSlot, string> = {
   kit: 'Kit Sponsor',
@@ -35,14 +36,16 @@ const ENDORSEMENT_SLOT_CAP = 4;
 export const SponsorshipSection: React.FC<{
   tycoon: TycoonState;
   currency: string;
+  currentYear: number;
   avgOpponentPrestige: number;
   marqueeOpponents: string[];
   onAction: (slot: SponsorshipSlot, mode: NegotiationMode) => void;
   onTicketMultChange: (mult: number) => void;
-}> = ({ tycoon, currency, avgOpponentPrestige, marqueeOpponents, onAction, onTicketMultChange: _onTicketMultChange }) => {
+}> = ({ tycoon, currency, currentYear, avgOpponentPrestige, marqueeOpponents, onAction, onTicketMultChange: _onTicketMultChange }) => {
   const [selectedSlot, setSelectedSlot] = useState<SponsorshipSlot>('kit');
   const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
-  const deals = ALL_SLOTS.map((slot) => ({ slot, deal: tycoon.sponsorships[slot] }));
+  const sponsorships = tycoon.sponsorships ?? {};
+  const deals = ALL_SLOTS.map((slot) => ({ slot, deal: sponsorships[slot] }));
   const activeDeals = deals.filter((item) => item.deal);
   const activeEndorsements = ((tycoon.oneTimePayouts ?? []) as OneTimePayout[])
     .filter((p) => p.kind === 'endorsement')
@@ -59,9 +62,9 @@ export const SponsorshipSection: React.FC<{
     if (years === undefined) return min;
     return min === null ? years : Math.min(min, years);
   }, null);
-  const selected = tycoon.sponsorships[selectedSlot];
+  const selected = sponsorships[selectedSlot];
   const placeholderCount = Math.max(0, ENDORSEMENT_SLOT_CAP - activeEndorsements.length);
-  const firstOpenSlot = ALL_SLOTS.find((s) => !tycoon.sponsorships[s]);
+  const firstOpenSlot = ALL_SLOTS.find((s) => !sponsorships[s]);
 
   return (
     <div className="space-y-6">
@@ -91,36 +94,14 @@ export const SponsorshipSection: React.FC<{
         </div>
       </div>
 
-      {(tycoon.pendingSponsorReview || (selected?.personalityProse)) && (
-        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5">
-          <div className="flex items-start gap-3">
-            <AlertTriangle size={20} className="text-amber-300 shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <div className="text-xs font-black uppercase tracking-widest text-amber-300">Sponsor Hooks</div>
-              {tycoon.pendingSponsorReview && (
-                <div className="mt-2 text-sm text-amber-50">
-                  Offseason review: {tycoon.pendingSponsorReview.openSlots.length} open slots, {tycoon.pendingSponsorReview.expiringSlots.length} expiring slots.
-                </div>
-              )}
-              {selected?.personalityProse && (
-                <div className="mt-2 text-sm text-slate-300">
-                  {selected.sponsor}: {selected.personality ?? 'Sponsor profile'} — {selected.personalityProse}
-                </div>
-              )}
-              {(tycoon.pendingSponsorReview?.conflictWarnings ?? []).map((warning: string) => (
-                <div key={warning} className="mt-2 text-sm text-rose-200">{warning}</div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="space-y-6">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
             <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-5">Sponsorship Portfolio</div>
             <div className="grid md:grid-cols-2 2xl:grid-cols-4 gap-4">
               {deals.map(({ slot, deal }) => {
                 const active = selectedSlot === slot;
+                const dueThisYear = isSponsorDueForRenewal(deal, currentYear);
+                const contractEndYear = getSponsorContractEndYear(deal);
                 return (
                   <button
                     key={slot}
@@ -129,12 +110,16 @@ export const SponsorshipSection: React.FC<{
                       onAction(slot, deal ? 'details' : 'find-new');
                     }}
                     className={`min-h-[190px] rounded-xl border p-4 text-left transition ${
-                      active ? 'border-amber-400 bg-amber-400/10' : 'border-slate-800 bg-slate-950/60 hover:border-slate-600'
+                      dueThisYear
+                        ? 'border-rose-500/50 bg-rose-500/10 hover:border-rose-400'
+                        : active
+                          ? 'border-amber-400 bg-amber-400/10'
+                          : 'border-slate-800 bg-slate-950/60 hover:border-slate-600'
                     }`}
                   >
                     <div className="flex items-start justify-between">
                       <div className="text-xs font-black uppercase tracking-widest text-slate-400">{SPONSOR_SLOT_LABELS[slot]}</div>
-                      <span className={`w-3 h-3 rounded-full ${deal ? 'bg-emerald-400' : 'bg-amber-300'}`} />
+                      <span className={`w-3 h-3 rounded-full ${dueThisYear ? 'bg-rose-400' : deal ? 'bg-emerald-400' : 'bg-amber-300'}`} />
                     </div>
                     <div className="mt-4 flex items-start gap-3">
                       {deal ? (
@@ -163,9 +148,14 @@ export const SponsorshipSection: React.FC<{
                       </div>
                       <div>
                         <div className="uppercase tracking-widest text-slate-500">Contract End</div>
-                        <div className="text-sm font-black text-white">{deal ? String(deal.signedYear + deal.yearsRemaining) : 'Market'}</div>
+                        <div className={`text-sm font-black ${dueThisYear ? 'text-rose-300' : 'text-white'}`}>{deal ? String(contractEndYear ?? '') : 'Market'}</div>
                       </div>
                     </div>
+                    {dueThisYear && (
+                      <div className="mt-3 inline-flex h-7 items-center justify-center rounded-lg border border-rose-400/50 bg-rose-500/10 px-2 text-xs font-black uppercase tracking-widest text-rose-200">
+                        Expires This Year
+                      </div>
+                    )}
                     <div className="mt-3 inline-flex h-7 min-w-7 items-center justify-center rounded-lg border border-amber-400/60 px-2 text-sm font-black text-amber-300">{SLOT_GRADES[slot]}</div>
                   </button>
                 );

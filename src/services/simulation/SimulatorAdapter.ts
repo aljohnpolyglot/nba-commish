@@ -20,6 +20,7 @@ export interface SimulateGameArgs {
   awayOverridePlayers?: Player[];
   isAllStar?: boolean;
   isRisingStars?: boolean;
+  isEliminationGame?: boolean;
   riggedForTid?: number;
   homeKnobs?: SimulatorKnobs;
   awayKnobs?: SimulatorKnobs;

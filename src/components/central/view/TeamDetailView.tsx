@@ -9,7 +9,7 @@ import { GameBar } from './GameBar';
 import { TeamDetailHeader } from './TeamDetailHeader';
 import { TeamStatsCards } from './TeamStatsCards';
 import { ContractTimeline } from '../../shared/ContractTimeline';
-import { TeamTransactionsTab } from './TransactionsView';
+import { TeamTransactionsTab } from './TeamTransactionsTab';
 import { PlayerStatsView } from './PlayerStatsView';
 import { isOnRoster, resolveAnyTeam } from '../../../utils/teamLookup';
 interface TeamDetailViewProps {

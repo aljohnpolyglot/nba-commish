@@ -2,6 +2,7 @@ import { NBAPlayer, NBATeam } from '../../types';
 import { MoodTrait, MoodComponents } from './moodTypes';
 import { effectiveRecord } from '../salaryUtils';
 import { getFamilyOnRoster } from '../familyTies';
+import { getTeamTravelGameplayEffects } from '../../services/tycoon/travelGameplayEffects';
 
 // ── Normalize BBGM letter codes → full MoodTrait names ────────────────────────
 // BBGM stores traits as single-char letters: "F"=DIVA, "L"=LOYAL, "$"=MERCENARY, "W"=COMPETITOR
@@ -136,6 +137,9 @@ export function computeMoodScore(
     familyDelta = Math.min(3, familyCount);
   }
 
+  // ── Travel comfort ─────────────────────────────────────────────────────────
+  const travelDelta = team ? getTeamTravelGameplayEffects(team as any).moodComponent : 0;
+
   // ── Seeded noise ───────────────────────────────────────────────────────────
   let dateSeed = 0;
   for (let i = 0; i < dateStr.length; i++) dateSeed += dateStr.charCodeAt(i);
@@ -198,6 +202,7 @@ export function computeMoodScore(
     roleStability: clamp(role, -3, 2),
     marketSize: clamp(marketDelta, -3, 6),
     familyTies: clamp(familyDelta, 0, 3),
+    travelComfort: clamp(travelDelta, -1.5, 1.5),
     noise: clamp(noiseDelta, -1, 1),
   };
 

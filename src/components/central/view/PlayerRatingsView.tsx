@@ -3,16 +3,16 @@ import { Search, ChevronUp, ChevronDown, LayoutList, Rows3, SlidersHorizontal } 
 import { evaluateFilter } from '../../../utils/filterUtils';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
-import { calculateK2, K2_CATS, K2Data } from '../../../services/simulation/convert2kAttributes';
-import { getDisplayOverall, getDisplayPotential } from '../../../utils/playerRatings';
+import { K2_CATS, K2Data } from '../../../services/simulation/convert2kAttributes';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
-import { applyLeagueDisplayScale } from '../../../hooks/useLeagueScaledRatings';
-import { getRealDurability, applyDurabilityToK2 } from '../../../utils/durabilityUtils';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 import { isEuroIsolatedMode } from '../../../utils/uiMode';
 import { fuzzRatingValue } from '../../../utils/scoutingFuzz';
-
-// Category summary config
+import {
+  ensurePlayerRatingData,
+  resolvePlayerRatingBundle,
+  usePlayerRatingStore,
+} from '../../../store/playerRatingStore';
 const CAT_CONFIG = [
   { key: 'OS' as const, label: 'SCR', full: 'Outside Scoring' },
   { key: 'AT' as const, label: 'ATH', full: 'Athleticism' },
@@ -24,8 +24,6 @@ const CAT_CONFIG = [
 ] as const;
 
 type CatKey = typeof CAT_CONFIG[number]['key'];
-
-// Sub-attribute abbreviations matching K2_CATS sub order
 const SUB_ABBREVS: Record<CatKey, string[]> = {
   OS: ['CLO', 'MID', '3PT', 'FT', 'SIQ', 'OCN'],
   AT: ['SPD', 'AGI', 'STR', 'VRT', 'STA', 'HST', 'TGH'],
@@ -35,8 +33,6 @@ const SUB_ABBREVS: Record<CatKey, string[]> = {
   RB: ['ORB', 'DRB'],
   MI: ['DUR'],
 };
-
-// Sub-attribute full names matching K2_CATS sub order
 const SUB_FULL: Record<CatKey, string[]> = {
   OS: ['Close Shot', 'Mid-Range', 'Three-Point', 'Free Throw', 'Shot IQ', 'Off. Consistency'],
   AT: ['Speed', 'Agility', 'Strength', 'Vertical', 'Stamina', 'Hustle', 'Toughness'],
@@ -54,10 +50,9 @@ const CAT_COLORS: Record<CatKey, string> = {
   PL: '#3b82f6',
   DF: '#8b5cf6',
   RB: '#eab308',
-  MI: '#06b6d4', // cyan
+  MI: '#06b6d4',
 };
-
-type SortField = 'name' | 'age' | 'ovr' | 'pot' | CatKey | string; // string covers detail sub keys like 'OS.0' or 'MI.0'
+type SortField = 'name' | 'age' | 'ovr' | 'pot' | CatKey | string;
 
 interface RowData {
   player: NBAPlayer;
@@ -86,7 +81,6 @@ function RatingCell({ value }: { value: number }) {
 }
 
 function getSubVal(row: RowData, key: string): number {
-  // key format: 'OS.0', 'AT.3', etc.
   const [cat, idxStr] = key.split('.');
   const idx = Number(idxStr);
   return (row.k2 as any)[cat]?.sub[idx] ?? 50;
@@ -94,8 +88,12 @@ function getSubVal(row: RowData, key: string): number {
 
 export const PlayerRatingsView: React.FC = () => {
   const { state } = useGame();
-  // One hook owns the whole name-click → actions → bio / ratings / sign / waive stack.
   const quick = usePlayerQuickActions();
+  const ratingVersion = usePlayerRatingStore(s => s.version);
+
+  React.useEffect(() => {
+    ensurePlayerRatingData();
+  }, []);
 
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -111,42 +109,19 @@ export const PlayerRatingsView: React.FC = () => {
   const season = state.leagueStats?.year ?? new Date().getFullYear();
 
   const currentYear = season;
-
-  // Build row data
   const rows: RowData[] = useMemo(() => {
     return state.players
       .filter(p => isEuroIsolatedMode(state)
         ? p.status === 'Euroleague' || p.status === 'Endesa'
         : p.status === 'Active' || p.status === 'Free Agent' || p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect')
       .map(player => {
-        const ratings = player.ratings?.find((r: any) => r.season === season)
-          ?? player.ratings?.[player.ratings?.length - 1]
-          ?? {};
-        const defaults = {
-          hgt: 50, stre: 50, spd: 50, jmp: 50, endu: 50,
-          ins: 50, dnk: 50, ft: 50, fg: 50, tp: 50,
-          oiq: 50, diq: 50, drb: 50, pss: 50, reb: 50,
-        };
-        const rawR = { ...defaults, ...ratings };
-        // Apply league-strength nerf for display (mirrors sim getScaledRating multipliers)
-        const r = applyLeagueDisplayScale(player.status, rawR);
-        const age = (player as any).born?.year ? currentYear - (player as any).born.year : player.age || 0;
-        const rawK2 = calculateK2(r as any, {
-          pos: player.pos,
-          heightIn: player.hgt,
-          weightLbs: player.weight,
-          age,
-        });
-        // Patch MI.sub[0] with injury-history durability so it agrees with the bio.
-        const realDur = getRealDurability(player);
-        const k2 = applyDurabilityToK2(rawK2, realDur);
-        // Canonical single-source-of-truth helpers — same functions every
-        // other view uses (NBA Central, Team Office, modals, drafts).
-        const ovr = fuzzRatingValue(getDisplayOverall(player, season), state, player);
-        const pot = fuzzRatingValue(getDisplayPotential(player, currentYear, season), state, player, 'pot');
+        const bundle = resolvePlayerRatingBundle(player, currentYear, season);
+        const k2 = bundle.displayK2;
+        const ovr = fuzzRatingValue(bundle.overall2k, state, player);
+        const pot = fuzzRatingValue(bundle.potential2k, state, player, 'pot');
         return {
           player,
-          age,
+          age: bundle.age,
           ovr,
           pot,
           k2,
@@ -159,9 +134,7 @@ export const PlayerRatingsView: React.FC = () => {
           MI: fuzzRatingValue(k2.MI.ovr, state, player, 'MI'),
         };
       });
-  }, [state, state.players, season]); // currentYear is stable within a session
-
-  // Filter
+  }, [state, state.players, season, currentYear, ratingVersion]);
   const filtered = useMemo(() => {
     let r = rows;
     if (teamFilter !== 'all') {
@@ -190,8 +163,6 @@ export const PlayerRatingsView: React.FC = () => {
     }
     return r;
   }, [rows, teamFilter, search, colFilters]);
-
-  // Sort
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
       let cmp = 0;
@@ -225,9 +196,6 @@ export const PlayerRatingsView: React.FC = () => {
   };
 
   const nbaTeams = state.teams.filter(t => t.id >= 0).sort((a, b) => a.name.localeCompare(b.name));
-
-  // Summary columns — pos/age shown below name, not separate columns.
-  // MI (Misc) category's only sub is Durability — shows up as its own column here.
   const summaryColumns: { key: SortField; label: string; title?: string; sticky?: boolean }[] = [
     { key: 'name', label: 'Name', sticky: true },
     { key: 'age',  label: 'AGE' },
@@ -235,9 +203,6 @@ export const PlayerRatingsView: React.FC = () => {
     { key: 'pot',  label: 'POT', title: 'Potential' },
     ...CAT_CONFIG.map(c => ({ key: c.key as SortField, label: c.label, title: c.full })),
   ];
-
-  // Detail columns: name sticky, then AGE + OVR, then all subs grouped by category
-  // (including MI → Durability as the last category).
   const detailColumns: { key: SortField; label: string; title?: string; catKey?: CatKey; sticky?: boolean }[] = [
     { key: 'name', label: 'Name', sticky: true },
     { key: 'age',  label: 'AGE' },
@@ -252,21 +217,16 @@ export const PlayerRatingsView: React.FC = () => {
   }
 
   const columns = detailMode ? detailColumns : summaryColumns;
-
-  // PlayerBioView takes over the whole view when active.
   if (quick.fullPageView) return quick.fullPageView;
 
   return (
     <div className="h-full overflow-hidden flex flex-col p-4 md:p-8">
-      {/* Page header */}
       <div className="flex-shrink-0 mb-6">
         <h2 className="text-3xl font-black text-white uppercase tracking-tight">Player Ratings</h2>
         <p className="text-slate-500 font-medium">Attribute ratings for all players</p>
       </div>
 
-      {/* Filters */}
       <div className="flex-shrink-0 flex flex-col sm:flex-row gap-3 mb-4">
-        {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
@@ -278,7 +238,6 @@ export const PlayerRatingsView: React.FC = () => {
           />
         </div>
 
-        {/* Team filter */}
         <select
           value={teamFilter}
           onChange={e => { setTeamFilter(e.target.value); setPage(0); }}
@@ -292,7 +251,6 @@ export const PlayerRatingsView: React.FC = () => {
           ))}
         </select>
 
-        {/* Detail toggle */}
         <button
           onClick={() => setDetailMode(prev => !prev)}
           className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
@@ -306,7 +264,6 @@ export const PlayerRatingsView: React.FC = () => {
           {detailMode ? 'Summary' : 'Detailed'}
         </button>
 
-        {/* Column filter toggle */}
         <button
           onClick={() => setShowColFilters(prev => !prev)}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${

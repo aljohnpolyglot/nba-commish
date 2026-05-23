@@ -18,6 +18,7 @@ import {
 
 const pick = <T>(a: T[]): T => a[~~(Math.random() * a.length)];
 const makeId = (suffix: string) => `gen-${Math.random().toString(36).substr(2, 9)}-${suffix}`;
+const scoreTotal = (scores: number[] = []) => scores.reduce((sum, score) => sum + (Number(score) || 0), 0);
 
 function initPool(stats: PlayerGameStats[], players: NBAPlayer[], tm: TeamId): PlayerPool[] {
   if (!stats) return [];
@@ -108,6 +109,25 @@ function buildSubLine(
   };
 }
 
+function clampScoresToFinal(lines: PlayLine[], homeFinal: number, awayFinal: number): PlayLine[] {
+  if (!Number.isFinite(homeFinal) || !Number.isFinite(awayFinal)) return lines;
+
+  let homeScore = 0;
+  let awayScore = 0;
+  return lines.map((line, index) => {
+    const nextHome = Math.min(Math.max(Number(line.cs ?? homeScore) || 0, homeScore), homeFinal);
+    const nextAway = Math.min(Math.max(Number(line.ds ?? awayScore) || 0, awayScore), awayFinal);
+    homeScore = nextHome;
+    awayScore = nextAway;
+
+    if (index === lines.length - 1 || line.id === 'final') {
+      return { ...line, cs: homeFinal, ds: awayFinal };
+    }
+
+    return { ...line, cs: nextHome, ds: nextAway };
+  });
+}
+
 export async function genPlays(
   homeStats: PlayerGameStats[],
   awayStats: PlayerGameStats[],
@@ -121,6 +141,8 @@ export async function genPlays(
 ): Promise<PlayLine[]> {
   const homePool = initPool(homeStats, players, 'HOME');
   const awayPool = initPool(awayStats, players, 'AWAY');
+  const expectedHomeFinal = scoreTotal(quarterScores.home);
+  const expectedAwayFinal = scoreTotal(quarterScores.away);
 
   const tipWinner: TeamId = Math.random() > 0.5 ? 'HOME' : 'AWAY';
   const tipLoser:  TeamId = tipWinner === 'HOME' ? 'AWAY' : 'HOME';
@@ -289,7 +311,7 @@ export async function genPlays(
 
   const winningTeamStr = gameWinner 
     ? (homePool.some(p => p.id === gameWinner.playerId) ? 'HOME' : 'AWAY')
-    : (cs > ds ? 'HOME' : 'AWAY');
+    : (expectedHomeFinal > expectedAwayFinal ? 'HOME' : 'AWAY');
 
   if (gameWinner && gameWinner.isWalkoff && allLines.length > 0) {
     const gw = gameWinner;
@@ -400,15 +422,15 @@ export async function genPlays(
         desc,
         type: 'gameOver',
         player: player || undefined,
-        cs: lastLine.cs,
-        ds: lastLine.ds,
+        cs: expectedHomeFinal,
+        ds: expectedAwayFinal,
         q: lastLine.q,
         possession: lastPossessionTeam,
       });
     }
   }
 
-  return allLines;
+  return clampScoresToFinal(allLines, expectedHomeFinal, expectedAwayFinal);
 }
 
 function buildGameWinnerDesc(

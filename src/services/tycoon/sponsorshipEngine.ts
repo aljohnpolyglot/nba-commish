@@ -90,7 +90,8 @@ export function classifySponsor(name: string): Pick<Sponsorship, 'industry' | 'a
 }
 
 export function getSponsorConflictWarnings(state: TycoonState): string[] {
-  const deals = ALL_SLOTS.map(slot => state.sponsorships[slot]).filter(Boolean) as Sponsorship[];
+  const sponsorships = state.sponsorships ?? {};
+  const deals = ALL_SLOTS.map(slot => sponsorships[slot]).filter(Boolean) as Sponsorship[];
   const gamblingCount = deals.filter(d => d.industry === 'gambling' || d.archetype === 'gambling').length;
   const beerEnergyCount = deals.filter(d => d.industry === 'beer' || d.industry === 'energy_drink').length;
   const premiumCount = deals.filter(d => d.archetype === 'premium').length;
@@ -132,7 +133,7 @@ export function getMarketOffer(
   starBoost: number = 0,
   overrideSponsor?: string,
 ): SponsorshipOffer {
-  const existing = state.sponsorships[slot];
+  const existing = state.sponsorships?.[slot];
   const successBonus = recentSuccessBonus(history);
   const loyaltyBonus = existing ? 0.10 : 0;
   const penalty = state.nextRenewalPenaltyFactor ?? 1.0;
@@ -171,6 +172,7 @@ export function getMarketOffer(
 }
 
 export function applyRenewal(state: TycoonState, slot: SponsorshipSlot, offer: SponsorshipOffer, currentYear: number): void {
+  state.sponsorships = state.sponsorships ?? {};
   const existingHistory = state.sponsorships[slot]?.relationshipHistory ?? [];
   state.sponsorships[slot] = {
     sponsor: offer.sponsor,
@@ -231,10 +233,25 @@ export function computeBrandImpact(offer: SponsorshipOffer, state: TycoonState):
 }
 
 export function applyDecline(state: TycoonState, slot: SponsorshipSlot): void {
+  state.sponsorships = state.sponsorships ?? {};
   state.sponsorships[slot] = null;
 }
 
+export function getSponsorContractEndYear(sponsor?: Sponsorship | null): number | null {
+  if (!sponsor) return null;
+  const signedYear = Number(sponsor.signedYear);
+  const yearsRemaining = Number(sponsor.yearsRemaining);
+  if (!Number.isFinite(signedYear) || !Number.isFinite(yearsRemaining)) return null;
+  return signedYear + yearsRemaining;
+}
+
+export function isSponsorDueForRenewal(sponsor: Sponsorship | null | undefined, currentYear: number): boolean {
+  const endYear = getSponsorContractEndYear(sponsor);
+  return endYear != null && endYear <= currentYear;
+}
+
 export function dekrementSponsorshipYears(state: TycoonState): void {
+  state.sponsorships = state.sponsorships ?? {};
   ALL_SLOTS.forEach(slot => {
     const s = state.sponsorships[slot];
     if (!s) return;
@@ -272,5 +289,5 @@ export function seedInitialSponsorships(
 }
 
 export function hasExpiredSlot(state: TycoonState): boolean {
-  return ALL_SLOTS.some(s => state.sponsorships[s] === null);
+  return ALL_SLOTS.some(s => state.sponsorships?.[s] === null);
 }

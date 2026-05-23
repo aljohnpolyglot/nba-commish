@@ -1,0 +1,18 @@
+# Codex hunks NOT found on current disk for src/components/draft/DraftSimulatorView.tsx
+# 2 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=10 line=103 ts=2026-05-13T07:14:28.747Z ---
+ import { ensureNonNBAFetched, getNonNBAGistData } from '../central/view/nonNBACache';
+-import { PlayerBioView } from '../central/view/PlayerBioView';
++import { getPlayerImage, PlayerBioView } from '../central/view/PlayerBioView';
+ import { normalizeTeamJerseyNumbers, pickJerseyNumber } from '../../utils/jerseyUtils';
+ import type { NBAPlayer } from '../../types';
++import { MyFace, isRealFaceConfig } from '../shared/MyFace';
+
+--- HUNK [op#1 hunk#0] session=10 line=111 ts=2026-05-13T07:15:08.988Z ---
+ import { ensureNonNBAFetched, getNonNBAGistData } from '../central/view/nonNBACache';
+-import { getPlayerImage, PlayerBioView } from '../central/view/PlayerBioView';
++import { PlayerBioView } from '../central/view/PlayerBioView';
++import { getPlayerImage } from '../central/view/bioCache';

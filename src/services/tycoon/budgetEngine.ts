@@ -1,7 +1,7 @@
 import type { NBATeam } from '../../types';
 import type { AnnualLedger, TycoonState } from '../../types/tycoon';
 import { TIER_BASE } from './specs/spain';
-import { academyBudgetCostEUR, sumStaffPayrollEUR } from './economyScale';
+import { academyBudgetCostEUR, fallbackStaffPayrollEUR, sumStaffPayrollEUR } from './economyScale';
 
 export interface BudgetContext {
   year: number;
@@ -60,13 +60,11 @@ function averageAttendancePct(tier: TycoonState['tier'], success: number): numbe
 }
 
 function wagesEUR(team: NBATeam, allPlayers?: any[]): number {
-  // contract.amount in BBGM-thousands; × 1000 = USD; treated as EUR 1:1 in Euro mode
   const players = allPlayers ?? (team as any).players ?? [];
   const tid = (team as any).tid ?? team.id;
-  const total = players
+  return players
     .filter((p: any) => p.tid === tid)
     .reduce((sum: number, p: any) => sum + ((p.contract?.amount ?? 0) * 1000), 0);
-  return Math.round(total);
 }
 
 export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayers?: any[]): AnnualLedger {
@@ -82,7 +80,7 @@ export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayer
   const matchday = Math.round(capacity * attendancePct * tb.ticketPrice * ticketMult * 30);
 
   const slotRev = (slot: 'kit' | 'sleeve' | 'stadium'): number => {
-    const s = t.sponsorships[slot];
+    const s = t.sponsorships?.[slot];
     if (s) return s.valuePerYear;
     return Math.round(tb.sponsorshipFloor[slot] * 0.5);
   };
@@ -108,7 +106,13 @@ export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayer
   const transfer = 0;
 
   const wages = wagesEUR(team, allPlayers);
-  const staff = sumStaffPayrollEUR(t) || Math.round(wages * 0.10);
+  const staff = sumStaffPayrollEUR({
+    ...t,
+    staffMembers: (t.staffMembers ?? []).map(member => ({
+      ...member,
+      salary: member.salary,
+    })),
+  } as any, 'euro') || fallbackStaffPayrollEUR(wages);
   const facilityLevelSum = (t.facilities?.stadium?.level ?? 1)
     + (t.facilities?.trainingCenter?.level ?? 1)
     + (t.facilities?.academy?.level ?? 1);

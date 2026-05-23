@@ -1,0 +1,18 @@
+# Codex hunks NOT found on current disk for src/components/players/view/FreeAgentCard.tsx
+# 3 hunks unapplied. Total ops: 1
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=11 line=550 ts=2026-05-13T17:42:57.574Z ---
+ import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
+ import { isPlausibleActiveMarket } from '../../../services/freeAgencyBidding';
++import { formatFuzzedRating } from '../../../utils/scoutingFuzz';
+
+--- HUNK [op#0 hunk#1] session=11 line=550 ts=2026-05-13T17:42:57.574Z ---
+   const age = player.born?.year ? simYear - player.born.year : player.age || 0;
+   const ovr = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
++  const displayOvr = formatFuzzedRating(ovr, state, player);
+
+--- HUNK [op#0 hunk#2] session=11 line=550 ts=2026-05-13T17:42:57.574Z ---
+-              <span className="text-[10px] font-black text-white">{ovr}</span>
++              <span className="text-[10px] font-black text-white">{displayOvr}</span>

@@ -3,7 +3,7 @@ import { runPossession } from './possession';
 import { BoxAccumulator } from './boxScoreAccumulator';
 import { RotationManager } from './rotationManager';
 
-const AVG_POSSESSION_SEC = 13.4; // calibrated to land PACE ≈ 98 poss/team/48
+const AVG_POSSESSION_SEC = 13.2; // calibrated to land PACE just under 100 poss/team/48
 const POSSESSION_VARIANCE_SEC = 5.5;
 
 export interface PeriodResult {
@@ -91,7 +91,8 @@ export function simulatePeriod(
 }
 
 function pickRebounder(unit: OnCourt) {
-  const weights = unit.composites.map(c => Math.pow(c.rebound, 1.7));
+  const reboundExp = unit.isEuroClubGame ? 1.75 : 2.35;
+  const weights = unit.composites.map(c => Math.pow(c.rebound, reboundExp));
   const total = weights.reduce((s, w) => s + w, 0);
   if (total <= 0) return unit.composites[0];
   let roll = Math.random() * total;

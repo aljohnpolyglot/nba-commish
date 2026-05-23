@@ -1,14 +1,3 @@
-/**
- * DraftScoutingModal.tsx
- * Shared scouting modal opened from:
- *  - DraftScoutingView (mock-draft slot click)
- *  - DraftSimulatorView (Available Players row click)
- *
- * Three tabs: Overview / Scouting Report / Skill Profile.
- * No numeric attribute ratings shown — qualitative only.
- * Archetype name is HIDDEN everywhere.
- */
-
 import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ShieldAlert, Heart, Zap, Target } from 'lucide-react';
@@ -29,8 +18,8 @@ import {
   posBucketFor as scoutPosBucket,
 } from '../../services/scoutingReport';
 import type { GistProspect } from '../../services/draftScoutingGist';
-
-// ── Types ────────────────────────────────────────────────────────────────────
+import { findCollegeTeamProfile, type CollegeTeamProfile } from '../../services/collegeTeamCatalog';
+import { HybridRadarChart, letterColor, ordinal, tierColor } from './DraftScoutingModalShared';
 
 export interface DraftScoutingModalProps {
   player: NBAPlayer | null;
@@ -58,114 +47,12 @@ export interface DraftScoutingModalProps {
 
 type Tab = 'overview' | 'scouting' | 'skill';
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function letterColor(score: number): string {
-  if (score >= 82) return '#3b82f6'; // A — blue
-  if (score >= 70) return '#22c55e'; // B — green
-  if (score >= 58) return '#eab308'; // C — yellow
-  if (score >= 46) return '#f97316'; // D — orange
-  return '#f43f5e'; // F — red
-}
-
-function tierColor(label: string): string {
-  if (/superstar|all-star/i.test(label)) return '#3b82f6';
-  if (/quality starter|borderline/i.test(label)) return '#22c55e';
-  if (/solid starter|bench rotation/i.test(label)) return '#eab308';
-  if (/g-league|deep bench/i.test(label)) return '#f97316';
-  return '#94a3b8';
-}
-
-function ordinal(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
-
-// ── Octagonal radar chart ────────────────────────────────────────────────────
-// 8 axes, no numeric badges on dots, dashed reference polygon for class average.
-
-function HybridRadarChart({
-  values,
-  baseline,
-  axes,
-}: {
-  values: number[];
-  baseline: number[];
-  axes: string[];
-}) {
-  const cx = 250, cy = 250, maxR = 175;
-  const n = axes.length;
-  const angle = (i: number) => (Math.PI * 2 * i) / n - Math.PI / 2;
-  const pt = (i: number, r: number) => ({
-    x: cx + r * Math.cos(angle(i)),
-    y: cy + r * Math.sin(angle(i)),
-  });
-  const polyPoints = (r: number) =>
-    Array.from({ length: n }, (_, i) => pt(i, r))
-      .map(p => `${p.x},${p.y}`).join(' ');
-
-  // Skill scores are 25–99 BBGM-scale. Draft prospects realistically peak at ~80,
-  // so compress the denominator so mid-range scores (50–70) fill the chart properly.
-  const scale = (v: number) => Math.max(0, Math.min(1, (v - 25) / 55)) * maxR;
-
-  const dataPoly = values.map((v, i) => pt(i, scale(v)))
-    .map(p => `${p.x},${p.y}`).join(' ');
-  const basePoly = baseline.map((v, i) => pt(i, scale(v)))
-    .map(p => `${p.x},${p.y}`).join(' ');
-
-  return (
-    <svg viewBox="0 0 500 500" width="100%" className="max-w-sm mx-auto">
-      {/* Reference rings */}
-      {[0.33, 0.66, 1].map(f => (
-        <polygon key={f} points={polyPoints(maxR * f)} fill="none" stroke="#334155" strokeWidth="1" />
-      ))}
-
-      {/* Axis spokes */}
-      {Array.from({ length: n }, (_, i) => {
-        const tip = pt(i, maxR);
-        return <line key={i} x1={cx} y1={cy} x2={tip.x} y2={tip.y} stroke="#334155" strokeWidth="1" />;
-      })}
-
-      {/* Class-average baseline (dashed) */}
-      <polygon points={basePoly} fill="rgba(148,163,184,0.10)" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 4" />
-
-      {/* Player polygon */}
-      <polygon points={dataPoly} fill="rgba(59,130,246,0.30)" stroke="#3b82f6" strokeWidth="2.5" />
-
-      {/* Player dots — no numeric badges per spec */}
-      {values.map((_, i) => {
-        const p = pt(i, scale(values[i]));
-        return <circle key={i} cx={p.x} cy={p.y} r="4" fill="#60a5fa" />;
-      })}
-
-      {/* Axis labels */}
-      {Array.from({ length: n }, (_, i) => {
-        const lp = pt(i, maxR + 30);
-        let anchor: 'start' | 'middle' | 'end' = 'middle';
-        if (lp.x < cx - 20) anchor = 'end';
-        else if (lp.x > cx + 20) anchor = 'start';
-        return (
-          <text key={i} x={lp.x} y={lp.y} textAnchor={anchor}
-            fontSize="11" fontWeight="700" fill="#cbd5e1">
-            {axes[i]}
-          </text>
-        );
-      })}
-    </svg>
-  );
-}
-
-// ── Main modal ───────────────────────────────────────────────────────────────
-
 export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
   player, onClose, classProspects, activePlayers, percentilesByPos,
   classAverages, draftYear, gistData, ranks, teamLogoUrl, onViewPlayerBio,
   onConfirmPick, pickLabel, preComputedComps,
 }) => {
   const [tab, setTab] = useState<Tab>('overview');
-
-  // Reset to Overview each time a new player opens.
   React.useEffect(() => { setTab('overview'); }, [player?.internalId]);
 
   const data = useMemo(() => {
@@ -188,6 +75,8 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
 
   const cohort = player ? scoutPosBucket(player.pos) : 'Class';
   const cohortMaps = percentilesByPos.get(cohort);
+  const collegeName = player ? (gistData?.college || (player as any).college) : undefined;
+  const collegeProfile = useMemo(() => findCollegeTeamProfile(collegeName), [collegeName]);
 
   return (
     <AnimatePresence>
@@ -202,14 +91,13 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
           initial={{ scale: 0.96, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 20 }}
           className="bg-slate-900 border border-slate-800 w-full h-full md:h-auto md:max-h-[92vh] md:max-w-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col"
         >
-          {/* ── Header ─────────────────────────────────────────────────────── */}
           <div className="flex-shrink-0 p-4 md:p-6 border-b border-slate-800 bg-slate-900/80">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-4 min-w-0 flex-1">
                 <PlayerPortrait
                   imgUrl={player.imgURL || gistData?.headshot}
                   face={(player as any).face}
-                  teamLogoUrl={teamLogoUrl}
+                  teamLogoUrl={collegeProfile?.logoUrl || teamLogoUrl}
                   playerName={player.name}
                   size={64}
                 />
@@ -224,11 +112,10 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
                   </h2>
                   <p className="text-xs text-slate-400 font-medium mt-0.5">
                     {player.pos}
-                    {(player as any).college && <> &middot; {(player as any).college}</>}
+                    {collegeName && <> &middot; {collegeName}</>}
                     {player.age != null && <> &middot; Age {player.age}</>}
                     {data.physical.heightDisplay && <> &middot; {data.physical.heightDisplay}</>}
                   </p>
-                  {/* Ceiling / Floor tier badges */}
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     <span
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border"
@@ -243,7 +130,6 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
                       Floor: {data.report.floor}
                     </span>
                   </div>
-                  {/* Rank chips */}
                   {(ranks?.consensus || ranks?.espn || ranks?.noCeilings) && (
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                       {ranks.consensus != null && (
@@ -274,7 +160,6 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
             </div>
           </div>
 
-          {/* ── Tab strip ──────────────────────────────────────────────────── */}
           <div className="flex-shrink-0 px-4 md:px-6 pt-3 border-b border-slate-800 bg-slate-900/40">
             <div className="flex rounded-xl overflow-hidden border border-slate-700 mb-3">
               {(['overview', 'scouting', 'skill'] as Tab[]).map(t => (
@@ -295,7 +180,6 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
             </div>
           </div>
 
-          {/* ── Body ───────────────────────────────────────────────────────── */}
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6">
             {tab === 'overview' && (
               <OverviewTab
@@ -324,7 +208,6 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
             )}
           </div>
 
-          {/* ── Confirm Pick footer (draft simulator only) ──────────────── */}
           {onConfirmPick && (
             <div className="flex-shrink-0 p-3 bg-slate-950/60 border-t border-slate-800 flex justify-end gap-2">
               <button
@@ -348,8 +231,6 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
   );
 };
 
-// ── Overview tab ─────────────────────────────────────────────────────────────
-
 const OverviewTab: React.FC<{
   blurb: string;
   physical: ReturnType<typeof getPhysicalSnapshot>;
@@ -359,12 +240,10 @@ const OverviewTab: React.FC<{
   onClose: () => void;
 }> = ({ blurb, physical, comparisons, gistData, onViewPlayerBio, onClose }) => (
   <div className="space-y-5">
-    {/* Background blurb */}
     <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4">
       <p className="text-sm text-slate-200 leading-relaxed">{blurb}</p>
     </div>
 
-    {/* Physical snapshot */}
     <div>
       <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Physical Snapshot</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -382,7 +261,6 @@ const OverviewTab: React.FC<{
       </div>
     </div>
 
-    {/* College stats — only when gist supplied them */}
     {gistData?.stats && (gistData.stats.pts != null || gistData.stats.reb != null || gistData.stats.ast != null) && (
       <div>
         <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">College Stats</h3>
@@ -402,7 +280,6 @@ const OverviewTab: React.FC<{
       </div>
     )}
 
-    {/* Pro comparisons — clickable cards open the comp player's bio */}
     {comparisons.length > 0 && (
       <div>
         <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">
@@ -447,8 +324,6 @@ const OverviewTab: React.FC<{
   </div>
 );
 
-// ── Scouting Report tab ──────────────────────────────────────────────────────
-
 const ScoutingReportTab: React.FC<{
   report: ReturnType<typeof generateStructuredScoutingReport>;
   tendencies: ReturnType<typeof getTendencies>;
@@ -460,7 +335,6 @@ const ScoutingReportTab: React.FC<{
 
   return (
     <div className="space-y-5">
-      {/* Strengths */}
       <div>
         <h3 className="text-[10px] font-black uppercase text-emerald-400 tracking-widest mb-2 flex items-center gap-1.5">
           <Zap size={11} /> Strengths
@@ -477,7 +351,6 @@ const ScoutingReportTab: React.FC<{
         </ul>
       </div>
 
-      {/* Weaknesses */}
       <div>
         <h3 className="text-[10px] font-black uppercase text-rose-400 tracking-widest mb-2 flex items-center gap-1.5">
           <ShieldAlert size={11} /> Weaknesses
@@ -494,7 +367,6 @@ const ScoutingReportTab: React.FC<{
         </ul>
       </div>
 
-      {/* Medical concern */}
       {report.medicalConcern && (
         <div className="bg-rose-950/40 border border-rose-900/60 rounded-xl p-3 flex gap-3">
           <Heart size={16} className="text-rose-400 flex-shrink-0 mt-0.5" />
@@ -505,7 +377,6 @@ const ScoutingReportTab: React.FC<{
         </div>
       )}
 
-      {/* Tendencies — TeamIntel-style narrative bullets */}
       <div>
         <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2 flex items-center gap-1.5">
           <Target size={11} /> Tendencies & Fit
@@ -526,7 +397,6 @@ const ScoutingReportTab: React.FC<{
         </div>
       </div>
 
-      {/* Risk profile */}
       <div>
         <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Risk Profile</h3>
         <div className="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 space-y-3">
@@ -536,7 +406,6 @@ const ScoutingReportTab: React.FC<{
               {risk.bustRisk}
             </span>
           </div>
-          {/* Floor → Ceiling bar */}
           <div>
             <div className="flex justify-between mb-1.5">
               <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Floor</div>
@@ -567,8 +436,6 @@ const ScoutingReportTab: React.FC<{
   );
 };
 
-// ── Skill Profile tab ────────────────────────────────────────────────────────
-
 const SkillProfileTab: React.FC<{
   grades: Record<SkillAxis, { score: number; letter: string }>;
   cohortMaps: ClassPercentileMaps | undefined;
@@ -580,7 +447,6 @@ const SkillProfileTab: React.FC<{
 
   return (
     <div className="space-y-5">
-      {/* Radar */}
       <div className="bg-slate-800/30 border border-slate-800 rounded-2xl p-3">
         <HybridRadarChart values={values} baseline={baseline} axes={SKILL_AXES as unknown as string[]} />
         <div className="flex items-center justify-center gap-4 text-[10px] font-bold mt-1">
@@ -593,7 +459,6 @@ const SkillProfileTab: React.FC<{
         </div>
       </div>
 
-      {/* Letter-grade grid with position-relative percentiles */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {SKILL_AXES.map(axis => {
           const g = grades[axis];

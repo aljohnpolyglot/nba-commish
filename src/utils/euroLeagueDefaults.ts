@@ -154,6 +154,26 @@ export function userQualifiesForContinental(state: StateWithTeams): boolean {
   return conTeams.some(t => t.id === state.userTeamId);
 }
 
+export function isEuroVisibleScheduleGame(state: StateWithTeams, game: Game): boolean {
+  if (game.competitionId) {
+    const allowedIds = new Set([
+      ...(state.activeCompetitions ?? []).map(c => c.id),
+      'endesa',
+      'euroleague',
+      'copa-del-rey',
+      'supercopa',
+    ]);
+    if (!allowedIds.has(game.competitionId)) return false;
+
+    const con = getContinentalCompetition(state);
+    if (con?.id === game.competitionId && !userQualifiesForContinental(state)) return false;
+    return true;
+  }
+
+  if ((game as any).isPreseason && (game.homeTid >= 100 || game.awayTid >= 100)) return true;
+  return game.homeTid >= 100 && game.awayTid >= 100;
+}
+
 export function filterBoxScoresByLeagueTab<B extends { competitionId?: string }>(
   state: StateWithTeams,
   tabId: LeagueTabId,

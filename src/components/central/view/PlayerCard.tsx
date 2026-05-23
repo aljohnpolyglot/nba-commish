@@ -1,11 +1,11 @@
 import React from 'react';
 import { Activity } from 'lucide-react';
 import { NBAPlayer, NBATeam } from '../../../types';
-import { convertTo2KRating } from '../../../utils/helpers';
 import { getPlayerImage } from './bioCache';
 import { useGame } from '../../../store/GameContext';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
+import { getDisplayAge, getDisplayOverall } from '../../../store/playerRatingStore';
 
 interface PlayerCardProps {
   player: NBAPlayer;
@@ -17,6 +17,7 @@ interface PlayerCardProps {
 export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionClick, hideNbaContractBadges = false }) => {
   const { state } = useGame();
   const simYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const age = getDisplayAge(player, simYear);
   const isInjured = player.injury && player.injury.type !== 'Healthy' && player.injury.gamesRemaining > 0;
   const isSuspended = player.suspension && player.suspension.gamesRemaining > 0;
   const isAvailable = !isInjured && !isSuspended;
@@ -81,7 +82,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
              </div>
           )}
           <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-slate-950 rounded-full flex items-center justify-center border-2 border-slate-800">
-            <span className="text-[10px] font-black text-white">{convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp)}</span>
+            <span className="text-[10px] font-black text-white">{getDisplayOverall(player, simYear)}</span>
           </div>
         </div>
         <div className="flex-1 min-w-0">
@@ -94,7 +95,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
               {player.pos}
             </span>
             <span className="bg-slate-500/10 text-slate-400 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
-              {simYear - (player.born?.year || 2000)} YRS
+              {age} YRS
             </span>
             {isTwoWay && (
               <span className="bg-purple-500/15 text-purple-300 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">

@@ -1,0 +1,105 @@
+# Codex hunks NOT found on current disk for src/components/shared/PlayButton.tsx
+# 6 hunks unapplied. Total ops: 5
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=1819 ts=2026-05-11T02:46:32.367Z ---
+ import { Tab } from '../../types';
+ import { useDraftEventGate } from '../../hooks/useDraftEventGate';
+ import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
+ import { useTeamOptionGate } from '../../hooks/useTeamOptionGate';
+ import { useExpiringResignGate } from '../../hooks/useExpiringResignGate';
+-import { getOffseasonState, type OffseasonPhase } from '../../services/offseason/offseasonState';
++import { getOffseasonState, isNoDraftLeague, type OffseasonPhase } from '../../services/offseason/offseasonState';
++import { isEuroIsolatedMode } from '../../utils/uiMode';
+
+--- HUNK [op#2 hunk#0] session=8 line=2594 ts=2026-05-11T12:04:01.903Z ---
+ function findLastCompetitionRegularDate(state: any, competitionId?: string): string | null {
+   return maxScheduledDate((state.schedule ?? []).filter((g: any) =>
+     !g.played &&
+     isCompetitionRegularPhase(g) &&
+     (!competitionId || g.competitionId === competitionId)
+   ));
+ }
+ 
++function competitionRegularComplete(state: any, competitionId: string): boolean {
++  return !(state.schedule ?? []).some((g: any) =>
++    g.competitionId === competitionId &&
++    !g.played &&
++    isCompetitionRegularPhase(g)
++  );
++}
++
++function competitionRoundDate(state: any, seasonYear: number, competitionId: string, phases: string[], edge: 'start' | 'end'): string | null {
++  const spec = (state.activeCompetitions ?? []).find((c: any) => c.id === competitionId);
++  const round = spec?.playoffFormat?.rounds?.find((r: any) => phases.includes(r.phase));
++  const date = round?.[edge];
++  if (!date) return null;
++  const year = date.month >= 9 ? seasonYear - 1 : seasonYear;
++  return `${year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
++}
++
+ function pushFutureOption(options: PlayOption[], norm: string, label: string, date: string | null, action: (date: string) => void) {
+   if (date && date > norm && !options.some(opt => opt.label === label)) {
+     options.push({ label, action: () => action(date) });
+   }
+ }
+
+--- HUNK [op#3 hunk#0] session=8 line=2598 ts=2026-05-11T12:04:25.307Z ---
+       const currentOrNextFixture = minScheduledDate((state.schedule ?? []).filter((g: any) =>
+         fixtureFilter(g) && normalizeDate(g.date) >= norm
+       ));
+       const endesaRegularEnd = findLastCompetitionRegularDate(state, 'endesa');
+       const euroleagueRegularEnd = findLastCompetitionRegularDate(state, 'euroleague');
+-      const euroleaguePlayInStart = findFirstCompetitionDate(state, 'euroleague', ['play-in']);
+-      const euroleagueQfStart = findFirstCompetitionDate(state, 'euroleague', ['qf']);
+-      const euroleagueFinalFourStart = findFirstCompetitionDate(state, 'euroleague', ['sf', 'final']);
+-      const euroleagueSeasonEnd = findLastCompetitionDate(state, 'euroleague');
+-      const endesaSeasonEnd = findLastCompetitionDate(state, 'endesa');
+-      const allCompetitionEnd = findLastCompetitionDate(state);
++      const endesaRegularIsComplete = competitionRegularComplete(state, 'endesa');
++      const euroleagueRegularIsComplete = competitionRegularComplete(state, 'euroleague');
++      const endesaQfSpecStart = endesaRegularIsComplete
++        ? competitionRoundDate(state, seasonYear, 'endesa', ['qf', 'quarterfinals'], 'start')
++        : null;
++      const euroleagueQfSpecStart = euroleagueRegularIsComplete
++        ? competitionRoundDate(state, seasonYear, 'euroleague', ['qf', 'quarterfinals'], 'start')
++        : null;
++      const euroleagueFinalFourSpecStart = euroleagueRegularIsComplete
++        ? competitionRoundDate(state, seasonYear, 'euroleague', ['sf', 'semifinals', 'final-four'], 'start')
++        : null;
++      const euroleagueFinalSpecEnd = euroleagueRegularIsComplete
++        ? competitionRoundDate(state, seasonYear, 'euroleague', ['final', 'final-four'], 'end')
++        : null;
++      const endesaFinalSpecEnd = endesaRegularIsComplete
++        ? competitionRoundDate(state, seasonYear, 'endesa', ['final'], 'end')
++        : null;
++      const euroleaguePlayInStart = findFirstCompetitionDate(state, 'euroleague', ['play-in'])
++        ?? (euroleagueQfSpecStart ? addDays(euroleagueQfSpecStart, -8) : null);
++      const euroleagueQfStart = findFirstCompetitionDate(state, 'euroleague', ['qf']) ?? euroleagueQfSpecStart;
++      const euroleagueFinalFourStart = findFirstCompetitionDate(state, 'euroleague', ['sf', 'final']) ?? euroleagueFinalFourSpecStart;
++      const euroleagueSeasonEnd = findLastCompetitionDate(state, 'euroleague') ?? euroleagueFinalSpecEnd;
++      const endesaPlayoffStart = findFirstCompetitionDate(state, 'endesa', ['qf']) ?? endesaQfSpecStart;
++      const endesaSeasonEnd = findLastCompetitionDate(state, 'endesa') ?? endesaFinalSpecEnd;
++      const allCompetitionEnd = [findLastCompetitionDate(state), userInEuroleague ? euroleagueSeasonEnd : null, endesaSeasonEnd]
++        .filter((date): date is string => !!date)
++        .sort()
++        .at(-1) ?? null;
+       const trainingCampStr = toISODateString(getTrainingCampDate(seasonYear, ls));
+
+--- HUNK [op#3 hunk#1] session=8 line=2598 ts=2026-05-11T12:04:25.307Z ---
+       if (userInEuroleague) {
+         pushFutureOption(opts, norm, 'Through EuroLeague regular season', euroleagueRegularEnd, simThrough);
+       }
+       pushFutureOption(opts, norm, 'Through Liga Endesa regular season', endesaRegularEnd, simThrough);
++      pushFutureOption(opts, norm, 'Until Liga Endesa playoffs', endesaPlayoffStart, simToDate);
+       if (userInEuroleague) {
+         pushFutureOption(opts, norm, 'Until EuroLeague play-in', euroleaguePlayInStart, simToDate);
+
+--- HUNK [op#4 hunk#0] session=10 line=491 ts=2026-05-13T07:46:54.095Z ---
+-    const openingNightStr    = findFirstRegularSeasonDate(state) ?? toISODateString(getOpeningNightDate(seasonYear));
++    const openingNightStr    = findFirstRegularSeasonDate(state) ?? toISODateString(getOpeningNightDate(seasonYear, ls, state.schedule as any));
+
+--- HUNK [op#4 hunk#1] session=10 line=491 ts=2026-05-13T07:46:54.095Z ---
+-        const nextSeasonOpening = toISODateString(getOpeningNightDate(seasonYear));
++        const nextSeasonOpening = toISODateString(getOpeningNightDate(seasonYear, ls, state.schedule as any));

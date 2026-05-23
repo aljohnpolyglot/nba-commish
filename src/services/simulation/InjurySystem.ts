@@ -7,6 +7,7 @@ import {
   BODY_PART_TO_INJURIES,
 } from '../../data/playerInjuryData';
 import { getRealDurability } from '../../utils/durabilityUtils';
+import { getTeamMedicalGameplayEffects } from '../staff/staffGameplayEffects';
 
 export interface PlayerInjuryEvent {
   playerId: string;
@@ -366,6 +367,7 @@ export class InjurySystem {
 
     for (const player of players) {
       if (player.injury && player.injury.gamesRemaining > 0) continue;
+      const team = player.tid === homeTeam.id ? homeTeam : awayTeam;
 
       // ── Base rate ──────────────────────────────────────────────────────
       let injuryRate = BASE_INJURY_RATE;
@@ -387,6 +389,7 @@ export class InjurySystem {
       // further for teams investing in performance science budget.
       const fatigue = Math.max(0, Math.min(100, (player as any).trainingFatigue ?? 0));
       injuryRate *= 1 + (fatigue / 100) * 0.2;
+      injuryRate *= getTeamMedicalGameplayEffects(team as any).injuryRiskMultiplier;
 
       // ── Load management for stars vs weak opponents ────────────────────
       const opponentTeam = player.tid === homeTeam.id ? awayTeam : homeTeam;

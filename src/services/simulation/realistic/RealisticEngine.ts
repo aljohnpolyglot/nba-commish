@@ -1,6 +1,6 @@
 import { NBAPlayer as Player, NBATeam as Team } from '../../../types';
 import { GameResult, PlayerGameStats } from '../types';
-import { SimulatorKnobs, KNOBS_DEFAULT } from '../SimulatorKnobs';
+import { SimulatorKnobs, KNOBS_DEFAULT, isEuroClubCompetitionGame } from '../SimulatorKnobs';
 import { StatGenerator } from '../StatGenerator';
 import { activeClubDebuffs } from '../StatGenerator/helpers';
 import { Defense2KService } from '../../Defense2KService';
@@ -18,11 +18,22 @@ import { InjurySystem, enforceSeasonEndingMinimum } from '../InjurySystem';
 import { generateFight } from '../../FightGenerator';
 import { getInjuries, getRandomInjury } from '../../injuryService';
 import { getRealDurability } from '../../../utils/durabilityUtils';
+import {
+  applyStaffGameEffectsToRoster,
+  getTeamCoachingGameplayEffects,
+  getTeamMedicalGameplayEffects,
+} from '../../staff/staffGameplayEffects';
+import { getTeamTravelGameplayEffects } from '../../tycoon/travelGameplayEffects';
 
 interface PrepResult {
   rotation: Player[];
   minuteTargets: number[];
   composites: PlayerComposite[];
+  isEuroClubGame: boolean;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 function prepareUnit(
@@ -34,12 +45,13 @@ function prepareUnit(
   lead: number,
 ): PrepResult {
   const plan = resolveRotationPlan(team, allPlayers, season, knobs, lead, override);
-  const rotation = plan.rotation;
+  const rotation = applyStaffGameEffectsToRoster(plan.rotation, team as any);
+  const euroClubGame = isEuroClubCompetitionGame(team, knobs);
   if (rotation.length === 0) {
-    return { rotation: [], minuteTargets: [], composites: [] };
+    return { rotation: [], minuteTargets: [], composites: [], isEuroClubGame: euroClubGame };
   }
   const composites = rotation.map(p => buildComposite(p, season));
-  return { rotation, minuteTargets: plan.minuteTargets, composites };
+  return { rotation, minuteTargets: plan.minuteTargets, composites, isEuroClubGame: euroClubGame };
 }
 
 /**
@@ -161,8 +173,8 @@ export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
   // Possession-by-possession rotation managers — handle foul-out, foul-trouble
   // pulls, fatigue stretches, and minute-target burn-down. The starting 5 are
   // the top-rotation players seeded by getRotation order.
-  const homeMgr = new RotationManager(home.rotation, home.composites, home.minuteTargets);
-  const awayMgr = new RotationManager(away.rotation, away.composites, away.minuteTargets);
+  const homeMgr = new RotationManager(home.rotation, home.composites, home.minuteTargets, home.isEuroClubGame);
+  const awayMgr = new RotationManager(away.rotation, away.composites, away.minuteTargets, away.isEuroClubGame);
 
   let homeScore = 0;
   let awayScore = 0;
@@ -196,6 +208,19 @@ export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
     quarterScoresHome.push(r.homeScore);
     quarterScoresAway.push(r.awayScore);
   }
+
+  const highLeverageGame = !!homeKnobs.isPlayoffs || !!awayKnobs.isPlayoffs || !!args.isEliminationGame;
+  const homeCoaching = getTeamCoachingGameplayEffects(args.homeTeam as any);
+  const awayCoaching = getTeamCoachingGameplayEffects(args.awayTeam as any);
+  const awayTravel = getTeamTravelGameplayEffects(args.awayTeam as any);
+  const coachingDiff = (highLeverageGame ? homeCoaching.playoffStrengthBonus : homeCoaching.regularStrengthBonus)
+    - (highLeverageGame ? awayCoaching.playoffStrengthBonus : awayCoaching.regularStrengthBonus);
+  const coachingSwing = clamp(Math.round(coachingDiff * 0.35), -4, 4);
+  if (coachingSwing > 0) homeScore += coachingSwing;
+  else if (coachingSwing < 0) awayScore += Math.abs(coachingSwing);
+  const travelSwing = clamp(Math.round(awayTravel.awayStrengthBonus * 1.6), -2, 2);
+  if (travelSwing > 0) awayScore += travelSwing;
+  else if (travelSwing < 0) homeScore += Math.abs(travelSwing);
 
   // Distribute actual minutes from the rotation manager (replaces the static target).
   acc.setMinutes(home.rotation, homeMgr.getMinutesPlayed());
@@ -292,7 +317,8 @@ export function simulateGameRealistic(args: SimulateGameArgs): GameResult {
         min < 25  ? 0.85 :
         min < 35  ? 1.15 :
                     1.45;
-      const injuryChance = preseasonFactor * fatigueRiskMult * 0.012 * minuteExposureMult * durabilityRiskMult;
+      const medical = getTeamMedicalGameplayEffects(player.tid === args.homeTeam.id ? args.homeTeam as any : args.awayTeam as any);
+      const injuryChance = preseasonFactor * fatigueRiskMult * 0.012 * minuteExposureMult * durabilityRiskMult * medical.injuryRiskMultiplier;
       if (Math.random() >= injuryChance) continue;
 
       const drawn = getRandomInjury(injuryDefs);

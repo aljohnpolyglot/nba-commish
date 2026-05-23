@@ -4,6 +4,14 @@ import { X, Zap, Swords, Shield, HeartPulse, Users, Calendar, Activity, ChevronR
 import { Allocations, TrainingParadigm } from '../types';
 import { systemDescriptions, defensiveSystemDescriptions } from '../lib/coachSliders';
 import { Tooltip } from './ToolTip';
+import {
+  ACCENT_CLASSES,
+  getIntensityDescription,
+  PARADIGM_ACTIVE_CLASSES,
+  PARADIGM_CHECK_TEXT,
+  PARADIGM_DEFAULT_SYSTEMS,
+  PARADIGM_TEMPLATES,
+} from './dailyPlanModalConfig';
 
 interface Props {
   isOpen: boolean;
@@ -33,122 +41,6 @@ interface Props {
 //   - If a player is set to High Intensity but plays 0 minutes in a game, they treat the 
 //     game as a rest day, resetting fatigue compounding.
 //   - Game minutes provide both experience points and natural development.
-
-// Default systems to seed when the user picks a paradigm but never opens the
-// system picker. Without this, byOffense / byDefense stay empty forever and
-// the "Top Systems Drilled" widget never populates — so reps land only in the
-// flat scalar familiarity, leaving per-system specialization unused.
-const PARADIGM_DEFAULT_SYSTEMS: Record<TrainingParadigm, string[]> = {
-  Balanced:   ['Pace and Space', 'Man-to-Man'],
-  Offensive:  ['Pace and Space', 'Five-Out Drive', 'Man-to-Man'],
-  Defensive:  ['Pace and Space', 'Drop Coverage', 'Man-to-Man'],
-  Biometrics: [],
-  Recovery:   [],
-};
-
-const PARADIGM_TEMPLATES: Record<TrainingParadigm, { label: string; intensity: number; allocations: Allocations; icon: React.ReactNode; color: string; tooltip: string }> = {
-  'Balanced': {
-    label: 'Balanced',
-    intensity: 50,
-    allocations: { offense: 30, defense: 30, conditioning: 20, recovery: 20 },
-    icon: <Zap size={20} />,
-    color: 'sky',
-    tooltip: 'Balanced: Linearly builds Offensive & Defensive System Familiarity.'
-  },
-  'Offensive': {
-    label: 'Offensive Heavy',
-    intensity: 50,
-    allocations: { offense: 60, defense: 10, conditioning: 10, recovery: 20 },
-    icon: <Swords size={20} />,
-    color: 'rose',
-    tooltip: 'Offensive Heavy: Rapidly builds Offensive System Familiarity.'
-  },
-  'Defensive': {
-    label: 'Defensive Grind',
-    intensity: 50,
-    allocations: { offense: 10, defense: 60, conditioning: 10, recovery: 20 },
-    icon: <Shield size={20} />,
-    color: 'indigo',
-    tooltip: 'Defensive Grind: Rapidly builds Defensive System Familiarity.'
-  },
-  'Biometrics': {
-    label: 'Biometrics Focus',
-    intensity: 50,
-    allocations: { offense: 10, defense: 10, conditioning: 60, recovery: 20 },
-    icon: <Users size={20} />,
-    color: 'purple',
-    tooltip: 'Biometrics Focus: Prevents age-related regression in physical stats, but stunts skill growth.'
-  },
-  'Recovery': {
-    label: 'Load Management',
-    intensity: 15,
-    allocations: { offense: 5, defense: 5, conditioning: 10, recovery: 80 },
-    icon: <HeartPulse size={20} />,
-    color: 'violet',
-    tooltip: 'Load Management: Minimizes physical strain while focusing on IQ film study.'
-  }
-};
-
-// Concrete-class lookups so Tailwind JIT picks them up. These match the
-// PlayerProgressionModal panel/icon-pill language (slate-950/40 panels,
-// bg-{accent}-600/20 icon pill, text-{accent}-400 icon, paradigm-tinted
-// active states with no bright bg-blue-600 anywhere).
-const ACCENT_CLASSES = {
-  sky:     { iconBg: 'bg-sky-600/20',     iconText: 'text-sky-400' },
-  orange:  { iconBg: 'bg-orange-600/20',  iconText: 'text-orange-400' },
-  emerald: { iconBg: 'bg-emerald-600/20', iconText: 'text-emerald-400' },
-  indigo:  { iconBg: 'bg-indigo-600/20',  iconText: 'text-indigo-400' },
-  rose:    { iconBg: 'bg-rose-600/20',    iconText: 'text-rose-400' },
-} as const;
-
-const PARADIGM_ACTIVE_CLASSES: Record<TrainingParadigm, string> = {
-  Balanced:   'bg-sky-500/15 border-sky-400/60 ring-1 ring-sky-400/30 shadow-lg shadow-sky-900/20',
-  Offensive:  'bg-rose-500/15 border-rose-400/60 ring-1 ring-rose-400/30 shadow-lg shadow-rose-900/20',
-  Defensive:  'bg-indigo-500/15 border-indigo-400/60 ring-1 ring-indigo-400/30 shadow-lg shadow-indigo-900/20',
-  Biometrics: 'bg-purple-500/15 border-purple-400/60 ring-1 ring-purple-400/30 shadow-lg shadow-purple-900/20',
-  Recovery:   'bg-violet-500/15 border-violet-400/60 ring-1 ring-violet-400/30 shadow-lg shadow-violet-900/20',
-};
-
-const PARADIGM_CHECK_TEXT: Record<TrainingParadigm, string> = {
-  Balanced:   'text-sky-200',
-  Offensive:  'text-rose-200',
-  Defensive:  'text-indigo-200',
-  Biometrics: 'text-purple-200',
-  Recovery:   'text-violet-200',
-};
-
-const getIntensityDescription = (paradigm: TrainingParadigm, intensity: number) => {
-  const desc: Record<TrainingParadigm, Record<string, string>> = {
-    'Balanced': {
-      low: 'Film study, walk-throughs',
-      mid: 'Competitive drills, balanced reps',
-      high: 'Full-speed 5v5, game intensity'
-    },
-    'Offensive': {
-      low: 'Offensive film, spacing work',
-      mid: 'Live offensive sets, game speed',
-      high: 'Explosive 5v5 offense, max reps'
-    },
-    'Defensive': {
-      low: 'Defensive schemes, closeouts',
-      mid: 'Live defensive 5v5, pressure',
-      high: 'Full-speed defense, game intensity'
-    },
-    'Biometrics': {
-      low: 'Mobility, flexibility, prehab',
-      mid: 'Speed & strength drills',
-      high: 'Max effort vertical, plyometrics'
-    },
-    'Recovery': {
-      low: 'Film study, light treatment',
-      mid: 'Film study, light activation',
-      high: 'Film study, mobility work'
-    }
-  };
-
-  const bracket = intensity < 40 ? 'low' : intensity < 70 ? 'mid' : 'high';
-  return desc[paradigm][bracket];
-};
 
 export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: initIntensity, allocations: initAllocations, paradigm: initParadigm, top5Systems, onSave }: Props) {
   const [localIntensity, setLocalIntensity] = useState(initIntensity);
@@ -248,14 +140,14 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                      </div>
                      <div>
                         <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tighter leading-none mb-1 md:mb-2 lg:text-3xl">
-                          {day === 0 ? (activity || 'Configure Default') : `Configure Day ${day}`}
+                          {day === 0 ? 'Team Practice Template' : `Plan Day ${day}`}
                         </h2>
                         <div className="flex flex-wrap items-center gap-2 md:gap-3">
                            {day !== 0 && (
                              <span className="text-[8px] md:text-[10px] font-black bg-slate-800 text-slate-400 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-slate-700 uppercase tracking-widest">{activity}</span>
                            )}
                            <Activity size={10} className="text-slate-600 md:w-3 md:h-3" />
-                           <span className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Training Plan</span>
+                           <span className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Practice Plan</span>
                         </div>
                      </div>
                   </div>
@@ -286,7 +178,7 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                                  </div>
                               </Tooltip>
                            </div>
-                           <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Sets global physical demand</p>
+                           <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">How hard the day should feel</p>
                         </div>
                      </div>
                      <span className={`text-2xl md:text-3xl font-black tabular-nums ${localIntensity > 85 ? 'text-red-500' : 'text-sky-300'}`}>
@@ -346,9 +238,9 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
 
                     {/* Risk Labels area */}
                     <div className="flex justify-between px-1 md:px-2 text-[8px] md:text-[10px] font-black text-slate-600 uppercase tracking-widest">
-                       <span>Low Load</span>
-                       <span className="text-sky-400/60">Optimal Dev</span>
-                       <span className="text-rose-400/60 text-right">High Risk</span>
+                       <span>Light</span>
+                       <span className="text-sky-400/60">Balanced</span>
+                       <span className="text-rose-400/60 text-right">Heavy</span>
                     </div>
 
                     {/* Description area */}
@@ -368,7 +260,7 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                      </div>
                      <div>
                         <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">Training Focus</h4>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Pick a paradigm template</p>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Choose the kind of day you want</p>
                      </div>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
@@ -413,7 +305,7 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                      </div>
                      <div>
                         <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">Focus Distribution</h4>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">How the day's minutes split</p>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Where the staff spends its time</p>
                      </div>
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
@@ -443,11 +335,11 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                                  </div>
                               </Tooltip>
                            </div>
-                           <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Up to five sets to drill</p>
+                           <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Choose up to five sets to rehearse</p>
                         </div>
                      </div>
                      <span className="text-[9px] md:text-xs font-black uppercase tracking-widest text-slate-500">
-                        {localSystems.length} / 5 Selected
+                        {localSystems.length} / 5 Chosen
                      </span>
                   </div>
 
@@ -522,7 +414,7 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                  }}
                  className="px-6 md:px-8 py-2 md:py-3 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center gap-2 bg-indigo-500/90 hover:bg-indigo-400 text-white shadow-indigo-500/20"
                >
-                 Save Plan <ChevronRight size={12} className="md:w-3.5 md:h-3.5" />
+                 Save Changes <ChevronRight size={12} className="md:w-3.5 md:h-3.5" />
                </button>
             </div>
           </motion.div>

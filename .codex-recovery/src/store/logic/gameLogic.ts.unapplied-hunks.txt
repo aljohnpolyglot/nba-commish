@@ -1,0 +1,162 @@
+# Codex hunks NOT found on current disk for src/store/logic/gameLogic.ts
+# 25 hunks unapplied. Total ops: 8
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=221 ts=2026-05-10T20:53:38.363Z ---
+ import { generateSchedule } from '../../services/gameScheduler';
++import { generateForCompetition } from '../../services/competition/competitionScheduler';
+
+--- HUNK [op#0 hunk#1] session=8 line=221 ts=2026-05-10T20:53:38.363Z ---
+         finalSchedule = generateSchedule(state.teams, result.christmasGames || state.christmasGames, result.globalGames || state.globalGames, state.leagueStats.numGamesDiv ?? null, state.leagueStats.numGamesConf ?? null, state.leagueStats.mediaRights, scheduleYear, _cupGroups.length > 0 ? _cupGroups : undefined, state.saveId);
++        if (state.activeCompetitions?.length) {
++          const nonNbaTeams = state.nonNBATeams ?? [];
++          const compGames = state.activeCompetitions.flatMap((spec, index) => {
++            const league = spec.id === 'endesa' ? 'Endesa' : spec.id === 'euroleague' ? 'Euroleague' : 'Endesa';
++            const teams = nonNbaTeams.filter(t => t.league === league).slice(0, spec.teamCount ?? nonNbaTeams.length).map(t => ({ tid: t.tid }));
++            const start = new Date(`${scheduleYear - 1}-${String(spec.seasonStart.month).padStart(2, '0')}-${String(spec.seasonStart.day).padStart(2, '0')}T00:00:00Z`);
++            return generateForCompetition(spec, teams, start, 700_000 + index * 50_000);
++          });
++          finalSchedule = [...finalSchedule, ...compGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
++        }
+
+--- HUNK [op#1 hunk#0] session=8 line=1477 ts=2026-05-11T02:24:40.522Z ---
+ import { generateSchedule } from '../../services/gameScheduler';
+ import { generateForCompetition } from '../../services/competition/competitionScheduler';
++import { injectCompetitionPostseasonGames } from '../../services/competition/competitionResolver';
+
+--- HUNK [op#1 hunk#1] session=8 line=1477 ts=2026-05-11T02:24:40.522Z ---
+     // ── END PLAYOFFS LOGIC ────────────────────────────────────────────────────
++    finalSchedule = injectCompetitionPostseasonGames(
++        { ...stateWithSim, schedule: finalSchedule, boxScores: [...(state.boxScores || []), ...boxScoresWithDate] },
++        stateWithSim.activeCompetitions ?? state.activeCompetitions ?? [],
++        stateWithSim.leagueStats?.year ?? state.leagueStats?.year ?? new Date().getFullYear(),
++    );
+ 
+     // Remove club debuffs for players who played in today's games
+
+--- HUNK [op#2 hunk#0] session=8 line=1691 ts=2026-05-11T02:35:34.927Z ---
+-import { generateForCompetition } from '../../services/competition/competitionScheduler';
++import { generateForCompetition, selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
+
+--- HUNK [op#2 hunk#1] session=8 line=1691 ts=2026-05-11T02:35:34.927Z ---
+         if (state.activeCompetitions?.length) {
+-          const nonNbaTeams = state.nonNBATeams ?? [];
+           const compGames = state.activeCompetitions.flatMap((spec, index) => {
+-            const league = spec.id === 'endesa' ? 'Endesa' : spec.id === 'euroleague' ? 'Euroleague' : 'Endesa';
+-            const teams = nonNbaTeams.filter(t => t.league === league).slice(0, spec.teamCount ?? nonNbaTeams.length).map(t => ({ tid: t.tid }));
++            const teams = selectCompetitionTeamTids(spec, state).map(tid => ({ tid }));
+             const start = new Date(`${scheduleYear - 1}-${String(spec.seasonStart.month).padStart(2, '0')}-${String(spec.seasonStart.day).padStart(2, '0')}T00:00:00Z`);
+             return generateForCompetition(spec, teams, start, 700_000 + index * 50_000);
+           });
+
+--- HUNK [op#3 hunk#0] session=8 line=1756 ts=2026-05-11T02:38:03.661Z ---
+-import { generateForCompetition, selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
++import { generateForCompetition, repairCompetitionSchedules, selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
+
+--- HUNK [op#3 hunk#1] session=8 line=1756 ts=2026-05-11T02:38:03.661Z ---
+     }
+     // ── END PLAYOFFS LOGIC ────────────────────────────────────────────────────
++    finalSchedule = repairCompetitionSchedules(
++        { ...stateWithSim, schedule: finalSchedule },
++        stateWithSim.activeCompetitions ?? state.activeCompetitions ?? [],
++        stateWithSim.leagueStats?.year ?? state.leagueStats?.year ?? new Date().getFullYear(),
++    );
+     finalSchedule = injectCompetitionPostseasonGames(
+         { ...stateWithSim, schedule: finalSchedule, boxScores: [...(state.boxScores || []), ...boxScoresWithDate] },
+
+--- HUNK [op#4 hunk#0] session=8 line=2371 ts=2026-05-11T09:01:04.453Z ---
+     // ── PLAYOFFS LOGIC ────────────────────────────────────────────────────────
+     // Prefer stateWithSim.playoffs — runSimulation may have already generated/advanced
+     // the bracket inside its day loop (handles multi-day sims that cross April 13).
+-    let playoffsPatch: PlayoffBracket | undefined = stateWithSim.playoffs ?? state.playoffs;
++    const euroIsolatedMode = state.leagueStats?.uiMode === 'euro_isolated';
++    let playoffsPatch: PlayoffBracket | undefined = euroIsolatedMode ? undefined : (stateWithSim.playoffs ?? state.playoffs);
+     const currentDateNorm2 = normalizeDate(dateString);
+ 
+     // 1. Generate bracket when regular season ends (around Apr 14)
+     const playoffSeasonYear = state.leagueStats?.year ?? new Date().getFullYear();
+-    if (!playoffsPatch && currentDateNorm2 >= `${playoffSeasonYear}-04-13`) {
++    if (!euroIsolatedMode && !playoffsPatch && currentDateNorm2 >= `${playoffSeasonYear}-04-13`) {
+
+--- HUNK [op#5 hunk#0] session=8 line=2393 ts=2026-05-11T09:02:48.968Z ---
+     const boxScoresWithDate = allSimResults.map(r => ({ ...r, date: r.date || state.date, season: state.leagueStats.year }));
++    const allowNBASeasonEvents = state.leagueStats?.uiMode !== 'euro_isolated';
+ 
+     // All-Star Logic
+
+--- HUNK [op#5 hunk#1] session=8 line=2393 ts=2026-05-11T09:02:48.968Z ---
+-    if (endDate >= dates.votingStart && startDate <= dates.votingEnd) {
++    if (allowNBASeasonEvents && endDate >= dates.votingStart && startDate <= dates.votingEnd) {
+
+--- HUNK [op#5 hunk#2] session=8 line=2393 ts=2026-05-11T09:02:48.968Z ---
+-    if (wasDateReached(dates.startersAnnounced) && !allStarPatch?.startersAnnounced) {
++    if (allowNBASeasonEvents && wasDateReached(dates.startersAnnounced) && !allStarPatch?.startersAnnounced) {
+
+--- HUNK [op#5 hunk#3] session=8 line=2393 ts=2026-05-11T09:02:48.968Z ---
+-    if (wasDateReached(dates.reservesAnnounced) && !allStarPatch?.reservesAnnounced) {
++    if (allowNBASeasonEvents && wasDateReached(dates.reservesAnnounced) && !allStarPatch?.reservesAnnounced) {
+
+--- HUNK [op#5 hunk#4] session=8 line=2393 ts=2026-05-11T09:02:48.968Z ---
+-    if (wasDateReached((dates as any).celebrityAnnounced) && !allStarPatch?.celebrityAnnounced) {
++    if (allowNBASeasonEvents && wasDateReached((dates as any).celebrityAnnounced) && !allStarPatch?.celebrityAnnounced) {
+
+--- HUNK [op#5 hunk#5] session=8 line=2393 ts=2026-05-11T09:02:48.968Z ---
+-    if (wasDateReached((dates as any).dunkContestAnnounced) && !allStarPatch?.dunkContestAnnounced) {
++    if (allowNBASeasonEvents && wasDateReached((dates as any).dunkContestAnnounced) && !allStarPatch?.dunkContestAnnounced) {
+
+--- HUNK [op#5 hunk#6] session=8 line=2393 ts=2026-05-11T09:02:48.968Z ---
+-    if (state.leagueStats.allStarThroneEnabled === true) {
++    if (allowNBASeasonEvents && state.leagueStats.allStarThroneEnabled === true) {
+
+--- HUNK [op#5 hunk#7] session=8 line=2393 ts=2026-05-11T09:02:48.968Z ---
+-    if (wasDateReached((dates as any).threePointAnnounced) && !allStarPatch?.threePointAnnounced) {
++    if (allowNBASeasonEvents && wasDateReached((dates as any).threePointAnnounced) && !allStarPatch?.threePointAnnounced) {
+
+--- HUNK [op#5 hunk#8] session=8 line=2393 ts=2026-05-11T09:02:48.968Z ---
+-    if (wasDateReached(dates.breakStart) && !allStarPatch?.gamesInjected) {
++    if (allowNBASeasonEvents && wasDateReached(dates.breakStart) && !allStarPatch?.gamesInjected) {
+
+--- HUNK [op#5 hunk#9] session=8 line=2393 ts=2026-05-11T09:02:48.968Z ---
+-    if ((simFriday || simSaturday || simSunday) && !allStarPatch?.weekendComplete) {
++    if (allowNBASeasonEvents && (simFriday || simSaturday || simSunday) && !allStarPatch?.weekendComplete) {
+
+--- HUNK [op#6 hunk#0] session=8 line=2402 ts=2026-05-11T09:03:43.377Z ---
+-    if (wasDateReached(getDraftLotteryDate(draftYear, state.leagueStats)) && !autoDraftLotteryResult) {
++    if (allowNBASeasonEvents && wasDateReached(getDraftLotteryDate(draftYear, state.leagueStats)) && !autoDraftLotteryResult) {
+
+--- HUNK [op#6 hunk#1] session=8 line=2402 ts=2026-05-11T09:03:43.377Z ---
+-    if (wasDateReached(hofCeremonyDate) && !hofAlready) {
++    if (allowNBASeasonEvents && wasDateReached(hofCeremonyDate) && !hofAlready) {
+
+--- HUNK [op#6 hunk#2] session=8 line=2402 ts=2026-05-11T09:03:43.377Z ---
+-    if (wasDateReached(getDraftDate(draftYear, state.leagueStats)) && !autoDraftComplete && !actionBlocksAutoDraft) {
++    if (allowNBASeasonEvents && wasDateReached(getDraftDate(draftYear, state.leagueStats)) && !autoDraftComplete && !actionBlocksAutoDraft) {
+
+--- HUNK [op#7 hunk#0] session=11 line=483 ts=2026-05-13T17:40:06.343Z ---
+ import { applyTradeToPlayer } from '../../utils/playerBirdRights';
++import { applyEuroTycoonDailyOps } from '../../services/tycoon/euroTycoonOps';
+
+--- HUNK [op#7 hunk#1] session=11 line=483 ts=2026-05-13T17:40:06.343Z ---
+     updatedPlayers = trainingMod.applyDailyFatigueTick(
+         updatedPlayers,
+         teamsAfterFamiliarity,
+         state.date,
+         daysToAdvance
+     );
++
++    const tycoonOps = applyEuroTycoonDailyOps(
++        { ...stateWithSim, schedule: finalSchedule, players: updatedPlayers } as GameState,
++        teamsAfterFamiliarity,
++        state.date,
++        dateString,
++        daysToAdvance,
++    );
+
+--- HUNK [op#7 hunk#2] session=11 line=483 ts=2026-05-13T17:40:06.343Z ---
+-        news: [...uniqueNewNews, ...(stateWithSim.news ?? state.news)],
+-        socialFeed: [...uniqueNewPosts, ...(stateWithSim.socialFeed ?? state.socialFeed)].slice(0, 500),
+-        teams: teamsAfterFamiliarity,
++        news: [...tycoonOps.news, ...uniqueNewNews, ...(stateWithSim.news ?? state.news)],
++        socialFeed: [...tycoonOps.socialFeed, ...uniqueNewPosts, ...(stateWithSim.socialFeed ?? state.socialFeed)].slice(0, 500),
++        teams: tycoonOps.teams,

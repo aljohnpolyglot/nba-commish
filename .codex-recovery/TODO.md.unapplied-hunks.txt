@@ -1,0 +1,94 @@
+# Codex hunks NOT found on current disk for TODO.md
+# 6 hunks unapplied. Total ops: 9
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=1 line=187 ts=2026-05-09T23:08:34.812Z ---
+ ## BUGS — Open
+ 
+ ### LLM-Path im Sign könnte contract.amount mutieren
+ Theorie zur Khris-Middleton-Restkorruption: der `Force correct contract amount — LLM generates wrong units`-Override-Block in `playerActions.ts:240` deutet darauf hin, dass die LLM-Pipeline contract.amount in falschen Units re-zurückgibt. Sub-Path durchspüren wenn der Bug nochmal auftritt.
++
++---
++
++## HANDOFF — Fictional League / Doku Cleanup (May 10, 2026)
++
++### Bereits erledigt im Worktree
++- Fictional League hat jetzt lokalen Generator für Teams, aktive Spieler, FAs, Rookie-Class, Staff und Referees.
++- Fictional Setup skippt die externen Roster-Fetches.
++- Fictional Preview und tatsächlich gestarteter Save sind jetzt per Seed synchronisiert. Vorher wurde im Setup und in `handleStartGame()` doppelt neu generiert.
++- Erste neutrale Labels sind wired (`leagueLabels.ts`, Teile von Navigation / Cup / Injuries / Broadcasting / App-Loading-Screen / Free Agents).
++- `docs/simulator-guide.md` ist als Guide für `Fast` vs `Realistic` vorhanden.
++
++### Noch offen
++- **Fictional Branding Sweep:** Es existieren noch viele harte `NBA`-Strings in Schedule-, Playoff-, Rules-, All-Star- und Setup-Unterflächen. Diese müssen nicht alle funktional sein, sind aber inkonsistent.
++- **Fictional Key Dates / Event-Copy:** einige Timeline-/Calendar-/DayView-Texte nennen noch `NBA Draft`, `NBA Finals`, `NBA Cup`, obwohl Fictional-Leagues inzwischen neutralisiert werden sollen.
++- **README / PRODUCT / ROADMAP / ARCHITECTURE Konsistenz:** README ist jetzt aktualisiert, aber die restliche High-Level-Doku sollte denselben Sprachstand zu `Fictional` vs `Modded` sowie `Fast` vs `Realistic` bekommen.
++- **CHANGELOG nach Commit sauber splitten:** Session 58 beschreibt die Doku-/Fictional-Härtung. Nach dem tatsächlichen Commit kann der Eintrag ggf. noch auf finale Files/Message geschärft werden.
++- **Browser-Check fehlt noch:** kein visueller Durchlauf der Fictional-League-Startstrecke nach dem Seed-Fix in dieser Session.
++
++### Wichtige Einordnung
++- Die letzten **committeten** Änderungen vom `2026-05-08` sind Simulator-Arbeit, nicht Fictional-League-Arbeit.
++- Ein großer Teil der Fictional-League-Verbesserungen ist aktuell **Worktree-Stand**, also noch nicht durch die jüngsten Commits repräsentiert.
+ 
+ ---
+ 
+ ## QUEUED — Coaching Phase 3 Sim-Wiring (Session 54 Follow-up)
+
+--- HUNK [op#1 hunk#0] session=1 line=451 ts=2026-05-09T23:27:30.395Z ---
+ ### Bereits erledigt im Worktree
+ - Fictional League hat jetzt lokalen Generator für Teams, aktive Spieler, FAs, Rookie-Class, Staff und Referees.
+ - Fictional Setup skippt die externen Roster-Fetches.
+ - Fictional Preview und tatsächlich gestarteter Save sind jetzt per Seed synchronisiert. Vorher wurde im Setup und in `handleStartGame()` doppelt neu generiert.
+-- Erste neutrale Labels sind wired (`leagueLabels.ts`, Teile von Navigation / Cup / Injuries / Broadcasting / App-Loading-Screen / Free Agents).
++- Fictional Branding ist auf die zentralen sichtbaren Flächen erweitert: Setup-Timeline, Jump-Review, Schedule-DayView, All-Star-DayView, Playoffs, Historical Finals, Rules/Honors/Awards, Draft-Eligibility und Cup-Change-Messages sind jetzt `leagueType`-aware statt hart NBA-gebrandet.
++- High-Level-Doku (`README.md`, `PRODUCT.md`, `ROADMAP.md`, `ARCHITECTURE.md`, `AGENTS.md`) ist auf denselben Sprachstand zu `Fictional` vs `Modded` sowie `Fast` vs `Realistic` gebracht.
+ - `docs/simulator-guide.md` ist als Guide für `Fast` vs `Realistic` vorhanden.
+ 
+ ### Noch offen
+-- **Fictional Branding Sweep:** Es existieren noch viele harte `NBA`-Strings in Schedule-, Playoff-, Rules-, All-Star- und Setup-Unterflächen. Diese müssen nicht alle funktional sein, sind aber inkonsistent.
+-- **Fictional Key Dates / Event-Copy:** einige Timeline-/Calendar-/DayView-Texte nennen noch `NBA Draft`, `NBA Finals`, `NBA Cup`, obwohl Fictional-Leagues inzwischen neutralisiert werden sollen.
+-- **README / PRODUCT / ROADMAP / ARCHITECTURE Konsistenz:** README ist jetzt aktualisiert, aber die restliche High-Level-Doku sollte denselben Sprachstand zu `Fictional` vs `Modded` sowie `Fast` vs `Realistic` bekommen.
+-- **CHANGELOG nach Commit sauber splitten:** Session 58 beschreibt die Doku-/Fictional-Härtung. Nach dem tatsächlichen Commit kann der Eintrag ggf. noch auf finale Files/Message geschärft werden.
++- **Residual Fictional String Sweep:** Es gibt noch vereinzelte harte `NBA`-Strings in Randflächen wie Dashboard-/Calendar-/Modal-Texten und teils in bewusst historischen/modded Spezialfällen. Die großen sichtbaren Fictional-Brecher sind aber abgearbeitet.
++- **Browser-Check für Fictional-Flow fehlt noch:** kein visueller Durchlauf der Fictional-League-Startstrecke nach Seed-Fix plus Branding-Sweep in dieser Session.
++- **Commit-/Push-Split sauber halten:** Worktree enthält parallel viel Simulator-/UI-Arbeit. Beim Committen dieser Session darauf achten, Fictional/Doku-Handoff nicht mit fremden in-flight Änderungen zu vermischen.
+ - **Browser-Check fehlt noch:** kein visueller Durchlauf der Fictional-League-Startstrecke nach dem Seed-Fix in dieser Session.
+
+--- HUNK [op#4 hunk#0] session=10 line=258 ts=2026-05-13T07:23:23.256Z ---
+ ## NEXT SESSION — Codex `/goal` Overnight Run
+ 
+ > **Codex Handoff**: paste prompt from `plans/codex-overnight-goal.md` into Codex CLI. User schläft, Codex erledigt Phase 2+3+Extras autonom.
++
++### Progress update (May 13, 2026)
++- **Shipped in worktree:** Euro salary settings UI, medical core mechanics, injury hooks, sponsor-floor formula, SigningModal cash gate, AI cash hard-block, bankruptcy choose-team modal, and `plans/euro-hotel-mood.md`.
++- **Verified:** `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass.
++- **Still open from mega-scope:** full mockup-matched page rewrites/routes for Front Office/Medical/Schedule/Travel/Finances/Staff/Sponsor Negotiation plus goals 4-16/18. Keep UI copy in English.
+
+--- HUNK [op#5 hunk#0] session=10 line=510 ts=2026-05-13T07:49:23.263Z ---
+ ### Progress update (May 13, 2026)
+ - **Shipped in worktree:** Euro salary settings UI, medical core mechanics, injury hooks, sponsor-floor formula, SigningModal cash gate, AI cash hard-block, bankruptcy choose-team modal, and `plans/euro-hotel-mood.md`.
+-- **Verified:** `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass.
+-- **Still open from mega-scope:** full mockup-matched page rewrites/routes for Front Office/Medical/Schedule/Travel/Finances/Staff/Sponsor Negotiation plus goals 4-16/18. Keep UI copy in English.
++- **Additional shipped in worktree:** Euro GM sidebar route split, top-bar cash chip, Front Office detail sections, persisted travel preferences in ledger, deep sponsor negotiation shell, and league-aware regular-season start helper.
++- **Verified:** `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass after the second checkpoint.
++- **Still open from mega-scope:** full mockup-matched Schedule Hub, staff hiring market, scouting fuzz backend/UI, loan system, board promises, player drama/press conferences, finance recap modal, payslip cadence, and sponsor archetype/conflict/offseason auto-fire polish. Keep UI copy in English.
+
+--- HUNK [op#6 hunk#0] session=10 line=777 ts=2026-05-13T08:17:33.895Z ---
+ - **Additional shipped in worktree:** Euro GM sidebar route split, top-bar cash chip, Front Office detail sections, persisted travel preferences in ledger, deep sponsor negotiation shell, and league-aware regular-season start helper.
+-- **Verified:** `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass after the second checkpoint.
+-- **Still open from mega-scope:** full mockup-matched Schedule Hub, staff hiring market, scouting fuzz backend/UI, loan system, board promises, player drama/press conferences, finance recap modal, payslip cadence, and sponsor archetype/conflict/offseason auto-fire polish. Keep UI copy in English.
++- **UI convergence shipped in worktree:** wider Front Office shell, mockup-style financial KPI/cashflow panel, full Medical route polish, dedicated Sponsorships route with portfolio/selected-sponsor rail, and Schedule Calendar header/tab/KPI frame.
++- **Verified:** `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass after the third checkpoint.
++- **Still open from mega-scope:** Schedule overview/right rail and EuroLeague detail drilldown, staff hiring market, scouting fuzz backend/UI, loan system, board promises, player drama/press conferences, finance recap modal, payslip cadence, and sponsor archetype/conflict/offseason auto-fire polish. Keep UI copy in English.
+
+--- HUNK [op#7 hunk#0] session=11 line=360 ts=2026-05-13T17:32:09.111Z ---
+ ### Progress update (May 13, 2026)
+ - **Shipped in worktree:** Euro salary settings UI, medical core mechanics, injury hooks, sponsor-floor formula, SigningModal cash gate, AI cash hard-block, bankruptcy choose-team modal, and `plans/euro-hotel-mood.md`.
+ - **Additional shipped in worktree:** Euro GM sidebar route split, top-bar cash chip, Front Office detail sections, persisted travel preferences in ledger, deep sponsor negotiation shell, and league-aware regular-season start helper.
+ - **UI convergence shipped in worktree:** wider Front Office shell, mockup-style financial KPI/cashflow panel, full Medical route polish, dedicated Sponsorships route with portfolio/selected-sponsor rail, and Schedule Calendar header/tab/KPI frame.
+-- **Verified:** `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass after the third checkpoint.
+-- **Still open from mega-scope:** Schedule overview/right rail and EuroLeague detail drilldown, staff hiring market, scouting fuzz backend/UI, loan system, board promises, player drama/press conferences, finance recap modal, payslip cadence, and sponsor archetype/conflict/offseason auto-fire polish. Keep UI copy in English.
++- **Additional UI convergence shipped in worktree (May 14):** Schedule right rail + competition-detail dashboards, Staff route + staff-signing modal shell with facesjs portraits, Finance Overview/Graphs/Spreadsheet tabs, Facilities action modals, and Scouting investment/uncertainty-band route.
++- **Verified:** `npm run lint`, `npx tsx scripts/test-tycoon-sponsor.ts`, and `npm run build` pass after the Scouting checkpoint.
++- **Still open from mega-scope:** global non-own rating fuzz integration, loan system, board promises/confidence, player drama/press conferences, finance recap modal, payslip cadence, staff hiring persistence, and sponsor archetype/conflict/offseason auto-fire polish. Keep UI copy in English.

@@ -93,8 +93,8 @@ export function buildPossessions(
     // attempt cap reached), synthesize plain MADE buckets to land EXACTLY on
     // quarterScores. Without this the PBP-final < engine-final and the UI
     // snaps at FINAL → visible score jump.
-    convergeQuarter('HOME', homeTarget - homeScored, homePool, homeBudgets, possessions, q, () => posId++);
-    convergeQuarter('AWAY', awayTarget - awayScored, awayPool, awayBudgets, possessions, q, () => posId++);
+    convergeQuarter('HOME', homeTarget - homeScored, homePool, awayPool, homeBudgets, awayBudgets, possessions, q, () => posId++);
+    convergeQuarter('AWAY', awayTarget - awayScored, awayPool, homePool, awayBudgets, homeBudgets, possessions, q, () => posId++);
   }
 
   return possessions;
@@ -104,16 +104,46 @@ function convergeQuarter(
   team: TeamId,
   deficit: number,
   pool: PlayerPool[],
+  oppPool: PlayerPool[],
   budgets: Map<string, PlayerPool>,
+  oppBudgets: Map<string, PlayerPool>,
   possessions: Possession[],
   quarter: number,
   nextId: () => number,
 ): void {
   if (deficit <= 0 || pool.length === 0) return;
   const active = pool.slice(0, 5);
+  const oppActive = oppPool.slice(0, 5);
   let remaining = deficit;
   let i = 0;
   while (remaining > 0) {
+    if (remaining === 1) {
+      const victim = active.find(p => (budgets.get(p.id)?.ftm ?? 0) > 0) ?? active[i % active.length];
+      const fouler = oppActive.find(p => (oppBudgets.get(p.id)?.pf ?? 0) > 0)
+        ?? oppActive[i % Math.max(oppActive.length, 1)]
+        ?? { ...victim, tm: team === 'HOME' ? 'AWAY' : 'HOME' };
+      const victimBudget = budgets.get(victim.id);
+      const foulerBudget = oppBudgets.get(fouler.id);
+      if (victimBudget && victimBudget.ftm > 0) victimBudget.ftm = Math.max(0, victimBudget.ftm - 1);
+      if (foulerBudget && foulerBudget.pf > 0) foulerBudget.pf = Math.max(0, foulerBudget.pf - 1);
+      possessions.push({
+        id: nextId(),
+        team,
+        outcome: 'FOUL_TRIP',
+        quarter,
+        pts: 1,
+        victim,
+        fouler,
+        fts: [
+          { isMake: true, shooter: victim },
+          { isMake: false, shooter: victim },
+        ],
+      } as Possession);
+      remaining -= 1;
+      i++;
+      continue;
+    }
+
     // Prefer 3 when deficit is a multiple of 3, else 2.
     const useThree = remaining >= 3 && remaining % 3 === 0;
     const scorer = active[i % active.length];

@@ -1,51 +1,34 @@
 import type { TycoonState, TycoonTier } from '../../types/tycoon';
 
-const ROLE_BASE_SALARIES: Record<TycoonTier, Record<string, number>> = {
-  S: {
-    'Head Coach': 1_850_000,
-    'Assistant Coach': 620_000,
-    'Head of Sports Science': 540_000,
-    'Head Physio': 460_000,
-    'Player Development Coach': 480_000,
-    'Chief Scout': 720_000,
-    'Head of Analytics': 510_000,
-  },
-  A: {
-    'Head Coach': 1_050_000,
-    'Assistant Coach': 380_000,
-    'Head of Sports Science': 340_000,
-    'Head Physio': 300_000,
-    'Player Development Coach': 310_000,
-    'Chief Scout': 420_000,
-    'Head of Analytics': 320_000,
-  },
-  B: {
-    'Head Coach': 720_000,
-    'Assistant Coach': 260_000,
-    'Head of Sports Science': 240_000,
-    'Head Physio': 210_000,
-    'Player Development Coach': 220_000,
-    'Chief Scout': 300_000,
-    'Head of Analytics': 230_000,
-  },
-  C: {
-    'Head Coach': 480_000,
-    'Assistant Coach': 180_000,
-    'Head of Sports Science': 165_000,
-    'Head Physio': 145_000,
-    'Player Development Coach': 155_000,
-    'Chief Scout': 210_000,
-    'Head of Analytics': 165_000,
-  },
-  D: {
-    'Head Coach': 310_000,
-    'Assistant Coach': 120_000,
-    'Head of Sports Science': 110_000,
-    'Head Physio': 95_000,
-    'Player Development Coach': 105_000,
-    'Chief Scout': 140_000,
-    'Head of Analytics': 110_000,
-  },
+export type StaffMarket = 'nba' | 'euro';
+
+const NBA_ROLE_MARKET_PROFILES: Record<string, { base: number; floor: number; ceiling: number }> = {
+  'Head Coach': { base: 7_500_000, floor: 2_500_000, ceiling: 22_000_000 },
+  'Assistant Coach': { base: 1_450_000, floor: 500_000, ceiling: 4_200_000 },
+  'Head of Sports Science': { base: 900_000, floor: 325_000, ceiling: 2_400_000 },
+  'Head Physio': { base: 820_000, floor: 300_000, ceiling: 2_200_000 },
+  'Player Development Coach': { base: 980_000, floor: 350_000, ceiling: 2_600_000 },
+  'Chief Scout': { base: 1_150_000, floor: 400_000, ceiling: 3_000_000 },
+  'Head of Analytics': { base: 930_000, floor: 325_000, ceiling: 2_500_000 },
+};
+
+const EURO_ROLE_MARKET_PROFILES: Record<string, { base: number; floor: number; ceiling: number }> = {
+  'Head Coach': { base: 550_000, floor: 250_000, ceiling: 1_800_000 },
+  'Assistant Coach': { base: 180_000, floor: 90_000, ceiling: 450_000 },
+  'Head of Sports Science': { base: 220_000, floor: 110_000, ceiling: 550_000 },
+  'Head Physio': { base: 200_000, floor: 95_000, ceiling: 500_000 },
+  'Player Development Coach': { base: 230_000, floor: 115_000, ceiling: 600_000 },
+  'Chief Scout': { base: 250_000, floor: 125_000, ceiling: 650_000 },
+  'Head of Analytics': { base: 210_000, floor: 100_000, ceiling: 550_000 },
+};
+
+export const EURO_STAFF_PAYROLL_SHARE = 0.22;
+
+export type StaffMarketValueContext = {
+  market?: StaffMarket;
+  externalSalary?: number | null;
+  yearsExperience?: number | null;
+  yearsWithTeam?: number | null;
 };
 
 export const ACADEMY_COST_BY_TIER = [0, 250_000, 750_000, 1_500_000, 3_000_000, 6_000_000] as const;
@@ -58,27 +41,68 @@ function roundSalary(value: number): number {
   return Math.round(value / 5_000) * 5_000;
 }
 
-export function getStaffRoleBaseSalary(tier: TycoonTier | undefined, role: string): number {
-  const resolvedTier = tier ?? 'C';
-  return ROLE_BASE_SALARIES[resolvedTier]?.[baseRole(role)] ?? ROLE_BASE_SALARIES[resolvedTier]?.['Assistant Coach'] ?? 180_000;
+function getRoleMarketProfiles(market: StaffMarket): Record<string, { base: number; floor: number; ceiling: number }> {
+  return market === 'euro' ? EURO_ROLE_MARKET_PROFILES : NBA_ROLE_MARKET_PROFILES;
 }
 
-export function getStaffMarketSalary(tier: TycoonTier | undefined, role: string, rating?: number): number {
-  const base = getStaffRoleBaseSalary(tier, role);
-  const ratingMult = rating == null ? 1 : Math.max(0.72, Math.min(1.45, 0.72 + (rating - 55) / 55));
-  return roundSalary(base * ratingMult);
+export function fallbackStaffPayrollEUR(wages: number): number {
+  return roundSalary(Math.max(0, wages) * EURO_STAFF_PAYROLL_SHARE);
 }
 
-export function normalizeStaffSalary(tier: TycoonTier | undefined, role: string, salary: number | undefined, rating?: number): number {
-  const market = getStaffMarketSalary(tier, role, rating);
+export function getStaffRoleBaseSalary(tier: TycoonTier | undefined, role: string, market: StaffMarket = 'nba'): number {
+  void tier;
+  const profiles = getRoleMarketProfiles(market);
+  const profile = profiles[baseRole(role)] ?? profiles['Assistant Coach'];
+  return profile.base;
+}
+
+export function getStaffMarketValue(role: string, rating?: number, context: StaffMarketValueContext = {}): number {
+  if (Number.isFinite(context.externalSalary ?? NaN) && (context.externalSalary ?? 0) > 0) {
+    return roundSalary(context.externalSalary!);
+  }
+  const profiles = getRoleMarketProfiles(context.market ?? 'nba');
+  const profile = profiles[baseRole(role)] ?? profiles['Assistant Coach'];
+  const normalizedRating = Math.max(45, Math.min(99, Math.round(rating ?? 66)));
+  const yearsExperience = Math.max(0, Math.min(35, Math.round(context.yearsExperience ?? 8)));
+  const yearsWithTeam = Math.max(0, Math.min(20, Math.round(context.yearsWithTeam ?? 2)));
+  const ratingMult = 0.78 + ((normalizedRating - 55) / 44) * 0.82;
+  const experienceMult = 0.9 + (yearsExperience / 35) * 0.38;
+  const tenureMult = 1 + Math.min(0.12, yearsWithTeam * 0.0125);
+  const raw = profile.base * ratingMult * experienceMult * tenureMult;
+  return roundSalary(Math.max(profile.floor, Math.min(profile.ceiling, raw)));
+}
+
+export function getStaffMarketSalary(
+  tier: TycoonTier | undefined,
+  role: string,
+  rating?: number,
+  context: StaffMarketValueContext = {},
+): number {
+  void tier;
+  return getStaffMarketValue(role, rating, context);
+}
+
+export function normalizeStaffSalary(
+  tier: TycoonTier | undefined,
+  role: string,
+  salary: number | undefined,
+  rating?: number,
+  context: StaffMarketValueContext = {},
+): number {
+  const market = getStaffMarketSalary(tier, role, rating, context);
+  if (Number.isFinite(context.externalSalary ?? NaN) && (context.externalSalary ?? 0) > 0) return market;
   if (!Number.isFinite(salary ?? NaN) || (salary ?? 0) <= 0) return market;
   const current = Math.round(salary!);
-  return current > market * 1.55 ? market : current;
+  if (current < market * 0.45 || current > market * 2.35) return market;
+  return current;
 }
 
-export function sumStaffPayrollEUR(tycoon?: Pick<TycoonState, 'staffMembers' | 'tier'>): number {
+export function sumStaffPayrollEUR(
+  tycoon?: Pick<TycoonState, 'staffMembers' | 'tier'>,
+  market: StaffMarket = 'nba',
+): number {
   return Math.round((tycoon?.staffMembers ?? []).reduce((sum, member) => {
-    return sum + normalizeStaffSalary(tycoon?.tier, member.role, member.salary, member.rating);
+    return sum + normalizeStaffSalary(tycoon?.tier, member.role, member.salary, member.rating, { market });
   }, 0));
 }
 

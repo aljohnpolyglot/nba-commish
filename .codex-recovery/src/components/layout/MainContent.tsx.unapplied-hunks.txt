@@ -1,0 +1,172 @@
+# Codex hunks NOT found on current disk for src/components/layout/MainContent.tsx
+# 24 hunks unapplied. Total ops: 8
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=176 ts=2026-05-10T20:52:45.974Z ---
+ import { InternationalLeagueHub, HUB_TAB_TO_LEAGUE } from '../international/InternationalLeagueHub';
+ import { Tab } from '../../types';
++import { CompetitionView } from '../competition/CompetitionView';
+
+--- HUNK [op#0 hunk#1] session=8 line=176 ts=2026-05-10T20:52:45.974Z ---
+     case 'NBA Cup':
+       return (
+         <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+           <NBACupView />
+         </div>
+       );
++    case 'Euroleague':
++      return (
++        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
++          <CompetitionView specId="euroleague" />
++        </div>
++      );
+
+--- HUNK [op#1 hunk#0] session=8 line=940 ts=2026-05-11T01:55:14.425Z ---
+ import { Tab } from '../../types';
+ import { CompetitionView } from '../competition/CompetitionView';
++import { isNoDraftLeague } from '../../services/offseason/offseasonState';
++import { getEffectiveUiMode } from '../../utils/useEffectiveUiMode';
+
+--- HUNK [op#1 hunk#1] session=8 line=940 ts=2026-05-11T01:55:14.425Z ---
+ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewChange }) => {
+   const { state } = useGame();
++  const euroIsolated = getEffectiveUiMode(state as any) === 'euro_isolated';
++  const tradesDisabled = state.leagueStats?.tradesAllowed === false;
++  const noDraft = isNoDraftLeague(state.leagueStats as any);
++
+   switch (currentView) {
+
+--- HUNK [op#1 hunk#2] session=8 line=940 ts=2026-05-11T01:55:14.425Z ---
+     case 'Playoffs':
++      if (euroIsolated) {
++        return (
++          <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
++            <CompetitionView specId="endesa" />
++          </div>
++        );
++      }
+       return <PlayoffView />;
+
+--- HUNK [op#1 hunk#3] session=8 line=940 ts=2026-05-11T01:55:14.425Z ---
+     case 'Trade Machine':
++      if (tradesDisabled) return <div className="p-8 text-slate-500">Trades are disabled for this league.</div>;
+       return <TradeMachineView onViewChange={onViewChange} />;
+     case 'Trade Finder':
++      if (tradesDisabled) return <div className="p-8 text-slate-500">Trades are disabled for this league.</div>;
+       return <TradeFinderView />;
+     case 'Trade Proposals':
++      if (tradesDisabled) return <div className="p-8 text-slate-500">Trades are disabled for this league.</div>;
+       // GM-only view — in commissioner mode fall through to the default dashboard.
+       return state.gameMode === 'gm' ? <TradeProposalsView /> : <div className="p-8 text-slate-500">Trade Proposals is available in GM mode.</div>;
+
+--- HUNK [op#1 hunk#4] session=8 line=940 ts=2026-05-11T01:55:14.425Z ---
+     case 'Draft Scouting':
++      if (noDraft) return <div className="p-8 text-slate-500">Draft is disabled for this league.</div>;
+       return <DraftScoutingView />;
+     case 'Draft Lottery':
++      if (noDraft) return <div className="p-8 text-slate-500">Draft is disabled for this league.</div>;
+       return <DraftLotteryView />;
+     case 'Draft Board':
+     case 'Draft History': {
++      if (noDraft) return <div className="p-8 text-slate-500">Draft is disabled for this league.</div>;
+
+--- HUNK [op#2 hunk#0] session=8 line=1039 ts=2026-05-11T01:57:56.631Z ---
+     case 'Award Races':
++      if (euroIsolated) return <div className="p-8 text-slate-500">Season awards are not available in this league format yet.</div>;
+       return <AwardRacesView />;
+
+--- HUNK [op#2 hunk#1] session=8 line=1039 ts=2026-05-11T01:57:56.631Z ---
+     case 'NBA Cup':
++      if (euroIsolated) {
++        return (
++          <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
++            <CompetitionView specId="euroleague" />
++          </div>
++        );
++      }
+       return (
+
+--- HUNK [op#2 hunk#2] session=8 line=1039 ts=2026-05-11T01:57:56.631Z ---
+     case 'NBA Central':
++      if (euroIsolated) return <StandingsView />;
+       return <NBACentral />;
+
+--- HUNK [op#2 hunk#3] session=8 line=1039 ts=2026-05-11T01:57:56.631Z ---
+     case 'Seasonal':
++      if (euroIsolated) {
++        return (
++          <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
++            <CompetitionView specId="euroleague" />
++          </div>
++        );
++      }
+       return (
+
+--- HUNK [op#2 hunk#4] session=8 line=1039 ts=2026-05-11T01:57:56.631Z ---
+     case 'Hall of Fame':
++      if (euroIsolated) return <div className="p-8 text-slate-500">Hall of Fame is not available in this league format yet.</div>;
+       return <HallofFameView />;
+
+--- HUNK [op#3 hunk#0] session=8 line=1054 ts=2026-05-11T01:58:43.061Z ---
+-      if (euroIsolated) return <div className="p-8 text-slate-500">Season awards are not available in this league format yet.</div>;
++      if (euroIsolated) return <div className="p-8 text-slate-500">European season awards will appear here once the trophy system is complete.</div>;
+
+--- HUNK [op#3 hunk#1] session=8 line=1054 ts=2026-05-11T01:58:43.061Z ---
+-      if (tradesDisabled) return <div className="p-8 text-slate-500">Trades are disabled for this league.</div>;
++      if (tradesDisabled) return <div className="p-8 text-slate-500">This competition is built around signings, loans and free agency rather than trades.</div>;
+
+--- HUNK [op#3 hunk#2] session=8 line=1054 ts=2026-05-11T01:58:43.061Z ---
+-      if (tradesDisabled) return <div className="p-8 text-slate-500">Trades are disabled for this league.</div>;
++      if (tradesDisabled) return <div className="p-8 text-slate-500">This competition is built around signings, loans and free agency rather than trades.</div>;
+
+--- HUNK [op#3 hunk#3] session=8 line=1054 ts=2026-05-11T01:58:43.061Z ---
+-      if (tradesDisabled) return <div className="p-8 text-slate-500">Trades are disabled for this league.</div>;
++      if (tradesDisabled) return <div className="p-8 text-slate-500">This competition is built around signings, loans and free agency rather than trades.</div>;
+
+--- HUNK [op#3 hunk#4] session=8 line=1054 ts=2026-05-11T01:58:43.061Z ---
+-      if (noDraft) return <div className="p-8 text-slate-500">Draft is disabled for this league.</div>;
++      if (noDraft) return <div className="p-8 text-slate-500">This league signs and develops players without a draft.</div>;
+
+--- HUNK [op#3 hunk#5] session=8 line=1054 ts=2026-05-11T01:58:43.061Z ---
+-      if (noDraft) return <div className="p-8 text-slate-500">Draft is disabled for this league.</div>;
++      if (noDraft) return <div className="p-8 text-slate-500">This league signs and develops players without a draft.</div>;
+
+--- HUNK [op#3 hunk#6] session=8 line=1054 ts=2026-05-11T01:58:43.061Z ---
+-      if (noDraft) return <div className="p-8 text-slate-500">Draft is disabled for this league.</div>;
++      if (noDraft) return <div className="p-8 text-slate-500">This league signs and develops players without a draft.</div>;
+
+--- HUNK [op#3 hunk#7] session=8 line=1054 ts=2026-05-11T01:58:43.061Z ---
+-      if (euroIsolated) return <div className="p-8 text-slate-500">Hall of Fame is not available in this league format yet.</div>;
++      if (euroIsolated) return <div className="p-8 text-slate-500">European legacy tracking will appear here after club history has enough seasons.</div>;
+
+--- HUNK [op#4 hunk#0] session=8 line=2150 ts=2026-05-11T08:47:16.785Z ---
+     case 'Playoffs':
+       if (euroIsolated) {
+-        return (
+-          <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+-            <CompetitionView specId="endesa" />
+-          </div>
+-        );
++        return <CompetitionHubLayout specId="endesa" />;
+       }
+       return <PlayoffView />;
+
+--- HUNK [op#6 hunk#0] session=11 line=998 ts=2026-05-14T10:47:24.565Z ---
+ import { EuroTransferMarketView } from '../transferMarket/EuroTransferMarketView';
++import { CompetitionCentralView } from '../competition/CompetitionCentralView';
++import { isEuroIsolatedMode } from '../../utils/uiMode';
+
+--- HUNK [op#6 hunk#1] session=11 line=998 ts=2026-05-14T10:47:24.565Z ---
+     case 'Playoffs':
+-      return <PlayoffView />;
++      return isEuroIsolatedMode(state)
++        ? <CompetitionCentralView specId="endesa" />
++        : <PlayoffView />;
+
+--- HUNK [op#7 hunk#0] session=11 line=1014 ts=2026-05-14T10:48:19.254Z ---
+     case 'NBA Central':
+-      return <NBACentral />;
++      return isEuroIsolatedMode(state)
++        ? <CompetitionCentralView specId="endesa" />
++        : <NBACentral />;

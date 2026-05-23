@@ -1,0 +1,480 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { User, ArrowRight, Crown, ArrowLeft, Settings, ChevronDown, ChevronUp, Bot } from 'lucide-react';
+import { SettingsManager } from '../services/SettingsManager';
+import { INITIAL_LEAGUE_STATS } from '../constants';
+import { getSeasonSimStartDate, toISODateString } from '../utils/dateUtils';
+import { prewarmRoster } from '../services/rosterService';
+import { generateFictionalLeague } from '../services/fictionalLeagueGenerator';
+import { fetchEndesaRoster } from '../services/externalRosterService';
+import { getLeagueLabels } from '../utils/leagueLabels';
+import type { LeagueType, ModdedLeagueBase, EuropeMarket } from './setup/LeagueTypeSelector';
+import { Home as FranchisePicker } from './central/view/TeamOffice/pages/Home';
+import type { NBAPlayer, NBATeam, NonNBATeam } from '../types';
+
+const SIM_START_DATE = toISODateString(getSeasonSimStartDate(INITIAL_LEAGUE_STATS.year)); // e.g. '2025-08-06'
+// Euro-Isolated leagues (Spain Endesa, etc.) start the season in September.
+// Endesa tips off late Sept, EuroLeague early Oct. Sept 15 leaves ~2 weeks of
+// pre-season for friendlies, training camp, last-minute FA signings — and
+// avoids the empty Aug 6 → late-Sept stretch that has zero NBA events but is
+// totally dead in Euro mode (no Christmas Games, no NBA Cup, no preseason
+// fixtures until mid-September).
+const EURO_SIM_START_DATE = `${INITIAL_LEAGUE_STATS.year - 1}-09-15`;
+import { StartDateTimeline } from './setup/StartDateTimeline';
+import { JumpReviewScreen } from './setup/JumpReviewScreen';
+
+interface CommissionerSetupProps {
+  leagueType: LeagueType;
+  moddedLeagueBase?: ModdedLeagueBase;
+  europeMarket?: EuropeMarket;
+  onStart: (payload: {
+    name: string;
+    startScenario: string;
+    skipLLM?: boolean;
+    startDate: string;
+    jumpRequired: boolean;
+    gameMode?: 'commissioner' | 'gm';
+    userTeamId?: number;
+    assistantGM?: boolean;
+    leagueType?: LeagueType;
+    moddedLeagueBase?: ModdedLeagueBase;
+    europeMarket?: EuropeMarket;
+    fictionalLeagueSeed?: number;
+  }) => void;
+  onBack: () => void;
+}
+
+type Step = 'mode' | 'name' | 'franchise' | 'timeline' | 'review';
+
+export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType, moddedLeagueBase, europeMarket, onStart, onBack }) => {
+  const [step, setStep] = useState<Step>('mode');
+  // Europe modded saves default to GM (commissioner tooling not built yet).
+  const [gameMode, setGameMode] = useState<'commissioner' | 'gm'>(
+    moddedLeagueBase === 'europe' ? 'gm' : 'commissioner'
+  );
+  // Keep undefined for GM mode — the user picks a team post-init via TeamOffice. No more "everyone is Atlanta".
+  const [userTeamId, setUserTeamId] = useState<number | undefined>(undefined);
+  const [name, setName] = useState('');
+  const isEuroSetup = leagueType === 'modded' && moddedLeagueBase === 'europe';
+  const defaultStartDate = isEuroSetup ? EURO_SIM_START_DATE : SIM_START_DATE;
+  const [chosenDate, setChosenDate] = useState<string>(defaultStartDate);
+  const [showSettings, setShowSettings] = useState(true);
+  const [settings, setSettings] = useState(() => SettingsManager.getSettings());
+  const [fictionalLeagueSeed] = useState(() => Math.floor(Math.random() * 2_147_483_647));
+  const labels = getLeagueLabels(leagueType);
+  const isFictional = leagueType === 'fictional';
+  const isSpainEuropeSetup = leagueType === 'modded' && moddedLeagueBase === 'europe' && europeMarket === 'spain';
+  const highlightedSpainTeamIds = React.useMemo(() => {
+    if (!isSpainEuropeSetup) return [];
+    const euroleagueClubHints = ['real madrid', 'barcelona', 'baskonia', 'valencia', 'gran canaria'];
+    return rosterTeams
+      .filter((team: any) => {
+        const full = `${team.region ?? ''} ${team.name ?? ''}`.toLowerCase();
+        return euroleagueClubHints.some(hint => full.includes(hint));
+      })
+      .map((team: any) => team.id);
+  }, [isSpainEuropeSetup, rosterTeams]);
+  const isSpainEuropeSetup = leagueType === 'modded' && moddedLeagueBase === 'europe' && europeMarket === 'spain';
+
+  // Roster source depends on leagueType: modded fetches the community gist (real NBA),
+  // fictional builds the 30 generated teams locally without any network call.
+  const [rosterTeams, setRosterTeams] = useState<NBATeam[]>([]);
+  const [rosterPlayers, setRosterPlayers] = useState<NBAPlayer[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(true);
+  const highlightedSpainTeamIds = React.useMemo(() => {
+    if (!isSpainEuropeSetup) return [];
+    const euroleagueClubHints = ['real madrid', 'barcelona', 'baskonia', 'valencia', 'gran canaria'];
+    return rosterTeams
+      .filter((team: any) => {
+        const full = `${team.region ?? ''} ${team.name ?? ''}`.toLowerCase();
+        return euroleagueClubHints.some(hint => full.includes(hint));
+      })
+      .map((team: any) => team.id);
+  }, [isSpainEuropeSetup, rosterTeams]);
+  useEffect(() => {
+    let cancelled = false;
+    if (leagueType === 'fictional') {
+      const { teams, players } = generateFictionalLeague(INITIAL_LEAGUE_STATS.year, fictionalLeagueSeed);
+      setRosterTeams(teams);
+      setRosterPlayers(players);
+      setRosterLoading(false);
+      return;
+    }
+    if (isSpainEuropeSetup) {
+      fetchEndesaRoster().then(({ teams, players }) => {
+        if (cancelled) return;
+        const mappedTeams = teams.map((team: NonNBATeam) => ({
+          id: team.tid,
+          tid: team.tid,
+          region: team.region,
+          name: team.name,
+          abbrev: team.abbrev,
+          colors: team.colors,
+          logoUrl: team.imgURL,
+          wins: 0,
+          losses: 0,
+        })) as unknown as NBATeam[];
+        setRosterTeams(mappedTeams);
+        setRosterPlayers(players);
+        setRosterLoading(false);
+      }).catch(() => { if (!cancelled) setRosterLoading(false); });
+      return;
+    }
+    prewarmRoster().then(data => {
+      if (cancelled) return;
+      setRosterTeams(data.teams);
+      setRosterPlayers(data.players);
+      setRosterLoading(false);
+    }).catch(() => { if (!cancelled) setRosterLoading(false); });
+    return () => { cancelled = true; };
+  }, [fictionalLeagueSeed, isSpainEuropeSetup, leagueType]);
+
+  const updateSetting = <K extends keyof typeof settings>(key: K, value: typeof settings[K]) => {
+    const updated = { ...settings, [key]: value };
+    setSettings(updated);
+    SettingsManager.saveSettings(updated);
+  };
+
+  const handleNameSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    if (gameMode === 'gm') {
+      setStep('franchise');
+      return;
+    }
+    // Commissioner path. Euro-Isolated leagues bypass the NBA-centric Timeline +
+    // JumpReview screens (no Aug 6 preseason / NBA Cup / Christmas games to skip)
+    // and start the save at the Euro pre-season default (Sept 15).
+    if (isEuroSetup) {
+      handleStart(defaultStartDate);
+      return;
+    }
+    setStep('timeline');
+  };
+
+  const handleStart = (overrideDate?: string, assistantGM?: boolean) => {
+    // Always reset to Fast mode when starting a new game
+    SettingsManager.updateSettings({ llmPerformance: 1 });
+    const nameCase = name.trim()
+      .split(' ')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+    const date = overrideDate ?? chosenDate;
+    onStart({
+      name: nameCase,
+      startScenario: 'regular_season',
+      skipLLM: !settings.enableLLM,
+      startDate: date,
+      jumpRequired: date > SIM_START_DATE,
+      gameMode,
+      userTeamId: gameMode === 'gm' ? userTeamId : undefined,
+      assistantGM: gameMode === 'gm' ? (assistantGM ?? false) : false,
+      leagueType,
+      moddedLeagueBase: leagueType === 'modded' ? moddedLeagueBase : undefined,
+      europeMarket: leagueType === 'modded' ? europeMarket : undefined,
+      fictionalLeagueSeed: isFictional ? fictionalLeagueSeed : undefined,
+    });
+  };
+
+  const handleDateSelected = (date: string) => {
+    setChosenDate(date);
+    if (date === SIM_START_DATE) {
+      handleStart(date);
+    } else {
+      setStep('review');
+    }
+  };
+
+  const handleBack = () => {
+    if (step === 'review') {
+      setStep('timeline');
+    } else if (step === 'timeline') {
+      setStep(gameMode === 'gm' ? 'franchise' : 'name');
+    } else if (step === 'franchise') {
+      setStep('name');
+    } else if (step === 'name') {
+      setStep('mode');
+    } else {
+      onBack();
+    }
+  };
+
+  // ── Mode Picker (first screen) ────────────────────────────────────────────
+  if (step === 'mode') {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950" />
+        <button
+          onClick={onBack}
+          className="absolute top-8 left-8 text-slate-400 hover:text-white flex items-center gap-2 transition-colors z-20"
+        >
+          <ArrowLeft size={20} /> Back to Menu
+        </button>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 w-full max-w-2xl">
+          <div className="text-center mb-10">
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white mb-3">Choose Your Role</h1>
+            <p className="text-slate-400 text-sm">How do you want to experience the {isFictional ? 'league' : moddedLeagueBase === 'europe' ? 'European game' : 'NBA'}?</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Commissioner Card — disabled for Europe modded saves (commissioner tooling not built yet for that mode) */}
+            <button
+              onClick={() => {
+                if (moddedLeagueBase === 'europe') return;
+                setGameMode('commissioner'); setStep('name');
+              }}
+              disabled={moddedLeagueBase === 'europe'}
+              className={`group relative p-6 rounded-2xl border-2 transition-all text-left ${
+                moddedLeagueBase === 'europe'
+                  ? 'border-slate-900 bg-slate-900/30 opacity-50 cursor-not-allowed'
+                  : gameMode === 'commissioner'
+                    ? 'border-indigo-500 bg-indigo-500/10'
+                    : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <Crown size={24} className="text-indigo-400" />
+                <h3 className="text-xl font-black text-white uppercase tracking-tight">Commissioner</h3>
+                {moddedLeagueBase === 'europe' && (
+                  <span className="ml-auto text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded">
+                    Coming Soon
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                {moddedLeagueBase === 'europe'
+                  ? <>European commissioner mode (custom All-Star, league rules, multi-competition tournaments) is in development. For now, European saves are <span className="text-white font-bold">GM-only</span>.</>
+                  : <>Control the <span className="text-white font-bold">entire league</span>. Set rules, suspend players, force trades, manage finances, and shape the narrative.</>
+                }
+              </p>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {['Rules', 'Suspensions', 'Economy', 'LLM Narrative', 'All Teams'].map(tag => (
+                  <span key={tag} className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-indigo-500/10 text-indigo-400 rounded">{tag}</span>
+                ))}
+              </div>
+            </button>
+
+            {/* GM Card */}
+            <button
+              onClick={() => { setGameMode('gm'); setStep('name'); }}
+              className={`group relative p-6 rounded-2xl border-2 transition-all text-left ${
+                gameMode === 'gm'
+                  ? 'border-emerald-500 bg-emerald-500/10'
+                  : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <User size={24} className="text-emerald-400" />
+                <h3 className="text-xl font-black text-white uppercase tracking-tight">General Manager</h3>
+              </div>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Manage <span className="text-white font-bold">one team</span>. Build your roster through trades and free agency{moddedLeagueBase === 'europe' ? '' : ', and the draft'}. Compete for a championship.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {(moddedLeagueBase === 'europe'
+                  ? ['Trades', 'Free Agency', 'No Draft', 'Roster', 'Your Team']
+                  : ['Trades', 'Free Agency', 'Draft', 'Roster', 'Your Team']
+                ).map(tag => (
+                  <span key={tag} className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded">{tag}</span>
+                ))}
+              </div>
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Fullscreen franchise picker — GM mode only, between name and timeline.
+  // Recycles the TeamOffice Home grid so the visual language matches the in-game Team Office.
+  if (step === 'franchise') {
+    return (
+      <div className="min-h-screen w-full bg-[#0d1117] overflow-y-auto">
+        <button
+          onClick={() => setStep('name')}
+          className="absolute top-6 left-6 text-[#8b949e] hover:text-white flex items-center gap-2 transition-colors z-20 text-sm font-bold uppercase tracking-widest"
+        >
+          <ArrowLeft size={18} /> Back
+        </button>
+        <div className="px-4 md:px-10 py-10">
+          {rosterLoading ? (
+            <div className="min-h-[60vh] flex items-center justify-center text-[#8b949e] font-bold uppercase tracking-widest animate-pulse">
+              Loading franchises…
+            </div>
+          ) : (
+            <FranchisePicker
+              pickerMode
+              selectedTid={userTeamId ?? null}
+              teams={rosterTeams}
+              players={rosterPlayers}
+              title={isSpainEuropeSetup ? 'Pick Your Endesa Club' : undefined}
+              subtitle={isSpainEuropeSetup ? 'Spain setup path. Real Madrid and Barcelona remain selectable here, with Euroleague sister-league support reserved for later phases.' : undefined}
+              highlightedTeamIds={isSpainEuropeSetup ? highlightedSpainTeamIds : undefined}
+              highlightedLabel={isSpainEuropeSetup ? 'Euroleague' : undefined}
+              onSelectTeam={(teamId) => {
+                setUserTeamId(teamId);
+                // Euro-Isolated GM bypasses Timeline + JumpReview (NBA-centric)
+                // and starts at the Euro pre-season default (Sept 15).
+                if (isEuroSetup) {
+                  // Pass userTeamId via closure — handleStart reads it from state,
+                  // so we need to delay one tick. Easiest: setUserTeamId already
+                  // above triggered re-render, but handleStart in this closure sees
+                  // stale userTeamId. Call setTimeout to land after state flush.
+                  setTimeout(() => handleStart(defaultStartDate), 0);
+                  return;
+                }
+                setStep('timeline');
+              }}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Timeline and review are full-screen, handled separately
+  if (step === 'timeline') {
+    return (
+      <StartDateTimeline
+        onSelect={handleDateSelected}
+        onBack={() => setStep(gameMode === 'gm' ? 'franchise' : 'name')}
+        leagueType={leagueType}
+      />
+    );
+  }
+
+  if (step === 'review') {
+    return (
+      <JumpReviewScreen
+        chosenDate={chosenDate}
+        gameMode={gameMode}
+        leagueType={leagueType}
+        onContinue={(assistantGM) => handleStart(undefined, assistantGM)}
+        onBack={() => setStep('timeline')}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Ambience */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950" />
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-20" />
+
+      <button
+        onClick={handleBack}
+        className="absolute top-8 left-8 text-slate-400 hover:text-white flex items-center gap-2 transition-colors z-20"
+      >
+        <ArrowLeft size={20} />
+        Back to Menu
+      </button>
+
+      <motion.div
+        key={step}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="relative z-10 max-w-xl w-full"
+      >
+        <div className="max-w-md mx-auto">
+          <div className="text-center mb-10">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.2 }}
+              className="w-20 h-20 bg-indigo-600 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl shadow-indigo-500/30"
+            >
+              {gameMode === 'gm' ? <User size={40} className="text-white" /> : <Crown size={40} className="text-white" />}
+            </motion.div>
+            <h1 className="text-4xl font-black text-white tracking-tight mb-2">
+              {gameMode === 'gm' ? 'Welcome, GM' : 'Welcome, Commissioner'}
+            </h1>
+            <p className="text-slate-400 text-lg">
+              {gameMode === 'gm'
+                ? isSpainEuropeSetup ? 'A Spanish club is about to bet five years on you.' : 'A franchise is about to bet five years on you.'
+                : isFictional ? 'A new league is waiting for your blueprint.' : 'The league is waiting for your leadership.'}
+            </p>
+          </div>
+
+          <form onSubmit={handleNameSubmit} className="space-y-6">
+            <div className="space-y-3">
+              <label htmlFor="name" className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
+                Enter Your Name
+              </label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
+                </div>
+                <input
+                  type="text"
+                  id="name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  maxLength={20}
+                  className="block w-full pl-12 pr-4 py-4 bg-slate-900/50 border border-slate-800 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:bg-slate-900 transition-all outline-none font-medium text-lg"
+                  placeholder={isFictional ? 'e.g. Avery Stone' : isSpainEuropeSetup ? 'e.g. Juan Navarro' : 'e.g. Adam Silver'}
+                  autoFocus
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+
+            {/* Game Settings — always visible */}
+            <div className="border border-slate-800 rounded-2xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowSettings(s => !s)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-slate-900/50 hover:bg-slate-800/50 transition-colors text-left"
+              >
+                <div className="flex items-center gap-2 text-slate-400 text-sm font-medium">
+                  <Settings size={15} />
+                  Game Settings
+                </div>
+                {showSettings ? <ChevronUp size={15} className="text-slate-500" /> : <ChevronDown size={15} className="text-slate-500" />}
+              </button>
+
+              {showSettings && (
+                <div className="px-4 pb-4 pt-2 space-y-4 bg-slate-900/30">
+                  {/* AI toggle — top of settings */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-white text-sm font-semibold">
+                        <Bot size={14} className="text-violet-400" />
+                        AI Commentary &amp; Narratives
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Powers news, social posts, DMs &amp; reactions. Off = fast offline play.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateSetting('enableLLM', !settings.enableLLM)}
+                      className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${settings.enableLLM ? 'bg-violet-600' : 'bg-slate-700'}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${settings.enableLLM ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={!name.trim()}
+              className="w-full group relative flex items-center justify-center gap-3 py-4 px-6 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-bold rounded-2xl transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 disabled:shadow-none overflow-hidden"
+            >
+              <span className="relative z-10">{gameMode === 'gm' ? 'Choose Team' : 'Choose Start Date'}</span>
+              <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            </button>
+          </form>
+        </div>
+
+        <p className="mt-10 text-center text-xs text-slate-600 font-medium max-w-md mx-auto">
+          {gameMode === 'gm'
+            ? 'By signing the contract, you agree to deliver wins, stay under the cap, and absorb every loss as if it were "growth".'
+            : `By taking office, you agree to handle all ${labels.central.toLowerCase()} crises, scandals, and draft lotteries with "integrity".`}
+        </p>
+      </motion.div>
+    </div>
+  );
+};

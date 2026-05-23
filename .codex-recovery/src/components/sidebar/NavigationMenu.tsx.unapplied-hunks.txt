@@ -1,0 +1,152 @@
+# Codex hunks NOT found on current disk for src/components/sidebar/NavigationMenu.tsx
+# 22 hunks unapplied. Total ops: 10
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#4] session=7 line=531 ts=2026-05-10T12:40:33.458Z ---
+-        ...(!isPastTradeDeadline ? [
++        ...(!tradesDisabled && !isPastTradeDeadline ? [
+           { id: 'Trade Machine' as Tab,    label: isPastTradeDeadline ? 'Trade Machine (Locked)' : 'Trade Machine',   icon: Cpu },
+           { id: 'Trade Finder' as Tab,     label: 'Trade Finder',    icon: Search },
+         ] : []),
+-        ...(isGM && !isPastTradeDeadline ? [{ id: 'Trade Proposals' as Tab, label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) }] : []),
++        ...(isGM && !tradesDisabled && !isPastTradeDeadline ? [{ id: 'Trade Proposals' as Tab, label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) }] : []),
+         { id: 'Player Search',    label: 'Player Search',   icon: Search },
+         { id: 'Player Bios',        label: 'Player Bios',       icon: Users },
+         { id: 'Player Comparison',  label: 'Player Comparison', icon: ArrowLeftRight },
+
+--- HUNK [op#0 hunk#5] session=7 line=531 ts=2026-05-10T12:40:33.458Z ---
+-    {
+-      label: 'Draft',
+-      items: [
+-        { id: 'Draft Scouting', label: 'Scouting',      icon: Target },
+-        { id: 'Draft Lottery',  label: 'Draft Lottery', icon: Ticket },
+-        { id: 'Draft Board',    label: 'Draft Board',   icon: ClipboardList },
+-      ],
+-    },
++    ...(!noDraft ? [{
++      label: 'Draft',
++      items: [
++        { id: 'Draft Scouting', label: 'Scouting',      icon: Target },
++        { id: 'Draft Lottery',  label: 'Draft Lottery', icon: Ticket },
++        { id: 'Draft Board',    label: 'Draft Board',   icon: ClipboardList },
++      ],
++    }] : []),
+
+--- HUNK [op#1 hunk#0] session=8 line=162 ts=2026-05-10T20:52:31.158Z ---
+ import { isNoDraftLeague } from '../../services/offseason/offseasonState';
+ import { isEuroIsolatedMode } from '../../utils/uiMode';
++import { getEffectiveUiMode } from '../../utils/useEffectiveUiMode';
++import { LeaguePortalButton } from './LeaguePortalButton';
+
+--- HUNK [op#1 hunk#1] session=8 line=162 ts=2026-05-10T20:52:31.158Z ---
+-  const euroIsolated = isEuroIsolatedMode(state);
++  const euroIsolated = isEuroIsolatedMode(state) && getEffectiveUiMode(state as any) === 'euro_isolated';
+
+--- HUNK [op#1 hunk#2] session=8 line=162 ts=2026-05-10T20:52:31.158Z ---
+         ...(!euroIsolated ? [{ id: 'NBA Cup' as Tab, label: labels.cupShort, icon: Trophy }] : []),
++        ...(euroIsolated ? [{ id: 'Euroleague' as Tab, label: 'Euroleague', icon: Globe2 }] : []),
+
+--- HUNK [op#1 hunk#3] session=8 line=162 ts=2026-05-10T20:52:31.158Z ---
+         ...(!euroIsolated ? [{ id: 'NBA Cup' as Tab, label: labels.cupShort, icon: Trophy }] : []),
++        ...(euroIsolated ? [{ id: 'Euroleague' as Tab, label: 'Euroleague', icon: Globe2 }] : []),
+
+--- HUNK [op#2 hunk#1] session=8 line=171 ts=2026-05-10T20:52:39.937Z ---
+       })}
++      <LeaguePortalButton />
+     </div>
+   );
+ };
+
+--- HUNK [op#3 hunk#0] session=8 line=489 ts=2026-05-10T21:01:31.848Z ---
+-  const groups: NavGroup[] = [
++  const groups = [
+
+--- HUNK [op#3 hunk#1] session=8 line=489 ts=2026-05-10T21:01:31.848Z ---
+-  ];
++  ] as NavGroup[];
+
+--- HUNK [op#4 hunk#0] session=8 line=945 ts=2026-05-11T01:55:23.594Z ---
+         ...(!euroIsolated ? [{ id: 'All-Star' as Tab, label: 'All-Star', icon: Star }] : []),
+         ...(!euroIsolated ? [{ id: 'NBA Cup' as Tab, label: labels.cupShort, icon: Trophy }] : []),
+         ...(euroIsolated ? [{ id: 'Euroleague' as Tab, label: 'Euroleague', icon: Globe2 }] : []),
+-        { id: 'Playoffs' as Tab,       label: 'Playoffs',           icon: Trophy, badge: playoffBadge },
++        ...(!euroIsolated ? [{ id: 'Playoffs' as Tab, label: 'Playoffs', icon: Trophy, badge: playoffBadge }] : []),
+       ],
+     }] : [{
+       label: 'Season',
+       items: [
+         ...(!euroIsolated ? [{ id: 'All-Star' as Tab, label: 'All-Star', icon: Star }] : []),
+         ...(!euroIsolated ? [{ id: 'NBA Cup' as Tab, label: labels.cupShort, icon: Trophy }] : []),
+         ...(euroIsolated ? [{ id: 'Euroleague' as Tab, label: 'Euroleague', icon: Globe2 }] : []),
+-        { id: 'Playoffs' as Tab,  label: 'Playoffs',  icon: Trophy, badge: playoffBadge },
++        ...(!euroIsolated ? [{ id: 'Playoffs' as Tab, label: 'Playoffs', icon: Trophy, badge: playoffBadge }] : []),
+       ],
+     }]),
+
+--- HUNK [op#5 hunk#0] session=8 line=1022 ts=2026-05-11T01:57:38.164Z ---
+         { id: 'Schedule',  label: 'Schedule',  icon: Calendar },
+
+--- HUNK [op#5 hunk#1] session=8 line=1022 ts=2026-05-11T01:57:38.164Z ---
+-        { id: 'Seasonal' as Tab,       label: 'Seasonal Actions', icon: Clock,  badge: seasonalBadge || undefined },
++        ...(!euroIsolated ? [{ id: 'Seasonal' as Tab, label: 'Seasonal Actions', icon: Clock, badge: seasonalBadge || undefined }] : []),
+
+--- HUNK [op#5 hunk#2] session=8 line=1022 ts=2026-05-11T01:57:38.164Z ---
+-        { id: 'NBA Central',      label: labels.central,    icon: Trophy },
++        ...(!euroIsolated ? [{ id: 'NBA Central' as Tab, label: labels.central, icon: Trophy }] : []),
+
+--- HUNK [op#5 hunk#3] session=8 line=1022 ts=2026-05-11T01:57:38.164Z ---
+-        { id: 'Award Races',     label: 'Award Races',     icon: TrendingUp },
++        ...(!euroIsolated ? [{ id: 'Award Races' as Tab, label: 'Award Races', icon: TrendingUp }] : []),
+
+--- HUNK [op#5 hunk#4] session=8 line=1022 ts=2026-05-11T01:57:38.164Z ---
+-        { id: 'Hall of Fame',    label: 'Hall of Fame',    icon: Crown },
++        ...(!euroIsolated ? [{ id: 'Hall of Fame' as Tab, label: 'Hall of Fame', icon: Crown }] : []),
+
+--- HUNK [op#6 hunk#0] session=10 line=306 ts=2026-05-13T07:24:56.582Z ---
+-  ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
+-  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight, Globe2
++  ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
++  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight, Globe2, Plane, HeartPulse, Landmark
+
+--- HUNK [op#6 hunk#1] session=10 line=306 ts=2026-05-13T07:24:56.582Z ---
+   const hasUnreadPayslip     = state.hasUnreadPayslip;
++  const userTycoon = state.teams.find(t => t.id === state.userTeamId)?.tycoon;
++  const cashBadge = euroIsolated && isGM && userTycoon
++    ? `€${((userTycoon.cashOnHand ?? 0) / 1_000_000).toFixed(1)}M`
++    : undefined;
+
+--- HUNK [op#6 hunk#2] session=10 line=306 ts=2026-05-13T07:24:56.582Z ---
+-        { id: 'Team Office' as Tab,      label: 'Team Office',      icon: Briefcase },
++        { id: 'Team Office' as Tab,      label: 'Squad View',       icon: Briefcase },
+         { id: 'Coaching' as Tab,         label: 'Coaching',         icon: ClipboardList },
+         { id: 'Training Center' as Tab,  label: 'Training Center',  icon: Activity },
+-        { id: 'Front Office' as Tab,     label: 'Front Office',     icon: DollarSign },
++        { id: 'Front Office' as Tab,     label: 'Overview',         icon: DollarSign, badge: cashBadge },
++        { id: 'Front Office Finances' as Tab, label: 'Finances', icon: Landmark },
++        { id: 'Front Office Sponsorships' as Tab, label: 'Sponsorships', icon: HandshakeIcon },
++        { id: 'Front Office Travel' as Tab, label: 'Travel', icon: Plane },
++        { id: 'Front Office Staff' as Tab, label: 'Staff', icon: Users },
++        { id: 'Front Office Facilities' as Tab, label: 'Facilities', icon: Building2 },
++        { id: 'Front Office Scouting' as Tab, label: 'Scouting', icon: Target },
+       ],
+     },
+
+--- HUNK [op#6 hunk#3] session=10 line=306 ts=2026-05-13T07:24:56.582Z ---
+-        { id: 'League Finances' as Tab,  label: 'Team Finances',    icon: DollarSign },
++        { id: 'Front Office Medical' as Tab, label: 'Medical', icon: HeartPulse },
+         { id: 'Personal' as Tab,         label: 'Payslips',         icon: User,          badge: hasUnreadPayslip ? 1 : 0 },
+       ],
+     },
+
+--- HUNK [op#7 hunk#1] session=10 line=311 ts=2026-05-13T07:25:05.564Z ---
+-  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight, Globe2, Plane, HeartPulse, Landmark
++  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight, Globe2, Plane, HeartPulse, Landmark, Handshake
+
+--- HUNK [op#7 hunk#2] session=10 line=311 ts=2026-05-13T07:25:05.564Z ---
+-        { id: 'Front Office Sponsorships' as Tab, label: 'Sponsorships', icon: HandshakeIcon },
++        { id: 'Front Office Sponsorships' as Tab, label: 'Sponsorships', icon: Handshake },
+
+--- HUNK [op#8 hunk#0] session=10 line=491 ts=2026-05-13T07:46:54.095Z ---
+-  const openingNight = toISODateString(getOpeningNightDate(seasonYear));
++  const openingNight = toISODateString(getOpeningNightDate(seasonYear, state.leagueStats, state.schedule as any));

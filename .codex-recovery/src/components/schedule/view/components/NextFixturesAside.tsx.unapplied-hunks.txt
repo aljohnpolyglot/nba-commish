@@ -1,0 +1,62 @@
+# Codex hunks NOT found on current disk for src/components/schedule/view/components/NextFixturesAside.tsx
+# 1 hunks unapplied. Total ops: 3
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#2] session=11 line=179 ts=2026-05-13T17:20:51.230Z ---
+       .slice(0, 5);
+   }, [state.schedule, state.date, ownTid, state.leagueStats?.uiMode]);
++
++  const competitionStats = useMemo(() => {
++    if (ownTid === null || ownTid === undefined || ownTid < 0) return [];
++    const visibleIds = ['endesa', 'euroleague', 'copa-del-rey', 'supercopa'];
++    return visibleIds
++      .map(id => {
++        const spec = state.activeCompetitions?.find(c => c.id === id);
++        if (!spec) return null;
++        const games = (state.schedule ?? []).filter(g => g.competitionId === id);
++        const ownGames = games.filter(g => g.homeTid === ownTid || g.awayTid === ownTid);
++        const played = (state.boxScores ?? []).filter((b: any) => {
++          if (b.competitionId !== id) return false;
++          if (b.season !== undefined && b.season !== seasonYear) return false;
++          return b.homeTeamId === ownTid || b.awayTeamId === ownTid;
++        });
++        const wins = played.filter((b: any) => b.winnerId === ownTid || ((b.homeTeamId === ownTid ? b.homeScore : b.awayScore) > (b.homeTeamId === ownTid ? b.awayScore : b.homeScore))).length;
++        const losses = Math.max(0, played.length - wins);
++        const next = ownGames.filter(g => !g.played && normalizeDate(g.date) >= normalizeDate(state.date)).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
++        return { id, spec, ownGames: ownGames.length, wins, losses, next };
++      })
++      .filter((row): row is NonNullable<typeof row> => !!row && (row.ownGames > 0 || row.next));
++  }, [ownTid, state.activeCompetitions, state.boxScores, state.date, state.schedule, seasonYear]);
++
++  const miniStandings = useMemo(() => {
++    const primary = competitionStats.find(c => c.id === 'endesa') ?? competitionStats[0];
++    if (!primary) return [];
++    const rows = new Map<number, { tid: number; wins: number; losses: number; pf: number; pa: number }>();
++    (state.schedule ?? [])
++      .filter(g => g.competitionId === primary.id)
++      .forEach(g => {
++        if (!rows.has(g.homeTid)) rows.set(g.homeTid, { tid: g.homeTid, wins: 0, losses: 0, pf: 0, pa: 0 });
++        if (!rows.has(g.awayTid)) rows.set(g.awayTid, { tid: g.awayTid, wins: 0, losses: 0, pf: 0, pa: 0 });
++      });
++    (state.boxScores ?? []).forEach((b: any) => {
++      if (b.competitionId !== primary.id) return;
++      if (b.season !== undefined && b.season !== seasonYear) return;
++      const home = rows.get(b.homeTeamId) ?? { tid: b.homeTeamId, wins: 0, losses: 0, pf: 0, pa: 0 };
++      const away = rows.get(b.awayTeamId) ?? { tid: b.awayTeamId, wins: 0, losses: 0, pf: 0, pa: 0 };
++      const homeWon = b.homeScore > b.awayScore;
++      home.wins += homeWon ? 1 : 0;
++      home.losses += homeWon ? 0 : 1;
++      home.pf += b.homeScore;
++      home.pa += b.awayScore;
++      away.wins += homeWon ? 0 : 1;
++      away.losses += homeWon ? 1 : 0;
++      away.pf += b.awayScore;
++      away.pa += b.homeScore;
++      rows.set(home.tid, home);
++      rows.set(away.tid, away);
++    });
++    return [...rows.values()]
++      .sort((a, b) => b.wins - a.wins || (b.pf - b.pa) - (a.pf - a.pa))
++      .slice(0, 6);
++  }, [competitionStats, state.boxScores, state.schedule, seasonYear]);

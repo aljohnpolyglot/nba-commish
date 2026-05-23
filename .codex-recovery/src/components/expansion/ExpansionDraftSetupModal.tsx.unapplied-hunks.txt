@@ -1,0 +1,53 @@
+# Codex hunks NOT found on current disk for src/components/expansion/ExpansionDraftSetupModal.tsx
+# 3 hunks unapplied. Total ops: 4
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=6 line=106 ts=2026-05-10T05:17:03.457Z ---
+-import type { ExpansionTeamSpec } from '../../types';
++import type { ExpansionTeamSpec, NBATeam } from '../../types';
+ import { ZENGM_EXPANSION_POOL } from '../../data/expansionTeamPool';
+-import { getExpansionLogoPool, getLogoTeamBySlug, type ParsedLogoTeam } from '../../data/expansionLogoPool';
++import { getExpansionLogoPool, type ParsedLogoTeam } from '../../data/expansionLogoPool';
+
+--- HUNK [op#0 hunk#2] session=6 line=106 ts=2026-05-10T05:17:03.457Z ---
+ }
+ 
+ type Tab = 'teams' | 'realignment' | 'settings';
++type Conference = 'East' | 'West';
++type RealignmentMove = { conference: Conference; cid: 0 | 1; did: number };
++type ExistingTeam = Pick<NBATeam, 'id' | 'tid' | 'abbrev' | 'region' | 'name' | 'conference' | 'did'> & {
++  abbreviation?: string;
++  location?: string;
++};
++
++const DIVISION_GROUPS: Array<{
++  label: Conference;
++  conference: Conference;
++  options: Array<{ did: number; label: string }>;
++}> = [
++  {
++    label: 'East',
++    conference: 'East',
++    options: [
++      { did: 0, label: 'Northeast' },
++      { did: 1, label: 'Midwest' },
++      { did: 2, label: 'Mid-Atlantic' },
++      { did: 3, label: 'Southeast' },
++    ],
++  },
++  {
++    label: 'West',
++    conference: 'West',
++    options: [
++      { did: 4, label: 'Northwest' },
++      { did: 5, label: 'Pacific' },
++      { did: 6, label: 'Southwest' },
++      { did: 7, label: 'Central' },
++    ],
++  },
++];
+
+--- HUNK [op#0 hunk#3] session=6 line=106 ts=2026-05-10T05:17:03.457Z ---
+-const ZENGM_2029_REALIGNMENT: Record<number, { conference: 'East' | 'West'; cid: 0 | 1; did: number }> = {
++const ZENGM_2029_REALIGNMENT: Record<number, RealignmentMove> = {

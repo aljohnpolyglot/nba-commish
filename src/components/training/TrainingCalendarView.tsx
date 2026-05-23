@@ -398,7 +398,7 @@ export const TrainingCalendarView: React.FC<Props> = ({
           </span>
         ))}
         <span className="ml-auto text-[9px] text-slate-600 font-bold uppercase tracking-widest">
-          {team.abbrev} · {Object.keys(dailyPlansISO).length} plans set
+          {team.abbrev} · {Object.keys(dailyPlansISO).length} days planned
         </span>
       </div>
     </div>

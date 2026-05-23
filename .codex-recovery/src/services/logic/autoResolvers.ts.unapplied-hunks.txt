@@ -1,0 +1,54 @@
+# Codex hunks NOT found on current disk for src/services/logic/autoResolvers.ts
+# 6 hunks unapplied. Total ops: 3
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#1] session=5 line=167 ts=2026-05-10T04:24:57.643Z ---
+ export const autoRunLottery = (state: GameState): Partial<GameState> => {
+   logPlanEvent('autoResolvers.autoRunLottery', 'fire', `date=${state.date}`);
++  if (isNoDraftLeague(state.leagueStats)) return {};
+   if ((state as any).draftLotteryResult) return {}; // already run
+
+--- HUNK [op#0 hunk#2] session=5 line=167 ts=2026-05-10T04:24:57.643Z ---
+ export const autoRunDraft = (state: GameState): Partial<GameState> => {
+   logPlanEvent('autoResolvers.autoRunDraft', 'fire', `date=${state.date}`);
++  if (isNoDraftLeague(state.leagueStats)) return {};
+   if ((state as any).draftComplete) return {}; // commissioner already ran the draft
+
+--- HUNK [op#1 hunk#0] session=8 line=788 ts=2026-05-11T01:45:34.560Z ---
+ import { generateSchedule } from '../gameScheduler';
++import { generateForCompetition } from '../competition/competitionScheduler';
+
+--- HUNK [op#1 hunk#2] session=8 line=788 ts=2026-05-11T01:45:34.560Z ---
+     state.saveId,
+   );
++  if (state.activeCompetitions?.length) {
++    const compGames = state.activeCompetitions.flatMap((spec, index) => {
++      const league = spec.id === 'endesa' ? 'Endesa' : spec.id === 'euroleague' ? 'Euroleague' : 'Endesa';
++      const teams = (state.nonNBATeams ?? [])
++        .filter(t => t.league === league)
++        .slice(0, spec.teamCount ?? state.nonNBATeams.length)
++        .map(t => ({ tid: t.tid }));
++      const start = new Date(`${state.leagueStats.year - 1}-${String(spec.seasonStart.month).padStart(2, '0')}-${String(spec.seasonStart.day).padStart(2, '0')}T00:00:00Z`);
++      return generateForCompetition(spec, teams, start, 700_000 + index * 50_000);
++    });
++    schedule = [...schedule, ...compGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
++  }
+   if (intlPreseasonGames.length > 0) {
+
+--- HUNK [op#2 hunk#0] session=8 line=1695 ts=2026-05-11T02:35:45.351Z ---
+-import { generateForCompetition } from '../competition/competitionScheduler';
++import { generateForCompetition, selectCompetitionTeamTids } from '../competition/competitionScheduler';
+
+--- HUNK [op#2 hunk#1] session=8 line=1695 ts=2026-05-11T02:35:45.351Z ---
+   if (state.activeCompetitions?.length) {
+     const compGames = state.activeCompetitions.flatMap((spec, index) => {
+-      const league = spec.id === 'endesa' ? 'Endesa' : spec.id === 'euroleague' ? 'Euroleague' : 'Endesa';
+-      const teams = (state.nonNBATeams ?? [])
+-        .filter(t => t.league === league)
+-        .slice(0, spec.teamCount ?? state.nonNBATeams.length)
+-        .map(t => ({ tid: t.tid }));
++      const teams = selectCompetitionTeamTids(spec, state).map(tid => ({ tid }));
+       const start = new Date(`${state.leagueStats.year - 1}-${String(spec.seasonStart.month).padStart(2, '0')}-${String(spec.seasonStart.day).padStart(2, '0')}T00:00:00Z`);
+       return generateForCompetition(spec, teams, start, 700_000 + index * 50_000);
+     });

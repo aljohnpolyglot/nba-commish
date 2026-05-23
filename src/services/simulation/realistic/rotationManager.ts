@@ -21,6 +21,7 @@ export class RotationManager {
     public readonly rotation: Player[],
     public readonly composites: PlayerComposite[],
     minuteTargets: number[],
+    private readonly isEuroClubGame: boolean = false,
   ) {
     const n = rotation.length;
     this.onCourt = [0, 1, 2, 3, 4].slice(0, Math.min(5, n));
@@ -40,6 +41,7 @@ export class RotationManager {
     return {
       players: this.onCourt.map(i => this.rotation[i]),
       composites: this.onCourt.map(i => this.composites[i]),
+      isEuroClubGame: this.isEuroClubGame,
     };
   }
 

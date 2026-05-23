@@ -2,10 +2,23 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 64 (May 20, 2026) — Euro offseason checklist copy polish
+
+- `src/services/offseason/offseasonState.ts`, `src/components/offseason/OffseasonAufgaben.tsx` — Euro initial offseason no longer pre-skips `My Free Agents`; the row now opens as a real checklist task, and the visible offseason labels/descriptions/section headers were rewritten in more player-facing language instead of internal-sounding "flow/phase" copy.
+- `README.md`, `TODO.md`, `CLAUDE.md`, `AGENTS.md` — docs and agent instructions now explicitly call for user-facing offseason copy, so future UI passes do not drift back toward dev terminology.
+
+## Session 63 (May 18, 2026) — Euro postseason/offseason gate
+
+- `docs/travel-fatigue-spec.md`, `README.md`, `TODO.md` — added a repo-native design doc for travel fatigue + route visualization. The spec anchors the feature to existing `travelPreferences` and `trainingFatigue` systems, keeps the first implementation team-level and mechanic-first, and explicitly defers the full globe visual until after schedule/fatigue integration is proven.
+- `src/services/competition/competitionResolver.ts`, `src/services/offseason/offseasonPlan.ts`, `src/store/GameContext.tsx`, `src/services/logic/seasonRollover.ts` — Euro isolated mode now treats unresolved season-defining Euro competitions (`endesa`, `euroleague`) as postseason-active, so Offseason Tasks and rollover stay blocked until the current season's champions are actually resolved.
+- `src/components/shared/PlayButton.tsx` — non-EuroLeague-qualified Euro GMs no longer see EuroLeague PlayButton phase labels or dropdown jumps; the header now uses the same continental eligibility gate as Schedule/Calendar.
+- `src/utils/debugCheats.ts` — `STUCK`, `PHASEDUMP`, and diagnostic snapshots now report unresolved Euro season competitions so future TODO/bug repros point directly at the live debug path.
+
 ## Session 62 (May 16, 2026) — May 15 Euro quick-fixes cleanup
 
 - `src/components/tycoon/OpenMarketModal.tsx`, `SponsorshipSection.tsx`, `src/store/GameContext.tsx` — one-time endorsement signings are now idempotent by year/brand/kind/value, duplicate legacy endorsement rows are deduped on Euro save load, and the sponsorship dashboard renders unique endorsements only.
-- `src/components/offseason/OffseasonAufgaben.tsx`, `src/services/offseason/offseasonState.ts` — Euro Offseason Tasks no longer show the premature `Sim to Opening Night` auto-resolve button, Transfer Market `Mark Done` is hidden until staff/sponsors/facilities/budget/youth/friendlies are resolved, empty Youth Promotion auto-completes, and Preseason Friendlies opens an in-place review modal instead of sending the user to Calendar.
+- `src/components/offseason/OffseasonAufgaben.tsx`, `src/services/offseason/offseasonState.ts` — Euro Offseason Tasks no longer show the premature `Sim to Opening Night` auto-resolve button, Transfer Market `Mark Done` is available once the parallel staff/sponsor/facility reviews are resolved, empty Youth Promotion auto-completes, and Preseason Friendlies opens an in-place review modal instead of sending the user to Calendar.
+- `src/components/offseason/OffseasonAufgaben.tsx`, `src/components/tycoon/AnnualBudgetReviewModal.tsx` — follow-up: sponsor and staff rows now auto-complete from live team state after hires/signings, Transfer Window counters share one date calculation, and Facility/Budget reviews use a read-only live operating-plan modal; Facility Review still offers `Open Sliders`, while Annual Budget Review only locks the already-final values.
 - `src/components/modals/SigningModal/SigningModal.tsx`, `src/store/logic/actions/playerActions.ts`, `src/components/central/view/TeamOffice/pages/TeamIntelFreeAgency.tsx` — Euro signings no longer use NBA cap/MLE hard-blocks or player/team-option incentives; projected cash deficit is a notice, not a second-submit blocker; Euro Team Intel free agency opens direct signing instead of NBA bid-market auto-bids.
 - `src/components/central/view/FrontOffice/sections/FinanceSection.tsx` — finance overview now explains that Euro basketball deficits are normal owner-supported operating risk rather than an NBA-style profitability failure.
 

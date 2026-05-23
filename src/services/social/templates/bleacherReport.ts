@@ -1,33 +1,9 @@
 import { SocialTemplate, SocialContext } from '../types';
 import { getRating, isReigningChamp, calculateAge, getGameScore, get2KRating } from '../helpers';
 import { convertTo2KRating } from '../../../utils/helpers';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// BLEACHER REPORT — highlight-first, lists/rankings, all-caps energy
-// Best templates: br_detonated, br_mock_draft, br_mvp_ladder, br_scary_duos,
-//                br_league_pass — all kept, just bug-fixed
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Games → human time for injury posts */
-function gamesToTime(games: number): string {
-    if (games <= 0)  return 'day-to-day';
-    if (games <= 2)  return 'the next two games';
-    if (games <= 7)  return 'approximately one week';
-    if (games <= 14) return 'approximately two weeks';
-    if (games <= 22) return 'approximately one month';
-    if (games <= 35) return '4-to-6 weeks';
-    if (games <= 55) return 'multiple months';
-    return 'the remainder of the season';
-}
-
-/** Look up team name from ctx.teams by id */
-function teamName(ctx: SocialContext, tid: number): string {
-    return ctx.teams?.find((t: any) => t.id === tid)?.name ?? 'Unknown';
-}
+import { gamesToTime, teamName } from './templateCommon';
 
 export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
-
-    // ── WILD FINISH ───────────────────────────────────────────────────────────
     {
         id: 'br_wild',
         handle: 'bleacher_report',
@@ -42,8 +18,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             content: `${teamName(ctx, ctx.game.winnerId)} wins a WILD one! 🔥`,
         }),
     },
-
-    // ── LEADS WIN — fixed: PTS/REB/AST order, threshold raised to 28 ─────────
     {
         id: 'br_leads_win',
         handle: 'bleacher_report',
@@ -57,7 +31,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             const name    = (ctx.player?.name ?? '').toUpperCase();
             const team    = (ctx.team?.name ?? '').toUpperCase();
             const opp     = (ctx.opponent?.name ?? '').toUpperCase();
-            // Only include REB/AST if meaningful
             const rebLine = s.reb >= 5  ? `\n${s.reb} REB` : '';
             const astLine = s.ast >= 4  ? `\n${s.ast} AST` : '';
             const tpmLine = s.threePm >= 4 ? `\n${s.threePm} 3PM` : '';
@@ -66,8 +39,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             };
         },
     },
-
-    // ── GAVE ALL (loss performance) — fixed: no zero-stat dumps, no bad pronoun ─
     {
         id: 'br_gave_all',
         handle: 'bleacher_report',
@@ -92,9 +63,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             };
         },
     },
-
-    // ── UNIFIED BUZZER BEATER — replaces the 3 overlapping ones ──────────────
-    // Now reads from game.gameWinner like every other handle does
     {
         id: 'br_buzzer_beater',
         handle: 'bleacher_report',
@@ -123,8 +91,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             };
         },
     },
-
-    // ── BLOCK + OOP ───────────────────────────────────────────────────────────
     {
         id: 'br_block_oop',
         handle: 'bleacher_report',
@@ -148,8 +114,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             };
         },
     },
-
-    // ── POSTERIZER — fires on actual posterizer highlight, uses victim name ──────
     {
         id: 'br_poster',
         handle: 'bleacher_report',
@@ -184,8 +148,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             return { content: variants[Math.floor(Math.random() * variants.length)] };
         },
     },
-
-    // ── ALLEY-OOP ─────────────────────────────────────────────────────────────
     {
         id: 'br_alley_oop',
         handle: 'bleacher_report',
@@ -217,8 +179,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             return { content: variants[Math.floor(Math.random() * variants.length)] };
         },
     },
-
-    // ── FAST BREAK DUNK ───────────────────────────────────────────────────────
     {
         id: 'br_fastbreak',
         handle: 'bleacher_report',
@@ -249,8 +209,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             return { content: variants[Math.floor(Math.random() * variants.length)] };
         },
     },
-
-    // ── DETONATED / GENERIC DUNK (fallback when no highlight data) ────────────
     {
         id: 'br_detonated',
         handle: 'bleacher_report',
@@ -259,7 +217,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
         type: 'highlight',
         condition: (ctx: SocialContext) => {
             if (!ctx.player || !ctx.stats) return false;
-            // Only fire if no specific dunk highlight already covered this player
             const hl: any[] = (ctx.game as any).highlights ?? [];
             const pid = ctx.player.internalId;
             const hasSpecific = hl.some((h: any) =>
@@ -282,8 +239,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             return { content: variants[Math.floor(Math.random() * variants.length)] };
         },
     },
-
-    // ── CLUTCH DAGGER ─────────────────────────────────────────────────────────
     {
         id: 'br_clutch_dagger',
         handle: 'bleacher_report',
@@ -296,8 +251,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             content: `"THIS IS WHAT THE F--K I DO!" 🗣️\n\n${ctx.player?.name} was HYPE after hitting the clutch dagger 😤🔥`,
         }),
     },
-
-    // ── TOOK DOWN CHAMPS ─────────────────────────────────────────────────────
     {
         id: 'br_took_down_champs',
         handle: 'bleacher_report',
@@ -312,8 +265,6 @@ export const BLEACHER_REPORT_TEMPLATES: SocialTemplate[] = [
             content: `${(ctx.player?.name ?? '').toUpperCase()} DROPS ${ctx.stats.pts} TO LEAD THE ${(ctx.team?.name ?? '').toUpperCase()} TO THE WIN 🔥\n\nTook down the reigning champs 😤`,
         }),
     },
-
-    // ── BEST AT EVERY AGE ─────────────────────────────────────────────────────
     {
         id: 'br_best_at_age',
         handle: 'bleacher_report',

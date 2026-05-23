@@ -8,62 +8,13 @@ import { fetchCoachData, getCoachPhoto } from '../../../data/photos/coaches';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { requestTeamHistoryFor } from './TeamHistoryView';
 import type { Tab } from '../../../types';
-import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { getEffectiveUiMode } from '../../../utils/useEffectiveUiMode';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
 import { getTeamFullName } from '../../../utils/teamNames';
-
-const resolvePortraitUrl = (player: any, name: string) =>
-  player?.imgURL || ((player as any)?.face ? undefined : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e293b&color=94a3b8`);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Mini award cell for table rows
-// ─────────────────────────────────────────────────────────────────────────────
-
-const AwardCell = ({ award, isCurrent, onClick }: { award: any; isCurrent?: boolean; onClick?: () => void }) => {
-  if (!award) {
-    return (
-      <span className={`italic text-xs ${isCurrent ? 'text-slate-500' : 'text-slate-700'}`}>
-        {isCurrent ? 'TBA' : '—'}
-      </span>
-    );
-  }
-
-  const clickable = !!onClick;
-  return (
-    <div
-      onClick={clickable ? (e) => { e.stopPropagation(); onClick!(); } : undefined}
-      className={`flex items-center gap-2 ${clickable ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}>
-      <PlayerPortrait
-        imgUrl={award.imgURL}
-        face={award.face}
-        playerName={award.name}
-        teamLogoUrl={award.teamLogoUrl}
-        size={28}
-      />
-      <div className="flex flex-col leading-tight">
-        <div className="flex items-center gap-1">
-          <span className="font-semibold text-white text-xs">{award.name}</span>
-          {(award.count ?? 0) > 0 && (
-            <span className="text-[9px] font-black text-amber-400 bg-amber-400/10 px-1 py-px rounded-full leading-none">
-              {award.count}×
-            </span>
-          )}
-        </div>
-        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">{award.team}</span>
-      </div>
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Main view
-// ─────────────────────────────────────────────────────────────────────────────
-
+import { AwardCell, resolveLeagueHistoryPortraitUrl } from './leagueHistoryShared';
 interface LeagueHistoryViewProps {
   onViewChange?: (view: Tab) => void;
 }
-
 export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChange }) => {
   const { state, dispatchAction } = useGame();
   const isFictional = state.leagueType === 'fictional';
@@ -80,7 +31,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
     onViewChange('Team History' as Tab);
   };
 
-  // ── Safety Net: Inject historical awards for saved games ──────────────────
   useEffect(() => {
     if (disableNbaHistoricalData) return;
     if (!state.historicalAwards || state.historicalAwards.length === 0) {
@@ -96,7 +46,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
 
   const currentSeason = state.leagueStats.year;
 
-  // ── Collect all historical season years (for bref batch hook) ────────────
   const historicalYears = useMemo(() => {
     const awardsToUse = state.historicalAwards || [];
     const seasonsSet = new Set<number>();
@@ -106,22 +55,17 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
     return Array.from(seasonsSet).sort((a, b) => b - a).slice(0, 12);
   }, [state.teams, state.players, state.historicalAwards, currentSeason]);
 
-  // ── Progressively fetch B-Ref summaries via the batch hook ───────────────
   const brefMap = useBRefSeasonsBatch(isFictional ? [] : historicalYears);
 
   const historyData = useMemo(() => {
     const awardsToUse = state.historicalAwards || [];
 
-    // Collect all known seasons
     const seasonsSet = new Set<number>([currentSeason]);
     state.teams.forEach(t => t.seasons?.forEach((s: any) => seasonsSet.add(s.season)));
     state.players.forEach(p => p.awards?.forEach((a: any) => seasonsSet.add(a.season)));
     awardsToUse.forEach((a: any) => seasonsSet.add(a.season));
     const seasons = Array.from(seasonsSet).sort((a, b) => b - a);
 
-    // ── Player lookup — handles BOTH pid formats ──────────────────────────────
-    // AutoResolver pid = internalId (string "nba-Name-tid")
-    // BBGM pid = integer player ID (no relation to internalId)
     const stripAccents = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
     const findPlayer = (a: any) => {
       if (!a) return undefined;
@@ -144,14 +88,13 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
         name: a.name,
         team: team?.abbrev ?? 'FA',
         id: player?.internalId ?? a.name,
-        imgURL: resolvePortraitUrl(player, a.name),
+        imgURL: resolveLeagueHistoryPortraitUrl(player, a.name),
         face: (player as any)?.face,
         teamLogoUrl: team?.logoUrl,
         player,
       };
     };
 
-    // ── Wikipedia award fallback helper ──────────────────────────────────────
     const makeBrefAwardObj = (a: { name: string; team: string } | undefined) => {
       if (!a?.name) return null;
       const nl = a.name.toLowerCase();
@@ -161,28 +104,20 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
         name: a.name,
         team: team?.abbrev ?? (a.team ? generateAbbrev(a.team) : ''),
         id: player?.internalId ?? a.name,
-        imgURL: resolvePortraitUrl(player, a.name),
+        imgURL: resolveLeagueHistoryPortraitUrl(player, a.name),
         face: (player as any)?.face,
         teamLogoUrl: team?.logoUrl,
         player,
       };
     };
 
-    // ── Championship year map: teamId → Set<year> ────────────────────────────
-    // Built from flat autoResolver awards + Wikipedia brefMap (deduped by year).
-    // state.teams has NO seasons array (stripped at import), so brefMap is the
-    // authoritative source for historical BBGM seasons.
     const champYearsByTeamId = new Map<number, Set<number>>();
-    // Source 1: flat 'Champion' awards (current sim seasons)
     for (const a of awardsToUse) {
       if (a.type !== 'Champion' || a.tid == null) continue;
       const tid = Number(a.tid);
       if (!champYearsByTeamId.has(tid)) champYearsByTeamId.set(tid, new Set());
       champYearsByTeamId.get(tid)!.add(Number(a.season));
     }
-    // Source 2: Wikipedia full cache (all 79 seasons — populated after first fetch)
-    // We use getAllCachedSeasons() instead of brefMap because brefMap only holds
-    // the batch window (12 years). The full cache is available after any season loads.
     if (!isFictional) {
       for (const [yr, brefData] of getAllCachedSeasons().entries()) {
         if (!brefData.champion?.name) continue;
@@ -193,7 +128,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
       }
     }
 
-    // ── Runner-up appearances map: teamId → Set<year> ────────────────────────
     const ruYearsByTeamId = new Map<number, Set<number>>();
     for (const a of awardsToUse) {
       if (a.type !== 'Runner Up' || a.tid == null) continue;
@@ -211,7 +145,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
       }
     }
 
-    // ── Cumulative win count helpers ──────────────────────────────────────────
     const countForPlayer = (name: string | undefined, flatType: string, bbgmKey: string, upTo: number): number => {
       if (!name) return 1;
       return Math.max(1, awardsToUse.reduce((cnt: number, a: any) => {
@@ -241,9 +174,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
       const isCurrent = season === currentSeason;
       const bref = brefMap.get(season);
 
-      // ── Split historicalAwards by schema ──────────────────────────────────
-      // BBGM format: { season, mvp: {…}, dpoy: {…}, … } — no 'type' field
-      // AutoResolver format: { season, type: 'MVP', name, pid, tid } — flat
       const bbgmRecord = awardsToUse.find(
         (a: any) => Number(a.season) === Number(season) && !a.type
       );
@@ -252,11 +182,9 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
       );
       const flat = (type: string) => flatAwards.find((a: any) => a.type === type);
 
-      // Resolve an award entry preferring autoResolver (richer pid), falling back to BBGM
       const getAwardEntry = (bbgmKey: string, flatType: string) =>
         flat(flatType) ?? bbgmRecord?.[bbgmKey] ?? null;
 
-      // ── Champion & Runner Up: autoResolver first, then playoffRoundsWon ──
       let champ: any = null;
       let runnerUp: any = null;
 
@@ -277,7 +205,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
         }
       }
 
-      // Fallback: playoffRoundsWon (works once rosterService populates seasons)
       if (!champ || !runnerUp) {
         let maxRounds = -1;
         state.teams.forEach(t => {
@@ -297,7 +224,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
         }
       }
 
-      // Fallback: champion from Finals MVP tid
       if (!champ) {
         const fmvpEntry = flat('Finals MVP') ?? bbgmRecord?.finalsMvp;
         if (fmvpEntry) {
@@ -309,7 +235,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
         }
       }
 
-      // Wikipedia fallback — use full cache for all 79 seasons, not just 12-year brefMap
       const wikiSeason = isFictional ? undefined : (getAllCachedSeasons().get(season) ?? bref);
       if (!champ && wikiSeason?.champion) {
         const matched = matchTeamByWikiName(wikiSeason.champion.name, state.teams as any[]) as any;
@@ -326,7 +251,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
         }
       }
 
-      // ── Awards (unified from both schemas) ────────────────────────────────
       const awards: Record<string, any> = {
         finalsMvp: makeAwardObj(getAwardEntry('finalsMvp', 'Finals MVP')),
         mvp:       makeAwardObj(getAwardEntry('mvp',       'MVP')),
@@ -337,7 +261,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
         coy:       makeAwardObj(getAwardEntry('coy',       'COY')),
       };
 
-      // Wikipedia fallback — use full cache so all 79 seasons are covered
       const wiki = wikiSeason;
       if (wiki) {
         if (!awards.mvp)       awards.mvp       = makeBrefAwardObj(wiki.mvp);
@@ -349,13 +272,11 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
         if (!awards.finalsMvp) awards.finalsMvp = makeBrefAwardObj(wiki.finalsMvp);
       }
 
-      // Coach photo override for COY
       if (awards.coy) {
         const photo = getCoachPhoto(awards.coy.name);
         if (photo) awards.coy.imgURL = photo;
       }
 
-      // Stamp cumulative win counts onto each award object
       if (awards.mvp)       awards.mvp.count       = countForPlayer(awards.mvp.name,       'MVP',       'mvp',       season);
       if (awards.dpoy)      awards.dpoy.count      = countForPlayer(awards.dpoy.name,      'DPOY',      'dpoy',      season);
       if (awards.smoy)      awards.smoy.count      = countForPlayer(awards.smoy.name,      'SMOY',      'smoy',      season);
@@ -488,7 +409,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
                         : 'hover:bg-slate-800/30'
                     }`}
                   >
-                    {/* Season year — clickable → detailed season view */}
                     <td
                       className="p-3 whitespace-nowrap cursor-pointer"
                       onClick={() => setSelectedSeason(row.season)}
@@ -505,7 +425,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
                       </div>
                     </td>
 
-                    {/* Champion — clickable → Team History */}
                     <td className="p-3 whitespace-nowrap">
                       {row.champ ? (
                         <div
@@ -530,7 +449,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
                       )}
                     </td>
 
-                    {/* Runner Up — clickable → Team History */}
                     <td className="p-3 whitespace-nowrap">
                       {row.runnerUp ? (
                         <div
@@ -558,7 +476,6 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
                     <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.finalsMvp} isCurrent={row.isCurrent} onClick={row.awards.finalsMvp?.player ? () => openAward(row.awards.finalsMvp) : undefined} /></td>
                     <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.mvp}       isCurrent={row.isCurrent} onClick={row.awards.mvp?.player       ? () => openAward(row.awards.mvp)       : undefined} /></td>
                     <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.dpoy}      isCurrent={row.isCurrent} onClick={row.awards.dpoy?.player      ? () => openAward(row.awards.dpoy)      : undefined} /></td>
-                    {/* COY stays non-clickable — coach pages are a future feature */}
                     <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.coy}       isCurrent={row.isCurrent} /></td>
                     <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.smoy}      isCurrent={row.isCurrent} onClick={row.awards.smoy?.player      ? () => openAward(row.awards.smoy)      : undefined} /></td>
                     <td className="p-3 whitespace-nowrap"><AwardCell award={row.awards.mip}       isCurrent={row.isCurrent} onClick={row.awards.mip?.player       ? () => openAward(row.awards.mip)       : undefined} /></td>

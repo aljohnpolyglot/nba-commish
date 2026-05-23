@@ -9,6 +9,7 @@ export type PossessionEnd =
 export interface OnCourt {
   players: Player[];          // 5 actives
   composites: PlayerComposite[]; // parallel array, same order
+  isEuroClubGame?: boolean;
 }
 
 export interface PlayerComposite {

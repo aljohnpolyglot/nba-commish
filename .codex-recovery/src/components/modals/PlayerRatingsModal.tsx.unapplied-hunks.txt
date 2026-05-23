@@ -1,0 +1,29 @@
+# Codex hunks NOT found on current disk for src/components/modals/PlayerRatingsModal.tsx
+# 5 hunks unapplied. Total ops: 1
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=11 line=555 ts=2026-05-13T17:43:08.420Z ---
+ import { getRealDurability, applyDurabilityToK2 } from '../../utils/durabilityUtils';
++import { formatFuzzedRating, fuzzRatingValue } from '../../utils/scoutingFuzz';
+
+--- HUNK [op#0 hunk#1] session=11 line=555 ts=2026-05-13T17:43:08.420Z ---
+   const potK2 = getDisplayPotential(player, simYear);
+-  const ovrColor = getRatingColor(overall2k);
++  const displayOverall2k = fuzzRatingValue(overall2k, state, player);
++  const displayOverallText = formatFuzzedRating(overall2k, state, player);
++  const displayPotText = formatFuzzedRating(potK2, state, player, 'pot');
++  const ovrColor = getRatingColor(displayOverall2k);
+
+--- HUNK [op#0 hunk#2] session=11 line=555 ts=2026-05-13T17:43:08.420Z ---
+-                  <span className="text-2xl font-black leading-none mt-0.5" style={{ color: ovrColor }}>{overall2k}</span>
++                  <span className="text-2xl font-black leading-none mt-0.5" style={{ color: ovrColor }}>{displayOverallText}</span>
+
+--- HUNK [op#0 hunk#3] session=11 line=555 ts=2026-05-13T17:43:08.420Z ---
+-                  const potColor = potK2 >= 90 ? '#3b82f6' : potK2 >= 80 ? '#22c55e' : potK2 >= 70 ? '#eab308' : '#94a3b8';
++                  const potDisplay = fuzzRatingValue(potK2, state, player, 'pot');
++                  const potColor = potDisplay >= 90 ? '#3b82f6' : potDisplay >= 80 ? '#22c55e' : potDisplay >= 70 ? '#eab308' : '#94a3b8';
+
+--- HUNK [op#0 hunk#4] session=11 line=555 ts=2026-05-13T17:43:08.420Z ---
+-                      <span className="text-lg font-black leading-none mt-0.5" style={{ color: potColor }}>{potK2}</span>
++                      <span className="text-lg font-black leading-none mt-0.5" style={{ color: potColor }}>{displayPotText}</span>

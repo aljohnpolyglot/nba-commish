@@ -1,0 +1,61 @@
+# Codex hunks NOT found on current disk for src/services/allStar/AllStarWeekendOrchestrator.ts
+# 5 hunks unapplied. Total ops: 5
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#1 hunk#0] session=4 line=351 ts=2026-05-09T23:57:16.880Z ---
+       const game = {
+         gid, homeTid, awayTid,
+         homeScore: 0, awayScore: 0, played: false,
+         date: toNoonUTC(new Date(state.date)),
+-        isRisingStars: true, isExhibition: true,
++        isRisingStars: true, isExhibition: true, gameFormat: 'target_score', targetScore,
+       };
+
+--- HUNK [op#1 hunk#1] session=4 line=351 ts=2026-05-09T23:57:16.880Z ---
+         const finalGame = {
+           gid: 91099, homeTid, awayTid,
+           homeScore: 0, awayScore: 0, played: false,
+           date: toNoonUTC(new Date(state.date)),
+-          isRisingStars: true, isRisingStarsChampionship: true, isExhibition: true,
++          isRisingStars: true, isRisingStarsChampionship: true, isExhibition: true, gameFormat: 'target_score', targetScore: 25,
+         };
+
+--- HUNK [op#2 hunk#0] session=4 line=351 ts=2026-05-09T23:57:16.880Z ---
+       const game = {
+         gid, homeTid, awayTid,
+         homeScore: 0, awayScore: 0, played: false,
+         date: toNoonUTC(new Date(state.date)),
+-        isAllStar: true, isExhibition: true,
++        isAllStar: true, isExhibition: true,
++        ...(allStarRules.gameFormat !== 'timed' ? {
++          gameFormat: allStarRules.gameFormat,
++          targetScore: allStarRules.gameFormat === 'target_score' ? allStarRules.targetScore : undefined,
++        } : {}),
+       };
+
+--- HUNK [op#2 hunk#1] session=4 line=351 ts=2026-05-09T23:57:16.880Z ---
+         const buildGame = (gid: number, oppTid: number) => ({
+           gid, homeTid: stripesTid, awayTid: oppTid, round: 'rr' as const,
+           played: false, homeScore: 0, awayScore: 0,
+           date: toNoonUTC(new Date(state.date)),
+-          isAllStar: true, isExhibition: true,
++          isAllStar: true, isExhibition: true,
++          ...(allStarRules.gameFormat !== 'timed' ? {
++            gameFormat: allStarRules.gameFormat,
++            targetScore: allStarRules.gameFormat === 'target_score' ? allStarRules.targetScore : undefined,
++          } : {}),
+         });
+
+--- HUNK [op#2 hunk#2] session=4 line=351 ts=2026-05-09T23:57:16.880Z ---
+         const finalGame = {
+           gid: finalGid, homeTid, awayTid,
+           homeScore: 0, awayScore: 0, played: false,
+           date: toNoonUTC(new Date(state.date)),
+-          isAllStar: true, isAllStarChampionship: true, isExhibition: true,
++          isAllStar: true, isAllStarChampionship: true, isExhibition: true,
++          ...(allStarRules.gameFormat !== 'timed' ? {
++            gameFormat: allStarRules.gameFormat,
++            targetScore: allStarRules.gameFormat === 'target_score' ? allStarRules.targetScore : undefined,
++          } : {}),
+         };

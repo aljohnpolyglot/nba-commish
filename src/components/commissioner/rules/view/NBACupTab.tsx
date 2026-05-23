@@ -4,22 +4,11 @@ import type { LeagueStats } from '../../../../types';
 import { ruleValue } from './rulesDefaults';
 import { useGame } from '../../../../store/GameContext';
 import { useLeagueLabels } from '../../../../utils/leagueLabels';
-import { normalizeDate } from '../../../../utils/helpers';
+import { getCommissionerSettingsWindow } from '../../../../utils/commissionerSettings';
 
 interface NBACupTabProps {
     rules: LeagueStats;
     setRule: <K extends keyof LeagueStats>(key: K, value: LeagueStats[K]) => void;
-}
-
-/** Returns whether we're still inside the commissioner grace window — i.e., the
- *  schedule has NOT yet been generated for the upcoming season. Aug 14 is the
- *  trigger date in autoResolvers (schedule_generation key). After that, the Cup
- *  group games are already baked into the schedule, so tournament toggles can only
- *  affect the FOLLOWING season. */
-function useGracePeriod(seasonYear: number, currentDateRaw: string) {
-    const currentIso = normalizeDate(currentDateRaw);
-    const graceCloseIso = `${seasonYear - 1}-08-14`;
-    return currentIso < graceCloseIso;
 }
 
 function ToggleRow({ label, description, value, onChange }: {
@@ -73,7 +62,7 @@ export const NBACupTab: React.FC<NBACupTabProps> = ({ rules, setRule }) => {
     const { state } = useGame();
     const labels = useLeagueLabels();
     const seasonYear = state.leagueStats.year ?? new Date().getFullYear() + 1;
-    const inGrace = useGracePeriod(seasonYear, state.date ?? '');
+    const inGrace = getCommissionerSettingsWindow(state).isOpen;
 
     const inSeasonTournament = ruleValue(rules, 'inSeasonTournament') as boolean;
     const cupPrizePoolEnabled = (ruleValue(rules, 'cupPrizePoolEnabled') ?? true) as boolean;

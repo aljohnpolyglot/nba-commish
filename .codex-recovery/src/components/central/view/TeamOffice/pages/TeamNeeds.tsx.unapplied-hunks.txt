@@ -1,0 +1,29 @@
+# Codex hunks NOT found on current disk for src/components/central/view/TeamOffice/pages/TeamNeeds.tsx
+# 3 hunks unapplied. Total ops: 1
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=925 ts=2026-05-11T01:54:23.008Z ---
+ import { cn } from '../../../../../lib/utils';
+ import { useGame } from '../../../../../store/GameContext';
+ import { NBAPlayer } from '../../../../../types';
++import { getActiveLeagueTeams, isOnRoster } from '../../../../../utils/teamLookup';
+
+--- HUNK [op#0 hunk#1] session=8 line=925 ts=2026-05-11T01:54:23.008Z ---
+ export function TeamNeeds({ teamId }: TeamNeedsProps) {
+   const { state } = useGame();
+-  const allActive = (state.players || []).filter(p => p.tid >= 0 && p.status === 'Active');
++  const activeTeamIds = useMemo(
++    () => new Set(getActiveLeagueTeams(state).map(t => t.id)),
++    [state.teams, state.nonNBATeams, state.userTeamId],
++  );
++  const allActive = useMemo(
++    () => (state.players || []).filter(p => p.tid >= 0 && activeTeamIds.has(p.tid) && isOnRoster(p)),
++    [state.players, activeTeamIds],
++  );
+   const teamPlayers = allActive.filter(p => p.tid === teamId);
+   const currentYear = state.leagueStats?.year;
+
+--- HUNK [op#0 hunk#2] session=8 line=925 ts=2026-05-11T01:54:23.008Z ---
+-    (state.boxScores as any[]).forEach(game => {
++    ((state.boxScores ?? []) as any[]).forEach(game => {

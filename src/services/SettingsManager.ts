@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   llmPerformance: 1,
   simulationDepth: 5,
   gameSpeed: 10,
-  enableLLM: true,
+  enableLLM: false,
   allowAITrades: true,
   allowAIFreeAgency: true,
   maxBoxScoreYears: 2,
@@ -44,7 +44,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   tradeDifficulty: 50,
   signingDifficulty: 50,
   hofWSThreshold: 50,
-  showExecutiveOutcome: true,
+  showExecutiveOutcome: false,
   tooltipStyle: 'k2',
   simulatorMode: 'realistic',
 };
@@ -57,10 +57,10 @@ export class SettingsManager {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        // Migration: old default had enableLLM: false
-        if (parsed.enableLLM === false && !parsed.__llmMigrated) {
-          parsed.enableLLM = true;
-          parsed.__llmMigrated = true;
+        if (parsed.__llmDefaultOff20260518 !== true) {
+          parsed.enableLLM = false;
+          parsed.showExecutiveOutcome = false;
+          parsed.__llmDefaultOff20260518 = true;
           localStorage.setItem(this.STORAGE_KEY, JSON.stringify(parsed));
         }
         // Migration: llmPerformance was 1-10, now 1|2|3

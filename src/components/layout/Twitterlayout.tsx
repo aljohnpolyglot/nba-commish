@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Sidebar } from './Sidebar';
 import { RightSidebar } from './RightSidebar';
 import { TweetInput } from '../social/TweetInput';
-import SocialPostCard from '../social/SocialPostCard';
 import { ProfileView } from '../social/ProfileView';
 import { ThreadView } from '../social/ThreadView';
 import { FollowingListView } from '../social/FollowingListView';
@@ -11,84 +10,10 @@ import { useGame } from '../../store/GameContext';
 import { useTwitterData } from '../../hooks/useTwitterData';
 import { useSidebarData } from '../../hooks/useSidebarData';
 import { useBackgroundFetcher } from '../../hooks/useBackgroundFetcher';
-import { TrendItem, WhoToFollow } from '../social/SidebarComponents';
+import { TrendItem } from '../social/SidebarComponents';
 import { cn } from '../../lib/utils';
 import { Settings2, ArrowLeft, Search, Menu, X, Loader2 } from 'lucide-react';
-import { useInView } from '../../hooks/useInView';
-import { enrichPostWithPhoto, getResolvedUrl, type GamePhotoInfo } from '../../services/social/photoEnricher';
-import type { GameResult, SocialPost } from '../../types';
-import { resolveAnyTeam } from '../../utils/teamLookup';
-
-// ─── Game photo lookup (boxScores + teams) ────────────────────────────────────
-function useGameLookup(): Map<number, GamePhotoInfo> {
-  const { state } = useGame();
-  return useMemo(() => {
-    const lookup = new Map<number, GamePhotoInfo>();
-    for (const bs of (state.boxScores || []) as GameResult[]) {
-      if (!bs.gameId || bs.homeTeamId < 0 || bs.awayTeamId < 0) continue;
-      const home = resolveAnyTeam(bs.homeTeamId, state.teams, state.nonNBATeams ?? []);
-      const away = resolveAnyTeam(bs.awayTeamId, state.teams, state.nonNBATeams ?? []);
-      if (!home || !away) continue;
-      const topPlayers = [...(bs.homeStats || []), ...(bs.awayStats || [])]
-        .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0))
-        .slice(0, 10)
-        .map(s => ({ name: s.name, gameScore: s.gameScore ?? 0 }));
-      lookup.set(bs.gameId, { homeTeam: home, awayTeam: away, topPlayers, date: bs.date || '' });
-    }
-    return lookup;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.boxScores, state.teams, state.nonNBATeams]);
-}
-
-// ─── Lazy-photo wrapper (only enriches when post scrolls into view) ───────────
-const LazyPhotoCard: React.FC<{ post: SocialPost; gameLookup: Map<number, GamePhotoInfo>; leagueType?: string; onClick: () => void; onProfileClick: (h?: string) => void }> = ({ post, gameLookup, leagueType, onClick, onProfileClick }) => {
-  const { ref, inView } = useInView(0.05);
-  const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | undefined>(() => {
-    const cached = getResolvedUrl(post.id);
-    return cached ?? post.mediaUrl ?? undefined;
-  });
-  useEffect(() => {
-    if (!inView || resolvedMediaUrl) return;
-    let cancelled = false;
-    enrichPostWithPhoto(post, gameLookup, leagueType).then(url => {
-      if (!cancelled && url) setResolvedMediaUrl(url);
-    });
-    return () => { cancelled = true; };
-  }, [inView, gameLookup]);
-  const enriched: SocialPost = resolvedMediaUrl ? { ...post, mediaUrl: resolvedMediaUrl } : post;
-  return (
-    <div ref={ref}>
-      <SocialPostCard post={enriched} onClick={onClick} onProfileClick={onProfileClick} />
-    </div>
-  );
-};
-
-const WhoToFollowFeedBlock = ({ onProfileClick, suggestedUsersList }: { onProfileClick: (handle: string) => void, suggestedUsersList: any[] }) => {
-  const { state, followUser, unfollowUser } = useGame();
-
-  if (!suggestedUsersList || suggestedUsersList.length === 0) return null;
-
-  return (
-    <>
-      {suggestedUsersList.slice(0, 3).map((user: any, i: number) => (
-        <WhoToFollow 
-          key={i} 
-          {...user} 
-          isFollowing={(state.followedHandles || []).includes(user.handle.replace('@', ''))}
-          onToggleFollow={() => {
-            const cleanHandle = user.handle.replace('@', '');
-            if ((state.followedHandles || []).includes(cleanHandle)) {
-              unfollowUser(cleanHandle);
-            } else {
-              followUser(cleanHandle);
-            }
-          }}
-          onProfileClick={() => onProfileClick(user.handle)}
-        />
-      ))}
-    </>
-  );
-};
+import { LazyPhotoCard, type TwitterViewState, useGameLookup, useInfiniteFeedLimit, WhoToFollowFeedBlock } from './TwitterLayoutShared';
 
 export const TwitterLayout = () => {
   const { state, followUser, unfollowUser, dispatchAction } = useGame();
@@ -98,26 +23,10 @@ export const TwitterLayout = () => {
   const [activeTab, setActiveTab] = useState<'for-you' | 'following'>('for-you');
   const [searchQuery, setSearchQuery] = useState('');
   const gameLookup = useGameLookup();
-  const [view, setView] = useState<{ type: 'feed' | 'profile' | 'thread' | 'following-list' | 'explore' | 'connect'; handle?: string; postId?: string }>({ type: 'feed' });
+  const [view, setView] = useState<TwitterViewState>({ type: 'feed' });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [displayLimit, setDisplayLimit] = useState(10);
-  const observer = useRef<IntersectionObserver | null>(null);
+  const { displayLimit, lastTweetElementRef } = useInfiniteFeedLimit([activeTab, searchQuery, view.type]);
   const scrollPositionRef = useRef(0);
-
-  const lastTweetElementRef = useCallback((node: HTMLDivElement | null) => {
-    if (observer.current) observer.current.disconnect();
-    observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting) {
-        setDisplayLimit(prev => prev + 10);
-      }
-    }, { threshold: 0.1 });
-    if (node) observer.current.observe(node);
-  }, []);
-
-  // Reset display limit when changing tabs or searching
-  useEffect(() => {
-    setDisplayLimit(10);
-  }, [activeTab, searchQuery, view.type]);
 
   const handleProfileClick = (handle: string) => {
     scrollPositionRef.current = window.scrollY;
@@ -131,35 +40,30 @@ export const TwitterLayout = () => {
     setView({ type: 'thread', postId });
     window.scrollTo(0, 0);
   };
-
   const handleHomeClick = () => {
     setView({ type: 'feed' });
     setSearchQuery('');
     setIsMobileMenuOpen(false);
     setTimeout(() => window.scrollTo(0, scrollPositionRef.current), 0);
   };
-
   const handleExploreClick = () => {
     scrollPositionRef.current = window.scrollY;
     setView({ type: 'explore' });
     setIsMobileMenuOpen(false);
     window.scrollTo(0, 0);
   };
-
   const handleFollowingListClick = () => {
     scrollPositionRef.current = window.scrollY;
     setView({ type: 'following-list' });
     setIsMobileMenuOpen(false);
     window.scrollTo(0, 0);
   };
-
   const handleConnectClick = () => {
     scrollPositionRef.current = window.scrollY;
     setView({ type: 'connect' });
     setIsMobileMenuOpen(false);
     window.scrollTo(0, 0);
   };
-
   const handleTrendClick = (query: string) => {
     setSearchQuery(query);
     setView({ type: 'feed' });

@@ -1,15 +1,14 @@
 import { useState, useMemo } from 'react';
 import { DevArchetype, Player, IndividualIntensity, Staffing, Team, TrainingParadigm, Allocations } from '../types';
-import { AlertCircle, Info, ChevronRight, GraduationCap } from 'lucide-react';
+import { AlertCircle, ChevronRight, GraduationCap } from 'lucide-react';
 import { Tooltip } from './ToolTip';
-import { ARCHETYPE_NAMES, getFocusWeights, ARCHETYPE_PROFILES } from '../constants/archetypes';
-import { ATTRIBUTE_LABELS } from '../constants/trainingSystems';
 import { TrainingFocusModal } from './TrainingFocusModal';
 import { MentorshipModal } from './MentorshipModal';
 import { PlayerNameWithHover } from '../../components/shared/PlayerNameWithHover';
 import { PlayerRatingsModal } from '../../components/modals/PlayerRatingsModal';
 import { MyFace, isRealFaceConfig } from '../../components/shared/MyFace';
 import type { NBAPlayer } from '../../types';
+import { getFatigueBarColor, getFatigueTextColor, getInjuryRisk, getMoodBarColor } from '../../components/shared/playerWellness';
 
 interface Props {
   roster: Player[];
@@ -72,37 +71,6 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
     if (pot >= 78) return 'text-amber-300/80';
     return 'text-slate-500';
   };
-  const getMoodBarColor = (score: number) => {
-    if (score >= 5) return 'bg-emerald-400';
-    if (score >= 1) return 'bg-amber-400';
-    if (score >= -1) return 'bg-slate-400';
-    return 'bg-rose-400';
-  };
-
-  const getMoraleColor = (val: number) => {
-    if (val > 80) return 'text-emerald-400';
-    if (val > 60) return 'text-blue-400';
-    if (val > 40) return 'text-yellow-400';
-    if (val > 20) return 'text-orange-400';
-    return 'text-red-500';
-  };
-
-  const getMoraleString = (val: number) => {
-    if (val > 85) return 'Superb';
-    if (val > 70) return 'Good';
-    if (val > 45) return 'Okay';
-    if (val > 25) return 'Poor';
-    return 'Abysmal';
-  };
-
-
-  const getInjuryRisk = (fatigue: number) => {
-    if (fatigue > 85) return { label: 'RED ZONE', color: 'text-red-500 font-bold bg-red-500/10 border-red-500/30' };
-    if (fatigue > 70) return { label: 'HIGH', color: 'text-orange-500 font-bold bg-orange-500/10 border-orange-500/30' };
-    if (fatigue > 50) return { label: 'MODERATE', color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30' };
-    return { label: 'LOW', color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30' };
-  };
-
   const sortedRoster = useMemo(() => {
     const copy = [...roster];
     const dir = sortDir === 'desc' ? -1 : 1;
@@ -160,8 +128,6 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
             <tbody className="divide-y divide-slate-800/30">
               {sortedRoster.map((player) => {
                 const effOvr = getEffectiveOvr(player);
-                const diff = (effOvr - player.ovr).toFixed(1);
-                const diffStr = Number(diff) > 0 ? `+${diff}` : diff;
 
                  return (
                  <tr key={player.id} className="group hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => setProgressionModalPlayerId(player.id)}>
@@ -205,36 +171,21 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
                   </td>
                   <td className="px-3 py-3 md:px-6 md:py-4 text-center">
                     <div className="flex flex-col items-center gap-0.5">
-                       <Tooltip text={`Actual: ${player.ovr.toFixed(1)} | Season Avg: ${effOvr.toFixed(1)}`}>
+                       <Tooltip text={`Base rating: ${player.ovr.toFixed(1)} | Game-ready rating: ${effOvr.toFixed(1)}`}>
                          <div className="flex items-baseline justify-center gap-1 whitespace-nowrap">
                            <span className={`text-base md:text-lg font-black tabular-nums tracking-tight ${getOvrColor(effOvr)}`}>
                              {renderFuzzedValue(effOvr, 0)}
                            </span>
-                           {player.ovrDelta !== null && player.ovrDelta !== undefined && player.ovrDelta !== 0 && (
-                             <span className={`text-[9px] font-bold ${player.ovrDelta > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                               {player.ovrDelta > 0 ? '+' : ''}{player.ovrDelta}
-                             </span>
-                           )}
                          </div>
                        </Tooltip>
-                       {Number(diff) !== 0 && (
-                         <span className={`text-[9px] font-black ${Number(diff) > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                           {diffStr} FORM
-                         </span>
-                       )}
                     </div>
                   </td>
                   <td className="px-3 py-3 md:px-6 md:py-4 text-center">
-                    <Tooltip text={`True Potential: ${player.pot}`}>
+                    <Tooltip text={`Projected ceiling: ${player.pot}`}>
                       <div className="flex items-baseline justify-center gap-1 whitespace-nowrap">
                         <span className={`font-black text-xs md:text-sm font-mono tabular-nums tracking-tight ${getPotColor(player.pot)}`}>
                           {renderFuzzedValue(player.pot, paFuzz)}
                         </span>
-                        {player.potDelta !== null && player.potDelta !== undefined && player.potDelta !== 0 && (
-                          <span className={`text-[9px] font-bold ${player.potDelta > 0 ? 'text-emerald-400/70' : 'text-rose-400/70'}`}>
-                            {player.potDelta > 0 ? '+' : ''}{player.potDelta}
-                          </span>
-                        )}
                       </div>
                     </Tooltip>
                   </td>
@@ -250,11 +201,7 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
                         <div className="flex justify-between items-center text-[9px] font-black text-slate-500 tracking-widest">
                            <span className="flex items-center gap-1.5">
                              <span>FATIGUE</span>
-                             <span className={`tabular-nums ${
-                               player.fatigue > 75 ? 'text-red-400' :
-                               player.fatigue > 40 ? 'text-yellow-400' :
-                               'text-blue-400'
-                             }`}>{Math.round(player.fatigue)}</span>
+                             <span className={`tabular-nums ${getFatigueTextColor(player.fatigue)}`}>{Math.round(player.fatigue)}</span>
                            </span>
                            <span className={`px-1 py-0.5 rounded text-[8px] border ${getInjuryRisk(player.fatigue).color}`}>
                              {getInjuryRisk(player.fatigue).label}
@@ -262,7 +209,7 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
                         </div>
                         <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                            <div
-                             className={`h-full transition-all duration-500 ${player.fatigue > 75 ? 'bg-red-500' : player.fatigue > 40 ? 'bg-yellow-500' : 'bg-blue-500 shadow-[0_0_8px_#3b82f6]'}`}
+                             className={`h-full transition-all duration-500 ${getFatigueBarColor(player.fatigue)}`}
                              style={{ width: `${Math.max(2, player.fatigue)}%` }}
                            />
                         </div>

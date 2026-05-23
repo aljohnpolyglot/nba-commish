@@ -218,7 +218,7 @@ export const FinanceSection: React.FC<{
   const sponsorRows = ALL_SLOTS.map((slot) => ({
     slot,
     label: SPONSOR_SLOT_LABELS[slot],
-    value: tycoon.sponsorships[slot]?.valuePerYear ?? 0,
+    value: tycoon.sponsorships?.[slot]?.valuePerYear ?? 0,
   })).sort((a, b) => b.value - a.value);
   const maxSponsor = Math.max(1, ...sponsorRows.map((r) => r.value));
   const exportCsv = () => {

@@ -4,7 +4,8 @@ import {
   MapPin, Star, Target, TrendingUp, Trophy, Users,
 } from 'lucide-react';
 import type { TycoonState } from '../../../../../types/tycoon';
-import { convertTo2KRating, computeAge } from '../../../../../utils/helpers';
+import { computeAge } from '../../../../../utils/helpers';
+import { getDisplayOverall, getDisplayPotential } from '../../../../../utils/playerRatings';
 import { MyFace, isRealFaceConfig } from '../../../../shared/MyFace';
 import { defaultAcademyBudgetForTier } from '../../../../../services/tycoon/economyScale';
 
@@ -65,21 +66,17 @@ export const AcademySection: React.FC<AcademySectionProps> = ({
 
   const youthPlayers = useMemo(() => {
     return players
-      .filter(p => p.tid === userTeamId && computeAge(p, simYear) <= 19 && computeAge(p, simYear) >= 15)
+      .filter(p => p.tid === userTeamId && !p.promotedFromAcademy && computeAge(p, simYear) <= 19 && computeAge(p, simYear) >= 15)
       .map(p => {
         const r = Array.isArray(p.ratings) ? p.ratings[p.ratings.length - 1] : null;
-        const bbgmOvr = p.overallRating ?? r?.ovr ?? 45;
-        const bbgmPot = p.pot ?? r?.pot ?? 55;
-        const k2Ovr = convertTo2KRating(bbgmOvr, r?.hgt ?? 50, r?.tp);
-        const k2Pot = convertTo2KRating(bbgmPot, r?.hgt ?? 50, r?.tp);
         const age = computeAge(p, simYear);
         return {
           id: p.pid ?? p.internalId ?? p.id,
           name: p.name ?? `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim(),
           pos: p.pos ?? r?.pos ?? '?',
           age,
-          ovr: k2Ovr,
-          pot: k2Pot,
+          ovr: getDisplayOverall(p, simYear),
+          pot: getDisplayPotential(p, simYear, simYear, { floorAtEstimated: true }),
           face: p.face,
           imgURL: p.imgURL,
         };
@@ -308,7 +305,7 @@ export const YouthPromotionPanel: React.FC<{
     setSelected(prev => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
-      else if (next.size < slotsAvailable) next.add(id);
+      else next.add(id);
       return next;
     });
   };

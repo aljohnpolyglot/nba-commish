@@ -1,4 +1,5 @@
 import type { PlayerK2 } from '../types';
+import { convertTo2KRating } from '../../../../../../utils/helpers';
 
 export interface CoachSliders {
   tempo: number;
@@ -26,6 +27,14 @@ export interface CoachSliders {
 }
 
 export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[][]): CoachSliders {
+  const getDisplayOvr = (player: PlayerK2) => {
+    if (typeof player.rating2K === 'number' && Number.isFinite(player.rating2K) && player.rating2K > 0) {
+      return player.rating2K;
+    }
+    const rating = player.ratings[player.ratings.length - 1];
+    return convertTo2KRating(player.bbgmOvr || rating?.ovr || 50, rating?.hgt ?? 50, rating?.tp);
+  };
+
   const getRaw = (players: PlayerK2[]) => {
     const sorted = [...players].sort((a, b) => {
       const ovrA = a.bbgmOvr || a.ratings[a.ratings.length - 1]?.ovr || 50;
@@ -185,12 +194,13 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
   const mySpd = getAvg(top8, 'spd');
   const helpDefense = Math.max(1, Math.min(100, Math.round((myDiq * 0.6) + (mySpd * 0.4))));
 
-  const healthyPlayersOver50 = roster.filter(p => {
+  // Use display OVR so external leagues with compressed BBGM raw ratings
+  // still surface a real bench instead of collapsing into a 5-man rotation.
+  const healthyRotationCaliberPlayers = roster.filter(p => {
     const isHealthy = !p.injury || p.injury.gamesRemaining === 0;
-    const ovr = p.bbgmOvr || p.ratings[p.ratings.length - 1]?.ovr || 50;
-    return isHealthy && ovr > 50;
+    return isHealthy && getDisplayOvr(p) >= 56;
   }).length;
-  const benchDepth = Math.max(1, Math.min(100, Math.round((healthyPlayersOver50 / 12) * 100)));
+  const benchDepth = Math.max(1, Math.min(100, Math.round((healthyRotationCaliberPlayers / 12) * 100)));
 
   const shotInsideNorm = normalize(myRaw.rawInside, 'rawInside', 23, 32, 16);
   const shotCloseNorm = normalize(myRaw.rawClose, 'rawClose', 21, 29, 16);

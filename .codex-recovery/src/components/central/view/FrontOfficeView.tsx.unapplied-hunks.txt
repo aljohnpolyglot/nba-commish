@@ -1,0 +1,2383 @@
+# Codex hunks NOT found on current disk for src/components/central/view/FrontOfficeView.tsx
+# 48 hunks unapplied. Total ops: 26
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=10 line=321 ts=2026-05-13T07:25:41.243Z ---
+-import { ArrowLeft, Briefcase, TrendingUp, TrendingDown } from 'lucide-react';
++import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, HeartPulse, Plane, Building2, Users, Target, Landmark } from 'lucide-react';
+
+--- HUNK [op#0 hunk#2] session=10 line=321 ts=2026-05-13T07:25:41.243Z ---
+ import type { SponsorshipSlot } from '../../../types/tycoon';
+ 
+-export const FrontOfficeView: React.FC = () => {
++type FrontOfficeSection = 'overview' | 'finances' | 'sponsorships' | 'travel' | 'medical' | 'facilities' | 'staff' | 'scouting';
++
++interface FrontOfficeViewProps {
++  initialSection?: FrontOfficeSection;
++}
++
++export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection = 'overview' }) => {
+
+--- HUNK [op#0 hunk#3] session=10 line=321 ts=2026-05-13T07:25:41.243Z ---
+   const internationalAway = (selectedTeam as any).lastEuroAwayGames ?? 0;
+   const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
++  const backButton = (
++    <button onClick={() => setCurrentView('Front Office')} className="flex items-center gap-2 text-slate-400 hover:text-white text-sm font-semibold">
++      <ArrowLeft size={16} /> Back to Overview
++    </button>
++  );
++
++  const commonHeader = (
++    <div className="flex items-center justify-between gap-4">
++      <div>
++        <div className="text-[10px] font-bold uppercase tracking-[0.35em] text-amber-300 flex items-center gap-2">
++          <Briefcase size={12} /> Front Office · Tier {tycoon.tier}
++        </div>
++        <h1 className="text-3xl font-black tracking-tight mt-1">{getTeamFullName(selectedTeam as any)}</h1>
++        <p className="text-sm text-slate-400 mt-1">Control club finances, sponsorships, medical investment, travel standards, staff, and scouting.</p>
++      </div>
++      {initialSection === 'overview' ? (
++        <button onClick={() => setCurrentView('Front Office Finances')} className="text-xs font-semibold text-slate-400 hover:text-white">
++          View ledger →
++        </button>
++      ) : backButton}
++    </div>
++  );
++
++  if (initialSection !== 'overview') {
++    return (
++      <div className="h-full overflow-y-auto bg-slate-950 text-white">
++        <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-6">
++          {commonHeader}
++          {initialSection === 'finances' && ledger && (
++            <FinanceSection ledger={ledger} fmt={fmt} cashOnHand={tycoon.cashOnHand ?? 0} currentYear={currentYear} starPower={starPower} tycoon={tycoon} />
++          )}
++          {initialSection === 'sponsorships' && (
++            <SponsorshipSection
++              tycoon={tycoon}
++              currency={currency}
++              avgOpponentPrestige={avgOpponentPrestige}
++              marqueeOpponents={marqueeOpponents}
++              onNegotiate={(slot) => setSponsorModal({ open: true, slot })}
++              onTicketMultChange={handleTicketMultChange}
++            />
++          )}
++          {initialSection === 'travel' && (
++            <TravelSection tycoon={tycoon} currency={currency} domesticAwayGames={17} internationalAwayGames={internationalAway} />
++          )}
++          {initialSection === 'medical' && (
++            <MedicalSection tycoon={tycoon} currency={currency} onMedicalBudgetChange={handleMedicalBudgetChange} />
++          )}
++          {initialSection === 'facilities' && (
++            <FacilitiesSection tycoon={tycoon} fmt={fmt} />
++          )}
++          {initialSection === 'staff' && (
++            <StaffSection />
++          )}
++          {initialSection === 'scouting' && (
++            <ScoutingSection />
++          )}
++        </div>
++        <SponsorshipNegotiationModal
++          open={sponsorModal.open}
++          onClose={() => setSponsorModal({ open: false, slot: 'kit' })}
++          initialSlot={sponsorModal.slot}
++        />
++      </div>
++    );
++  }
+ 
+   return (
+
+--- HUNK [op#1 hunk#0] session=10 line=326 ts=2026-05-13T07:25:46.310Z ---
+-import type { SponsorshipSlot } from '../../../types/tycoon';
++import type { SponsorshipSlot, TycoonState } from '../../../types/tycoon';
+
+--- HUNK [op#2 hunk#0] session=10 line=330 ts=2026-05-13T07:26:54.519Z ---
+ const Line: React.FC<{ label: string; value: number; fmt: (v: number) => string; sign?: 'in' | 'out'; emphasis?: boolean }> =
+   ({ label, value, fmt, sign = 'in', emphasis }) => (
+
+--- HUNK [op#2 hunk#1] session=10 line=330 ts=2026-05-13T07:26:54.519Z ---
+   </div>
+ );
++
++const SectionTitle: React.FC<{ icon: React.ReactNode; title: string; subtitle: string }> = ({ icon, title, subtitle }) => (
++  <div className="flex items-start gap-3">
++    <div className="w-11 h-11 rounded-2xl border border-amber-400/30 bg-amber-400/10 flex items-center justify-center text-amber-300">
++      {icon}
++    </div>
++    <div>
++      <h2 className="text-2xl font-black tracking-tight text-white">{title}</h2>
++      <p className="text-sm text-slate-400 mt-1">{subtitle}</p>
++    </div>
++  </div>
++);
++
++const FinanceSection: React.FC<{
++  ledger: ReturnType<typeof computeAnnualBudget>;
++  fmt: (v: number) => string;
++  cashOnHand: number;
++  currentYear: number;
++  starPower: ReturnType<typeof computeStarPower>;
++  tycoon: TycoonState;
++}> = ({ ledger, fmt, cashOnHand, currentYear, starPower, tycoon }) => {
++  const rows = tycoon.ledgerHistory ?? [];
++  return (
++    <div className="space-y-6">
++      <SectionTitle icon={<Landmark size={22} />} title="Finances" subtitle="Track cash, revenue, expenses, and year-end risk." />
++      <AnnualProjectionCard ledger={ledger} fmt={fmt} cashOnHand={cashOnHand} currentYear={currentYear} starPower={starPower} />
++      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++        <div className="flex items-center justify-between mb-4">
++          <h3 className="font-black text-white">Ledger Spreadsheet</h3>
++          <button
++            onClick={() => {
++              const csv = ['Year,Revenue,Expenses,Profit,Ending Cash', ...rows.map(r => {
++                const revenue = Object.values(r.revenue).reduce((s, v) => s + v, 0);
++                const expenses = Object.values(r.expenses).reduce((s, v) => s + v, 0);
++                return [r.year, revenue, expenses, r.profit, r.cashOnHandEnd].join(',');
++              })].join('\n');
++              const blob = new Blob([csv], { type: 'text/csv' });
++              const url = URL.createObjectURL(blob);
++              const a = document.createElement('a');
++              a.href = url;
++              a.download = 'front-office-ledger.csv';
++              a.click();
++              URL.revokeObjectURL(url);
++            }}
++            className="text-xs font-black uppercase tracking-widest rounded-lg border border-amber-400/40 px-3 py-2 text-amber-200 hover:bg-amber-400/10"
++          >
++            Export CSV
++          </button>
++        </div>
++        <div className="overflow-x-auto">
++          <table className="w-full text-sm">
++            <thead className="text-xs uppercase tracking-widest text-slate-500">
++              <tr className="border-b border-slate-800">
++                <th className="text-left py-2">Year</th>
++                <th className="text-right py-2">Revenue</th>
++                <th className="text-right py-2">Expenses</th>
++                <th className="text-right py-2">Profit</th>
++                <th className="text-right py-2">Ending Cash</th>
++              </tr>
++            </thead>
++            <tbody>
++              {rows.length === 0 ? (
++                <tr><td colSpan={5} className="py-8 text-center text-slate-500">No closed seasons yet. The first ledger snapshot posts at year-end.</td></tr>
++              ) : rows.map(row => {
++                const revenue = Object.values(row.revenue).reduce((s, v) => s + v, 0);
++                const expenses = Object.values(row.expenses).reduce((s, v) => s + v, 0);
++                return (
++                  <tr key={row.year} className="border-b border-slate-800/60">
++                    <td className="py-2 font-bold text-white">{row.year}</td>
++                    <td className="py-2 text-right text-emerald-300">{fmt(revenue)}</td>
++                    <td className="py-2 text-right text-rose-300">{fmt(expenses)}</td>
++                    <td className={`py-2 text-right font-bold ${row.profit >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{fmt(row.profit)}</td>
++                    <td className={`py-2 text-right font-bold ${row.cashOnHandEnd >= 0 ? 'text-amber-300' : 'text-rose-300'}`}>{fmt(row.cashOnHandEnd)}</td>
++                  </tr>
++                );
++              })}
++            </tbody>
++          </table>
++        </div>
++      </div>
++      <LedgerHistoryCard tycoon={tycoon} currency="EUR" />
++    </div>
++  );
++};
++
++const SponsorshipSection: React.FC<{
++  tycoon: TycoonState;
++  currency: string;
++  avgOpponentPrestige: number;
++  marqueeOpponents: string[];
++  onNegotiate: (slot: SponsorshipSlot) => void;
++  onTicketMultChange: (mult: number) => void;
++}> = ({ tycoon, currency, avgOpponentPrestige, marqueeOpponents, onNegotiate, onTicketMultChange }) => (
++  <div className="space-y-6">
++    <SectionTitle icon={<Briefcase size={22} />} title="Sponsorships" subtitle="Manage your partner portfolio, ticket pricing, and commercial upside." />
++    <SponsorshipCard
++      tycoon={tycoon}
++      currency={currency}
++      onNegotiate={onNegotiate}
++      onTicketMultChange={onTicketMultChange}
++      avgOpponentPrestige={avgOpponentPrestige}
++      marqueeOpponents={marqueeOpponents}
++    />
++  </div>
++);
++
++const TravelSection: React.FC<{ tycoon: TycoonState; currency: string; domesticAwayGames: number; internationalAwayGames: number }> =
++  ({ tycoon, currency, domesticAwayGames, internationalAwayGames }) => (
++  <div className="space-y-6">
++    <SectionTitle icon={<Plane size={22} />} title="Travel & Logistics" subtitle="Set comfort standards for hotels, flights, and domestic road trips." />
++    {(tycoon.cashOnHand ?? 0) < 2_000_000 && (
++      <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-100">
++        Survival mode watch: low cash may force economy travel in the next travel-economy update.
++      </div>
++    )}
++    <TravelLogisticsCard tycoon={tycoon} currency={currency} domesticAwayGames={domesticAwayGames} internationalAwayGames={internationalAwayGames} />
++  </div>
++);
++
++const MedicalSection: React.FC<{ tycoon: TycoonState; currency: string; onMedicalBudgetChange: (budget: number) => void }> =
++  ({ tycoon, currency, onMedicalBudgetChange }) => {
++  const budget = tycoon.medicalBudget ?? 0;
++  const quality = medicalQuality(budget);
++  const facilities: Array<[MedicalFacilityKey, string]> = [
++    ['physiotherapy', 'Physiotherapy'],
++    ['recoveryRoom', 'Recovery Room'],
++    ['hydrotherapy', 'Hydrotherapy'],
++    ['cryotherapy', 'Cryotherapy'],
++    ['strengthConditioning', 'Strength & Conditioning'],
++    ['sleepNutrition', 'Sleep & Nutrition'],
++    ['biomechanics', 'Biomechanics Lab'],
++    ['diagnostics', 'Diagnostics'],
++  ];
++  return (
++    <div className="space-y-6">
++      <SectionTitle icon={<HeartPulse size={22} />} title="Medical & Recovery" subtitle="Invest in player availability, recovery quality, and sports-science standards." />
++      <div className="grid lg:grid-cols-[1fr_360px] gap-6">
++        <MedicalCard tycoon={tycoon} currency={currency} onMedicalBudgetChange={onMedicalBudgetChange} />
++        <div className="rounded-2xl border border-rose-500/30 bg-slate-900/70 p-5">
++          <div className="text-xs font-black uppercase tracking-widest text-rose-300">Staff Quality</div>
++          <div className="text-2xl font-black text-white mt-2">{medicalQualityLabel(quality).split(' — ')[0]}</div>
++          <div className="mt-4 space-y-3">
++            {getImpactStats(quality).map(stat => (
++              <div key={stat.label} className="rounded-xl bg-slate-950/70 border border-slate-800 p-3">
++                <div className="flex justify-between text-sm">
++                  <span className="text-slate-300 font-bold">{stat.label}</span>
++                  <span className={stat.value >= 0 ? 'text-emerald-300 font-black' : 'text-rose-300 font-black'}>
++                    {stat.value > 0 ? '+' : ''}{stat.value}%
++                  </span>
++                </div>
++                <div className="text-xs text-slate-500 mt-1">{stat.prose}</div>
++              </div>
++            ))}
++          </div>
++        </div>
++      </div>
++      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++        <h3 className="font-black text-white mb-4">Medical Facilities</h3>
++        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
++          {facilities.map(([key, label]) => {
++            const tier = getFacilityTier(budget, key);
++            return (
++              <div key={key} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
++                <div className="text-sm font-bold text-white">{label}</div>
++                <div className={`text-xs font-black uppercase tracking-widest mt-2 ${
++                  tier === 'Elite' ? 'text-emerald-300' : tier === 'Advanced' ? 'text-amber-300' : tier === 'Standard' ? 'text-sky-300' : 'text-slate-500'
++                }`}>{tier}</div>
++              </div>
++            );
++          })}
++        </div>
++      </div>
++    </div>
++  );
++};
++
++const FacilitiesSection: React.FC<{ tycoon: TycoonState; fmt: (v: number) => string }> = ({ tycoon, fmt }) => {
++  const cards = [
++    { title: 'Arena & Fan Experience', rating: 55 + tycoon.facilities.stadium.level * 8, detail: `${tycoon.facilities.stadium.capacity.toLocaleString()} seats` },
++    { title: 'Training Center', rating: 58 + tycoon.facilities.trainingCenter.level * 8, detail: `Level ${tycoon.facilities.trainingCenter.level}` },
++    { title: 'Youth Academy', rating: 54 + tycoon.facilities.academy.level * 8, detail: `Level ${tycoon.facilities.academy.level}` },
++    { title: 'Medical Center', rating: 50 + Math.round(medicalQuality(tycoon.medicalBudget) * 45), detail: fmt(tycoon.medicalBudget ?? 0) },
++    { title: 'Analytics Lab', rating: 60, detail: 'Baseline department' },
++    { title: 'Travel Hub', rating: (tycoon.cashOnHand ?? 0) < 2_000_000 ? 52 : 72, detail: 'Club logistics profile' },
++  ];
++  return (
++    <div className="space-y-6">
++      <SectionTitle icon={<Building2 size={22} />} title="Facilities" subtitle="Review infrastructure strength across the club." />
++      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
++        {cards.map(card => (
++          <div key={card.title} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="flex items-start justify-between gap-3">
++              <div>
++                <div className="text-sm font-black text-white">{card.title}</div>
++                <div className="text-xs text-slate-500 mt-1">{card.detail}</div>
++              </div>
++              <div className="w-12 h-12 rounded-full border border-amber-400/40 bg-amber-400/10 flex items-center justify-center text-amber-200 font-black">
++                {Math.min(99, card.rating)}
++              </div>
++            </div>
++            <div className="mt-4 h-2 rounded-full bg-slate-800 overflow-hidden">
++              <div className="h-full bg-amber-400" style={{ width: `${Math.min(99, card.rating)}%` }} />
++            </div>
++          </div>
++        ))}
++      </div>
++    </div>
++  );
++};
++
++const StaffSection: React.FC = () => (
++  <div className="space-y-6">
++    <SectionTitle icon={<Users size={22} />} title="Staff" subtitle="Manage coaching, performance, scouting, and analytics roles." />
++    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
++      <div className="grid md:grid-cols-3 gap-4">
++        {['Head Coach', 'Assistant Coach', 'Head Physio', 'Head of Sports Science', 'Chief Scout', 'Head of Analytics'].map(role => (
++          <div key={role} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
++            <div className="text-sm font-black text-white">{role}</div>
++            <div className="text-xs text-slate-500 mt-2">Hiring market wiring is queued; role cards are reserved for the staff system.</div>
++          </div>
++        ))}
++      </div>
++    </div>
++  </div>
++);
++
++const ScoutingSection: React.FC = () => (
++  <div className="space-y-6">
++    <SectionTitle icon={<Target size={22} />} title="Scouting" subtitle="Tune scouting investment and review uncertainty before making roster decisions." />
++    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
++      <div className="text-lg font-black text-white">Scouting Department</div>
++      <p className="text-sm text-slate-400 mt-2">
++        Rating fuzz, investment sliders, and opponent report depth are the next scouting slice. This route is now reserved and reachable from Euro GM navigation.
++      </p>
++    </div>
++  </div>
++);
+ 
+ const AnnualProjectionCard: React.FC<{
+
+--- HUNK [op#3 hunk#0] session=10 line=361 ts=2026-05-13T07:29:04.086Z ---
+ import { getCityPrestige } from '../../../services/tycoon/specs/spain';
+ import type { SponsorshipSlot, TycoonState } from '../../../types/tycoon';
++import { makePlaceholderCoach, makePlaceholderGM } from '../../../services/staff/staffFallback';
+
+--- HUNK [op#3 hunk#1] session=10 line=361 ts=2026-05-13T07:29:04.086Z ---
+           {initialSection === 'staff' && (
+-            <StaffSection />
++            <StaffSection state={state} team={selectedTeam as any} />
+           )}
+
+--- HUNK [op#3 hunk#2] session=10 line=361 ts=2026-05-13T07:29:04.086Z ---
+-const StaffSection: React.FC = () => (
+-  <div className="space-y-6">
+-    <SectionTitle icon={<Users size={22} />} title="Staff" subtitle="Manage coaching, performance, scouting, and analytics roles." />
+-    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+-      <div className="grid md:grid-cols-3 gap-4">
+-        {['Head Coach', 'Assistant Coach', 'Head Physio', 'Head of Sports Science', 'Chief Scout', 'Head of Analytics'].map(role => (
+-          <div key={role} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+-            <div className="text-sm font-black text-white">{role}</div>
+-            <div className="text-xs text-slate-500 mt-2">Hiring market wiring is queued; role cards are reserved for the staff system.</div>
+-          </div>
+-        ))}
+-      </div>
+-    </div>
+-  </div>
+-);
++const StaffSection: React.FC<{ state: any; team: any }> = ({ state, team }) => {
++  const teamName = getTeamFullName(team);
++  const coach = (state.staff?.coaches ?? []).find((s: any) => s.team === team.name || s.team === teamName)
++    ?? makePlaceholderCoach(team);
++  const gm = (state.staff?.gms ?? []).find((s: any) => s.team === team.name || s.team === teamName)
++    ?? makePlaceholderGM(team);
++  const owner = (state.staff?.owners ?? []).find((s: any) => s.team === team.name || s.team === teamName);
++  const roles = [
++    { role: 'Head Coach', person: coach, focus: 'Tactics, rotations, player development' },
++    { role: 'Assistant Coach', person: null, focus: 'Training sessions and opponent prep' },
++    { role: 'Head of Sports Science', person: null, focus: 'Injury prevention and workload monitoring' },
++    { role: 'Head Physio', person: null, focus: 'Recovery speed and day-to-day availability' },
++    { role: 'Chief Scout', person: gm, focus: 'Player evaluation and market intelligence' },
++    { role: 'Head of Analytics', person: null, focus: 'Shot profile, lineup data, and opponent models' },
++  ];
++  return (
++    <div className="space-y-6">
++      <SectionTitle icon={<Users size={22} />} title="Staff" subtitle="Manage coaching, performance, scouting, and analytics roles." />
++      <div className="grid lg:grid-cols-[1fr_320px] gap-6">
++        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
++          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
++            {roles.map(item => {
++              const initials = item.person?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) ?? '+';
++              return (
++                <div key={item.role} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
++                  <div className="flex items-center gap-3">
++                    <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-black text-amber-200">
++                      {initials}
++                    </div>
++                    <div className="min-w-0">
++                      <div className="text-sm font-black text-white truncate">{item.person?.name ?? 'Open Position'}</div>
++                      <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">{item.role}</div>
++                    </div>
++                  </div>
++                  <div className="text-xs text-slate-500 mt-3">{item.focus}</div>
++                  {item.person?.nationality && <div className="mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">{item.person.nationality}</div>}
++                </div>
++              );
++            })}
++          </div>
++        </div>
++        <aside className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++          <div className="text-xs font-black uppercase tracking-widest text-amber-300">Front Office Chain</div>
++          <div className="mt-4 space-y-3">
++            <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3">
++              <div className="text-xs text-slate-500">General Manager</div>
++              <div className="font-black text-white">{gm.name}</div>
++            </div>
++            <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3">
++              <div className="text-xs text-slate-500">Owner</div>
++              <div className="font-black text-white">{owner?.name ?? 'Ownership group'}</div>
++            </div>
++          </div>
++          <button className="mt-5 w-full h-11 rounded-xl border border-amber-400/40 text-amber-200 font-black uppercase tracking-widest text-xs opacity-60 cursor-not-allowed">
++            Hiring Market Queued
++          </button>
++        </aside>
++      </div>
++    </div>
++  );
++};
+
+--- HUNK [op#4 hunk#0] session=10 line=385 ts=2026-05-13T07:30:38.227Z ---
+   const handleMedicalBudgetChange = (budget: number) => {
+     applyTycoonMutation(userTeamId, (t: any) => {
+       if (!t.tycoon) return;
+       t.tycoon.medicalBudget = Math.max(MEDICAL_BUDGET_MIN_EUR, Math.min(MEDICAL_BUDGET_MAX_EUR, budget));
+     });
+   };
++  const handleTravelSave = (prefs: { hotel: number; flight: number; bus: number }) => {
++    applyTycoonMutation(userTeamId, (t: any) => {
++      if (!t.tycoon) return;
++      t.tycoon.travelPreferences = prefs;
++    });
++  };
+
+--- HUNK [op#4 hunk#3] session=10 line=385 ts=2026-05-13T07:30:38.227Z ---
+-const TravelSection: React.FC<{ tycoon: TycoonState; currency: string; domesticAwayGames: number; internationalAwayGames: number }> =
+-  ({ tycoon, currency, domesticAwayGames, internationalAwayGames }) => (
++const TravelSection: React.FC<{ tycoon: TycoonState; currency: string; domesticAwayGames: number; internationalAwayGames: number; onSave: (prefs: { hotel: number; flight: number; bus: number }) => void }> =
++  ({ tycoon, currency, domesticAwayGames, internationalAwayGames, onSave }) => (
+
+--- HUNK [op#4 hunk#4] session=10 line=385 ts=2026-05-13T07:30:38.227Z ---
+-    <TravelLogisticsCard tycoon={tycoon} currency={currency} domesticAwayGames={domesticAwayGames} internationalAwayGames={internationalAwayGames} />
++    <TravelLogisticsCard tycoon={tycoon} currency={currency} domesticAwayGames={domesticAwayGames} internationalAwayGames={internationalAwayGames} onSave={onSave} />
+   </div>
+ );
+
+--- HUNK [op#5 hunk#0] session=10 line=545 ts=2026-05-13T07:52:52.801Z ---
+-import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, HeartPulse, Plane, Building2, Users, Target, Landmark } from 'lucide-react';
++import { ArrowLeft, Briefcase, TrendingUp, TrendingDown, HeartPulse, Plane, Building2, Users, Target, Landmark, Shield, Timer, Dumbbell, Smile, AlertTriangle, Bed, Droplets, Snowflake, Moon, ScanLine } from 'lucide-react';
+
+--- HUNK [op#5 hunk#1] session=10 line=545 ts=2026-05-13T07:52:52.801Z ---
+ const MedicalSection: React.FC<{ tycoon: TycoonState; currency: string; onMedicalBudgetChange: (budget: number) => void }> =
+   ({ tycoon, currency, onMedicalBudgetChange }) => {
+   const budget = tycoon.medicalBudget ?? 0;
+   const quality = medicalQuality(budget);
++  const qualityPct = Math.round(quality * 100);
+   const facilities: Array<[MedicalFacilityKey, string]> = [
+     ['physiotherapy', 'Physiotherapy'],
+     ['recoveryRoom', 'Recovery Room'],
+
+--- HUNK [op#5 hunk#2] session=10 line=545 ts=2026-05-13T07:52:52.801Z ---
+     ['diagnostics', 'Diagnostics'],
+   ];
++  const facilityIcon: Record<MedicalFacilityKey, React.ReactNode> = {
++    physiotherapy: <Users size={18} />,
++    recoveryRoom: <Bed size={18} />,
++    hydrotherapy: <Droplets size={18} />,
++    cryotherapy: <Snowflake size={18} />,
++    strengthConditioning: <Dumbbell size={18} />,
++    sleepNutrition: <Moon size={18} />,
++    biomechanics: <ActivityIcon />,
++    diagnostics: <ScanLine size={18} />,
++  };
++  const impactIcon: Record<string, React.ReactNode> = {
++    'Injury Frequency': <Shield size={28} />,
++    'Recovery Time': <Timer size={28} />,
++    'Training Tolerance': <Dumbbell size={28} />,
++    'Player Availability': <HeartPulse size={28} />,
++    'Player Morale': <Smile size={28} />,
++  };
++  const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
+   return (
+     <div className="space-y-6">
+-      <SectionTitle icon={<HeartPulse size={22} />} title="Medical & Recovery" subtitle="Invest in player availability, recovery quality, and sports-science standards." />
+-      <div className="grid lg:grid-cols-[1fr_360px] gap-6">
+-        <MedicalCard tycoon={tycoon} currency={currency} onMedicalBudgetChange={onMedicalBudgetChange} />
+-        <div className="rounded-2xl border border-rose-500/30 bg-slate-900/70 p-5">
+-          <div className="text-xs font-black uppercase tracking-widest text-rose-300">Staff Quality</div>
+-          <div className="text-2xl font-black text-white mt-2">{medicalQualityLabel(quality).split(' — ')[0]}</div>
+-          <div className="mt-4 space-y-3">
+-            {getImpactStats(quality).map(stat => (
+-              <div key={stat.label} className="rounded-xl bg-slate-950/70 border border-slate-800 p-3">
+-                <div className="flex justify-between text-sm">
+-                  <span className="text-slate-300 font-bold">{stat.label}</span>
+-                  <span className={stat.value >= 0 ? 'text-emerald-300 font-black' : 'text-rose-300 font-black'}>
+-                    {stat.value > 0 ? '+' : ''}{stat.value}%
+-                  </span>
+-                </div>
+-                <div className="text-xs text-slate-500 mt-1">{stat.prose}</div>
+-              </div>
+-            ))}
+-          </div>
++      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
++        <SectionTitle icon={<HeartPulse size={24} />} title="Medical & Recovery" subtitle="Invest in your medical department to reduce injuries and speed up recovery." />
++        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 min-w-[280px]">
++          <div className="text-xs font-black uppercase tracking-widest text-slate-500">Annual Budget</div>
++          <div className="text-4xl font-black text-white mt-1 tabular-nums">{fmt(budget)}</div>
++          <div className="mt-2 inline-flex rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-black text-emerald-300">Active Investment</div>
+         </div>
+       </div>
+-      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+-        <h3 className="font-black text-white mb-4">Medical Facilities</h3>
+-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+-          {facilities.map(([key, label]) => {
+-            const tier = getFacilityTier(budget, key);
++
++      <div className="grid xl:grid-cols-[1fr_370px] gap-6">
++        <div className="space-y-6">
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 overflow-hidden">
++            <div className="grid lg:grid-cols-[260px_1fr]">
++              <div className="p-6">
++                <div className="text-xs font-black uppercase tracking-widest text-slate-400">Staff Quality</div>
++                <div
++                  className="mt-6 w-44 h-44 rounded-full mx-auto flex items-center justify-center"
++                  style={{ background: `conic-gradient(#74d66f ${qualityPct * 3.6}deg, #1e293b 0deg)` }}
++                >
++                  <div className="w-32 h-32 rounded-full bg-slate-950 border border-slate-800 flex flex-col items-center justify-center">
++                    <div className="text-5xl font-black text-white tabular-nums">{qualityPct}</div>
++                    <div className="text-lg text-slate-500">/100</div>
++                  </div>
++                </div>
++              </div>
++              <div className="relative p-6 min-h-[260px] flex flex-col justify-center overflow-hidden">
++                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_40%,rgba(59,130,246,0.22),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.2),rgba(15,23,42,0.95))]" />
++                <div className="absolute right-8 top-8 w-48 h-28 rounded-2xl border border-slate-700 bg-slate-950/70 shadow-2xl shadow-blue-950/30">
++                  <div className="h-full grid grid-cols-3 gap-2 p-3">
++                    <div className="rounded-lg bg-blue-400/20 border border-blue-300/20" />
++                    <div className="rounded-lg bg-slate-800 border border-slate-700" />
++                    <div className="rounded-lg bg-rose-400/20 border border-rose-300/20" />
++                    <div className="col-span-3 h-4 rounded bg-slate-800 mt-3" />
++                    <div className="col-span-2 h-4 rounded bg-slate-800" />
++                  </div>
++                </div>
++                <div className="relative max-w-md">
++                  <div className="text-4xl font-black text-emerald-300">{medicalQualityLabel(quality).split(' — ')[0]}</div>
++                  <p className="text-lg text-slate-300 mt-4">{medicalQualityLabel(quality).split(' — ')[1] ?? 'Medical standards are improving.'}</p>
++                  <div className="mt-8 h-3 rounded-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 relative">
++                    <div className="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white shadow-lg" style={{ left: `calc(${qualityPct}% - 10px)` }} />
++                  </div>
++                  <div className="flex justify-between text-xs text-slate-500 mt-2"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
++                </div>
++              </div>
++            </div>
++          </div>
++
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Impact on Squad</div>
++            <div className="grid sm:grid-cols-2 xl:grid-cols-5 gap-3">
++              {getImpactStats(quality).map(stat => (
++                <div key={stat.label} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-center">
++                  <div className={`${stat.value >= 0 ? 'text-emerald-300' : 'text-rose-300'} flex justify-center`}>{impactIcon[stat.label]}</div>
++                  <div className="mt-3 text-xs font-black uppercase tracking-widest text-slate-400">{stat.label}</div>
++                  <div className={`mt-2 text-3xl font-black ${stat.value >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{stat.value > 0 ? '+' : ''}{stat.value}%</div>
++                  <div className="text-xs text-slate-500 mt-2">{stat.prose}</div>
++                </div>
++              ))}
++            </div>
++          </div>
++
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-5">Annual Investment</div>
++            <input
++              type="range"
++              min={MEDICAL_BUDGET_MIN_EUR}
++              max={MEDICAL_BUDGET_MAX_EUR}
++              step={50_000}
++              value={Math.min(MEDICAL_BUDGET_MAX_EUR, Math.max(MEDICAL_BUDGET_MIN_EUR, budget))}
++              onChange={(e) => onMedicalBudgetChange(parseInt(e.target.value, 10))}
++              className="w-full accent-rose-400"
++            />
++            <div className="grid grid-cols-3 mt-4 text-sm">
++              <div><div className="text-slate-400">{fmt(MEDICAL_BUDGET_MIN_EUR)}</div><div className="text-xs text-slate-500">Skeleton</div></div>
++              <div className="text-center"><div className="text-rose-300 font-black">{fmt(budget)}</div><div className="text-xs text-slate-500">Current Budget</div></div>
++              <div className="text-right"><div className="text-slate-400">{fmt(MEDICAL_BUDGET_MAX_EUR)}</div><div className="text-xs text-slate-500">World Class</div></div>
++            </div>
++            <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-400">
++              Investment covers medical staff, physios, sport scientists, recovery equipment, diagnostics, and rehabilitation programs.
++            </div>
++          </div>
++        </div>
++
++        <aside className="space-y-6">
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2"><Building2 size={16} /> Medical Facilities</div>
++            <div className="divide-y divide-slate-800">
++              {facilities.map(([key, label]) => {
++                const tier = getFacilityTier(budget, key);
++                const color = tier === 'Elite' ? 'text-emerald-300' : tier === 'Advanced' ? 'text-amber-300' : tier === 'Standard' ? 'text-sky-300' : 'text-slate-500';
++                return (
++                  <div key={key} className="py-3 flex items-center justify-between gap-3">
++                    <div className="flex items-center gap-3 min-w-0">
++                      <span className="text-slate-500">{facilityIcon[key]}</span>
++                      <span className="text-sm text-slate-300 truncate">{label}</span>
++                    </div>
++                    <div className={`text-sm font-black ${color}`}>{tier}</div>
++                  </div>
++                );
++              })}
++            </div>
++          </div>
++
++          <div className="rounded-2xl border border-rose-500/30 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2"><AlertTriangle size={16} className="text-rose-300" /> Important Note</div>
++            <div className="h-px bg-rose-500/50 mb-5" />
++            <p className="text-sm text-slate-300 leading-6">
++              Season-ending injuries such as ACL or Achilles ruptures are not affected by investment level. Medical spending changes injury frequency and recovery time for lesser injuries.
++            </p>
++          </div>
++
++          <button className="w-full h-14 rounded-xl border border-rose-400/50 text-rose-300 font-black uppercase tracking-widest hover:bg-rose-500/10">
++            View Medical Report →
++          </button>
++        </aside>
++      </div>
++    </div>
++  );
++};
++
++const ActivityIcon: React.FC = () => <TrendingUp size={18} />;
+
+--- HUNK [op#6 hunk#0] session=10 line=572 ts=2026-05-13T07:55:01.211Z ---
+ const ActivityIcon: React.FC = () => <TrendingUp size={18} />;
+-            return (
+-              <div key={key} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+-                <div className="text-sm font-bold text-white">{label}</div>
+-                <div className={`text-xs font-black uppercase tracking-widest mt-2 ${
+-                  tier === 'Elite' ? 'text-emerald-300' : tier === 'Advanced' ? 'text-amber-300' : tier === 'Standard' ? 'text-sky-300' : 'text-slate-500'
+-                }`}>{tier}</div>
+-              </div>
+-            );
+-          })}
+-        </div>
+-      </div>
+-    </div>
+-  );
+-};
+ 
+ const FacilitiesSection: React.FC<{ tycoon: TycoonState; fmt: (v: number) => string }> = ({ tycoon, fmt }) => {
+
+--- HUNK [op#8 hunk#0] session=10 line=620 ts=2026-05-13T07:59:18.018Z ---
+ const ScoutingSection: React.FC = () => (
+   <div className="space-y-6">
+     <SectionTitle icon={<Target size={22} />} title="Scouting" subtitle="Tune scouting investment and review uncertainty before making roster decisions." />
+
+--- HUNK [op#8 hunk#1] session=10 line=620 ts=2026-05-13T07:59:18.018Z ---
+   </div>
+ );
+ 
++const MiniSparkline: React.FC<{ tone: 'green' | 'red' | 'gold' }> = ({ tone }) => {
++  const color = tone === 'green' ? 'bg-emerald-400' : tone === 'red' ? 'bg-rose-400' : 'bg-amber-300';
++  const heights = tone === 'red' ? [18, 14, 22, 19, 31, 25, 37, 34, 46, 42, 55] : [16, 20, 18, 27, 23, 35, 32, 44, 48, 42, 51];
++  return (
++    <div className="flex items-end gap-1 h-12 opacity-80">
++      {heights.map((height, index) => (
++        <span key={index} className={`w-2 rounded-t ${color}`} style={{ height }} />
++      ))}
++    </div>
++  );
++};
++
++const MetricTile: React.FC<{
++  label: string;
++  value: string;
++  delta: string;
++  tone: 'green' | 'red' | 'gold';
++}> = ({ label, value, delta, tone }) => {
++  const text = tone === 'green' ? 'text-emerald-300' : tone === 'red' ? 'text-rose-300' : 'text-amber-300';
++  return (
++    <div className="min-h-[118px] border-r border-slate-800 last:border-r-0 px-5 py-4">
++      <div className="text-xs font-black uppercase tracking-widest text-slate-400">{label}</div>
++      <div className={`mt-3 text-3xl font-black tabular-nums ${text}`}>{value}</div>
++      <div className="mt-1 text-xs text-slate-400">{delta}</div>
++      <div className="mt-2"><MiniSparkline tone={tone} /></div>
++    </div>
++  );
++};
++
++const moneyFlowColors = ['emerald', 'cyan', 'sky', 'violet', 'rose', 'orange', 'amber', 'yellow'] as const;
++
++const FlowRow: React.FC<{
++  label: string;
++  value: number;
++  total: number;
++  fmt: (v: number) => string;
++  color: typeof moneyFlowColors[number];
++  align?: 'left' | 'right';
++}> = ({ label, value, total, fmt, color, align = 'left' }) => {
++  const pct = total > 0 ? Math.round((value / total) * 1000) / 10 : 0;
++  const palette: Record<typeof moneyFlowColors[number], string> = {
++    emerald: 'border-emerald-400/50 bg-emerald-500/12 text-emerald-300',
++    cyan: 'border-cyan-400/50 bg-cyan-500/12 text-cyan-300',
++    sky: 'border-sky-400/50 bg-sky-500/12 text-sky-300',
++    violet: 'border-violet-400/50 bg-violet-500/12 text-violet-300',
++    rose: 'border-rose-400/50 bg-rose-500/12 text-rose-300',
++    orange: 'border-orange-400/50 bg-orange-500/12 text-orange-300',
++    amber: 'border-amber-400/50 bg-amber-500/12 text-amber-300',
++    yellow: 'border-yellow-400/50 bg-yellow-500/12 text-yellow-300',
++  };
++  return (
++    <div className={`rounded-lg border px-4 py-3 ${palette[color]}`}>
++      <div className={`flex items-baseline justify-between gap-3 ${align === 'right' ? 'flex-row-reverse text-right' : ''}`}>
++        <div>
++          <div className="text-sm font-black text-white">{label}</div>
++          <div className="text-xs text-slate-300">{fmt(value)}</div>
++        </div>
++        <div className="text-sm font-black tabular-nums">{pct}%</div>
++      </div>
++    </div>
++  );
++};
++
+ const AnnualProjectionCard: React.FC<{
+   ledger: ReturnType<typeof computeAnnualBudget>;
+   fmt: (v: number) => string;
+   cashOnHand: number;
+   currentYear: number;
+
+--- HUNK [op#8 hunk#2] session=10 line=620 ts=2026-05-13T07:59:18.018Z ---
+   const totalExpenses = ledger.expenses.wages + ledger.expenses.staff + ledger.expenses.facility + ledger.expenses.travel + ledger.expenses.medical + ledger.expenses.financeCosts;
+   const profit = totalRevenue - totalExpenses;
+   const cashEnd = cashOnHand + profit;
+   const profitable = profit >= 0;
++  const profitMargin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
++  const marginPct = Math.max(0, Math.min(100, Math.round(profitMargin)));
++  const revenueRows = [
++    { label: 'Matchday Revenue', value: ledger.revenue.matchday, color: 'emerald' as const },
++    { label: 'Sponsorships', value: ledger.revenue.sponsorship, color: 'cyan' as const },
++    { label: 'TV Rights', value: ledger.revenue.tv, color: 'sky' as const },
++    { label: 'Prize Money', value: ledger.revenue.prize, color: 'violet' as const },
++  ].filter(row => row.value > 0);
++  const expenseRows = [
++    { label: 'Wages', value: ledger.expenses.wages, color: 'rose' as const },
++    { label: 'Staff', value: ledger.expenses.staff, color: 'rose' as const },
++    { label: 'Facility Ops', value: ledger.expenses.facility, color: 'orange' as const },
++    { label: 'Travel', value: ledger.expenses.travel, color: 'amber' as const },
++    { label: 'Medical', value: ledger.expenses.medical, color: 'yellow' as const },
++    { label: 'Finance Costs', value: ledger.expenses.financeCosts, color: 'yellow' as const },
++  ].filter(row => row.value > 0);
+ 
+   let starLabel: string | null = null;
+   if (starPower.boost >= 1.2) starLabel = `Marquee crack — ${starPower.stars[0]} draws international sponsor interest`;
+   else if (starPower.boost >= 0.6) starLabel = `${starPower.stars[0]} is a continental star, sponsors are queuing`;
+   else if (starPower.boost >= 0.2) starLabel = `Strong core with ${starPower.stars[0]}`;
+
+--- HUNK [op#8 hunk#3] session=10 line=620 ts=2026-05-13T07:59:18.018Z ---
+ 
+   return (
+-    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+-      <div className="flex items-center justify-between mb-4">
+-        <h2 className="font-bold text-base flex items-center gap-2 text-slate-100">
+-          {profitable ? <TrendingUp size={16} className="text-emerald-400" /> : <TrendingDown size={16} className="text-rose-400" />}
+-          Annual Projection · {currentYear}
+-        </h2>
+-        <span className="text-xs text-slate-500">Live preview — reflects your slider + sponsorship changes</span>
+-      </div>
+-
+-      {starLabel && (
+-        <div className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+-          ⭐ {starLabel}
+-        </div>
+-      )}
+-
+-      <div className="grid md:grid-cols-2 gap-6">
+-        <div>
+-          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300 mb-2">Cash In</p>
+-          <div className="space-y-1.5">
+-            <Line label="Matchday" value={ledger.revenue.matchday} fmt={fmt} />
+-            <Line label="Sponsorships (8 slots)" value={ledger.revenue.sponsorship} fmt={fmt} />
+-            <Line label="TV Rights" value={ledger.revenue.tv} fmt={fmt} />
+-            {ledger.revenue.prize > 0 && <Line label="Prize Money" value={ledger.revenue.prize} fmt={fmt} />}
+-            <Line label="Total Revenue" value={totalRevenue} fmt={fmt} emphasis />
+-          </div>
+-        </div>
+-
+-        <div>
+-          <p className="text-xs font-semibold uppercase tracking-wider text-rose-300 mb-2">Cash Out</p>
+-          <div className="space-y-1.5">
+-            <Line label="Wages" value={ledger.expenses.wages} fmt={fmt} sign="out" />
+-            <Line label="Staff (≈10% of wages)" value={ledger.expenses.staff} fmt={fmt} sign="out" />
+-            <Line label="Facility Operations" value={ledger.expenses.facility} fmt={fmt} sign="out" />
+-            <Line label="Travel" value={ledger.expenses.travel} fmt={fmt} sign="out" />
+-            {ledger.expenses.medical > 0 && <Line label="Medical & Recovery" value={ledger.expenses.medical} fmt={fmt} sign="out" />}
+-            {ledger.expenses.financeCosts > 0 && <Line label="Finance Costs (debt)" value={ledger.expenses.financeCosts} fmt={fmt} sign="out" />}
+-            <Line label="Total Expenses" value={totalExpenses} fmt={fmt} sign="out" emphasis />
+-          </div>
+-        </div>
+-      </div>
+-
+-      <div className="mt-5 grid grid-cols-2 gap-4">
+-        <div className="rounded-xl border border-slate-700 bg-slate-950/60 p-3">
+-          <p className="text-xs text-slate-500">Projected Profit</p>
+-          <p className={`text-2xl font-black tabular-nums ${profitable ? 'text-emerald-400' : 'text-rose-400'}`}>
+-            {profitable ? '' : '−'}{fmt(Math.abs(profit))}
+-          </p>
+-        </div>
+-        <div className="rounded-xl border border-slate-700 bg-slate-950/60 p-3">
+-          <p className="text-xs text-slate-500">Year-End Cash on Hand</p>
+-          <p className={`text-2xl font-black tabular-nums ${cashEnd >= 0 ? 'text-amber-300' : 'text-rose-400'}`}>
+-            {cashEnd < 0 ? '−' : ''}{fmt(Math.abs(cashEnd))}
+-          </p>
+-        </div>
+-      </div>
++    <div className="space-y-5">
++      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 overflow-hidden">
++        <div className="px-5 py-4 flex items-center justify-between gap-4 border-b border-slate-800">
++          <h2 className="font-black text-base uppercase tracking-wide flex items-center gap-2 text-slate-100">
++            {profitable ? <TrendingUp size={16} className="text-emerald-400" /> : <TrendingDown size={16} className="text-rose-400" />}
++            Financial Snapshot <span className="text-slate-500 font-medium normal-case">(Live)</span>
++          </h2>
++          <span className="text-xs text-slate-500">Season {currentYear}-{String(currentYear + 1).slice(-2)}</span>
++        </div>
++        <div className="grid md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_220px]">
++          <MetricTile label="Total Revenue" value={fmt(totalRevenue)} delta="vs last season ↑ 12.4%" tone="green" />
++          <MetricTile label="Total Expenses" value={fmt(totalExpenses)} delta="vs last season ↑ 7.8%" tone="red" />
++          <MetricTile label="Projected Profit" value={`${profit < 0 ? '-' : ''}${fmt(Math.abs(profit))}`} delta="vs last season ↑ 24.7%" tone={profitable ? 'green' : 'red'} />
++          <MetricTile label="Year-End Cash" value={`${cashEnd < 0 ? '-' : ''}${fmt(Math.abs(cashEnd))}`} delta="vs start ↑ 91.8%" tone={cashEnd >= 0 ? 'gold' : 'red'} />
++          <div className="px-5 py-4 flex flex-col items-center justify-center">
++            <div
++              className="w-28 h-28 rounded-full flex items-center justify-center"
++              style={{ background: `conic-gradient(#34d399 ${marginPct * 3.6}deg, #334155 0deg)` }}
++            >
++              <div className="w-20 h-20 rounded-full bg-slate-950 border border-slate-800 flex flex-col items-center justify-center">
++                <div className="text-2xl font-black text-white tabular-nums">{profitMargin.toFixed(1)}%</div>
++                <div className={`text-xs ${profitable ? 'text-emerald-300' : 'text-rose-300'}`}>{profitable ? 'Healthy' : 'At Risk'}</div>
++              </div>
++            </div>
++          </div>
++        </div>
++      </div>
++
++      {starLabel && (
++        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
++          <span className="font-black uppercase tracking-widest text-amber-300 mr-2">Star Power</span>{starLabel}
++        </div>
++      )}
++
++      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 overflow-hidden">
++        <div className="flex items-center justify-between mb-5">
++          <h3 className="font-black uppercase tracking-wide text-white">Where The Money Comes From & Goes</h3>
++          <div className="text-right">
++            <div className="text-xs font-black uppercase tracking-widest text-rose-300">Cash Out</div>
++            <div className="text-3xl font-black text-rose-300 tabular-nums">{fmt(totalExpenses)}</div>
++          </div>
++        </div>
++        <div className="grid xl:grid-cols-[1fr_260px_1fr] gap-5 items-center">
++          <div className="space-y-3">
++            <div className="text-2xl font-black text-emerald-300 tabular-nums">{fmt(totalRevenue)}</div>
++            {revenueRows.map((row) => (
++              <FlowRow key={row.label} label={row.label} value={row.value} total={totalRevenue} fmt={fmt} color={row.color} />
++            ))}
++          </div>
++          <div className="relative flex items-center justify-center min-h-[250px]">
++            <div className="absolute inset-y-8 left-0 right-0 bg-[linear-gradient(90deg,rgba(16,185,129,0.22),rgba(20,184,166,0.06),rgba(244,63,94,0.22))] blur-xl" />
++            <div className="relative w-44 h-44 rounded-full border border-cyan-400/30 bg-slate-950 shadow-2xl shadow-cyan-950/30 flex flex-col items-center justify-center text-center">
++              <div className="text-xs font-black uppercase tracking-widest text-white">Projected Profit</div>
++              <div className={`mt-2 text-3xl font-black tabular-nums ${profitable ? 'text-emerald-300' : 'text-rose-300'}`}>{profit < 0 ? '-' : ''}{fmt(Math.abs(profit))}</div>
++            </div>
++          </div>
++          <div className="space-y-3">
++            {expenseRows.map((row) => (
++              <FlowRow key={row.label} label={row.label} value={row.value} total={totalExpenses} fmt={fmt} color={row.color} align="right" />
++            ))}
++          </div>
++        </div>
++      </div>
+     </div>
+   );
+ };
+
+--- HUNK [op#10 hunk#0] session=10 line=653 ts=2026-05-13T08:02:48.450Z ---
+-const SponsorshipSection: React.FC<{
++const SPONSOR_SLOT_LABELS: Record<SponsorshipSlot, string> = {
++  kit: 'Kit Sponsor',
++  sleeve: 'Sleeve Sponsor',
++  back: 'Back of Shirt',
++  shorts: 'Shorts Sponsor',
++  training: 'Training Kit',
++  court: 'Court Logo',
++  stadium: 'Arena Naming',
++  practice: 'Practice Facility',
++};
++
++const SLOT_GRADES: Record<SponsorshipSlot, string> = {
++  kit: 'A',
++  sleeve: 'B',
++  back: 'B+',
++  shorts: 'B+',
++  training: 'B',
++  court: 'B',
++  stadium: 'A',
++  practice: 'B',
++};
++
++const SponsorshipSection: React.FC<{
+   tycoon: TycoonState;
+   currency: string;
+   avgOpponentPrestige: number;
+   marqueeOpponents: string[];
+   onNegotiate: (slot: SponsorshipSlot) => void;
+   onTicketMultChange: (mult: number) => void;
+-}> = ({ tycoon, currency, avgOpponentPrestige, marqueeOpponents, onNegotiate, onTicketMultChange }) => (
+-  <div className="space-y-6">
+-    <SectionTitle icon={<Briefcase size={22} />} title="Sponsorships" subtitle="Manage your partner portfolio, ticket pricing, and commercial upside." />
+-    <SponsorshipCard
+-      tycoon={tycoon}
+-      currency={currency}
+-      onNegotiate={onNegotiate}
+-      onTicketMultChange={onTicketMultChange}
+-      avgOpponentPrestige={avgOpponentPrestige}
+-      marqueeOpponents={marqueeOpponents}
+-    />
+-  </div>
+-);
++}> = ({ tycoon, currency, avgOpponentPrestige, marqueeOpponents, onNegotiate, onTicketMultChange }) => {
++  const [selectedSlot, setSelectedSlot] = useState<SponsorshipSlot>('kit');
++  const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
++  const deals = ALL_SLOTS.map(slot => ({ slot, deal: tycoon.sponsorships[slot] }));
++  const activeDeals = deals.filter(item => item.deal);
++  const totalAnnual = activeDeals.reduce((sum, item) => sum + (item.deal?.valuePerYear ?? 0), 0);
++  const totalValue = activeDeals.reduce((sum, item) => sum + (item.deal?.valuePerYear ?? 0) * Math.max(1, item.deal?.yearsRemaining ?? 1), 0);
++  const nextRenewal = activeDeals.reduce<number | null>((min, item) => {
++    const years = item.deal?.yearsRemaining;
++    if (years === undefined) return min;
++    return min === null ? years : Math.min(min, years);
++  }, null);
++  const selected = tycoon.sponsorships[selectedSlot];
++  const cityPrestige = tycoon.cityPrestige ?? 0.5;
++  const starLike = 0.75 + cityPrestige * 0.7 + avgOpponentPrestige * 0.35;
++  const ticketMult = tycoon.ticketPriceMultiplier ?? 1;
++
++  return (
++    <div className="space-y-6">
++      <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
++        <SectionTitle icon={<Briefcase size={22} />} title="Sponsorships" subtitle="Manage partnerships, brand strength, renewals, and matchday sponsor exposure." />
++        <div className="grid sm:grid-cols-4 gap-3 xl:min-w-[760px]">
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-500">Total Revenue</div>
++            <div className="mt-2 text-2xl font-black text-emerald-300 tabular-nums">{fmt(totalAnnual)}</div>
++            <div className="text-xs text-slate-400">per year</div>
++          </div>
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-500">Active Deals</div>
++            <div className="mt-2 text-2xl font-black text-white tabular-nums">{activeDeals.length} / {ALL_SLOTS.length}</div>
++            <div className="text-xs text-slate-400">slots live</div>
++          </div>
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-500">Portfolio Value</div>
++            <div className="mt-2 text-2xl font-black text-violet-300 tabular-nums">{fmt(totalValue)}</div>
++            <div className="text-xs text-slate-400">contracted</div>
++          </div>
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-500">Next Renewals</div>
++            <div className="mt-2 text-2xl font-black text-amber-300 tabular-nums">{nextRenewal ?? 0}</div>
++            <div className="text-xs text-slate-400">years remaining</div>
++          </div>
++        </div>
++      </div>
++
++      <div className="rounded-2xl border border-violet-500/30 bg-violet-500/10 p-5 grid lg:grid-cols-[1fr_220px_220px_300px] gap-5 items-center">
++        <div className="flex items-center gap-4">
++          <div className="w-16 h-16 rounded-full border border-amber-300/40 bg-amber-300/10 flex items-center justify-center text-3xl text-amber-200">★</div>
++          <div>
++            <div className="text-lg font-black text-white">Strong Global Brand</div>
++            <div className="text-sm text-slate-300">Club prestige and marquee opponents keep premium sponsors engaged.</div>
++          </div>
++        </div>
++        <div className="border-l border-violet-400/20 pl-5">
++          <div className="text-xs font-black uppercase tracking-widest text-slate-500">City Prestige</div>
++          <div className="text-2xl font-black text-white tabular-nums">{cityPrestige.toFixed(2)}</div>
++          <div className="text-xs text-emerald-300">Excellent</div>
++        </div>
++        <div className="border-l border-violet-400/20 pl-5">
++          <div className="text-xs font-black uppercase tracking-widest text-slate-500">Star Power</div>
++          <div className="text-2xl font-black text-white tabular-nums">{starLike.toFixed(2)}x</div>
++          <div className="text-xs text-slate-400">Marquee Power</div>
++        </div>
++        <button onClick={() => onNegotiate(selectedSlot)} className="h-14 rounded-xl border border-violet-300/50 text-white font-black hover:bg-violet-400/10">
++          View Brand Profile →
++        </button>
++      </div>
++
++      <div className="grid xl:grid-cols-[1fr_560px] gap-6">
++        <div className="space-y-6">
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-5">Sponsorship Portfolio</div>
++            <div className="grid md:grid-cols-2 2xl:grid-cols-4 gap-4">
++              {deals.map(({ slot, deal }) => {
++                const active = selectedSlot === slot;
++                return (
++                  <button
++                    key={slot}
++                    onClick={() => setSelectedSlot(slot)}
++                    className={`min-h-[190px] rounded-xl border p-4 text-left transition ${
++                      active ? 'border-amber-400 bg-amber-400/10' : 'border-slate-800 bg-slate-950/60 hover:border-slate-600'
++                    }`}
++                  >
++                    <div className="flex items-start justify-between">
++                      <div className="text-xs font-black uppercase tracking-widest text-slate-400">{SPONSOR_SLOT_LABELS[slot]}</div>
++                      <span className={`w-3 h-3 rounded-full ${deal ? 'bg-emerald-400' : 'bg-amber-300'}`} />
++                    </div>
++                    <div className="mt-8 text-2xl font-black text-white truncate">{deal?.sponsor ?? 'Open Slot'}</div>
++                    <div className="mt-6 grid grid-cols-2 gap-3 text-xs">
++                      <div>
++                        <div className="uppercase tracking-widest text-slate-500">Value</div>
++                        <div className="text-sm font-black text-white tabular-nums">{fmt(deal?.valuePerYear ?? 0)} / year</div>
++                      </div>
++                      <div>
++                        <div className="uppercase tracking-widest text-slate-500">Contract End</div>
++                        <div className="text-sm font-black text-white">{deal ? String(deal.signedYear + deal.yearsRemaining) : 'Market'}</div>
++                      </div>
++                    </div>
++                    <div className="mt-5 inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-amber-400/60 px-2 text-sm font-black text-amber-300">{SLOT_GRADES[slot]}</div>
++                  </button>
++                );
++              })}
++            </div>
++          </div>
++
++          <div className="grid lg:grid-cols-[1fr_1.5fr] gap-4">
++            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 p-5 flex items-center gap-4">
++              <button onClick={() => onNegotiate(selectedSlot)} className="w-14 h-14 rounded-full border border-slate-600 text-3xl text-slate-300 hover:border-amber-300 hover:text-amber-200">+</button>
++              <div>
++                <div className="text-sm font-black text-white">Available Slot</div>
++                <div className="text-xs text-slate-400">Open market for new opportunities.</div>
++              </div>
++            </div>
++            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++              <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Sponsorship Insights</div>
++              <div className="space-y-2 text-sm text-slate-300">
++                <div className="text-emerald-300">✓ Kit deal ranks among the strongest current slots.</div>
++                <div className="text-emerald-300">✓ Marquee opponents support premium local activation.</div>
++                <div className="text-slate-400">Ticket multiplier is {ticketMult.toFixed(2)}x; sponsor visibility follows attendance.</div>
++              </div>
++              <input
++                type="range"
++                min={0.5}
++                max={2}
++                step={0.05}
++                value={ticketMult}
++                onChange={(event) => onTicketMultChange(parseFloat(event.target.value))}
++                className="mt-4 w-full accent-amber-400"
++              />
++              {marqueeOpponents.length > 0 && <div className="mt-2 text-xs text-slate-500">Marquee slate: {marqueeOpponents.slice(0, 3).join(', ')}</div>}
++            </div>
++          </div>
++        </div>
++
++        <aside className="space-y-5">
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="flex items-center justify-between">
++              <div className="text-xs font-black uppercase tracking-widest text-slate-400">Selected Sponsor</div>
++              <span className="rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-xs font-black text-emerald-300">{selected ? 'Active' : 'Open'}</span>
++            </div>
++            <div className="mt-7 rounded-xl border border-slate-800 bg-slate-950/70 p-5">
++              <div className="text-4xl font-black text-white">{selected?.sponsor ?? 'Open Market'}</div>
++              <div className="text-sm text-slate-400 mt-1">{SPONSOR_SLOT_LABELS[selectedSlot]}</div>
++              <div className="mt-6 grid grid-cols-2 gap-4 border-t border-slate-800 pt-5">
++                <div><div className="text-xs uppercase tracking-widest text-slate-500">Value Per Year</div><div className="text-xl font-black text-white">{fmt(selected?.valuePerYear ?? 0)}</div></div>
++                <div><div className="text-xs uppercase tracking-widest text-slate-500">Contract Length</div><div className="text-xl font-black text-white">{selected?.yearsRemaining ?? 0} Years</div></div>
++              </div>
++            </div>
++          </div>
++
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Deal Breakdown</div>
++            <div className="grid grid-cols-[150px_1fr] gap-5 items-center">
++              <div className="w-32 h-32 rounded-full mx-auto flex items-center justify-center bg-[conic-gradient(#22c55e_0_240deg,#eab308_240deg_315deg,#0ea5e9_315deg_360deg)]">
++                <div className="w-20 h-20 rounded-full bg-slate-950 border border-slate-800 flex flex-col items-center justify-center">
++                  <div className="text-lg font-black text-white">{fmt((selected?.valuePerYear ?? 0) * 4)}</div>
++                  <div className="text-xs text-slate-500">Total</div>
++                </div>
++              </div>
++              <div className="space-y-3 text-sm">
++                <Line label="Base Fee" value={(selected?.valuePerYear ?? 0) * 0.67} fmt={fmt} />
++                <Line label="Performance Bonuses" value={(selected?.valuePerYear ?? 0) * 0.25} fmt={fmt} />
++                <Line label="Appearance Clauses" value={(selected?.valuePerYear ?? 0) * 0.08} fmt={fmt} />
++              </div>
++            </div>
++          </div>
++
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Next Actions</div>
++            {['Renegotiate Deal', 'View Contract Details', 'Find Replacement'].map((action) => (
++              <button key={action} onClick={() => onNegotiate(selectedSlot)} className="w-full h-12 mb-2 rounded-xl border border-slate-800 bg-slate-950/70 px-4 flex items-center justify-between text-sm text-slate-200 hover:border-amber-400/60">
++                {action}<span>→</span>
++              </button>
++            ))}
++            <button onClick={() => onNegotiate(selectedSlot)} className="mt-3 w-full h-14 rounded-xl border border-amber-400/50 bg-amber-400/15 text-amber-200 font-black">
++              Find New Sponsors →
++            </button>
++          </div>
++        </aside>
++      </div>
++    </div>
++  );
++};
+
+--- HUNK [op#11 hunk#0] session=10 line=810 ts=2026-05-13T08:24:41.105Z ---
+ const FacilitiesSection: React.FC<{ tycoon: TycoonState; fmt: (v: number) => string }> = ({ tycoon, fmt }) => {
+-  const cards = [
+-    { title: 'Arena & Fan Experience', rating: 55 + tycoon.facilities.stadium.level * 8, detail: `${tycoon.facilities.stadium.capacity.toLocaleString()} seats` },
+-    { title: 'Training Center', rating: 58 + tycoon.facilities.trainingCenter.level * 8, detail: `Level ${tycoon.facilities.trainingCenter.level}` },
+-    { title: 'Youth Academy', rating: 54 + tycoon.facilities.academy.level * 8, detail: `Level ${tycoon.facilities.academy.level}` },
+-    { title: 'Medical Center', rating: 50 + Math.round(medicalQuality(tycoon.medicalBudget) * 45), detail: fmt(tycoon.medicalBudget ?? 0) },
+-    { title: 'Analytics Lab', rating: 60, detail: 'Baseline department' },
+-    { title: 'Travel Hub', rating: (tycoon.cashOnHand ?? 0) < 2_000_000 ? 52 : 72, detail: 'Club logistics profile' },
++  const medicalRating = 50 + Math.round(medicalQuality(tycoon.medicalBudget) * 45);
++  const travelAverage = tycoon.travelPreferences
++    ? Math.round((tycoon.travelPreferences.hotel + tycoon.travelPreferences.flight + tycoon.travelPreferences.bus) / 3)
++    : 2;
++  const travelRating = 58 + travelAverage * 8;
++  const trainingRating = 58 + tycoon.facilities.trainingCenter.level * 9;
++  const academyRating = 54 + tycoon.facilities.academy.level * 9;
++  const arenaRating = 56 + tycoon.facilities.stadium.level * 9;
++  const analyticsRating = 72;
++  const cards = [
++    {
++      title: 'Training Center',
++      icon: <Dumbbell size={26} />,
++      rating: trainingRating,
++      tone: 'sky',
++      badge: trainingRating >= 90 ? 'Elite' : 'A',
++      attributes: [
++        ['Training Quality', trainingRating],
++        ['Skill Development', trainingRating - 2],
++        ['Shooting Labs', trainingRating - 3],
++        ['Weight Rooms', trainingRating - 5],
++        ['Biomechanics', trainingRating - 6],
++      ],
++      chips: ['Smart Courts', 'AI Motion Capture', 'Recovery Pools', 'Altitude Chambers'],
++    },
++    {
++      title: 'Medical & Recovery Center',
++      icon: <HeartPulse size={26} />,
++      rating: medicalRating,
++      tone: 'violet',
++      badge: medicalRating >= 90 ? 'Elite' : 'A',
++      attributes: [
++        ['Injury Prevention', medicalRating],
++        ['Rehab Speed', medicalRating - 2],
++        ['Conditioning', medicalRating - 3],
++        ['Load Management', medicalRating - 1],
++        ['Recovery Tech', medicalRating - 4],
++      ],
++      chips: ['Cryotherapy', 'Hyperbaric Chambers', 'MRI Center', 'Sleep Labs'],
++    },
++    {
++      title: 'Youth Academy',
++      icon: <Target size={26} />,
++      rating: academyRating,
++      tone: 'emerald',
++      badge: academyRating >= 90 ? 'Elite' : 'A',
++      attributes: [
++        ['Talent Pipeline', academyRating],
++        ['Youth Coaching', academyRating - 2],
++        ['Recruitment', academyRating - 4],
++        ['Academy Prestige', academyRating + 1],
++        ['Education', academyRating - 3],
++      ],
++      chips: ['Dormitories', 'School Partnerships', 'Regional Camps', 'Scouting Hub'],
++    },
++    {
++      title: 'Analytics Lab',
++      icon: <TrendingUp size={26} />,
++      rating: analyticsRating,
++      tone: 'cyan',
++      badge: 'A',
++      attributes: [
++        ['Tactical Analysis', analyticsRating + 4],
++        ['Opponent Scouting', analyticsRating + 2],
++        ['Data Infrastructure', analyticsRating],
++        ['AI Models', analyticsRating - 1],
++        ['Match Preparation', analyticsRating + 3],
++      ],
++      chips: ['AI Video Analysis', 'Big Data Platform', 'Tracking System', 'Scouting AI'],
++    },
++    {
++      title: 'Arena & Fan Experience',
++      icon: <Landmark size={26} />,
++      rating: arenaRating,
++      tone: 'amber',
++      badge: arenaRating >= 90 ? 'Elite' : 'A',
++      attributes: [
++        ['Arena Quality', arenaRating + 2],
++        ['Attendance', arenaRating],
++        ['VIP Revenue', arenaRating - 2],
++        ['Atmosphere', arenaRating + 1],
++        ['Fan Engagement', arenaRating - 1],
++      ],
++      chips: ['LED System', 'VIP Lounges', 'Giant Screens', 'Fan Zones'],
++    },
++    {
++      title: 'Travel & Logistics Hub',
++      icon: <Plane size={26} />,
++      rating: travelRating,
++      tone: 'sky',
++      badge: travelRating >= 90 ? 'Elite' : 'A',
++      attributes: [
++        ['Travel Comfort', travelRating],
++        ['Jet Quality', travelRating - 1],
++        ['Recovery Efficiency', travelRating - 2],
++        ['International Ops', travelRating - 1],
++        ['Logistics', travelRating - 3],
++      ],
++      chips: ['Balanced', 'Optimal cost control', 'Road Recovery', 'European Ops'],
++    },
+   ];
++  const avgRating = Math.round(cards.reduce((sum, card) => sum + card.rating, 0) / cards.length);
++  const maintenance = (tycoon.facilities.stadium.level + tycoon.facilities.trainingCenter.level + tycoon.facilities.academy.level) * 2_600_000
++    + (tycoon.medicalBudget ?? 0) * 0.35 + travelAverage * 450_000;
++  const facilityValue = tycoon.facilities.stadium.capacity * 4_500
++    + tycoon.facilities.trainingCenter.level * 16_000_000
++    + tycoon.facilities.academy.level * 9_000_000
++    + (tycoon.medicalBudget ?? 0) * 5;
+   return (
+     <div className="space-y-6">
+-      <SectionTitle icon={<Building2 size={22} />} title="Facilities" subtitle="Review infrastructure strength across the club." />
+-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+-        {cards.map(card => (
+-          <div key={card.title} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+-            <div className="flex items-start justify-between gap-3">
+-              <div>
+-                <div className="text-sm font-black text-white">{card.title}</div>
+-                <div className="text-xs text-slate-500 mt-1">{card.detail}</div>
+-              </div>
+-              <div className="w-12 h-12 rounded-full border border-amber-400/40 bg-amber-400/10 flex items-center justify-center text-amber-200 font-black">
+-                {Math.min(99, card.rating)}
++      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
++        <SectionTitle icon={<Building2 size={22} />} title="Facilities" subtitle="Manage and upgrade your club's infrastructure and facilities." />
++        <button className="h-14 rounded-xl border border-amber-400/50 bg-amber-400/10 px-8 text-amber-200 font-black hover:bg-amber-400/15">
++          View Masterplan →
++        </button>
++      </div>
++
++      <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-3">
++        <FacilityKpi icon={<Building2 size={22} />} label="Total Facility Value" value={fmt(facilityValue)} sub="All Facilities" />
++        <FacilityKpi icon={<Shield size={22} />} label="Annual Maintenance" value={`${fmt(maintenance)} / year`} sub="Projected cost" />
++        <FacilityKpi icon={<TrendingUp size={22} />} label="Facility Rating" value={String(avgRating)} sub={avgRating >= 88 ? 'Elite' : 'Strong'} />
++        <FacilityKpi icon={<Smile size={22} />} label="Player Satisfaction" value={String(Math.min(99, avgRating - 3))} sub="Great" />
++        <FacilityKpi icon={<HeartPulse size={22} />} label="Injury Prevention" value={`+${Math.round(medicalQuality(tycoon.medicalBudget) * 20)}%`} sub="vs baseline" />
++      </div>
++
++      <div className="grid xl:grid-cols-[1fr_370px] gap-6">
++        <div className="space-y-6">
++          <div className="grid md:grid-cols-2 2xl:grid-cols-3 gap-4">
++            {cards.map(card => (
++              <FacilityCard key={card.title} {...card} />
++            ))}
++          </div>
++
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 overflow-hidden">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-5">Club Performance Ecosystem</div>
++            <div className="grid lg:grid-cols-[1fr_220px_1fr] gap-5 items-center">
++              <div className="space-y-3">
++                {cards.slice(0, 3).map(card => (
++                  <div key={card.title} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 flex items-center gap-3">
++                    <span className="text-sky-300">{card.icon}</span>
++                    <div><div className="text-sm font-black text-white">{card.title.replace(' & Recovery Center', ' Center')}</div><div className="text-xs text-slate-500">Feeds long-term club strength</div></div>
++                  </div>
++                ))}
++              </div>
++              <div className="relative mx-auto w-52 h-52 rounded-full border border-amber-400/50 bg-slate-950 shadow-2xl shadow-amber-950/30 flex flex-col items-center justify-center text-center">
++                <div className="absolute inset-5 rounded-full border border-amber-400/20" />
++                <div className="text-4xl font-black text-white">{avgRating}</div>
++                <div className="text-sm font-black text-amber-300">Club Success</div>
++                <div className="text-xs text-slate-500">Winning · Growth · Legacy</div>
+               </div>
++              <div className="space-y-3">
++                {cards.slice(3).map(card => (
++                  <div key={card.title} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 flex items-center gap-3">
++                    <span className="text-amber-300">{card.icon}</span>
++                    <div><div className="text-sm font-black text-white">{card.title}</div><div className="text-xs text-slate-500">Improves operational ceiling</div></div>
++                  </div>
++                ))}
++              </div>
+             </div>
+-            <div className="mt-4 h-2 rounded-full bg-slate-800 overflow-hidden">
+-              <div className="h-full bg-amber-400" style={{ width: `${Math.min(99, card.rating)}%` }} />
++          </div>
++
++          <div className="grid md:grid-cols-5 gap-3">
++            {['Upgrade Facility', 'View Blueprints', 'Hire Architects', 'Compare League Facilities', 'Infrastructure Report'].map((action, index) => (
++              <button key={action} className={`h-14 rounded-xl border font-black text-sm ${index === 0 ? 'border-amber-400/50 bg-amber-400/15 text-amber-200' : 'border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-600'}`}>
++                {action}
++              </button>
++            ))}
++          </div>
++        </div>
++
++        <aside className="space-y-5">
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Operational Insights</div>
++            {[
++              ['good', 'Training facilities are world-class. Player development is at elite level.'],
++              ['warn', `Arena capacity of ${tycoon.facilities.stadium.capacity.toLocaleString()} may limit future revenue.`],
++              ['warn', 'Youth academy facilities could be upgraded.'],
++              ['good', 'Medical center is reducing injury risk effectively.'],
++              ['info', 'Three European clubs have better travel conditions.'],
++            ].map(([kind, text]) => (
++              <div key={text} className="py-3 border-b border-slate-800 last:border-b-0 flex gap-3 text-sm text-slate-300">
++                <span className={`mt-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-black ${kind === 'good' ? 'bg-emerald-500/20 text-emerald-300' : kind === 'warn' ? 'bg-amber-500/20 text-amber-300' : 'bg-orange-500/20 text-orange-300'}`}>!</span>
++                <span>{text}</span>
++              </div>
++            ))}
++            <button className="mt-4 w-full h-12 rounded-xl border border-slate-700 text-slate-300 hover:text-white">View Full Report →</button>
++          </div>
++
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Facility Masterplan</div>
++            <div className="flex items-center justify-between text-sm font-black text-amber-300 mb-4">
++              <span>Under Construction</span><span>2 Active Projects</span>
+             </div>
++            {[
++              ['Recovery Wing Expansion', 'Medical Center', 65, 'Dec 2026'],
++              ['Arena Expansion Phase 1', 'Arena', 40, 'May 2027'],
++            ].map(([name, area, pct, date]) => (
++              <div key={name as string} className="mb-5">
++                <div className="flex justify-between gap-3 text-sm"><span className="font-black text-white">{name}</span><span className="text-slate-500">{pct}%</span></div>
++                <div className="text-xs text-slate-500">{area} · Completion: {date}</div>
++                <div className="mt-2 h-2 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-amber-400" style={{ width: `${pct}%` }} /></div>
++              </div>
++            ))}
++            <div className="pt-2 border-t border-slate-800 text-sm font-black text-amber-300">Planned <span className="float-right">3 Projects</span></div>
++            {['AI Training Dome', 'Youth Dormitories', 'New Practice Arena'].map((name) => (
++              <div key={name} className="py-3 border-b border-slate-800 text-sm">
++                <div className="font-black text-white">{name}</div>
++                <div className="text-xs text-slate-500">Starts next planning cycle</div>
++              </div>
++            ))}
++            <button className="mt-4 w-full h-14 rounded-xl border border-amber-400/50 bg-amber-400/10 text-amber-200 font-black">View Masterplan →</button>
+           </div>
+-        ))}
++        </aside>
+       </div>
+     </div>
+   );
+ };
++
++const FacilityKpi: React.FC<{ icon: React.ReactNode; label: string; value: string; sub: string }> = ({ icon, label, value, sub }) => (
++  <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 flex items-center gap-4">
++    <div className="w-12 h-12 rounded-full border border-slate-700 bg-slate-950/80 flex items-center justify-center text-slate-300">{icon}</div>
++    <div>
++      <div className="text-xs font-black uppercase tracking-widest text-slate-500">{label}</div>
++      <div className="text-xl font-black text-white tabular-nums mt-1">{value}</div>
++      <div className="text-xs text-slate-400">{sub}</div>
++    </div>
++  </div>
++);
++
++const FacilityCard: React.FC<{
++  title: string;
++  icon: React.ReactNode;
++  rating: number;
++  tone: string;
++  badge: string;
++  attributes: Array<[string, number]>;
++  chips: string[];
++}> = ({ title, icon, rating, tone, badge, attributes, chips }) => {
++  const accent = tone === 'amber' ? 'text-amber-300 border-amber-400/40 bg-amber-400/10'
++    : tone === 'violet' ? 'text-violet-300 border-violet-400/40 bg-violet-400/10'
++    : tone === 'emerald' ? 'text-emerald-300 border-emerald-400/40 bg-emerald-400/10'
++    : tone === 'cyan' ? 'text-cyan-300 border-cyan-400/40 bg-cyan-400/10'
++    : 'text-sky-300 border-sky-400/40 bg-sky-400/10';
++  return (
++    <div className={`rounded-2xl border border-slate-800 bg-slate-900/70 p-5 ${tone === 'amber' ? 'shadow-lg shadow-amber-950/20' : ''}`}>
++      <div className="flex items-start justify-between">
++        <div className="flex items-center gap-3">
++          <div className={`w-12 h-12 rounded-full border flex items-center justify-center ${accent}`}>{icon}</div>
++          <div className="text-sm font-black text-white uppercase tracking-wide">{title}</div>
++        </div>
++        <div className={`rounded-lg border px-2 py-1 text-xs font-black uppercase ${accent}`}>{badge}</div>
++      </div>
++      <div className="mt-6 grid grid-cols-[96px_1fr] gap-5 items-center">
++        <div className="w-24 h-24 rounded-full mx-auto flex items-center justify-center bg-[conic-gradient(#74d66f_0deg,#74d66f_var(--rating),#1e293b_var(--rating))]" style={{ '--rating': `${Math.min(99, rating) * 3.6}deg` } as React.CSSProperties}>
++          <div className="w-16 h-16 rounded-full bg-slate-950 border border-slate-800 flex flex-col items-center justify-center">
++            <div className="text-2xl font-black text-emerald-300">{Math.min(99, rating)}</div>
++          </div>
++        </div>
++        <div className="space-y-2">
++          {attributes.map(([label, value]) => (
++            <div key={label} className="grid grid-cols-[1fr_56px] items-center gap-3">
++              <div className="text-xs text-slate-300 truncate">{label}</div>
++              <div className="flex items-center gap-2">
++                <div className="w-10 h-1.5 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-emerald-400" style={{ width: `${Math.max(20, Math.min(99, value))}%` }} /></div>
++                <span className="text-xs font-black text-emerald-300 tabular-nums">{Math.max(1, Math.min(99, value))}</span>
++              </div>
++            </div>
++          ))}
++        </div>
++      </div>
++      <div className="mt-5 text-xs font-black uppercase tracking-widest text-slate-500">Key Features</div>
++      <div className="mt-2 flex flex-wrap gap-2">
++        {chips.slice(0, 4).map(chip => <span key={chip} className="rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1 text-[10px] font-bold text-slate-300">{chip}</span>)}
++      </div>
++      <button className={`mt-4 w-full h-11 rounded-xl border font-black ${accent}`}>View Details →</button>
++    </div>
++  );
++};
+
+--- HUNK [op#12 hunk#2] session=11 line=75 ts=2026-05-13T17:14:57.612Z ---
+ const StaffSection: React.FC<{ state: any; team: any }> = ({ state, team }) => {
++  const [signingOpen, setSigningOpen] = useState(false);
++  const [selectedRole, setSelectedRole] = useState('Head Coach');
+   const teamName = getTeamFullName(team);
+   const coach = (state.staff?.coaches ?? []).find((s: any) => s.team === team.name || s.team === teamName)
+     ?? makePlaceholderCoach(team);
+   const gm = (state.staff?.gms ?? []).find((s: any) => s.team === team.name || s.team === teamName)
+     ?? makePlaceholderGM(team);
+   const owner = (state.staff?.owners ?? []).find((s: any) => s.team === team.name || s.team === teamName);
+-  const roles = [
+-    { role: 'Head Coach', person: coach, focus: 'Tactics, rotations, player development' },
+-    { role: 'Assistant Coach', person: null, focus: 'Training sessions and opponent prep' },
+-    { role: 'Head of Sports Science', person: null, focus: 'Injury prevention and workload monitoring' },
+-    { role: 'Head Physio', person: null, focus: 'Recovery speed and day-to-day availability' },
+-    { role: 'Chief Scout', person: gm, focus: 'Player evaluation and market intelligence' },
+-    { role: 'Head of Analytics', person: null, focus: 'Shot profile, lineup data, and opponent models' },
+-  ];
++  const staffFaces = useMemo(() => new Map<string, any>(), [teamName]);
++  const getStaffFace = (person: any, role: string) => {
++    if (isRealFaceConfig(person?.face)) return person.face;
++    const key = `${role}-${person?.name ?? 'open'}-${teamName}`;
++    if (!staffFaces.has(key)) staffFaces.set(key, generate(undefined, { gender: 'male' }));
++    return staffFaces.get(key);
++  };
++  const buildAttributes = (role: string, seed: number) => {
++    const roleBoost: Record<string, Array<[string, number]>> = {
++      'Head Coach': [['Tactics', 84], ['Offense', 80], ['Defense', 78], ['Development', 76], ['Motivation', 82]],
++      'Assistant Coach': [['Opponent Prep', 76], ['Player Drills', 78], ['Defense', 74], ['Development', 80], ['Adaptability', 72]],
++      'Head of Sports Science': [['Conditioning', 84], ['Load Control', 82], ['Recovery', 78], ['Biomechanics', 76], ['Data Habits', 74]],
++      'Head Physio': [['Physiotherapy', 85], ['Rehab Speed', 82], ['Diagnostics', 76], ['Prevention', 80], ['Care Quality', 78]],
++      'Chief Scout': [['Ability Judging', 82], ['Potential Judging', 84], ['Market Reads', 76], ['Negotiating', 72], ['Network', 78]],
++      'Head of Analytics': [['Data Models', 83], ['Video Tools', 78], ['Opponent Models', 80], ['Lineup Advice', 77], ['Reporting', 75]],
++    };
++    return (roleBoost[role] ?? roleBoost['Head Coach']).map(([label, value], index) => [label, Math.max(45, Math.min(95, value + ((seed + index * 7) % 9) - 4))] as [string, number]);
++  };
++  const roles = [
++    { role: 'Head Coach', person: coach, group: 'Coaching & Performance', focus: 'Tactics, rotations, player development', salary: 1_850_000, years: coach.yearsWithTeam ? Math.max(1, 4 - Math.min(3, coach.yearsWithTeam)) : 2 },
++    { role: 'Assistant Coach', person: null, group: 'Coaching & Performance', focus: 'Training sessions and opponent prep', salary: 620_000, years: 0 },
++    { role: 'Head of Sports Science', person: null, group: 'Coaching & Performance', focus: 'Injury prevention and workload monitoring', salary: 540_000, years: 0 },
++    { role: 'Head Physio', person: null, group: 'Coaching & Performance', focus: 'Recovery speed and day-to-day availability', salary: 460_000, years: 0 },
++    { role: 'Chief Scout', person: gm, group: 'Scouting & Analytics', focus: 'Player evaluation and market intelligence', salary: 720_000, years: 2 },
++    { role: 'Head of Analytics', person: null, group: 'Scouting & Analytics', focus: 'Shot profile, lineup data, and opponent models', salary: 510_000, years: 0 },
++  ];
++  const filledRoles = roles.filter(r => r.person).length;
++  const totalCost = roles.reduce((sum, r) => sum + (r.person ? r.salary : 0), 0);
++  const avgSkill = Math.round(roles.reduce((sum, r, index) => sum + (r.person ? buildAttributes(r.role, index * 11)[0][1] : 58), 0) / roles.length);
++  const candidates = roles.map((r, index) => ({
++    role: r.role,
++    name: r.person?.name ?? ['Luca Marinelli', 'Pablo Herrera', 'Dimitris Karras', 'Sergio Abad', 'Jonas Petrovic', 'Marco Bennett'][index],
++    nationality: r.person?.nationality ?? ['Italy', 'Spain', 'Greece', 'Spain', 'Serbia', 'United States'][index],
++    salary: r.salary,
++    rating: r.person ? buildAttributes(r.role, index * 13)[0][1] : 68 + index * 3,
++    face: getStaffFace(r.person, r.role),
++  }));
++  const selectedCandidate = candidates.find(c => c.role === selectedRole) ?? candidates[0];
++  const renderPortrait = (face: any, initials: string, size = 'w-16 h-20') => (
++    <div className={`${size} rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0 relative`}>
++      {isRealFaceConfig(face) ? (
++        <div className="absolute left-1/2 top-1/2" style={{ width: '92%', height: '138%', transform: 'translate(-50%, -45%)' }}>
++          <MyFace face={face} lazy style={{ width: '100%', height: '100%' }} />
++        </div>
++      ) : (
++        <div className="w-full h-full flex items-center justify-center text-sm font-black text-amber-200">{initials}</div>
++      )}
++    </div>
++  );
+   return (
+     <div className="space-y-6">
+-      <SectionTitle icon={<Users size={22} />} title="Staff" subtitle="Manage coaching, performance, scouting, and analytics roles." />
+-      <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+-            {roles.map(item => {
+-              const initials = item.person?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) ?? '+';
++      <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-4">
++        <SectionTitle icon={<Users size={22} />} title="Staff" subtitle="Manage your coaching, performance, and support team." />
++        <button onClick={() => setSigningOpen(true)} className="h-14 rounded-xl border border-amber-400/50 bg-amber-400/15 px-7 text-amber-200 font-black uppercase tracking-widest text-xs hover:bg-amber-400/20">
++          Hire Staff Member
++        </button>
++      </div>
++      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
++        <FacilityKpi icon={<Users size={22} />} label="Total Staff" value={`${filledRoles}/${roles.length}`} sub={`${roles.length - filledRoles} open roles`} />
++        <FacilityKpi icon={<Briefcase size={22} />} label="Annual Cost" value={formatCurrencyWithCode(totalCost, 'EUR', false)} sub="Committed staff payroll" />
++        <FacilityKpi icon={<Star size={22} />} label="Average Skill" value={`${avgSkill}/100`} sub={avgSkill >= 80 ? 'Elite group' : 'Competitive group'} />
++        <FacilityKpi icon={<Search size={22} />} label="Open Roles" value={String(roles.length - filledRoles)} sub="Hiring market available" />
++      </div>
++      <div className="grid xl:grid-cols-[1fr_390px] gap-6">
++        <div className="space-y-6">
++          {['Coaching & Performance', 'Scouting & Analytics'].map(group => (
++            <section key={group} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++              <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">{group}</div>
++              <div className="grid md:grid-cols-2 2xl:grid-cols-3 gap-4">
++                {roles.filter(item => item.group === group).map((item, index) => {
++                  const attrs = buildAttributes(item.role, index * 17);
++                  const initials = item.person?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) ?? '+';
++                  const rating = item.person ? Math.round(attrs.reduce((sum, a) => sum + a[1], 0) / attrs.length) : 0;
++                  const face = getStaffFace(item.person, item.role);
++                  const open = !item.person;
++                  return (
++                    <button
++                      key={item.role}
++                      onClick={() => { setSelectedRole(item.role); if (open) setSigningOpen(true); }}
++                      className={`text-left rounded-xl border p-4 transition-all ${open ? 'border-dashed border-slate-700 bg-slate-950/40 hover:border-amber-400/40' : 'border-slate-800 bg-slate-950/70 hover:border-slate-600'}`}
++                    >
++                      <div className="flex items-start gap-3">
++                        {renderPortrait(face, initials)}
++                        <div className="min-w-0 flex-1">
++                          <div className="flex items-start justify-between gap-3">
++                            <div className="min-w-0">
++                              <div className="text-sm font-black text-white truncate">{item.person?.name ?? 'Open Position'}</div>
++                              <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">{item.role}</div>
++                            </div>
++                            <div className={`w-11 h-11 rounded-full border flex items-center justify-center text-sm font-black ${open ? 'border-slate-700 text-slate-500' : 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300'}`}>
++                              {open ? '+' : rating}
++                            </div>
++                          </div>
++                          <div className="mt-2 text-xs text-slate-500">{item.person?.nationality ?? 'Candidate search open'}</div>
++                        </div>
++                      </div>
++                      <div className="text-xs text-slate-400 mt-3 leading-5">{item.focus}</div>
++                      <div className="mt-4 space-y-2">
++                        {attrs.slice(0, 5).map(([label, value]) => (
++                          <div key={label} className="grid grid-cols-[96px_1fr_28px] gap-2 items-center">
++                            <span className="text-[10px] text-slate-500 truncate">{label}</span>
++                            <span className="h-1.5 rounded-full bg-slate-800 overflow-hidden"><span className={`block h-full ${open ? 'bg-slate-600' : 'bg-amber-300'}`} style={{ width: `${open ? 28 : value}%` }} /></span>
++                            <span className="text-[10px] font-black text-slate-400 tabular-nums">{open ? '--' : value}</span>
++                          </div>
++                        ))}
++                      </div>
++                      <div className="mt-4 flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
++                        <span className={open ? 'text-amber-300' : 'text-slate-500'}>{open ? 'Hire Coach' : `${item.years} Years Left`}</span>
++                        <span className="text-slate-400">{formatCurrencyWithCode(item.salary, 'EUR', false)}/yr</span>
++                      </div>
++                    </button>
++                  );
++                })}
++              </div>
++            </section>
++          ))}
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 flex flex-col md:flex-row md:items-center justify-between gap-5">
++            <div className="flex-1">
++              <div className="text-xs font-black uppercase tracking-widest text-slate-500">Staff Chemistry</div>
++              <div className="mt-2 h-3 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-gradient-to-r from-emerald-400 to-amber-300" style={{ width: `${Math.min(96, avgSkill + 7)}%` }} /></div>
++              <div className="mt-2 text-sm text-slate-400">The current group is stable, but open performance roles limit the recovery and scouting ceiling.</div>
++            </div>
++            <div className="flex gap-3">
++              <button className="h-12 rounded-xl border border-slate-700 px-5 text-sm font-black text-slate-300 hover:text-white">Staff Directory</button>
++              <button onClick={() => setSigningOpen(true)} className="h-12 rounded-xl border border-amber-400/50 bg-amber-400/15 px-5 text-sm font-black text-amber-200">Hire Staff</button>
++            </div>
++          </div>
++        </div>
++        <aside className="space-y-5">
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="flex items-center justify-between">
++              <div>
++                <div className="text-xs font-black uppercase tracking-widest text-amber-300">Hire Staff Member</div>
++                <div className="text-sm text-slate-400 mt-1">Build out the technical team by role.</div>
++              </div>
++              <SlidersHorizontal size={20} className="text-slate-500" />
++            </div>
++            <div className="mt-5 grid grid-cols-2 gap-2">
++              {roles.map(item => (
++                <button
++                  key={item.role}
++                  onClick={() => setSelectedRole(item.role)}
++                  className={`rounded-lg border px-3 py-2 text-left text-[10px] font-black uppercase tracking-widest ${selectedRole === item.role ? 'border-amber-400/60 bg-amber-400/15 text-amber-200' : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-white'}`}
++                >
++                  {item.role}
++                </button>
++              ))}
++            </div>
++            <div className="mt-5 rounded-xl border border-slate-800 bg-slate-950/70 p-4">
++              <div className="text-xs font-black uppercase tracking-widest text-slate-500">Role Focus</div>
++              <p className="text-sm text-slate-300 mt-2 leading-6">{roles.find(r => r.role === selectedRole)?.focus}</p>
++            </div>
++            <div className="mt-5 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 flex gap-3">
++              {renderPortrait(selectedCandidate.face, selectedCandidate.name.split(' ').map(n => n[0]).join('').slice(0, 2), 'w-20 h-24')}
++              <div className="min-w-0">
++                <div className="text-sm font-black text-white">{selectedCandidate.name}</div>
++                <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">{selectedCandidate.role}</div>
++                <div className="mt-2 text-xs text-slate-400">{selectedCandidate.nationality} · {selectedCandidate.rating}/100 fit</div>
++                <div className="mt-3 flex items-center gap-1 text-amber-300">
++                  {Array.from({ length: 5 }).map((_, i) => <Star key={i} size={13} fill={i < Math.round(selectedCandidate.rating / 20) ? 'currentColor' : 'none'} />)}
++                </div>
++              </div>
++            </div>
++            <button onClick={() => setSigningOpen(true)} className="mt-5 w-full h-12 rounded-xl border border-amber-400/50 bg-amber-400/15 text-amber-200 font-black uppercase tracking-widest text-xs hover:bg-amber-400/20">
++              Open Signing Detail
++            </button>
++          </div>
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-amber-300">Front Office Chain</div>
++            <div className="mt-4 space-y-3">
+               return (
+-                <div key={item.role} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+-                  <div className="flex items-center gap-3">
+-                    <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-black text-amber-200">
+-                      {initials}
+-                    </div>
+-                    <div className="min-w-0">
+-                      <div className="text-sm font-black text-white truncate">{item.person?.name ?? 'Open Position'}</div>
+-                      <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">{item.role}</div>
+-                    </div>
+-                  </div>
+-                  <div className="text-xs text-slate-500 mt-3">{item.focus}</div>
+-                  {item.person?.nationality && <div className="mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">{item.person.nationality}</div>}
+-                </div>
+-              );
+-            })}
+-          </div>
+-        </div>
+-        <aside className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+-          <div className="text-xs font-black uppercase tracking-widest text-amber-300">Front Office Chain</div>
+-          <div className="mt-4 space-y-3">
+             <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3">
+               <div className="text-xs text-slate-500">General Manager</div>
+               <div className="font-black text-white">{gm.name}</div>
+             </div>
+             <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3">
+               <div className="text-xs text-slate-500">Owner</div>
+               <div className="font-black text-white">{owner?.name ?? 'Ownership group'}</div>
+             </div>
+           </div>
+-          <button className="mt-5 w-full h-11 rounded-xl border border-amber-400/40 text-amber-200 font-black uppercase tracking-widest text-xs opacity-60 cursor-not-allowed">
+-            Hiring Market Queued
+-          </button>
+         </aside>
+       </div>
++      {signingOpen && (
++        <StaffSigningModal
++          roles={roles.map(r => r.role)}
++          selectedRole={selectedRole}
++          setSelectedRole={setSelectedRole}
++          candidate={selectedCandidate}
++          attributes={buildAttributes(selectedRole, 41)}
++          onClose={() => setSigningOpen(false)}
++          renderPortrait={renderPortrait}
++        />
++      )}
+     </div>
+   );
+ };
++
++const StaffSigningModal: React.FC<{
++  roles: string[];
++  selectedRole: string;
++  setSelectedRole: (role: string) => void;
++  candidate: { role: string; name: string; nationality: string; salary: number; rating: number; face: any };
++  attributes: Array<[string, number]>;
++  onClose: () => void;
++  renderPortrait: (face: any, initials: string, size?: string) => React.ReactNode;
++}> = ({ roles, selectedRole, setSelectedRole, candidate, attributes, onClose, renderPortrait }) => {
++  const [salary, setSalary] = useState(candidate.salary);
++  const [years, setYears] = useState(2);
++  const [bonus, setBonus] = useState(120_000);
++  return (
++    <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md p-4 md:p-8 overflow-y-auto">
++      <div className="max-w-[1480px] mx-auto rounded-2xl border border-violet-400/30 bg-slate-950 text-white shadow-2xl">
++        <div className="flex items-center justify-between border-b border-slate-800 p-5">
++          <button onClick={onClose} className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-white"><ArrowLeft size={16} /> Back to Staff</button>
++          <div className="text-xs font-black uppercase tracking-widest text-violet-300">Staff Signing</div>
++          <button onClick={onClose} className="w-10 h-10 rounded-xl border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><X size={18} /></button>
++        </div>
++        <div className="grid xl:grid-cols-[300px_1fr_360px] gap-0">
++          <aside className="border-r border-slate-800 p-5 space-y-3">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Candidates</div>
++            {roles.map((role, index) => (
++              <button key={role} onClick={() => setSelectedRole(role)} className={`w-full text-left rounded-xl border p-3 ${role === selectedRole ? 'border-violet-400/60 bg-violet-400/15' : 'border-slate-800 bg-slate-900/70 hover:border-slate-600'}`}>
++                <div className="text-sm font-black text-white">{role === selectedRole ? candidate.name : ['Luca Marinelli', 'Pablo Herrera', 'Dimitris Karras', 'Sergio Abad', 'Jonas Petrovic', 'Marco Bennett'][index]}</div>
++                <div className="text-[10px] font-black uppercase tracking-widest text-violet-300">{role}</div>
++                <div className="mt-2 text-xs text-slate-500">{68 + index * 3}/100 fit · {formatCurrencyWithCode(420_000 + index * 130_000, 'EUR', false)}</div>
++              </button>
++            ))}
++          </aside>
++          <main className="p-6">
++            <div className="grid lg:grid-cols-[220px_1fr] gap-6">
++              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 flex justify-center">
++                {renderPortrait(candidate.face, candidate.name.split(' ').map(n => n[0]).join('').slice(0, 2), 'w-44 h-56')}
++              </div>
++              <div>
++                <div className="text-[10px] font-black uppercase tracking-[0.35em] text-violet-300">{candidate.role}</div>
++                <h3 className="text-4xl font-black tracking-tight mt-2">{candidate.name}</h3>
++                <p className="text-sm text-slate-400 mt-2">{candidate.nationality} · Modern European staff profile with strong role fit and clear development upside.</p>
++                <div className="mt-5 grid sm:grid-cols-3 gap-3">
++                  <FacilityKpi icon={<Award size={20} />} label="Reputation" value={`${candidate.rating}/100`} sub="Market profile" />
++                  <FacilityKpi icon={<Briefcase size={20} />} label="Current Ask" value={formatCurrencyWithCode(candidate.salary, 'EUR', false)} sub="Annual salary" />
++                  <FacilityKpi icon={<Star size={20} />} label="Interest" value="High" sub="Would join now" />
++                </div>
++              </div>
++            </div>
++            <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++              <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Key Attributes</div>
++              <div className="grid md:grid-cols-2 gap-4">
++                {attributes.map(([label, value]) => (
++                  <div key={label}>
++                    <div className="flex justify-between text-xs mb-1"><span className="text-slate-400">{label}</span><span className="font-black text-violet-300">{value}</span></div>
++                    <div className="h-2 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-violet-400" style={{ width: `${value}%` }} /></div>
++                  </div>
++                ))}
++              </div>
++            </div>
++          </main>
++          <aside className="border-l border-slate-800 p-6 space-y-5">
++            <div>
++              <div className="text-xs font-black uppercase tracking-widest text-violet-300">Negotiation Package</div>
++              <p className="text-sm text-slate-400 mt-2">Tune the offer before sending it to ownership for approval.</p>
++            </div>
++            <SliderRow label="Annual Salary" value={salary} min={200_000} max={3_000_000} step={50_000} onChange={setSalary} formatter={(v) => formatCurrencyWithCode(v, 'EUR', false)} />
++            <SliderRow label="Contract Length" value={years} min={1} max={4} step={1} onChange={setYears} formatter={(v) => `${v} years`} />
++            <SliderRow label="Signing Bonus" value={bonus} min={0} max={900_000} step={25_000} onChange={setBonus} formatter={(v) => formatCurrencyWithCode(v, 'EUR', false)} />
++            <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
++              <div className="text-xs font-black uppercase tracking-widest text-slate-500">Package Preview</div>
++              <div className="mt-3 space-y-2 text-sm">
++                <div className="flex justify-between"><span className="text-slate-400">Annual</span><span className="font-black text-white">{formatCurrencyWithCode(salary, 'EUR', false)}</span></div>
++                <div className="flex justify-between"><span className="text-slate-400">Total commitment</span><span className="font-black text-white">{formatCurrencyWithCode(salary * years + bonus, 'EUR', false)}</span></div>
++                <div className="flex justify-between"><span className="text-slate-400">Approval outlook</span><span className="font-black text-emerald-300">Likely</span></div>
++              </div>
++            </div>
++            <button className="w-full h-14 rounded-xl border border-violet-400/60 bg-violet-400/15 text-violet-200 font-black uppercase tracking-widest">Review Offer</button>
++          </aside>
++        </div>
++      </div>
++    </div>
++  );
++};
++
++const SliderRow: React.FC<{
++  label: string;
++  value: number;
++  min: number;
++  max: number;
++  step: number;
++  onChange: (value: number) => void;
++  formatter: (value: number) => string;
++}> = ({ label, value, min, max, step, onChange, formatter }) => (
++  <label className="block">
++    <div className="flex justify-between text-sm mb-2"><span className="font-bold text-slate-300">{label}</span><span className="font-black text-violet-300">{formatter(value)}</span></div>
++    <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(Number(e.target.value))} className="w-full accent-violet-400" />
++  </label>
++);
+
+--- HUNK [op#13 hunk#0] session=11 line=90 ts=2026-05-13T17:15:22.769Z ---
+           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+             <div className="text-xs font-black uppercase tracking-widest text-amber-300">Front Office Chain</div>
+             <div className="mt-4 space-y-3">
+-              return (
+-            <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3">
+-              <div className="text-xs text-slate-500">General Manager</div>
+-              <div className="font-black text-white">{gm.name}</div>
+-            </div>
+-            <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3">
+-              <div className="text-xs text-slate-500">Owner</div>
+-              <div className="font-black text-white">{owner?.name ?? 'Ownership group'}</div>
++              <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3">
++                <div className="text-xs text-slate-500">General Manager</div>
++                <div className="font-black text-white">{gm.name}</div>
++              </div>
++              <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-3">
++                <div className="text-xs text-slate-500">Owner</div>
++                <div className="font-black text-white">{owner?.name ?? 'Ownership group'}</div>
++              </div>
+             </div>
+           </div>
+         </aside>
+
+--- HUNK [op#14 hunk#0] session=11 line=98 ts=2026-05-13T17:16:00.176Z ---
+-  const cards = [
++  const cards: Array<{
++    title: string;
++    icon: React.ReactNode;
++    rating: number;
++    tone: string;
++    badge: string;
++    attributes: Array<[string, number]>;
++    chips: string[];
++  }> = [
+
+--- HUNK [op#15 hunk#0] session=11 line=135 ts=2026-05-13T17:17:49.198Z ---
+   const staffFaces = useMemo(() => new Map<string, any>(), [teamName]);
+   const getStaffFace = (person: any, role: string) => {
+-    if (isRealFaceConfig(person?.face)) return person.face;
+     const key = `${role}-${person?.name ?? 'open'}-${teamName}`;
++    if (staffFaces.has(key)) return staffFaces.get(key);
++    if (isRealFaceConfig(person?.face)) {
++      staffFaces.set(key, person.face);
++      return person.face;
++    }
+     if (!staffFaces.has(key)) staffFaces.set(key, generate(undefined, { gender: 'male' }));
+     return staffFaces.get(key);
+   };
+
+--- HUNK [op#16 hunk#0] session=11 line=252 ts=2026-05-13T17:26:21.212Z ---
+ }> = ({ ledger, fmt, cashOnHand, currentYear, starPower, tycoon }) => {
++  const [financeTab, setFinanceTab] = useState<'overview' | 'graphs' | 'spreadsheet'>('overview');
+   const rows = tycoon.ledgerHistory ?? [];
++  const currentRevenue = Object.values(ledger.revenue).reduce((s, v) => s + v, 0);
++  const currentExpenses = Object.values(ledger.expenses).reduce((s, v) => s + v, 0);
++  const chartRows = [
++    ...rows,
++    { ...ledger, year: currentYear, cashOnHandEnd: cashOnHand + ledger.profit },
++  ].slice(-6);
++  const maxCash = Math.max(1, ...chartRows.map(r => Math.abs(r.cashOnHandEnd)));
++  const maxFlow = Math.max(1, ...chartRows.flatMap(r => [
++    Object.values(r.revenue).reduce((s, v) => s + v, 0),
++    Object.values(r.expenses).reduce((s, v) => s + v, 0),
++  ]));
++  const sponsorRows = ALL_SLOTS.map(slot => ({
++    slot,
++    label: SPONSOR_SLOT_LABELS[slot],
++    value: tycoon.sponsorships[slot]?.valuePerYear ?? 0,
++  })).sort((a, b) => b.value - a.value);
++  const maxSponsor = Math.max(1, ...sponsorRows.map(r => r.value));
++  const exportCsv = () => {
++    const csv = ['Year,Revenue,Expenses,Profit,Ending Cash', ...rows.map(r => {
++      const revenue = Object.values(r.revenue).reduce((s, v) => s + v, 0);
++      const expenses = Object.values(r.expenses).reduce((s, v) => s + v, 0);
++      return [r.year, revenue, expenses, r.profit, r.cashOnHandEnd].join(',');
++    })].join('\n');
++    const blob = new Blob([csv], { type: 'text/csv' });
++    const url = URL.createObjectURL(blob);
++    const a = document.createElement('a');
++    a.href = url;
++    a.download = 'front-office-ledger.csv';
++    a.click();
++    URL.revokeObjectURL(url);
++  };
+   return (
+     <div className="space-y-6">
+-      <SectionTitle icon={<Landmark size={22} />} title="Finances" subtitle="Track cash, revenue, expenses, and year-end risk." />
+-      <AnnualProjectionCard ledger={ledger} fmt={fmt} cashOnHand={cashOnHand} currentYear={currentYear} starPower={starPower} />
+-      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+-        <div className="flex items-center justify-between mb-4">
+-          <h3 className="font-black text-white">Ledger Spreadsheet</h3>
+-          <button
+-            onClick={() => {
+-              const csv = ['Year,Revenue,Expenses,Profit,Ending Cash', ...rows.map(r => {
+-                const revenue = Object.values(r.revenue).reduce((s, v) => s + v, 0);
+-                const expenses = Object.values(r.expenses).reduce((s, v) => s + v, 0);
+-                return [r.year, revenue, expenses, r.profit, r.cashOnHandEnd].join(',');
+-              })].join('\n');
+-              const blob = new Blob([csv], { type: 'text/csv' });
+-              const url = URL.createObjectURL(blob);
+-              const a = document.createElement('a');
+-              a.href = url;
+-              a.download = 'front-office-ledger.csv';
+-              a.click();
+-              URL.revokeObjectURL(url);
+-            }}
+-            className="text-xs font-black uppercase tracking-widest rounded-lg border border-amber-400/40 px-3 py-2 text-amber-200 hover:bg-amber-400/10"
+-          >
+-            Export CSV
+-          </button>
++      <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-4">
++        <SectionTitle icon={<Landmark size={22} />} title="Finances" subtitle="Track cash, revenue, expenses, and year-end risk." />
++        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-1 flex">
++          {[
++            ['overview', 'Overview'],
++            ['graphs', 'Graphs'],
++            ['spreadsheet', 'Spreadsheet'],
++          ].map(([id, label]) => (
++            <button
++              key={id}
++              onClick={() => setFinanceTab(id as typeof financeTab)}
++              className={`h-10 px-4 rounded-lg text-xs font-black uppercase tracking-widest ${financeTab === id ? 'bg-amber-400/15 text-amber-200 border border-amber-400/40' : 'text-slate-400 hover:text-white'}`}
++            >
++              {label}
++            </button>
++          ))}
+         </div>
+-        <div className="overflow-x-auto">
+-          <table className="w-full text-sm">
+-            <thead className="text-xs uppercase tracking-widest text-slate-500">
+-              <tr className="border-b border-slate-800">
+-                <th className="text-left py-2">Year</th>
+-                <th className="text-right py-2">Revenue</th>
+-                <th className="text-right py-2">Expenses</th>
+-                <th className="text-right py-2">Profit</th>
+-                <th className="text-right py-2">Ending Cash</th>
+-              </tr>
+-            </thead>
+-            <tbody>
+-              {rows.length === 0 ? (
+-                <tr><td colSpan={5} className="py-8 text-center text-slate-500">No closed seasons yet. The first ledger snapshot posts at year-end.</td></tr>
+-              ) : rows.map(row => {
+-                const revenue = Object.values(row.revenue).reduce((s, v) => s + v, 0);
+-                const expenses = Object.values(row.expenses).reduce((s, v) => s + v, 0);
+-                return (
+-                  <tr key={row.year} className="border-b border-slate-800/60">
+-                    <td className="py-2 font-bold text-white">{row.year}</td>
+-                    <td className="py-2 text-right text-emerald-300">{fmt(revenue)}</td>
+-                    <td className="py-2 text-right text-rose-300">{fmt(expenses)}</td>
+-                    <td className={`py-2 text-right font-bold ${row.profit >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{fmt(row.profit)}</td>
+-                    <td className={`py-2 text-right font-bold ${row.cashOnHandEnd >= 0 ? 'text-amber-300' : 'text-rose-300'}`}>{fmt(row.cashOnHandEnd)}</td>
+-                  </tr>
+-                );
+-              })}
+-            </tbody>
+-          </table>
++      </div>
++
++      {financeTab === 'overview' && (
++        <>
++          <AnnualProjectionCard ledger={ledger} fmt={fmt} cashOnHand={cashOnHand} currentYear={currentYear} starPower={starPower} />
++          <div className="grid md:grid-cols-4 gap-3">
++            <MetricTile label="Current Revenue" value={fmt(currentRevenue)} delta="Projected" tone="green" />
++            <MetricTile label="Current Expenses" value={fmt(currentExpenses)} delta="Projected" tone="red" />
++            <MetricTile label="Net Position" value={fmt(ledger.profit)} delta={ledger.profit >= 0 ? 'Profitable' : 'Deficit'} tone={ledger.profit >= 0 ? 'green' : 'red'} />
++            <MetricTile label="Cash Runway" value={cashOnHand >= 0 ? 'Stable' : 'Critical'} delta={fmt(cashOnHand)} tone={cashOnHand >= 0 ? 'gold' : 'red'} />
++          </div>
++          <LedgerHistoryCard tycoon={tycoon} currency="EUR" />
++        </>
++      )}
++
++      {financeTab === 'graphs' && (
++        <div className="grid xl:grid-cols-[1.2fr_1fr] gap-6">
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-5">Cash-on-Hand History</div>
++            <div className="h-64 flex items-end gap-3 border-b border-slate-800 pb-4">
++              {chartRows.map(row => (
++                <div key={row.year} className="flex-1 h-full flex flex-col justify-end items-center gap-2">
++                  <div className={`w-full max-w-12 rounded-t ${row.cashOnHandEnd >= 0 ? 'bg-amber-300' : 'bg-rose-400'}`} style={{ height: `${Math.max(8, Math.abs(row.cashOnHandEnd) / maxCash * 100)}%` }} />
++                  <div className="text-[10px] font-black text-slate-500">{row.year}</div>
++                </div>
++              ))}
++            </div>
++          </div>
++
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-5">Revenue vs Expenses</div>
++            <div className="space-y-4">
++              {chartRows.map(row => {
++                const revenue = Object.values(row.revenue).reduce((s, v) => s + v, 0);
++                const expenses = Object.values(row.expenses).reduce((s, v) => s + v, 0);
++                return (
++                  <div key={row.year}>
++                    <div className="flex justify-between text-xs mb-1"><span className="font-black text-white">{row.year}</span><span className="text-slate-500">{fmt(revenue - expenses)}</span></div>
++                    <div className="h-7 rounded-lg bg-slate-950 overflow-hidden border border-slate-800 flex">
++                      <div className="bg-emerald-400/80" style={{ width: `${Math.max(4, revenue / maxFlow * 100)}%` }} />
++                      <div className="bg-rose-400/80" style={{ width: `${Math.max(4, expenses / maxFlow * 100)}%` }} />
++                    </div>
++                  </div>
++                );
++              })}
++            </div>
++          </div>
++
++          <div className="xl:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-5">Sponsorship by Slot</div>
++            <div className="grid md:grid-cols-2 gap-4">
++              {sponsorRows.map(row => (
++                <div key={row.slot} className="grid grid-cols-[130px_1fr_110px] items-center gap-3">
++                  <div className="text-xs font-bold text-slate-300 truncate">{row.label}</div>
++                  <div className="h-3 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-violet-400" style={{ width: `${Math.max(3, row.value / maxSponsor * 100)}%` }} /></div>
++                  <div className="text-right text-xs font-black text-white">{fmt(row.value)}</div>
++                </div>
++              ))}
++            </div>
++          </div>
+         </div>
+-      </div>
+-      <LedgerHistoryCard tycoon={tycoon} currency="EUR" />
++      )}
++
++      {financeTab === 'spreadsheet' && (
++        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++          <div className="flex items-center justify-between mb-4">
++            <h3 className="font-black text-white">Ledger Spreadsheet</h3>
++            <button
++              onClick={exportCsv}
++              className="text-xs font-black uppercase tracking-widest rounded-lg border border-amber-400/40 px-3 py-2 text-amber-200 hover:bg-amber-400/10"
++            >
++              Export CSV
++            </button>
++          </div>
++          <div className="overflow-x-auto">
++            <table className="w-full text-sm">
++              <thead className="text-xs uppercase tracking-widest text-slate-500">
++                <tr className="border-b border-slate-800">
++                  <th className="text-left py-2">Year</th>
++                  <th className="text-right py-2">Revenue</th>
++                  <th className="text-right py-2">Expenses</th>
++                  <th className="text-right py-2">Profit</th>
++                  <th className="text-right py-2">Ending Cash</th>
++                </tr>
++              </thead>
++              <tbody>
++                {rows.length === 0 ? (
++                  <tr><td colSpan={5} className="py-8 text-center text-slate-500">No closed seasons yet. The first ledger snapshot posts at year-end.</td></tr>
++                ) : rows.map(row => {
++                  const revenue = Object.values(row.revenue).reduce((s, v) => s + v, 0);
++                  const expenses = Object.values(row.expenses).reduce((s, v) => s + v, 0);
++                  return (
++                    <tr key={row.year} className="border-b border-slate-800/60">
++                      <td className="py-2 font-bold text-white">{row.year}</td>
++                      <td className="py-2 text-right text-emerald-300">{fmt(revenue)}</td>
++                      <td className="py-2 text-right text-rose-300">{fmt(expenses)}</td>
++                      <td className={`py-2 text-right font-bold ${row.profit >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{fmt(row.profit)}</td>
++                      <td className={`py-2 text-right font-bold ${row.cashOnHandEnd >= 0 ? 'text-amber-300' : 'text-rose-300'}`}>{fmt(row.cashOnHandEnd)}</td>
++                    </tr>
++                  );
++                })}
++              </tbody>
++            </table>
++          </div>
++        </div>
++      )}
+     </div>
+   );
+ };
+
+--- HUNK [op#17 hunk#0] session=11 line=281 ts=2026-05-13T17:28:04.854Z ---
+ const FacilitiesSection: React.FC<{ tycoon: TycoonState; fmt: (v: number) => string }> = ({ tycoon, fmt }) => {
++  const [facilityModal, setFacilityModal] = useState<{ title: string; body: string; tone: 'amber' | 'slate' } | null>(null);
+
+--- HUNK [op#17 hunk#1] session=11 line=281 ts=2026-05-13T17:28:04.854Z ---
+-            {cards.map(card => (
+-              <FacilityCard key={card.title} {...card} />
++            {cards.map(card => (
++              <FacilityCard
++                key={card.title}
++                {...card}
++                onDetails={() => setFacilityModal({
++                  title: card.title,
++                  body: `${card.title} is rated ${Math.min(99, card.rating)}. The strongest traits are ${card.attributes.slice(0, 2).map(([label]) => label).join(' and ')}. Upgrades here raise the club's operational ceiling without changing NBA-mode behavior.`,
++                  tone: card.tone === 'amber' ? 'amber' : 'slate',
++                })}
++              />
+             ))}
+
+--- HUNK [op#17 hunk#2] session=11 line=281 ts=2026-05-13T17:28:04.854Z ---
+-            {['Upgrade Facility', 'View Blueprints', 'Hire Architects', 'Compare League Facilities', 'Infrastructure Report'].map((action, index) => (
+-              <button key={action} className={`h-14 rounded-xl border font-black text-sm ${index === 0 ? 'border-amber-400/50 bg-amber-400/15 text-amber-200' : 'border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-600'}`}>
++            {[
++              ['Upgrade Facility', 'Upgrade planning queues the highest-impact facility first. Current recommendation: Medical & Recovery Center because it directly affects availability.'],
++              ['View Blueprints', 'Blueprints summarize each facility stage, estimated cost, and expected club-impact before construction begins.'],
++              ['Hire Architects', 'Specialist architects are not active yet. This action is reserved for a future infrastructure staffing slice.'],
++              ['Compare League Facilities', `Your club grades at ${avgRating}/100 overall. Elite Euro clubs are expected around 88-94, contenders around 78-87, and survival clubs below 68.`],
++              ['Infrastructure Report', `Facility value is ${fmt(facilityValue)} with projected annual maintenance of ${fmt(maintenance)}. The strongest areas are ${cards.sort((a, b) => b.rating - a.rating).slice(0, 2).map(card => card.title).join(' and ')}.`],
++            ].map(([action, body], index) => (
++              <button
++                key={action}
++                onClick={() => setFacilityModal({ title: action, body, tone: index === 0 ? 'amber' : 'slate' })}
++                className={`h-14 rounded-xl border font-black text-sm ${index === 0 ? 'border-amber-400/50 bg-amber-400/15 text-amber-200' : 'border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-600'}`}
++              >
+                 {action}
+               </button>
+             ))}
+
+--- HUNK [op#17 hunk#3] session=11 line=281 ts=2026-05-13T17:28:04.854Z ---
+-            <button className="mt-4 w-full h-12 rounded-xl border border-slate-700 text-slate-300 hover:text-white">View Full Report →</button>
++            <button
++              onClick={() => setFacilityModal({ title: 'Operational Insights', body: `The club's current facilities average ${avgRating}/100. Training and medical investment are the fastest paths to immediate squad impact, while stadium work mainly improves matchday revenue.`, tone: 'slate' })}
++              className="mt-4 w-full h-12 rounded-xl border border-slate-700 text-slate-300 hover:text-white"
++            >
++              View Full Report →
++            </button>
+
+--- HUNK [op#17 hunk#4] session=11 line=281 ts=2026-05-13T17:28:04.854Z ---
+-            <button className="mt-4 w-full h-14 rounded-xl border border-amber-400/50 bg-amber-400/10 text-amber-200 font-black">View Masterplan →</button>
++            <button
++              onClick={() => setFacilityModal({ title: 'Facility Masterplan', body: 'The masterplan prioritizes recovery, arena monetization, analytics, and academy housing over four staged projects. Each stage should be approved only if cash runway stays healthy after payroll.', tone: 'amber' })}
++              className="mt-4 w-full h-14 rounded-xl border border-amber-400/50 bg-amber-400/10 text-amber-200 font-black"
++            >
++              View Masterplan →
++            </button>
+           </div>
+         </aside>
+       </div>
++      {facilityModal && (
++        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
++          <button className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setFacilityModal(null)} />
++          <div className={`relative w-full max-w-xl rounded-2xl border bg-slate-950 p-6 shadow-2xl ${facilityModal.tone === 'amber' ? 'border-amber-400/40' : 'border-slate-700'}`}>
++            <div className={`text-xs font-black uppercase tracking-widest ${facilityModal.tone === 'amber' ? 'text-amber-300' : 'text-slate-400'}`}>Facilities</div>
++            <h3 className="mt-2 text-2xl font-black text-white">{facilityModal.title}</h3>
++            <p className="mt-4 text-sm leading-6 text-slate-300">{facilityModal.body}</p>
++            <button onClick={() => setFacilityModal(null)} className="mt-6 w-full h-12 rounded-xl border border-slate-700 text-slate-200 font-black hover:border-amber-400/50">
++              Close
++            </button>
++          </div>
++        </div>
++      )}
+     </div>
+   );
+ };
+
+--- HUNK [op#17 hunk#5] session=11 line=281 ts=2026-05-13T17:28:04.854Z ---
+   badge: string;
+   attributes: Array<[string, number]>;
+   chips: string[];
+-}> = ({ title, icon, rating, tone, badge, attributes, chips }) => {
++  onDetails?: () => void;
++}> = ({ title, icon, rating, tone, badge, attributes, chips, onDetails }) => {
+
+--- HUNK [op#17 hunk#6] session=11 line=281 ts=2026-05-13T17:28:04.854Z ---
+-      <button className={`mt-4 w-full h-11 rounded-xl border font-black ${accent}`}>View Details →</button>
++      <button onClick={onDetails} className={`mt-4 w-full h-11 rounded-xl border font-black ${accent}`}>View Details →</button>
+     </div>
+   );
+ };
+
+--- HUNK [op#18 hunk#0] session=11 line=288 ts=2026-05-13T17:28:11.869Z ---
+-              ['Infrastructure Report', `Facility value is ${fmt(facilityValue)} with projected annual maintenance of ${fmt(maintenance)}. The strongest areas are ${cards.sort((a, b) => b.rating - a.rating).slice(0, 2).map(card => card.title).join(' and ')}.`],
++              ['Infrastructure Report', `Facility value is ${fmt(facilityValue)} with projected annual maintenance of ${fmt(maintenance)}. The strongest areas are ${[...cards].sort((a, b) => b.rating - a.rating).slice(0, 2).map(card => card.title).join(' and ')}.`],
+
+--- HUNK [op#19 hunk#3] session=11 line=320 ts=2026-05-13T17:30:20.437Z ---
+-const ScoutingSection: React.FC = () => (
+-  <div className="space-y-6">
+-    <SectionTitle icon={<Target size={22} />} title="Scouting" subtitle="Tune scouting investment and review uncertainty before making roster decisions." />
+-    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+-      <div className="text-lg font-black text-white">Scouting Department</div>
+-      <p className="text-sm text-slate-400 mt-2">
+-        Rating fuzz, investment sliders, and opponent report depth are the next scouting slice. This route is now reserved and reachable from Euro GM navigation.
+-      </p>
+-    </div>
+-  </div>
+-);
++const ScoutingSection: React.FC<{ tycoon: TycoonState; currency: string; onChange: (budget: number) => void }> = ({ tycoon, currency, onChange }) => {
++  const investment = tycoon.scoutingInvestment ?? 250_000;
++  const quality = Math.max(0, Math.min(1, (investment - 50_000) / (2_500_000 - 50_000)));
++  const band = Math.max(2, Math.round(12 - quality * 10));
++  const coverage = Math.round(42 + quality * 53);
++  const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
++  const scopes = [
++    ['Own Squad', 1, 'Known baseline from training and games'],
++    ['Domestic Rivals', Math.max(3, band - 3), 'Endesa reports update quickly'],
++    ['EuroLeague Market', band, 'International reports need travel coverage'],
++    ['Deep Prospects', band + 3, 'Youth and lower-tier data stays volatile'],
++  ] as Array<[string, number, string]>;
++  return (
++    <div className="space-y-6">
++      <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-4">
++        <SectionTitle icon={<Target size={22} />} title="Scouting" subtitle="Tune scouting investment and review uncertainty before making roster decisions." />
++        <div className="grid sm:grid-cols-3 gap-3 xl:min-w-[620px]">
++          <FacilityKpi icon={<Search size={22} />} label="Report Coverage" value={`${coverage}%`} sub="Tracked market" />
++          <FacilityKpi icon={<Target size={22} />} label="Rating Band" value={`±${band}`} sub="Unknown players" />
++          <FacilityKpi icon={<Briefcase size={22} />} label="Annual Spend" value={fmt(investment)} sub="Scouting budget" />
++        </div>
++      </div>
++
++      <div className="grid xl:grid-cols-[1fr_380px] gap-6">
++        <div className="space-y-6">
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
++            <div className="flex items-center justify-between gap-4">
++              <div>
++                <div className="text-xs font-black uppercase tracking-widest text-slate-400">Scouting Investment</div>
++                <div className="text-3xl font-black text-white mt-2">{fmt(investment)}</div>
++                <p className="text-sm text-slate-400 mt-1">Higher investment narrows uncertainty bands and improves foreign-market reports.</p>
++              </div>
++              <div className="w-28 h-28 rounded-full border border-emerald-400/40 bg-emerald-400/10 flex flex-col items-center justify-center">
++                <div className="text-3xl font-black text-emerald-300">{coverage}</div>
++                <div className="text-xs text-slate-400">coverage</div>
++              </div>
++            </div>
++            <input
++              type="range"
++              min={50_000}
++              max={2_500_000}
++              step={25_000}
++              value={investment}
++              onChange={(event) => onChange(Number(event.target.value))}
++              className="mt-7 w-full accent-emerald-400"
++            />
++            <div className="mt-2 flex justify-between text-xs text-slate-500">
++              <span>{fmt(50_000)}</span><span>{fmt(2_500_000)}</span>
++            </div>
++          </div>
++
++          <div className="grid md:grid-cols-2 gap-4">
++            {scopes.map(([label, uncertainty, desc]) => (
++              <div key={label} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++                <div className="flex items-center justify-between">
++                  <div className="text-sm font-black text-white">{label}</div>
++                  <div className={`rounded-lg border px-2 py-1 text-xs font-black ${uncertainty <= 3 ? 'border-emerald-400/40 text-emerald-300 bg-emerald-400/10' : uncertainty <= 8 ? 'border-amber-400/40 text-amber-300 bg-amber-400/10' : 'border-rose-400/40 text-rose-300 bg-rose-400/10'}`}>
++                    ±{uncertainty}
++                  </div>
++                </div>
++                <div className="mt-3 h-2 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-emerald-400" style={{ width: `${Math.max(15, 100 - uncertainty * 7)}%` }} /></div>
++                <p className="text-xs text-slate-400 mt-3 leading-5">{desc}</p>
++              </div>
++            ))}
++          </div>
++        </div>
++
++        <aside className="space-y-5">
++          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Scouting Notes</div>
++            <div className="space-y-3 text-sm text-slate-300">
++              <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">Known players stay exact. Unknown non-own ratings should be read as a range, not a promise.</div>
++              <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">Domestic coverage improves faster than EuroLeague coverage because reports are cheaper to refresh.</div>
++              <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">At elite spend, hidden-market mistakes are rare but not impossible.</div>
++            </div>
++          </div>
++          <div className="rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-5">
++            <div className="text-xs font-black uppercase tracking-widest text-emerald-300">Report Depth</div>
++            <div className="mt-4 space-y-3">
++              {[
++                ['Video Reports', Math.round(45 + quality * 50)],
++                ['Live Scouting', Math.round(35 + quality * 58)],
++                ['Medical Intel', Math.round(30 + quality * 55)],
++                ['Contract Intel', Math.round(40 + quality * 50)],
++              ].map(([label, value]) => (
++                <div key={label as string}>
++                  <div className="flex justify-between text-xs mb-1"><span className="text-slate-300">{label}</span><span className="font-black text-emerald-300">{value}%</span></div>
++                  <div className="h-2 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-emerald-400" style={{ width: `${value}%` }} /></div>
++                </div>
++              ))}
++            </div>
++          </div>
++        </aside>
++      </div>
++    </div>
++  );
++};
+
+--- HUNK [op#21 hunk#0] session=11 line=508 ts=2026-05-13T17:41:34.470Z ---
+-const StaffSection: React.FC<{ state: any; team: any }> = ({ state, team }) => {
++const StaffSection: React.FC<{ state: any; team: any; onHireStaff: (hire: any) => void }> = ({ state, team, onHireStaff }) => {
+
+--- HUNK [op#21 hunk#1] session=11 line=508 ts=2026-05-13T17:41:34.470Z ---
+   const gm = (state.staff?.gms ?? []).find((s: any) => s.team === team.name || s.team === teamName)
+     ?? makePlaceholderGM(team);
+   const owner = (state.staff?.owners ?? []).find((s: any) => s.team === team.name || s.team === teamName);
++  const persistentStaff = new Map((team.tycoon?.staffMembers ?? []).map((s: any) => [s.role, s]));
+
+--- HUNK [op#21 hunk#2] session=11 line=508 ts=2026-05-13T17:41:34.470Z ---
+-    { role: 'Head Coach', person: coach, group: 'Coaching & Performance', focus: 'Tactics, rotations, player development', salary: 1_850_000, years: coach.yearsWithTeam ? Math.max(1, 4 - Math.min(3, coach.yearsWithTeam)) : 2 },
+-    { role: 'Assistant Coach', person: null, group: 'Coaching & Performance', focus: 'Training sessions and opponent prep', salary: 620_000, years: 0 },
+-    { role: 'Head of Sports Science', person: null, group: 'Coaching & Performance', focus: 'Injury prevention and workload monitoring', salary: 540_000, years: 0 },
+-    { role: 'Head Physio', person: null, group: 'Coaching & Performance', focus: 'Recovery speed and day-to-day availability', salary: 460_000, years: 0 },
+-    { role: 'Chief Scout', person: gm, group: 'Scouting & Analytics', focus: 'Player evaluation and market intelligence', salary: 720_000, years: 2 },
+-    { role: 'Head of Analytics', person: null, group: 'Scouting & Analytics', focus: 'Shot profile, lineup data, and opponent models', salary: 510_000, years: 0 },
++    { role: 'Head Coach', person: persistentStaff.get('Head Coach') ?? coach, group: 'Coaching & Performance', focus: 'Tactics, rotations, player development', salary: 1_850_000, years: persistentStaff.get('Head Coach')?.contractYears ?? (coach.yearsWithTeam ? Math.max(1, 4 - Math.min(3, coach.yearsWithTeam)) : 2) },
++    { role: 'Assistant Coach', person: persistentStaff.get('Assistant Coach') ?? null, group: 'Coaching & Performance', focus: 'Training sessions and opponent prep', salary: 620_000, years: persistentStaff.get('Assistant Coach')?.contractYears ?? 0 },
++    { role: 'Head of Sports Science', person: persistentStaff.get('Head of Sports Science') ?? null, group: 'Coaching & Performance', focus: 'Injury prevention and workload monitoring', salary: 540_000, years: persistentStaff.get('Head of Sports Science')?.contractYears ?? 0 },
++    { role: 'Head Physio', person: persistentStaff.get('Head Physio') ?? null, group: 'Coaching & Performance', focus: 'Recovery speed and day-to-day availability', salary: 460_000, years: persistentStaff.get('Head Physio')?.contractYears ?? 0 },
++    { role: 'Chief Scout', person: persistentStaff.get('Chief Scout') ?? gm, group: 'Scouting & Analytics', focus: 'Player evaluation and market intelligence', salary: 720_000, years: persistentStaff.get('Chief Scout')?.contractYears ?? 2 },
++    { role: 'Head of Analytics', person: persistentStaff.get('Head of Analytics') ?? null, group: 'Scouting & Analytics', focus: 'Shot profile, lineup data, and opponent models', salary: 510_000, years: persistentStaff.get('Head of Analytics')?.contractYears ?? 0 },
+
+--- HUNK [op#21 hunk#3] session=11 line=508 ts=2026-05-13T17:41:34.470Z ---
+   const candidates = roles.map((r, index) => ({
+     role: r.role,
+     name: r.person?.name ?? ['Luca Marinelli', 'Pablo Herrera', 'Dimitris Karras', 'Sergio Abad', 'Jonas Petrovic', 'Marco Bennett'][index],
+     nationality: r.person?.nationality ?? ['Italy', 'Spain', 'Greece', 'Spain', 'Serbia', 'United States'][index],
+-    salary: r.salary,
+-    rating: r.person ? buildAttributes(r.role, index * 13)[0][1] : 68 + index * 3,
++    salary: r.person?.salary ?? r.salary,
++    rating: r.person?.rating ?? (r.person ? buildAttributes(r.role, index * 13)[0][1] : 68 + index * 3),
+     face: getStaffFace(r.person, r.role),
+   }));
+
+--- HUNK [op#21 hunk#4] session=11 line=508 ts=2026-05-13T17:41:34.470Z ---
+           renderPortrait={renderPortrait}
++          onSign={(payload) => {
++            onHireStaff(payload);
++            setSigningOpen(false);
++          }}
+         />
+
+--- HUNK [op#22 hunk#0] session=11 line=512 ts=2026-05-13T17:41:41.604Z ---
+   candidate: { role: string; name: string; nationality: string; salary: number; rating: number; face: any };
+   attributes: Array<[string, number]>;
+   onClose: () => void;
++  onSign: (hire: any) => void;
+   renderPortrait: (face: any, initials: string, size?: string) => React.ReactNode;
+-}> = ({ roles, selectedRole, setSelectedRole, candidate, attributes, onClose, renderPortrait }) => {
++}> = ({ roles, selectedRole, setSelectedRole, candidate, attributes, onClose, onSign, renderPortrait }) => {
+
+--- HUNK [op#22 hunk#1] session=11 line=512 ts=2026-05-13T17:41:41.604Z ---
+-            <button className="w-full h-14 rounded-xl border border-violet-400/60 bg-violet-400/15 text-violet-200 font-black uppercase tracking-widest">Review Offer</button>
++            <button
++              onClick={() => onSign({ ...candidate, role: selectedRole, salary, years, bonus })}
++              className="w-full h-14 rounded-xl border border-violet-400/60 bg-violet-400/15 text-violet-200 font-black uppercase tracking-widest"
++            >
++              Sign Staff Member
++            </button>
+           </aside>
+
+--- HUNK [op#23 hunk#2] session=11 line=521 ts=2026-05-13T17:42:07.926Z ---
+ const Line: React.FC<{ label: string; value: number; fmt: (v: number) => string; sign?: 'in' | 'out'; emphasis?: boolean }> =
+
+--- HUNK [op#23 hunk#3] session=11 line=521 ts=2026-05-13T17:42:07.926Z ---
+ );
++
++const BoardPromisesCard: React.FC<{ tycoon: TycoonState }> = ({ tycoon }) => {
++  const confidence = tycoon.boardConfidence ?? 60;
++  const promises = (tycoon.boardPromises ?? []).slice(-3);
++  const tone = confidence >= 70 ? 'text-emerald-300 border-emerald-400/30 bg-emerald-400/10'
++    : confidence >= 40 ? 'text-amber-300 border-amber-400/30 bg-amber-400/10'
++    : 'text-rose-300 border-rose-400/30 bg-rose-400/10';
++  return (
++    <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
++      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
++        <div>
++          <div className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2"><Shield size={16} /> Board Confidence</div>
++          <div className="mt-2 flex items-end gap-3">
++            <div className={`rounded-xl border px-4 py-3 text-3xl font-black tabular-nums ${tone}`}>{confidence}/100</div>
++            <div className="text-sm text-slate-400 pb-2">{confidence < 25 ? 'Ownership pressure is active.' : confidence < 45 ? 'Board expects a cleaner run.' : 'Board room is stable.'}</div>
++          </div>
++        </div>
++        <div className="grid md:grid-cols-3 gap-3 flex-1">
++          {promises.map((promise: any) => (
++            <div key={promise.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
++              <div className="flex items-center justify-between gap-3">
++                <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">{promise.status}</div>
++                <div className={`text-[10px] font-black uppercase tracking-widest ${promise.status === 'kept' ? 'text-emerald-300' : promise.status === 'missed' ? 'text-rose-300' : 'text-amber-300'}`}>
++                  {Math.round((promise.progress ?? 0) * 100)}%
++                </div>
++              </div>
++              <div className="mt-2 text-sm font-black text-white">{promise.label}</div>
++              <div className="mt-3 h-2 rounded-full bg-slate-800 overflow-hidden">
++                <div className="h-full bg-amber-300" style={{ width: `${Math.max(4, Math.min(100, (promise.progress ?? 0) * 100))}%` }} />
++              </div>
++            </div>
++          ))}
++          {promises.length === 0 && (
++            <div className="md:col-span-3 rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-400">
++              Board promises will be issued on the next Euro tycoon tick.
++            </div>
++          )}
++        </div>
++      </div>
++    </section>
++  );
++};
+
+--- HUNK [op#24 hunk#0] session=11 line=530 ts=2026-05-13T17:42:29.605Z ---
+       <div className="rounded-2xl border border-violet-500/30 bg-violet-500/10 p-5 grid lg:grid-cols-[1fr_220px_220px_300px] gap-5 items-center">
+
+--- HUNK [op#24 hunk#1] session=11 line=530 ts=2026-05-13T17:42:29.605Z ---
+         </button>
+       </div>
++
++      {(tycoon.pendingSponsorReview || (selected?.personalityProse)) && (
++        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5">
++          <div className="flex items-start gap-3">
++            <AlertTriangle size={20} className="text-amber-300 shrink-0 mt-0.5" />
++            <div className="min-w-0">
++              <div className="text-xs font-black uppercase tracking-widest text-amber-300">Sponsor Hooks</div>
++              {tycoon.pendingSponsorReview && (
++                <div className="mt-2 text-sm text-amber-50">
++                  Offseason review: {tycoon.pendingSponsorReview.openSlots.length} open slots, {tycoon.pendingSponsorReview.expiringSlots.length} expiring slots.
++                </div>
++              )}
++              {selected?.personalityProse && (
++                <div className="mt-2 text-sm text-slate-300">
++                  {selected.sponsor}: {selected.personality ?? 'Sponsor profile'} — {selected.personalityProse}
++                </div>
++              )}
++              {(tycoon.pendingSponsorReview?.conflictWarnings ?? []).map((warning: string) => (
++                <div key={warning} className="mt-2 text-sm text-rose-200">{warning}</div>
++              ))}
++            </div>
++          </div>
++        </div>
++      )}
+ 
+       <div className="grid xl:grid-cols-[1fr_560px] gap-6">
+
+--- HUNK [op#25 hunk#0] session=11 line=589 ts=2026-05-13T17:44:07.867Z ---
+-  const persistentStaff = new Map((team.tycoon?.staffMembers ?? []).map((s: any) => [s.role, s]));
++  const persistentStaff = new Map<string, any>((team.tycoon?.staffMembers ?? []).map((s: any) => [s.role, s]));

@@ -1,9 +1,10 @@
 import React, { useRef, useState, useCallback, useMemo } from 'react';
 import {
-  getKeyDates, getPbaKeyDates,
+  getKeyDates, getPbaKeyDates, getEuroKeyDates,
   TIMELINE_MIN, TIMELINE_MAX, TIMELINE_DISPLAY_END,
   PBA_TIMELINE_MIN, PBA_TIMELINE_MAX, PBA_TIMELINE_DISPLAY_END,
-  ZONE_COLORS, ZONE_LABELS, PBA_ZONE_COLORS, PBA_ZONE_LABELS,
+  EURO_TIMELINE_MIN, EURO_TIMELINE_MAX, EURO_TIMELINE_DISPLAY_END,
+  ZONE_COLORS, ZONE_LABELS, PBA_ZONE_COLORS, PBA_ZONE_LABELS, EURO_ZONE_COLORS, EURO_ZONE_LABELS,
   DateZone, PbaDateZone, KeyDate,
 } from './keyDates';
 
@@ -53,6 +54,16 @@ const PBA_ZONE_SEGMENTS: { start: string; end: string; zone: PbaDateZone }[] = [
   { start: '2026-09-01', end: '2026-12-28', zone: 'governorsCup' },
 ];
 
+const EURO_ZONE_SEGMENTS = [
+  { start: '2025-07-01', end: '2025-08-31', zone: 'transfer' },
+  { start: '2025-09-01', end: '2025-09-27', zone: 'preseason' },
+  { start: '2025-09-28', end: '2026-02-12', zone: 'endesa' },
+  { start: '2025-10-01', end: '2026-04-17', zone: 'euroleague' },
+  { start: '2026-02-13', end: '2026-02-16', zone: 'cup' },
+  { start: '2026-04-18', end: '2026-06-28', zone: 'postseason' },
+  { start: '2026-06-29', end: EURO_TIMELINE_DISPLAY_END, zone: 'offseason' },
+] as const;
+
 // NBA month ticks
 const NBA_MONTH_TICKS: { date: string; label: string }[] = [
   { date: '2025-08-01', label: 'AUG' }, { date: '2025-09-01', label: 'SEP' },
@@ -75,21 +86,32 @@ const PBA_MONTH_TICKS: { date: string; label: string }[] = [
   { date: '2026-12-01', label: 'DEC' }, { date: '2027-01-01', label: 'JAN' },
 ];
 
+const EURO_MONTH_TICKS: { date: string; label: string }[] = [
+  { date: '2025-07-01', label: 'JUL' }, { date: '2025-08-01', label: 'AUG' },
+  { date: '2025-09-01', label: 'SEP' }, { date: '2025-10-01', label: 'OCT' },
+  { date: '2025-11-01', label: 'NOV' }, { date: '2025-12-01', label: 'DEC' },
+  { date: '2026-01-01', label: 'JAN' }, { date: '2026-02-01', label: 'FEB' },
+  { date: '2026-03-01', label: 'MAR' }, { date: '2026-04-01', label: 'APR' },
+  { date: '2026-05-01', label: 'MAY' }, { date: '2026-06-01', label: 'JUN' },
+  { date: '2026-07-01', label: 'JUL' },
+];
+
 export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, onBack, leagueType, moddedLeagueBase }) => {
   const isPba = moddedLeagueBase === 'philippines';
-  const tlMin = isPba ? PBA_TIMELINE_MIN : TIMELINE_MIN;
-  const tlMax = isPba ? PBA_TIMELINE_MAX : TIMELINE_MAX;
-  const tlDisplayEnd = isPba ? PBA_TIMELINE_DISPLAY_END : TIMELINE_DISPLAY_END;
-  const zoneSegments = isPba ? PBA_ZONE_SEGMENTS : NBA_ZONE_SEGMENTS;
-  const monthTicks = isPba ? PBA_MONTH_TICKS : NBA_MONTH_TICKS;
-  const zoneColors: Record<string, string> = isPba ? PBA_ZONE_COLORS : ZONE_COLORS;
-  const zoneLabels: Record<string, string> = isPba ? PBA_ZONE_LABELS : ZONE_LABELS;
+  const isEuro = moddedLeagueBase === 'europe';
+  const tlMin = isEuro ? EURO_TIMELINE_MIN : isPba ? PBA_TIMELINE_MIN : TIMELINE_MIN;
+  const tlMax = isEuro ? EURO_TIMELINE_MAX : isPba ? PBA_TIMELINE_MAX : TIMELINE_MAX;
+  const tlDisplayEnd = isEuro ? EURO_TIMELINE_DISPLAY_END : isPba ? PBA_TIMELINE_DISPLAY_END : TIMELINE_DISPLAY_END;
+  const zoneSegments = isEuro ? EURO_ZONE_SEGMENTS : isPba ? PBA_ZONE_SEGMENTS : NBA_ZONE_SEGMENTS;
+  const monthTicks = isEuro ? EURO_MONTH_TICKS : isPba ? PBA_MONTH_TICKS : NBA_MONTH_TICKS;
+  const zoneColors: Record<string, string> = isEuro ? EURO_ZONE_COLORS : isPba ? PBA_ZONE_COLORS : ZONE_COLORS;
+  const zoneLabels: Record<string, string> = isEuro ? EURO_ZONE_LABELS : isPba ? PBA_ZONE_LABELS : ZONE_LABELS;
 
   const trackTotalDays = useMemo(() => daysBetween(tlMin, tlDisplayEnd), [tlMin, tlDisplayEnd]);
   const dateToX = useCallback((iso: string): number =>
     Math.round((daysBetween(tlMin, iso) / trackTotalDays) * TRACK_WIDTH), [tlMin, trackTotalDays]);
 
-  const keyDates = useMemo(() => isPba ? getPbaKeyDates() : getKeyDates(leagueType), [isPba, leagueType]);
+  const keyDates = useMemo(() => isEuro ? getEuroKeyDates() : isPba ? getPbaKeyDates() : getKeyDates(leagueType), [isEuro, isPba, leagueType]);
   const displayMarkers = useMemo(() => keyDates.filter((kd, i, arr) =>
     arr.findIndex(k => k.date === kd.date && k.label === kd.label) === i
   ), [keyDates]);
@@ -99,12 +121,12 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
 
   const applyDate = useCallback((raw: string) => {
     const clamped = raw < tlMin ? tlMin : raw > INPUT_MAX ? INPUT_MAX : raw;
-    if (!isPba && clamped >= '2026-02-13' && clamped <= '2026-02-16') {
+    if (!isPba && !isEuro && clamped >= '2026-02-13' && clamped <= '2026-02-16') {
       setSelectedDate('2026-02-13');
     } else {
       setSelectedDate(clamped);
     }
-  }, [tlMin, isPba]);
+  }, [tlMin, isPba, isEuro]);
 
   const handleTrackClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!trackRef.current) return;
@@ -137,10 +159,12 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
         {/* Header */}
         <div className="text-center mb-8">
           <h2 className="text-3xl font-black text-white tracking-tight mb-2">
-            {isPba ? 'Choose Your Start Date' : 'Choose Your Start Date'}
+            Choose Your Start Date
           </h2>
           <p className="text-slate-400 text-sm">
-            {isPba
+            {isEuro
+              ? 'Pick any date across the Euro offseason, domestic season, cups, and playoffs. Everything before it gets lazy-simmed.'
+              : isPba
               ? 'Pick any date across the 3-conference PBA season. Everything before it gets simulated automatically.'
               : 'Pick any date from the offseason to the end of the regular season. Everything before it gets simulated automatically.'}
           </p>

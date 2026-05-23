@@ -1,0 +1,20 @@
+# Codex hunks NOT found on current disk for src/components/players/view/FreeAgentsView.tsx
+# 3 hunks unapplied. Total ops: 4
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=1 line=128 ts=2026-05-09T22:52:28.306Z ---
+ export const FreeAgentsView: React.FC = () => {
+   const { state, dispatchAction, healPlayer } = useGame();
+   const isGM = state.gameMode === 'gm';
++  const isFictional = state.leagueType === 'fictional';
+   const MARKET_POOLS = state.leagueType === 'fictional' ? MARKET_POOLS_FICTIONAL : MARKET_POOLS_FULL;
+
+--- HUNK [op#3 hunk#0] session=8 line=379 ts=2026-05-10T20:57:54.212Z ---
+ import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
+ import type { NBAPlayer } from '../../../types';
++import { isEuroIsolatedMode } from '../../../utils/uiMode';
+
+--- HUNK [op#3 hunk#1] session=8 line=379 ts=2026-05-10T20:57:54.212Z ---
+-  const [selectedPool, setSelectedPool] = useState<string>(isGM ? 'nba' : 'all');
++  const [selectedPool, setSelectedPool] = useState<string>(isEuroIsolatedMode(state) ? 'all' : isGM ? 'nba' : 'all');

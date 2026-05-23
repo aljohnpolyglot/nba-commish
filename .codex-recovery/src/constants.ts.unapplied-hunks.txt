@@ -1,0 +1,40 @@
+# Codex hunks NOT found on current disk for src/constants.ts
+# 1 hunks unapplied. Total ops: 2
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#1 hunk#2] session=7 line=496 ts=2026-05-10T12:39:18.474Z ---
+ }
++
++export const EURO_ISOLATED_DEFAULTS: Partial<LeagueStats> = {
++  uiMode: 'euro_isolated',
++  currency: 'EUR',
++  tradesAllowed: false,
++  draftType: 'no_draft',
++  draftEligibilityRule: 'none',
++  minAgeRequirement: 18,
++  tradableDraftPickSeasons: 0,
++  stepienRuleEnabled: false,
++  salaryCapEnabled: false,
++  salaryCapType: 'none',
++  salaryCap: 45_000_000,
++  luxuryTaxEnabled: false,
++  luxuryTaxThresholdPercentage: 0,
++  luxuryPayroll: 0,
++  apronsEnabled: false,
++  numberOfAprons: 0,
++  firstApronPercentage: 0,
++  secondApronPercentage: 0,
++  minimumPayrollEnabled: false,
++  minimumPayrollPercentage: 0,
++  twoWayContractsEnabled: false,
++  maxTwoWayPlayersPerTeam: 0,
++  rookieScaleType: 'none',
++  rookieMaxContractPercentage: 0,
++  rookieContractLength: 0,
++  rookieTeamOptionsEnabled: false,
++  rookieTeamOptionYears: 0,
++  rookieRestrictedFreeAgentEligibility: false,
++  rookieContractCapException: false,
++  r2ContractsNonGuaranteed: false,
++};

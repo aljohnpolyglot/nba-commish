@@ -10,6 +10,8 @@ import { ContactAvatar } from '../../common/ContactAvatar';
 import {
   getAllCoaches, getAllReferees, fetchCoachData, fetchRefereeData,
 } from '../../../data/photos';
+import { isNonNbaIsolatedMode } from '../../../utils/uiMode';
+import { getTeamFullName } from '../../../utils/teamNames';
 
 // Re-export REFS so existing modal imports remain unbroken
 export { REFS } from '../../../data/photos';
@@ -46,6 +48,25 @@ const TYPES = [
 ] as const;
 
 type FilterType = typeof TYPES[number]['id'];
+
+function teamNameKeys(team: any): string[] {
+  const region = String(team?.region ?? '').trim();
+  const name = String(team?.name ?? '').trim();
+  const fullName = region && name && !name.startsWith(`${region} `) ? `${region} ${name}` : name;
+  return [name, fullName].filter(Boolean).map(v => v.toLowerCase());
+}
+
+function nonNbaLeagueMatches(team: any, mode: string | null | undefined): boolean {
+  const league = String(team?.league ?? team?.conference ?? '').toLowerCase();
+  if (mode === 'euro_isolated') return league.includes('endesa') || league.includes('euro');
+  if (mode === 'pba_isolated') return league.includes('pba');
+  return false;
+}
+
+function isHeadCoachRole(member: any): boolean {
+  const role = String(member?.role ?? member?.position ?? member?.jobTitle ?? '').trim().toLowerCase();
+  return role === 'head coach';
+}
 
 // ─────────────────────────────────────────────────────────────────
 // CARD
@@ -134,14 +155,15 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
   const { state } = useGame();
   const [search, setSearch] = useState('');
   const [photosReady, setPhotosReady] = useState(false);
+  const nonNbaIsolated = isNonNbaIsolatedMode(state);
 
   useEffect(() => {
-    if (state.leagueType === 'fictional') {
+    if (state.leagueType === 'fictional' || nonNbaIsolated) {
       setPhotosReady(true); // staff already in state — no gist fetch needed
       return;
     }
     Promise.all([fetchCoachData(), fetchRefereeData()]).then(() => setPhotosReady(true));
-  }, [state.leagueType]);
+  }, [state.leagueType, nonNbaIsolated]);
   const [typeFilter, setTypeFilter] = useState<FilterType>('all');
   const [confFilter, setConfFilter] = useState<'ALL' | 'EAST' | 'WEST'>('ALL');
   const [sortBy, setSortBy] = useState<'last' | 'first'>('last');
@@ -150,8 +172,21 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
   // ── Build master list from gist data + state.staff ──────────
   const allPersonnel = useMemo<Personnel[]>(() => {
     const isFictional = state.leagueType === 'fictional';
+    const mode = state.leagueStats?.uiMode;
+    const visibleTeamNames = new Set(
+      (nonNbaIsolated
+        ? (state.nonNBATeams ?? []).filter(t => nonNbaLeagueMatches(t, mode))
+        : state.teams
+      ).flatMap(teamNameKeys)
+    );
+    const isVisibleStaffTeam = (m: StaffMember) => {
+      const team = String(m.team ?? '').trim().toLowerCase();
+      return !team || visibleTeamNames.has(team);
+    };
 
-    const refs: Personnel[] = isFictional
+    const refs: Personnel[] = nonNbaIsolated
+      ? []
+      : isFictional
       ? (state.staff?.referees || []).map((r, i) => ({
           id:      `ref-${r.id ?? i}`,
           name:    r.name,
@@ -169,8 +204,8 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
           playerPortraitUrl: r.photo_url,
         }));
 
-    const coaches: Personnel[] = isFictional
-      ? (state.staff?.coaches || []).map((m, i) => ({
+    const coaches: Personnel[] = isFictional || nonNbaIsolated
+      ? (state.staff?.coaches || []).filter(isVisibleStaffTeam).map((m, i) => ({
           id:       `coach-${i}`,
           name:     m.name,
           type:     'coach' as const,
@@ -178,20 +213,38 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
           team:     m.team,
           teamLogoUrl: m.teamLogoUrl || state.teams.find(t => t.name === m.team)?.logoUrl,
         }))
-      : getAllCoaches().map((c, i) => ({
-          id:               `coach-${i}`,
-          name:             c.name,
-          type:             'coach' as const,
-          jobTitle:         'Head Coach',
-          team:             c.team,
-          conf:             c.conf,
-          div:              c.div,
-          slug:             c.slug,
-          playerPortraitUrl: c.img,
-          teamLogoUrl:      state.teams.find(t => t.name === c.team)?.logoUrl,
-        }));
+      : state.teams.flatMap((team, i) => {
+          const liveHeadCoach = ((team as any).tycoon?.staffMembers ?? []).find((member: any) => isHeadCoachRole(member));
+          if (liveHeadCoach) {
+            return [{
+              id: `coach-live-${team.id ?? i}`,
+              name: liveHeadCoach.name,
+              type: 'coach' as const,
+              jobTitle: 'Head Coach',
+              team: getTeamFullName(team),
+              conf: team.conference,
+              div: (team as any).division,
+              playerPortraitUrl: liveHeadCoach.playerPortraitUrl,
+              teamLogoUrl: team.logoUrl,
+            }];
+          }
+          const externalCoach = getAllCoaches().find(c => teamNameKeys(team).includes(String(c.team ?? '').toLowerCase()));
+          if (!externalCoach) return [];
+          return [{
+            id: `coach-${i}`,
+            name: externalCoach.name,
+            type: 'coach' as const,
+            jobTitle: 'Head Coach',
+            team: externalCoach.team,
+            conf: externalCoach.conf,
+            div: externalCoach.div,
+            slug: externalCoach.slug,
+            playerPortraitUrl: externalCoach.img,
+            teamLogoUrl: team.logoUrl,
+          }];
+        });
 
- const gms: Personnel[] = (state.staff?.gms || []).map((m: StaffMember, i: number) => ({
+    const gms: Personnel[] = (state.staff?.gms || []).filter(isVisibleStaffTeam).map((m: StaffMember, i: number) => ({
       id:               `gm-${i}`,
       name:             m.name,
       type:             'gm',
@@ -201,7 +254,7 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
       teamLogoUrl:      m.teamLogoUrl || state.teams.find(t => t.name === m.team)?.logoUrl,
     }));
 
-    const owners: Personnel[] = (state.staff?.owners || []).map((m: StaffMember, i: number) => ({
+    const owners: Personnel[] = (state.staff?.owners || []).filter(isVisibleStaffTeam).map((m: StaffMember, i: number) => ({
       id:               `owner-${i}`,
       name:             m.name,
       type:             'owner',
@@ -211,7 +264,7 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
       teamLogoUrl:      m.teamLogoUrl || state.teams.find(t => t.name === m.team)?.logoUrl,
     }));
 
-    const lo: Personnel[] = (state.staff?.leagueOffice || []).map((m: StaffMember, i: number) => ({
+    const lo: Personnel[] = nonNbaIsolated ? [] : (state.staff?.leagueOffice || []).map((m: StaffMember, i: number) => ({
       id:               `lo-${i}`,
       name:             m.name,
       type:             'league_office',
@@ -220,7 +273,7 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
     }));
 
     return [...refs, ...coaches, ...gms, ...owners, ...lo];
-  }, [state.staff, state.teams, state.leagueType, photosReady]);
+  }, [state.staff, state.teams, state.nonNBATeams, state.leagueType, state.leagueStats?.uiMode, nonNbaIsolated, photosReady]);
 
   // ── Filter & Sort ───────────────────────────────────────────
   const filtered = useMemo(() => {

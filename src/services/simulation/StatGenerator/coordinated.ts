@@ -21,6 +21,9 @@ export function generateCoordinatedStats(
   numQuarters: number = 4
 ): PlayerGameStats[] {
   const stats    = teamStats.map(s => ({ ...s }));
+  const isEuroClubGame =
+    quarterLength <= 10 &&
+    ((team.id >= 1000 && team.id < 2000) || (team.id >= 5000 && team.id < 6000));
   const rotation = stats.map(s =>
     players.find(p => p.internalId === s.playerId)
   ).filter((p): p is Player => p !== undefined);
@@ -38,7 +41,9 @@ export function generateCoordinatedStats(
 
   const finalSteals = Math.round(availableSteals * (1.0 + stlAura));
   const finalBlocks = Math.round(availableBlocks * (1.0 + blkAura));
-  const assistRatio = Math.max(0.47, 0.67 - passAura);
+  const assistRatio = isEuroClubGame
+    ? Math.max(0.44, 0.58 - passAura)
+    : Math.max(0.48, 0.68 - passAura);
 
   const ownMisses = stats.reduce((s, p) => s + Math.max(0, p.fga - p.fgm), 0);
 
@@ -106,7 +111,7 @@ export function generateCoordinatedStats(
   distributePie(
     Math.round(availableRebounds),
     (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 2.0 + rHelper(p, 'oiq') * 0.5 + rHelper(p, 'diq') * 0.5) * minFrac(p) * reboundNightMult(p, 'drb'),
-    'drb', 2.2, rotation, stats, 0.22
+    'drb', 2.75, rotation, stats, 0.22
   );
 
   // ── Offensive Rebounds
@@ -115,7 +120,7 @@ export function generateCoordinatedStats(
   distributePie(
     Math.round(ownMisses * 0.20 * orbRateMult),
     (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 1.0 + rHelper(p, 'jmp') * 0.5) * minFrac(p) * reboundNightMult(p, 'orb'),
-    'orb', 2.0, rotation, stats, 0.22
+    'orb', 2.35, rotation, stats, 0.22
   );
 
   applyReboundSpecialistFloor('drb');
@@ -137,7 +142,7 @@ export function generateCoordinatedStats(
   distributePie(
     finalBlocks,
     (p) => (rHelper(p, 'hgt') * 2.5 + rHelper(p, 'jmp') * 1.5 + rHelper(p, 'diq') * 0.5) * minFrac(p) * (getNight(p)?._nightBlkMult ?? 1),
-    'blk', 4.0, rotation, stats
+    'blk', 4.35, rotation, stats
   );
 
   // ── Assists (pool shrinks vs elite pass-disruptors, grows vs bad ones)
@@ -148,10 +153,14 @@ export function generateCoordinatedStats(
       const drb = rHelper(p, 'drb');
       const pss = rHelper(p, 'pss');
       const oiq = rHelper(p, 'oiq');
+      const line = getNight(p);
+      const scorerTax = isEuroClubGame
+        ? Math.max(0.52, 1 - Math.max(0, (line?.pts ?? 0) - 16) * 0.035)
+        : 1.0;
       return Math.pow(
         Math.max(0.1, drb * 0.4 + pss * 2.0 + oiq * 0.4),
-        3.8
-      ) * minFrac(p) * (getNight(p)?._nightAssistMult ?? 1);
+        4.35
+      ) * minFrac(p) * (getNight(p)?._nightAssistMult ?? 1) * scorerTax;
     },
     'ast', 1.0,
     rotation, stats
@@ -159,8 +168,17 @@ export function generateCoordinatedStats(
 
   // Soft-cap assists above 11
   stats.forEach(s => {
-    if (s.ast > 11) {
-      s.ast = Math.round(11 + (s.ast - 11) * 0.45);
+    if (isEuroClubGame) {
+      if (s.ast > 9) {
+        s.ast = Math.round(9 + (s.ast - 9) * 0.20);
+      }
+      if (s.pts >= 20 && s.ast > 7) {
+        s.ast = Math.round(7 + (s.ast - 7) * 0.20);
+      }
+      return;
+    }
+    if (s.ast > 13) {
+      s.ast = Math.round(13 + (s.ast - 13) * 0.50);
     }
   });
 
@@ -291,6 +309,13 @@ export function generateCoordinatedStats(
 
   // ── Cleanup & GameScore
   stats.forEach(s => {
+    if (isEuroClubGame) {
+      while (s.orb + s.drb > 12) {
+        if (s.drb >= s.orb && s.drb > 0) s.drb -= 1;
+        else if (s.orb > 0) s.orb -= 1;
+        else break;
+      }
+    }
     // Set both reb (BBGM legacy) and trb (canonical) so consumers using the
     // `s.trb ?? s.reb ?? (orb+drb)` helper read consistent values.
     s.reb = s.orb + s.drb;

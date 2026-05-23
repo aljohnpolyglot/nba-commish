@@ -6,43 +6,6 @@ import { ATTRIBUTE_LABELS, getK2SubAttributes } from '../constants/trainingSyste
 import { PlayerStats } from '../types';
 import { MyFace, isRealFaceConfig } from '../../components/shared/MyFace';
 
-/**
- * Game Mechanics: Player Development (Progression & Regression)
- *
- * Progression/Regression looks like this in the system:
- *
- * Example 1: Regression (Veteran)
- * Overall: 60 (-5) | Potential: 60 (-5)
- * Physical: Speed: 52 (-10), Endurance: 44 (-10)
- * Shooting: Three Pointers: 92 (-3), Mid Range: 80 (-3)
- * Skill: Offensive IQ: 66 (-3), Defensive IQ: 50 (-2)
- *
- * Example 2: Progression (Young Star)
- * Overall: 73 (+4) | Potential: 76 (+4)
- * Physical: Speed: 67 (+2), Endurance: 71 (+3)
- * Shooting: Dunks/Layups: 94 (+5), Free Throws: 59 (+4)
- * Skill: Offensive IQ: 77 (+5), Defensive IQ: 65 (+5)
- *
- * THE FUNNEL MODEL:
- * This training focus acts as a "funnel" for development.
- * 1. It does NOT add more total volume of growth/regression.
- * 2. It REDIRECTS (funnels) natural growth into focus-specific attributes.
- *    - e.g., A "Mid-Range Maestro" focus will ensure growth points are prioritized for Mid-Range,
- *      potentially sacrificing growth in Three Pointers or other areas to feed the focus area.
- * 3. Regression Protection: If a player trains a specific focus, they are less likely to
- *    regress in those attributes. Most of their regression will be funneled to "unimportant"
- *    attributes for that focus (e.g., Kyle Korver as a Sharpshooter retains 3P form while
- *    regressing more in Dunks or Dribbling).
- * 4. Individual vs. Team: This funnelling logic is independent of team training.
- *    It doesn't override team-based IQ gains, ensuring balanced development across the squad.
- * 5. Strength & Weight: Increasing Strength progression also results in a minimal,
- *    realistic increase in player weight. This is capped to prevent unnatural compounding,
- *    providing a subtle biometric feedback loop for physical training.
- * 6. Balanced Training: The "Balanced" focus represents the default progression engine.
- *    Setting a player to Balanced ensures they grow and regress at their natural rates
- *    without any specific funneling logic applied.
- */
-
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -75,7 +38,6 @@ export function TrainingFocusModal({
   const [selectedArchetype, setSelectedArchetype] = React.useState<string | null>(initialArchetype);
   const [activeTab, setActiveTab] = React.useState<string>('Any');
 
-  // Reset local state on open
   React.useEffect(() => {
     if (isOpen) {
       setSelectedArchetype(initialArchetype);
@@ -102,12 +64,10 @@ export function TrainingFocusModal({
     }
   }, [isOpen, playerPos, initialArchetype]);
 
-  // Split compound positions like PF/C, SG/SF into their parts and check each.
   const posQualifies = (allowed: string[], pos: string) =>
     allowed.includes(pos) || pos.split('/').some(part => allowed.includes(part.trim()));
 
   const getGroup = (pos: string) => {
-    // Hybrid positions (GF, G/F, FC, F/C, PF/C, SG/SF …) default to the primary half.
     if (posQualifies(['PG', 'SG', 'G', 'GF', 'G/F'], pos) && !posQualifies(['SF', 'PF', 'F', 'FC', 'F/C', 'C'], pos)) return 'G';
     if (posQualifies(['SF', 'PF', 'F', 'GF', 'G/F', 'FC', 'F/C'], pos)) return 'F';
     if (posQualifies(['C'], pos)) return 'C';
@@ -206,7 +166,7 @@ export function TrainingFocusModal({
       if (!posQualifies(allowed, playerPos) && !isWingOverride) {
         return {
           met: false,
-          reason: playerPos === 'G' ? 'Requires Height > 45 for Wing training' : `Locked for ${playerPos} (Requires ${profile.pos})`
+          reason: playerPos === 'G' ? 'Needs wing size for this role' : `Best suited for ${profile.pos}s`
         };
       }
     }
@@ -217,7 +177,7 @@ export function TrainingFocusModal({
       const met = spd >= 50 || jmp >= 50;
       return {
         met,
-        reason: !met ? 'Requires 50+ Speed or 50+ Vertical' : undefined
+        reason: !met ? 'Needs high-end speed or vertical pop' : undefined
       };
     }
 
@@ -233,7 +193,7 @@ export function TrainingFocusModal({
       const met = hgt > 45 && spd > 50;
       return {
         met,
-        reason: !met ? `Requires Height > 45 and Speed > 50` : undefined
+        reason: !met ? 'Needs frontcourt size and mobility' : undefined
       };
     }
 
@@ -242,7 +202,7 @@ export function TrainingFocusModal({
       const met = hgt > 70;
       return {
         met,
-        reason: !met ? 'Requires height attribute > 70' : undefined
+        reason: !met ? 'Reserved for true 7-foot size' : undefined
       };
     }
 
@@ -250,7 +210,7 @@ export function TrainingFocusModal({
       const met = playerAge >= 30;
       return {
         met,
-        reason: !met ? 'Requires Age 30+' : undefined
+        reason: !met ? 'For veterans age 30+' : undefined
       };
     }
 
@@ -297,7 +257,7 @@ export function TrainingFocusModal({
                   )}
                   <div>
                     <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tighter leading-none mb-1 md:mb-2 text-balance lg:text-3xl">
-                       {selectedArchetype ? 'Confirm Selection' : 'Training Focus'}
+                       {selectedArchetype ? 'Review Program' : 'Player Program'}
                     </h2>
                     <p className="text-[10px] md:text-xs text-slate-400 uppercase tracking-[0.2em] font-extrabold flex items-center gap-2">
                        <span className="text-white bg-indigo-600 px-1.5 py-0.5 rounded text-[8px] md:text-[10px] tracking-tight">{playerPos}</span> {playerName}
@@ -374,7 +334,7 @@ export function TrainingFocusModal({
                           {isCompatible && met && !isActive && (
                             <div className="absolute top-0 right-0 p-3">
                               <div className="bg-indigo-600/20 text-indigo-400 text-[8px] font-black px-2 py-0.5 rounded-full border border-indigo-500/20 tracking-widest">
-                                COMPATIBLE
+                                GOOD FIT
                               </div>
                             </div>
                           )}
@@ -424,7 +384,7 @@ export function TrainingFocusModal({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 bg-slate-950/40 p-6 md:p-8 rounded-2xl md:rounded-[2rem] border border-slate-800 max-h-[60vh] md:max-h-[70vh] overflow-y-auto custom-scrollbar">
                       <div className="space-y-4 md:space-y-6 flex flex-col justify-between">
                         <div>
-                          <span className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-1 md:mb-2 block">Training Style</span>
+                          <span className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.3em] mb-1 md:mb-2 block">Program Style</span>
                           <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter mb-1 md:mb-2">{selectedArchetype}</h3>
                           <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-tight leading-relaxed">
                             {currentProfile?.description}
@@ -432,7 +392,7 @@ export function TrainingFocusModal({
 
                           {currentProfile?.comparison && (
                             <div className="mt-4 md:mt-6 p-4 md:p-5 bg-indigo-600/5 rounded-xl md:rounded-2xl border border-indigo-500/20">
-                               <span className="text-[8px] md:text-[9px] font-black text-indigo-400 uppercase tracking-widest block mb-1.5 opacity-60">Elite Comparison</span>
+                               <span className="text-[8px] md:text-[9px] font-black text-indigo-400 uppercase tracking-widest block mb-1.5 opacity-60">Plays Like</span>
                                <div className="flex items-center gap-2">
                                   <Zap size={14} className="text-indigo-400 md:w-4 md:h-4" />
                                   <span className="text-xs md:text-sm font-black text-white uppercase tracking-tight">{currentProfile.comparison}</span>
@@ -443,7 +403,7 @@ export function TrainingFocusModal({
                       </div>
 
                       <div className="space-y-3 md:space-y-4">
-                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block text-xs">Attribute Priorities</span>
+                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block text-xs">Key Areas</span>
                          <div className="grid grid-cols-1 gap-1">
                            {selectedArchetype && Object.entries(getWeightsData(selectedArchetype).rawWeights)
                              .filter(([attr, weight]) => attr !== 'hgt' && (weight as number) > 0.05)
@@ -480,7 +440,7 @@ export function TrainingFocusModal({
                           onClick={() => setSelectedArchetype(null)}
                           className="w-full md:flex-1 py-3 md:py-4 rounded-xl md:rounded-2xl bg-slate-900 border border-slate-800 text-slate-400 font-black text-xs uppercase tracking-widest hover:bg-slate-800 hover:text-white transition-all shadow-lg"
                         >
-                          Back to Selection
+                          Back
                         </button>
                         <button
                           onClick={() => {
@@ -489,7 +449,7 @@ export function TrainingFocusModal({
                           }}
                           className="w-full md:flex-[2] py-3 md:py-4 rounded-xl md:rounded-2xl bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] hover:bg-indigo-500 transition-all shadow-[0_10px_20px_rgba(79,70,229,0.3)]"
                         >
-                          Confirm Training Plan
+                          Use This Program
                         </button>
                       </div>
                     )}

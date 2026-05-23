@@ -35,6 +35,7 @@ import { EXTERNAL_LEAGUE_OVR_CAP } from '../../constants';
 import { getFocusWeights, ARCHETYPE_PROFILES } from '../../TeamTraining/constants/trainingarchetypes';
 import { calculateMentorExp } from '../training/mentorScore';
 import type { TrainingParadigm, Allocations } from '../../TeamTraining/types';
+import { getTeamDevelopmentMultiplier } from '../staff/staffGameplayEffects';
 
 // ─── Conditioning maintenance modifier (the ONLY thing in team training that
 // touches K2 ratings). Per docs/training.md §3 — biometric team training is
@@ -283,6 +284,7 @@ function progressPlayer(
   date: string,
   mentorLookup?: Map<string, NBAPlayer>,
   teamPlan?: TeamPlanForDay,
+  devMultiplier: number = 1,
 ): NBAPlayer {
   if (!player.ratings || player.ratings.length === 0) return player;
 
@@ -480,6 +482,10 @@ function progressPlayer(
         delta *= fatigueDampen;
       }
 
+      if (delta > 0 && devMultiplier !== 1.0) {
+        delta *= devMultiplier;
+      }
+
       // Team conditioning — pure decay-resistance on physicals. Growth comes
       // from devFocus (individual surface); team-bio just flattens the curve.
       if (teamPlan && delta < 0) {
@@ -590,9 +596,13 @@ export function applyDailyProgression(
   // (legacy call site / external simulators) — paradigm modifier silently
   // no-ops, so behavior is identical to before for unwired callers.
   const planByTid = new Map<number, TeamPlanForDay>();
+  const devMultByTid = new Map<number, number>();
   if (teams && teams.length) {
     let iso = '';
     try { iso = normalizeDate(date); } catch { iso = ''; }
+    for (const t of teams) {
+      devMultByTid.set(t.id, getTeamDevelopmentMultiplier(t as any));
+    }
     if (iso) {
       for (const t of teams) {
         const cal = (t as any).trainingCalendar as Record<string, TeamPlanForDay> | undefined;
@@ -637,7 +647,8 @@ export function applyDailyProgression(
     }
     try {
       const teamPlan = planByTid.get(player.tid);
-      return progressPlayer(player, currentYear, date, mentorLookup, teamPlan);
+      const devMultiplier = devMultByTid.get(player.tid) ?? 1;
+      return progressPlayer(player, currentYear, date, mentorLookup, teamPlan, devMultiplier);
     } catch (_) {
       return player;
     }

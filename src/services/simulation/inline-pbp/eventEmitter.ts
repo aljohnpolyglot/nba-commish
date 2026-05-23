@@ -1,10 +1,3 @@
-// Emits events for one quarter by exhaustively consuming the player budgets.
-// Strict invariant: every stat in the budget becomes exactly one event;
-// every event with pts > 0 corresponds to a single fg2/fg3/fg4/ftm decrement.
-// → Σ(pts of HOME events in quarter q) === Σ(fg2*2 + fg3*3 + fg4*4 + ftm)
-//   of all HOME players' q-budgets === quarterScores.home[q] (after the
-//   budgetDistributor's reconcile pass).
-
 import { ArraySink } from './eventSink';
 import {
   InlineEvent,
@@ -26,13 +19,11 @@ import {
   generateTovNarrative,
   generateBlockNarrative,
 } from '../live/playback/badgeCommentary';
-
 interface PendingShot {
   pid: string;
   team: TeamId;
   kind: 'made2' | 'made3' | 'made4' | 'miss2' | 'miss3' | 'miss4';
 }
-
 interface PendingFoul {
   foulerPid: string;
   foulerTeam: TeamId;
@@ -93,11 +84,6 @@ function shotsFromBudgets(
   }
   return shots;
 }
-
-// Build interleaved possession sequence. We alternate HOME/AWAY trying to
-// drain shot lists; misses with offensive-rebound budget keep possession.
-// FTs and TOVs are inserted alongside misses/fouls. Plain alternation is
-// adequate for AC1/AC2 — pacing realism is polish for Phase 4.
 function interleaveShots(home: PendingShot[], away: PendingShot[]): PendingShot[] {
   const out: PendingShot[] = [];
   let hi = 0, ai = 0;
@@ -127,7 +113,6 @@ function consumeAssist(
   pool: PlayerPool[],
   scorerPid: string,
 ): PlayerPool | undefined {
-  // Pick a teammate with ast budget remaining (~60% of makes get assists in NBA)
   if (Math.random() > 0.6) return undefined;
   for (const p of pool) {
     if (p.id === scorerPid) continue;
@@ -146,7 +131,6 @@ function consumeRebound(
   ownPool: PlayerPool[],
   oppPool: PlayerPool[],
 ): { rebounder: PlayerPool; isOff: boolean } | undefined {
-  // Prefer defensive rebound (opp team). Fallback to offensive if opp has no drb.
   for (const p of oppPool) {
     const b = oppByPid.get(p.id);
     if (b && b.drb > 0) {
@@ -233,7 +217,6 @@ export function emitQuarter(
   const homePool = buildPool(budgets.homeByPid, homeStats, players, 'HOME');
   const awayPool = buildPool(budgets.awayByPid, awayStats, players, 'AWAY');
 
-  // Q1 jumpball — emit anchor with actual lineups so MIN attribution works.
   if (q === 1) {
     const startHome = RotationService.getLineupAtTime(homePool, 0, 0);
     const startAway = RotationService.getLineupAtTime(awayPool, 0, 0);
@@ -262,11 +245,8 @@ export function emitQuarter(
   const awayShots = shotsFromBudgets(budgets.awayByPid, 'AWAY');
   const sequence = interleaveShots(homeShots, awayShots);
 
-  const totalSlots = sequence.length + 1; // +1 buffer at end
+  const totalSlots = sequence.length + 1;
   let idx = 0;
-
-  // Helper: assign clock for this event based on its index in the sequence.
-  // Distributes evenly across the quarter duration with mild jitter.
   const clockForIdx = (i: number): { gs: number; clock: string } => {
     const frac = totalSlots > 1 ? i / Math.max(1, totalSlots - 1) : 0;
     const elapsed = Math.min(qDur - 0.5, Math.max(0.5, frac * qDur));
@@ -283,7 +263,6 @@ export function emitQuarter(
     away: RotationService.getLineupAtTime(awayPool, gs, -diff),
   });
 
-  // Period-start label (Q2+ only; Q1 is anchored by jumpball event)
   if (q > 1) {
     const startGs = qStartGs - 0.1;
     sink.emit({
@@ -404,10 +383,6 @@ export function emitQuarter(
     idx++;
   }
 
-  // Drain remaining FT budgets at end-of-quarter. These come from undecremented
-  // ftm/ftmiss that the shot loop didn't pair with foul events (we keep the
-  // implementation simple: FTs ride at the tail). Each FT contributes its own
-  // pts; the budget reconciler already ensured Σ pts matches the target.
   const drainFTsForTeam = (team: TeamId, byPid: Map<string, PlayerQuarterBudget>, pool: PlayerPool[]) => {
     for (const p of pool) {
       const b = byPid.get(p.id);
@@ -472,7 +447,6 @@ export function emitQuarter(
   drainFTsForTeam('HOME', budgets.homeByPid, homePool);
   drainFTsForTeam('AWAY', budgets.awayByPid, awayPool);
 
-  // Drain remaining tov budgets (each tov === one tov event)
   const drainTovs = (team: TeamId, byPid: Map<string, PlayerQuarterBudget>, pool: PlayerPool[]) => {
     const oppByPid = team === 'HOME' ? budgets.awayByPid : budgets.homeByPid;
     const oppPool = team === 'HOME' ? awayPool : homePool;
@@ -506,7 +480,6 @@ export function emitQuarter(
   drainTovs('HOME', budgets.homeByPid, homePool);
   drainTovs('AWAY', budgets.awayByPid, awayPool);
 
-  // End-of-quarter buzzer marker for OT bridge / final
   if (q === timingConfig.numQuarters + otCount) {
     sink.emit({
       id: makeId(q, idx, 'final'),

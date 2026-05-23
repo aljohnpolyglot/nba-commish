@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PBAConferenceAside, type PBAConferenceHubView } from './PBAConferenceAside';
 import { PBAConferenceCentral } from './PBAConferenceCentral';
 import { PBAImportTracker } from './PBAImportTracker';
@@ -25,14 +25,32 @@ interface Props {
 
 let persistedView: PBAConferenceHubView = 'central';
 
+function sanitizeConferenceView(
+  view: PBAConferenceHubView,
+  showImportTracker: boolean,
+): PBAConferenceHubView {
+  if (view === 'import-tracker' && !showImportTracker) return 'central';
+  if (view === 'player-ratings' || view === 'injuries') return 'central';
+  return view;
+}
+
 export const PBAConferenceHubLayout: React.FC<Props> = ({ conference }) => {
   const showImport = conference !== 'philippine';
 
-  const [view, setViewState] = useState<PBAConferenceHubView>(persistedView);
+  const [view, setViewState] = useState<PBAConferenceHubView>(() => sanitizeConferenceView(persistedView, showImport));
   const setView = (next: PBAConferenceHubView) => {
-    persistedView = next;
-    setViewState(next);
+    const sanitized = sanitizeConferenceView(next, showImport);
+    persistedView = sanitized;
+    setViewState(sanitized);
   };
+
+  useEffect(() => {
+    const sanitized = sanitizeConferenceView(view, showImport);
+    if (sanitized !== view) {
+      persistedView = sanitized;
+      setViewState(sanitized);
+    }
+  }, [view, showImport]);
 
   const renderMain = () => {
     switch (view) {

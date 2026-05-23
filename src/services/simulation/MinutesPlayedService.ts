@@ -46,6 +46,8 @@ export interface MinuteAllocation {
   totalMinutes: number;
 }
 
+export type RotationMinuteProfile = 'default' | 'euro_club';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // BENCH MINUTE TIERS
 // Real NBA distributions: 6th man 22-28, 7th man 17-23, etc.
@@ -57,6 +59,10 @@ const BENCH_TIERS = [
   { base: 13, spread: 6 },  // depth slot 2 → 8th man  → 13–19, avg 16
   { base: 7,  spread: 5 },  // depth slot 3 → 9th man  →  7–12, avg  9.5
   { base: 2,  spread: 4 },  // depth slot 4+→ deep res →  2–6,  avg  4
+] as const;
+
+const EURO_CLUB_MINUTE_TEMPLATE = [
+  29, 27, 24, 21, 19, 18, 18, 15, 12, 10, 7,
 ] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -338,9 +344,11 @@ export class MinutesPlayedService {
     quarterLength: number = 12,
     overtimeDuration: number = 5,
     numQuarters: number = 4,
+    minuteProfile: RotationMinuteProfile = 'default',
   ): MinuteAllocation {
     const isBlowout    = Math.abs(lead) > 15;
     const isBigBlowout = Math.abs(lead) > 25;
+    const isEuroClubProfile = minuteProfile === 'euro_club';
     const regulationLengthMin = quarterLength * numQuarters;
     const gameLengthMin = regulationLengthMin + otCount * overtimeDuration;
     const otMultiplier  = gameLengthMin / regulationLengthMin;  // 1.0 reg → grows with each OT
@@ -355,7 +363,25 @@ export class MinutesPlayedService {
       const endu = R(p, 'endu', season);
       let baseMins: number;
 
-      if (i < 5) {
+      if (isEuroClubProfile) {
+        const template = EURO_CLUB_MINUTE_TEMPLATE[Math.min(i, EURO_CLUB_MINUTE_TEMPLATE.length - 1)];
+        const closeGameAdjust =
+          Math.abs(lead) < 5
+            ? (i < 2 ? 0.8 : i < 7 ? 0.35 : -0.35)
+            : 0;
+        const blowoutAdjust = isBigBlowout
+          ? (i < 5 ? -1.4 : i >= 7 ? 1.0 : 0.5)
+          : isBlowout
+            ? (i < 5 ? -0.8 : i >= 7 ? 0.5 : 0.25)
+            : 0;
+        const playoffAdjust = isPlayoffs && !isBlowout
+          ? (i < 7 ? 0.6 : -0.4)
+          : 0;
+        baseMins = template + closeGameAdjust + blowoutAdjust + playoffAdjust + (Math.random() - 0.5) * 1.2;
+        const fatigue = endu < 40 ? (40 - endu) * 0.08 : 0;
+        baseMins -= fatigue;
+        baseMins = Math.min(baseMins, durabilityMinuteCap(p));
+      } else if (i < 5) {
         if (isYouthMode && starMpgTarget !== undefined) {
           // Youth starters: star gets target, each next slot steps down 2 min.
           // Slot 0: ~31, Slot 1: ~29, Slot 2: ~27, Slot 3: ~25, Slot 4: ~23
@@ -411,7 +437,9 @@ export class MinutesPlayedService {
       // Hard cap with jitter: ~38-40 min regular season, ~44-46 min playoffs.
       // Jitter prevents robotic "40:00" exactly — produces natural values like 38:17, 39:28.
       // Reg-season lowered from 40→38 to keep stars under 40 MPG (real-world norm).
-      const MAX_BASE = isPlayoffs ? 44 : 38;
+      const MAX_BASE = isEuroClubProfile
+        ? (isPlayoffs ? 34 : 31)
+        : (isPlayoffs ? 44 : 38);
       const MAX_JITTER = 2; // ±0-2 min randomness
       const maxMinutes = (MAX_BASE + Math.random() * MAX_JITTER) * otMultiplier;
       const scaledMins = Math.max(1, baseMins) * otMultiplier;

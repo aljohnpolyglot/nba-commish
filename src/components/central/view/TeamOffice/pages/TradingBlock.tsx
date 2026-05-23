@@ -18,6 +18,7 @@ import { compareGameDates, getDraftDate, getTradeDeadlineDate, isInPostDeadlineP
 import { NBAPlayer, NBATeam } from '../../../../../types';
 import { PlayerBioView } from '../../PlayerBioView';
 import { isNoDraftLeague } from '../../../../../services/offseason/offseasonState';
+import { getDisplayAge } from '../../../../../store/playerRatingStore';
 
 interface TradingBlockProps {
   teamId: number;
@@ -96,7 +97,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
   const MAX_SLOTS = 10;
 
   // ── Smart defaults based on team mode ────────────────────────────────────
-  const playerAge = (p: NBAPlayer): number => p.born?.year ? currentYear - p.born.year : (p.age ?? 27);
+  const playerAge = (p: NBAPlayer): number => getDisplayAge(p, currentYear);
 
   const defaultUntouchableIds = useMemo(() => {
     const rosterPlayers = rosterWithTV.map(r => r.player);
@@ -599,6 +600,7 @@ function EditableColumn({
               key={i}
               item={item}
               teamLogoUrl={team?.logoUrl}
+              currentYear={currentYear ?? new Date().getFullYear()}
               onClick={() => onPlayerClick?.(item.player)}
               onRemove={onRemovePlayer ? () => onRemovePlayer(item.player.internalId) : undefined}
             />
@@ -717,7 +719,7 @@ function useRevealOnPressOrClick(onTap?: () => void) {
   };
 }
 
-function PlayerCard({ item, teamLogoUrl, onClick, onRemove }: { item: TVItem; teamLogoUrl?: string; onClick?: () => void; onRemove?: () => void }) {
+function PlayerCard({ item, teamLogoUrl, currentYear, onClick, onRemove }: { item: TVItem; teamLogoUrl?: string; currentYear: number; onClick?: () => void; onRemove?: () => void }) {
   const { player, ovr, pot, tv } = item;
   const stars = tvToStars(tv);
   const { revealed, hide, bind } = useRevealOnPressOrClick(onClick);
@@ -736,7 +738,7 @@ function PlayerCard({ item, teamLogoUrl, onClick, onRemove }: { item: TVItem; te
 
       <div className="flex-1 min-w-0 flex flex-col justify-center">
         <span className="font-bold text-[#e6edf3] uppercase text-sm truncate group-hover:text-[#FDB927] transition-colors">{player.name}</span>
-        <span className="text-[#8b949e] text-[10px] font-bold uppercase tracking-wider">{player.pos}{player.born?.year || player.age ? ` | ${player.born?.year ? (new Date().getFullYear() - player.born.year) : player.age}y` : ''}</span>
+        <span className="text-[#8b949e] text-[10px] font-bold uppercase tracking-wider">{player.pos} | {getDisplayAge(player, currentYear)}y</span>
       </div>
 
       {/* OVR + POT — hidden when trash is revealed so the row stays readable on narrow widths */}

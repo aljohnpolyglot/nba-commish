@@ -1,5 +1,11 @@
-import { NBAPlayer as Player, DraftPick, Game } from '../../../types';
+import { NBAPlayer as Player, DraftPick, Game, NBATeam } from '../../../types';
 import { applyMajorInjuryStatChanges } from '../../../services/simulation/InjurySystem';
+import { getTeamMedicalGameplayEffects } from '../../../services/staff/staffGameplayEffects';
+import { getTeamTravelGameplayEffects } from '../../../services/tycoon/travelGameplayEffects';
+
+function clamp(value: number, min: number, max: number): number {
+    return Math.max(min, Math.min(max, value));
+}
 
 const dedupeSeasonStats = (stats: any[]) => {
     const grouped = new Map<string, any[]>();
@@ -32,7 +38,8 @@ export const processSimulationResults = (
     players: Player[],
     draftPicks: DraftPick[],
     schedule?: Game[],
-    seasonYear?: number
+    seasonYear?: number,
+    teams?: NBATeam[],
 ) => {
     const currentSeasonYear = seasonYear ?? new Date().getFullYear();
     let updatedPlayers = [...players];
@@ -76,12 +83,13 @@ export const processSimulationResults = (
         const competitionPhase = schedGame?.competitionPhase;
         const isCompetitionPlayIn = competitionPhase === 'play-in';
         const isCompetitionPlayoff = competitionPhase === 'qf' || competitionPhase === 'sf' || competitionPhase === 'final';
-        const isPlayoffGame = schedGame?.isPlayoff === true || isCompetitionPlayoff;
-        const isPlayInGame = schedGame?.isPlayIn === true || isCompetitionPlayIn;
-        const isPreseasonGame = schedGame?.isPreseason === true;
+        const isPlayoffGame = schedGame?.isPlayoff === true || res.isPlayoff === true || isCompetitionPlayoff;
+        const isPlayInGame = schedGame?.isPlayIn === true || res.isPlayIn === true || isCompetitionPlayIn;
+        const isPreseasonGame = schedGame?.isPreseason === true || res.isPreseason === true;
+        const excludeFromRecord = (schedGame as any)?.excludeFromRecord === true || res.excludeFromRecord === true;
 
         // Route stats: regular → playerStatsMap, playoff → playoffStatsMap, play-in/preseason → skip
-        if (!isPlayoffGame && !isPlayInGame && !isPreseasonGame) {
+        if (!isPlayoffGame && !isPlayInGame && !isPreseasonGame && !excludeFromRecord) {
             [...res.homeStats, ...res.awayStats].forEach(stat => {
                 if (!playerStatsMap.has(stat.playerId)) {
                     playerStatsMap.set(stat.playerId, []);
@@ -351,13 +359,35 @@ export const processSimulationResults = (
 
     // Decrement injury and suspension games remaining for players whose teams played today
     const teamGamesPlayed = new Map<number, number>();
+    const awayGamesPlayed = new Map<number, number>();
+    const awayMinutesPlayed = new Map<string, number>();
     allSimResults.forEach(res => {
         if (res.homeTeamId < 0 || res.awayTeamId < 0) return;
         teamGamesPlayed.set(res.homeTeamId, (teamGamesPlayed.get(res.homeTeamId) || 0) + 1);
         teamGamesPlayed.set(res.awayTeamId, (teamGamesPlayed.get(res.awayTeamId) || 0) + 1);
+        awayGamesPlayed.set(res.awayTeamId, (awayGamesPlayed.get(res.awayTeamId) || 0) + 1);
+        for (const stat of res.awayStats ?? []) {
+            awayMinutesPlayed.set(
+                stat.playerId,
+                (awayMinutesPlayed.get(stat.playerId) || 0) + Number(stat.min ?? 0),
+            );
+        }
     });
 
     const recoveries: { playerName: string; teamName: string; pos: string; tid: number }[] = [];
+    const teamById = new Map<number, NBATeam>();
+    for (const team of teams ?? []) teamById.set(team.id, team);
+
+    const resolveRecoveryStep = (player: Player, gamesPlayed: number): number => {
+        const team = teamById.get(player.tid);
+        const recoveryMultiplier = team
+            ? getTeamMedicalGameplayEffects(team as any).recoveryMultiplier
+            : 1;
+        const scaled = gamesPlayed * recoveryMultiplier;
+        const whole = Math.floor(scaled);
+        const remainder = scaled - whole;
+        return whole + (Math.random() < remainder ? 1 : 0);
+    };
 
     updatedPlayers = updatedPlayers.map(p => {
         let updated = { ...p };
@@ -366,7 +396,8 @@ export const processSimulationResults = (
 
         if (gamesPlayed > 0) {
             if (p.injury && p.injury.gamesRemaining > 0) {
-                updated.injury = { ...p.injury, gamesRemaining: Math.max(0, p.injury.gamesRemaining - gamesPlayed) };
+                const recoveryStep = resolveRecoveryStep(p, gamesPlayed);
+                updated.injury = { ...p.injury, gamesRemaining: Math.max(0, p.injury.gamesRemaining - recoveryStep) };
                 if (updated.injury.gamesRemaining === 0) {
                     delete updated.injury;
                     recoveries.push({ playerName: p.name, teamName: '', pos: (p as any).pos ?? '', tid: p.tid });
@@ -378,6 +409,22 @@ export const processSimulationResults = (
                 updated.suspension = { ...p.suspension, gamesRemaining: Math.max(0, p.suspension.gamesRemaining - gamesPlayed) };
                 if (updated.suspension.gamesRemaining === 0) delete updated.suspension;
                 changed = true;
+            }
+
+            const awayTrips = awayGamesPlayed.get(p.tid) || 0;
+            if (awayTrips > 0 && (p.injury?.gamesRemaining ?? 0) <= 0) {
+                const team = teamById.get(p.tid);
+                const travel = getTeamTravelGameplayEffects(team as any);
+                const totalAwayMinutes = awayMinutesPlayed.get(p.internalId) || 0;
+                const averageAwayMinutes = totalAwayMinutes / awayTrips;
+                const fatigueLoad = 0.45 + Math.min(1.15, averageAwayMinutes / 28);
+                const fatigueGain = fatigueLoad * awayTrips * travel.roadTripFatigueDelta;
+                const currentFatigue = Number((p as any).trainingFatigue ?? 0);
+                const nextFatigue = clamp(currentFatigue + fatigueGain, 0, 100);
+                if (Math.abs(nextFatigue - currentFatigue) > 0.01) {
+                    (updated as any).trainingFatigue = nextFatigue;
+                    changed = true;
+                }
             }
         }
 

@@ -2,9 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { X, Search, CheckCircle2, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NBAPlayer, NBATeam } from '../../../types';
-import { convertTo2KRating } from '../../../utils/helpers';
 import { getPlayerImage } from '../../central/view/bioCache';
 import { useGame } from '../../../store/GameContext';
+import { getDisplayAge, getDisplayOverall } from '../../../store/playerRatingStore';
 
 interface ForceSignModalProps {
   player: NBAPlayer;
@@ -19,8 +19,8 @@ export const ForceSignModal: React.FC<ForceSignModalProps> = ({ player, teams, o
 
   const { state } = useGame();
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-  const age = player.born?.year ? currentYear - player.born.year : player.age || 0;
-  const ovr = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
+  const age = getDisplayAge(player, currentYear);
+  const ovr = getDisplayOverall(player, currentYear);
 
   const filteredTeams = useMemo(() => {
     return teams

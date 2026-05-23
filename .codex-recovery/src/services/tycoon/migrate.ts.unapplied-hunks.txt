@@ -1,0 +1,130 @@
+# Codex hunks NOT found on current disk for src/services/tycoon/migrate.ts
+# 12 hunks unapplied. Total ops: 5
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=10 line=377 ts=2026-05-13T07:30:09.216Z ---
+     ticketPriceMultiplier: 1.0,
+     medicalBudget: defaultMedicalBudgetForTier(tier),
++    travelPreferences: defaultTravelPreferencesForTier(tier),
+
+--- HUNK [op#0 hunk#1] session=10 line=377 ts=2026-05-13T07:30:09.216Z ---
+   if (t.cityPrestige === undefined) t.cityPrestige = getCityPrestige(name || region, t.tier);
+   if (t.ticketPriceMultiplier === undefined) t.ticketPriceMultiplier = 1.0;
+   if (t.medicalBudget === undefined) t.medicalBudget = defaultMedicalBudgetForTier(t.tier);
++  if (t.travelPreferences === undefined) t.travelPreferences = defaultTravelPreferencesForTier(t.tier);
+
+--- HUNK [op#0 hunk#2] session=10 line=377 ts=2026-05-13T07:30:09.216Z ---
+   t.sponsorships = upgraded;
+ }
++
++function defaultTravelPreferencesForTier(tier: TycoonState['tier']): TycoonState['travelPreferences'] {
++  switch (tier) {
++    case 'S': return { hotel: 5.0, flight: 5.0, bus: 5.0 };
++    case 'A': return { hotel: 4.5, flight: 4.5, bus: 4.0 };
++    case 'B': return { hotel: 4.0, flight: 4.0, bus: 3.5 };
++    case 'C': return { hotel: 3.5, flight: 3.0, bus: 3.0 };
++    case 'D': return { hotel: 3.0, flight: 2.5, bus: 2.5 };
++  }
++}
+
+--- HUNK [op#1 hunk#0] session=11 line=320 ts=2026-05-13T17:30:20.437Z ---
+     medicalBudget: defaultMedicalBudgetForTier(tier),
++    scoutingInvestment: defaultScoutingInvestmentForTier(tier),
+
+--- HUNK [op#1 hunk#1] session=11 line=320 ts=2026-05-13T17:30:20.437Z ---
+   if (t.medicalBudget === undefined) t.medicalBudget = defaultMedicalBudgetForTier(t.tier);
++  if (t.scoutingInvestment === undefined) t.scoutingInvestment = defaultScoutingInvestmentForTier(t.tier);
+   if (t.travelPreferences === undefined) t.travelPreferences = defaultTravelPreferencesForTier(t.tier);
+
+--- HUNK [op#1 hunk#2] session=11 line=320 ts=2026-05-13T17:30:20.437Z ---
+ }
++
++function defaultScoutingInvestmentForTier(tier: TycoonState['tier']): number {
++  switch (tier) {
++    case 'S': return 1_200_000;
++    case 'A': return 850_000;
++    case 'B': return 550_000;
++    case 'C': return 320_000;
++    case 'D': return 180_000;
++  }
++}
+
+--- HUNK [op#2 hunk#0] session=11 line=468 ts=2026-05-13T17:38:51.033Z ---
+-import { seedInitialSponsorships } from './sponsorshipEngine';
++import { classifySponsor, seedInitialSponsorships } from './sponsorshipEngine';
+
+--- HUNK [op#2 hunk#1] session=11 line=468 ts=2026-05-13T17:38:51.033Z ---
+   return {
+-    sponsor: pool[Math.floor(Math.random() * pool.length)],
++    sponsor: pool[Math.floor(Math.random() * pool.length)],
+     valuePerYear: value,
+
+--- HUNK [op#2 hunk#2] session=11 line=468 ts=2026-05-13T17:38:51.033Z ---
+   };
+ }
+
+--- HUNK [op#2 hunk#3] session=11 line=468 ts=2026-05-13T17:38:51.033Z ---
+   if (t.scoutingInvestment === undefined) t.scoutingInvestment = defaultScoutingInvestmentForTier(t.tier);
+   if (t.travelPreferences === undefined) t.travelPreferences = defaultTravelPreferencesForTier(t.tier);
++  if (!Array.isArray(t.boardPromises)) t.boardPromises = seedBoardPromises(currentYear, t);
++  if (!Array.isArray(t.staffMembers)) t.staffMembers = [];
+
+--- HUNK [op#2 hunk#4] session=11 line=468 ts=2026-05-13T17:38:51.033Z ---
+   for (const slot of ALL_SLOTS) {
+     if (slot in existing) {
+       upgraded[slot] = existing[slot];
+     } else {
+       upgraded[slot] = makeFallback(t.tier, slot, t.cityPrestige ?? 0.5, currentYear);
+     }
++    if (upgraded[slot] && !upgraded[slot]?.industry) {
++      upgraded[slot] = { ...upgraded[slot]!, ...classifySponsor(upgraded[slot]!.sponsor) };
++    }
+   }
+   t.sponsorships = upgraded;
+ }
++
++function seedBoardPromises(currentYear: number, t: TycoonState): TycoonState['boardPromises'] {
++  return [
++    {
++      id: `cash-${currentYear}`,
++      year: currentYear,
++      type: 'cash',
++      label: 'Keep club cash positive',
++      target: 1,
++      progress: (t.cashOnHand ?? 0) >= 0 ? 1 : 0,
++      status: 'active',
++      confidenceDelta: 8,
++    },
++    {
++      id: `medical-${currentYear}`,
++      year: currentYear,
++      type: 'medical',
++      label: 'Maintain a credible recovery program',
++      target: 450_000,
++      progress: Math.min(1, (t.medicalBudget ?? 0) / 450_000),
++      status: 'active',
++      confidenceDelta: 5,
++    },
++    {
++      id: `scouting-${currentYear}`,
++      year: currentYear,
++      type: 'scouting',
++      label: 'Fund a real scouting department',
++      target: 250_000,
++      progress: Math.min(1, (t.scoutingInvestment ?? 0) / 250_000),
++      status: 'active',
++      confidenceDelta: 5,
++    },
++  ];
++}
+
+--- HUNK [op#3 hunk#0] session=11 line=473 ts=2026-05-13T17:38:55.470Z ---
+   const scale = 0.5 + cityPrestige * 0.9;
+   const pool = SPAIN_INITIAL_SPONSORS[tier]?.[slot] ?? ['Default Sponsor'];
+   const value = Math.round(floor * scale * 0.6);
++  const sponsor = pool[Math.floor(Math.random() * pool.length)];
+   return {
+-    sponsor: pool[Math.floor(Math.random() * pool.length)],
++    sponsor,
++    ...classifySponsor(sponsor),

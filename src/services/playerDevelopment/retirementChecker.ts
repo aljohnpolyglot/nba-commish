@@ -1,19 +1,3 @@
-/**
- * retirementChecker.ts
- *
- * Probabilistic retirement logic — called at season rollover (June 30).
- *
- * Philosophy (mirrors real NBA patterns):
- *  - Stars carry on into late 30s (OVR ≥ 80 at 38 is a LeBron edge case)
- *  - Fringe players retire sooner (OVR < 65 at 35+ → real retirement risk)
- *  - Age 43+ always retires — no exceptions
- *  - Deterministic: seeded by player internalId + year → same outcome on replay
- *
- * Returns:
- *  - `players` — updated array (some newly Retired)
- *  - `newRetirees` — list of players who just retired (for news/season preview)
- */
-
 import type { NBAPlayer } from '../../types';
 
 export interface RetireeRecord {
@@ -30,7 +14,6 @@ export interface RetireeRecord {
   isLegend: boolean; // ≥ 5 All-Star appearances
 }
 
-// ─── Deterministic RNG (seeded) ──────────────────────────────────────────────
 function seededRandom(seed: string): number {
   let h = 0;
   for (let i = 0; i < seed.length; i++) {
@@ -41,41 +24,11 @@ function seededRandom(seed: string): number {
   return ((h ^ (h >>> 16)) >>> 0) / 0xffffffff;
 }
 
-// ─── Scale helpers ────────────────────────────────────────────────────────────
-/**
- * Convert raw overallRating (custom weighted formula, ~50–85 range) to an
- * approximate 2K-display equivalent so thresholds are human-readable.
- *
- * Mirrors the base of convertTo2KRating (helpers.ts): 0.88 * raw + 31.
- * We skip the hgt/tp bonuses here — those are cosmetic display bumps, not
- * relevant to how good a player actually is for retirement purposes.
- *
- * Examples:
- *   raw 80 (LeBron at 38) → 2K-equiv 101 → capped 99
- *   raw 76 (Curry at 37)  → 2K-equiv 98
- *   raw 70 (All-Star)     → 2K-equiv 93
- *   raw 64 (solid starter)→ 2K-equiv 87
- *   raw 57 (rotation)     → 2K-equiv 81
- *   raw 50 (end of bench) → 2K-equiv 75
- */
 function toApprox2K(rawOvr: number): number {
   return Math.min(99, Math.round(0.88 * rawOvr + 31));
 }
 
-// ─── Retire probability ───────────────────────────────────────────────────────
-/**
- * Returns the probability [0, 1] that a player retires this offseason.
- *
- * All thresholds use RAW BBGM overallRating (typically 30-85 range):
- *   - 75+ raw = superstar (LeBron, Curry)
- *   - 68-74 = All-Star / star starter
- *   - 60-67 = solid starter
- *   - 50-59 = rotation / bench
- *   - <50   = end of bench / out of league
- *
- * @public — exported so PlayerBioMoraleTab can show a retirement risk indicator.
- */
-export function retireProb(age: number, rawOvr: number, allStarApps = 0, recentAllStar = false, lastSeasonGP = 0): number {
+export function retireProb(age: number, rawOvr: number, allStarApps = 0, recentAllStar = false, lastSeasonGP = 0, lastSeasonPPG = 0): number {
   if (age < 34) {
     return rawOvr < 45 ? 0.12 : 0;
   }
@@ -84,6 +37,15 @@ export function retireProb(age: number, rawOvr: number, allStarApps = 0, recentA
 
   // ── Active All-Stars never retire — if they're still earning selections, they keep going.
   if (recentAllStar) return 0;
+
+  // Productive scorers should not randomly vanish after a 15-20 PPG season.
+  // Klay-type late-career starters can decline physically while still being
+  // valuable enough that retirement should be rare, not a coin flip.
+  if (lastSeasonGP >= 45 && lastSeasonPPG >= 20 && age <= 42) return 0;
+  const scorerMult = lastSeasonGP >= 45 && lastSeasonPPG >= 15
+    ? (age <= 40 ? 0.08 : age <= 42 ? 0.15 : 0.35)
+    : 1.0;
+  const dampen = (prob: number) => Math.min(1.0, prob * scorerMult);
 
   // ── "Still productive" immunity ──────────────────────────────────
   // Played 50+ games last season at solid-starter+ level (BBGM 60+ ≈ K2 84+).
@@ -111,49 +73,48 @@ export function retireProb(age: number, rawOvr: number, allStarApps = 0, recentA
   // (41yo, 19.2 ppg, K2 88) — should not even consider retirement.
   if (rawOvr >= 65) {
     if (age <= 38) return 0;
-    if (age <= 39) return 0.01 * legendMult;
-    if (age <= 40) return 0.02 * legendMult;
-    if (age <= 41) return 0.04 * legendMult;
-    if (age <= 42) return 0.07 * legendMult;
-    if (age <= 43) return 0.15 * legendMult;
-    return 0.30 * legendMult;                        // age 44
+    if (age <= 39) return dampen(0.01 * legendMult);
+    if (age <= 40) return dampen(0.02 * legendMult);
+    if (age <= 41) return dampen(0.04 * legendMult);
+    if (age <= 42) return dampen(0.07 * legendMult);
+    if (age <= 43) return dampen(0.15 * legendMult);
+    return dampen(0.30 * legendMult);                        // age 44
   }
 
   // ── Solid starter (BBGM 55-64) ──────────────────────────────────────────
   if (rawOvr >= 55) {
-    if (age <= 34) return 0.05 * legendMult;
-    if (age <= 35) return 0.10 * legendMult;
-    if (age <= 36) return 0.15 * legendMult;
-    if (age <= 37) return 0.25 * legendMult;
-    if (age <= 38) return 0.35 * legendMult;
-    if (age <= 39) return 0.50 * legendMult;
-    if (age <= 40) return 0.60 * legendMult;
-    if (age <= 41) return 0.70 * legendMult;
-    return 0.80 * legendMult;
+    if (age <= 34) return dampen(0.05 * legendMult);
+    if (age <= 35) return dampen(0.10 * legendMult);
+    if (age <= 36) return dampen(0.15 * legendMult);
+    if (age <= 37) return dampen(0.25 * legendMult);
+    if (age <= 38) return dampen(0.35 * legendMult);
+    if (age <= 39) return dampen(0.50 * legendMult);
+    if (age <= 40) return dampen(0.60 * legendMult);
+    if (age <= 41) return dampen(0.70 * legendMult);
+    return dampen(0.80 * legendMult);
   }
 
   // ── Rotation / bench (BBGM 45-54) ───────────────────────────────────────
   if (rawOvr >= 45) {
-    if (age <= 34) return 0.15 * legendMult;
-    if (age <= 35) return 0.25 * legendMult;
-    if (age <= 36) return 0.35 * legendMult;
-    if (age <= 37) return 0.50 * legendMult;
-    if (age <= 38) return 0.60 * legendMult;
-    if (age <= 39) return 0.75 * legendMult;
-    if (age <= 40) return 0.85 * legendMult;
-    return Math.min(1.0, 0.95 * legendMult);
+    if (age <= 34) return dampen(0.15 * legendMult);
+    if (age <= 35) return dampen(0.25 * legendMult);
+    if (age <= 36) return dampen(0.35 * legendMult);
+    if (age <= 37) return dampen(0.50 * legendMult);
+    if (age <= 38) return dampen(0.60 * legendMult);
+    if (age <= 39) return dampen(0.75 * legendMult);
+    if (age <= 40) return dampen(0.85 * legendMult);
+    return dampen(Math.min(1.0, 0.95 * legendMult));
   }
 
   // ── Washed (BBGM < 45) ──────────────────────────────────────────────────
-  if (age <= 34) return 0.30 * legendMult;
-  if (age <= 35) return 0.40 * legendMult;
-  if (age <= 36) return 0.60 * legendMult;
-  if (age <= 37) return 0.70 * legendMult;
-  if (age <= 38) return 0.80 * legendMult;
-  if (age <= 39) return 0.90 * legendMult;
-  return Math.min(1.0, 0.95 * legendMult);
+  if (age <= 34) return dampen(0.30 * legendMult);
+  if (age <= 35) return dampen(0.40 * legendMult);
+  if (age <= 36) return dampen(0.60 * legendMult);
+  if (age <= 37) return dampen(0.70 * legendMult);
+  if (age <= 38) return dampen(0.80 * legendMult);
+  if (age <= 39) return dampen(0.90 * legendMult);
+  return dampen(Math.min(1.0, 0.95 * legendMult));
 }
-// ─── Career stats snapshot ────────────────────────────────────────────────────
 function computeCareerTotals(player: NBAPlayer): { gp: number; pts: number; reb: number; ast: number } {
   const stats = player.stats ?? [];
   let gp = 0, pts = 0, reb = 0, ast = 0;
@@ -421,11 +382,17 @@ export function runRetirementChecks(
     const lastSeasonGP = (p.stats ?? [])
       .filter((s: any) => !s.playoffs && s.season === year)
       .reduce((sum: number, s: any) => sum + (s.gp ?? 0), 0);
+    const lastSeasonPts = (p.stats ?? [])
+      .filter((s: any) => !s.playoffs && s.season === year)
+      .reduce((sum: number, s: any) => sum + (s.pts ?? 0), 0);
+    const lastSeasonPPG = lastSeasonGP > 0 ? lastSeasonPts / lastSeasonGP : 0;
+    const productiveScorer = lastSeasonGP >= 45 && lastSeasonPPG >= 15;
 
     // Farewell tour players retire guaranteed — they already had their goodbye season.
-    // Exceptions: OVR recovered to elite (≥75), OR they're still making All-Star games.
+    // Exceptions: OVR recovered to elite (≥75), still making All-Star games,
+    // or still scoring like a real rotation/starter piece.
     // A player who made the All-Star game last season isn't done — cancel the flag and loop.
-    if (isFarewell && ovr < 75 && !recentStar) {
+    if (isFarewell && ovr < 75 && !recentStar && !productiveScorer) {
       // Guaranteed retirement — no roll needed
       console.log(
         `[Retirement] ${p.name} (age ${age}, OVR ${ovr}) — FAREWELL TOUR → RETIRED`
@@ -433,9 +400,9 @@ export function runRetirementChecks(
     } else {
       // If farewell-flagged but still making All-Stars, clear the flag so it
       // doesn't re-fire next rollover as a guaranteed retirement.
-      const clearFarewell = isFarewell && recentStar;
+      const clearFarewell = isFarewell && (recentStar || productiveScorer);
 
-      const prob = retireProb(age, ovr, allStarCount, recentStar, lastSeasonGP);
+      const prob = retireProb(age, ovr, allStarCount, recentStar, lastSeasonGP, lastSeasonPPG);
       if (prob <= 0) {
         return clearFarewell ? { ...p, farewellTour: undefined } as any : p;
       }

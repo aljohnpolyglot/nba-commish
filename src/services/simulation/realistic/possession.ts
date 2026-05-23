@@ -19,7 +19,8 @@ export function runPossession(offense: OnCourt, defense: OnCourt): PossessionEnd
 
 function pickShooter(offense: OnCourt): { player: PlayerComposite; index: number } {
   // Power-law on usage so stars (Doncic 38% USG, 33.5 PPG) dominate touches.
-  const weights = offense.composites.map(c => Math.pow(c.usage, 2.7));
+  const usageExp = offense.isEuroClubGame ? 2.05 : 2.7;
+  const weights = offense.composites.map(c => Math.pow(c.usage, usageExp));
   const total = weights.reduce((s, w) => s + w, 0);
   let roll = Math.random() * total;
   for (let i = 0; i < offense.composites.length; i++) {
@@ -33,7 +34,8 @@ function pickAssister(offense: OnCourt, shooterIndex: number): PlayerComposite |
   const candidates = offense.composites.filter((_, i) => i !== shooterIndex);
   // Strong power-law so Jokic / Doncic actually hit 10+ APG. Combined with the
   // elite-skewed composite (^1.4 in compositeMap) the top playmaker dominates.
-  const weights = candidates.map(c => Math.pow(c.passing, 3.0));
+  const passExp = offense.isEuroClubGame ? 2.85 : 4.15;
+  const weights = candidates.map(c => Math.pow(c.passing, passExp));
   const total = weights.reduce((s, w) => s + w, 0);
   if (total <= 0) return undefined;
   let roll = Math.random() * total;
@@ -53,7 +55,9 @@ function resolveShotAttempt(offense: OnCourt, defense: OnCourt): PossessionEnd {
   let assisterId: string | undefined;
   if (result.made) {
     const teamPass = offense.composites.reduce((s, c) => s + c.passing, 0) / offense.composites.length;
-    const pAssist = 0.50 + 0.35 * teamPass; // 0.50–0.85 → ~0.65 league average
+    const pAssist = offense.isEuroClubGame
+      ? 0.44 + 0.22 * teamPass
+      : 0.54 + 0.38 * teamPass; // 0.54–0.92 → nudges elite creators back toward NBA assist volume
     if (Math.random() < pAssist) {
       const assister = pickAssister(offense, index);
       if (assister) assisterId = assister.id;

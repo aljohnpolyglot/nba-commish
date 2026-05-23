@@ -5,18 +5,19 @@
  * Nothing here runs during simulation. Photos load on scroll like real Twitter.
  */
 
-import type { SocialPost, NBATeam } from '../../types';
+import type { SocialPost } from '../../types';
 import { fetchGamePlayerPhotos, type ImagnPhoto } from '../ImagnPhotoService';
 import { SettingsManager } from '../SettingsManager';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface GamePhotoInfo {
-    homeTeam: NBATeam;
-    awayTeam: NBATeam;
-    topPlayers: { name: string; gameScore: number }[];
-    date: string;
-}
+import {
+  extractPlayerName,
+  type GamePhotoInfo,
+  isAllowedSocialPhoto,
+  isSubjectOfCaption,
+  makeGameKey,
+  needsCanvasEditor,
+  pickBestPhoto,
+} from './photoEnricherHelpers';
+export { needsCanvasEditor, type GamePhotoInfo } from './photoEnricherHelpers';
 
 // ─── Module-level cache (survives across renders, cleared on page reload) ─────
 
@@ -28,33 +29,6 @@ const pendingFetches = new Map<string, Promise<Map<string, ImagnPhoto[]>>>();
 
 /** postId → resolved mediaUrl  (prevents re-enriching same post) */
 const resolvedPosts = new Map<string, string | null>();
-
-// ─── Photo allowlist — hc_ and nba_ templates get Imagn action photos ────────
-const isAllowed = (post: SocialPost): boolean => {
-    const handle = (post.handle || '').toLowerCase().replace('@', '').trim();
-    // StatMuse is shielded — they have their own photos
-    if (handle.includes('statmuse')) return false;
-    const templateId = (post.data?.templateId || '') as string;
-    // hc_ (Hoop Central) gets raw Imagn photos
-    // nba_ (NBA Official) gets Imagn photos fed into ImagnPhotoEditor
-    return templateId.startsWith('hc_') || templateId.startsWith('nba_');
-};
-
-/**
- * Returns true if this post should render through the canvas ImagnPhotoEditor
- * (score bar overlay). Only @NBA posts get the edited canvas version.
- * Hoop Central and others get the raw Imagn photo.
- */
-export function needsCanvasEditor(post: SocialPost): boolean {
-    const templateId = (post.data?.templateId || '') as string;
-    return templateId.startsWith('nba_');
-}
-
-// ─── Game key ─────────────────────────────────────────────────────────────────
-
-function makeGameKey(home: NBATeam, away: NBATeam, date: string): string {
-    return `${home.abbrev}-${away.abbrev}-${date.slice(0, 10)}`;
-}
 
 // ─── Imagn fetch (cached) ─────────────────────────────────────────────────────
 
@@ -123,146 +97,6 @@ async function fetchForGame(info: GamePhotoInfo): Promise<Map<string, ImagnPhoto
     return promise;
 }
 
-// ─── Player name extraction ───────────────────────────────────────────────────
-
-function extractPlayerName(post: SocialPost, topPlayers?: { name: string; gameScore: number }[]): string | null {
-    // 1. Explicit stat card data (most reliable)
-    if (post.data?.playerName) return post.data.playerName;
-
-    const content = post.content || '';
-
-    // 2. Cross-reference against topPlayers who actually played (BEST method)
-    //    Avoids matching team names like "Washington Wizards"
-    if (topPlayers && topPlayers.length > 0) {
-        // Sort by gameScore desc so we match stars first
-        const sorted = [...topPlayers].sort((a, b) => b.gameScore - a.gameScore);
-        for (const p of sorted) {
-            const lastName = p.name.split(/\s+/).pop()?.toLowerCase() || '';
-            // Check full name or last name appears in content
-            if (content.toLowerCase().includes(p.name.toLowerCase()) ||
-                (lastName.length > 3 && content.toLowerCase().includes(lastName))) {
-                console.log(`[PhotoEnricher] Name matched via topPlayers: "${p.name}" in post`);
-                return p.name;
-            }
-        }
-    }
-
-    // 3. "FirstName LastName: NN PTS" — explicit stat line format
-    const statLineMatch = content.match(/([A-Z][a-z]+(?:[\s'-][A-Z][a-zA-Z'-]+)+):\s*\d+\s*PTS/m);
-    if (statLineMatch) return statLineMatch[1];
-
-    // 4. ALL CAPS name — highlight accounts like @bball_forever
-    const capsMatch = content.match(/\b([A-Z]{2,}(?:\s+[A-Z]{2,})+)\b/);
-    if (capsMatch) {
-        return capsMatch[1]
-            .split(/\s+/)
-            .map((w: string) => w[0] + w.slice(1).toLowerCase())
-            .join(' ');
-    }
-
-    // NOTE: Removed general "first capitalized words" fallback — it was matching team names.
-    return null;
-}
-
-// ─── Photo selection (prefer action shots) ────────────────────────────────────
-
-function pickBestPhoto(photos: ImagnPhoto[], hint?: string): ImagnPhoto | null {
-    if (!photos?.length) return null;
-    const cap = (p: ImagnPhoto) => (p.captionClean || p.caption || '').toLowerCase();
-    const h = (hint || '').toLowerCase();
-
-    // Game winner / buzzer beater → clutch moment shots
-    if (h.includes('buzzer') || h.includes('walkoff') || h.includes('game_winner') || h.includes('close_game')) {
-        return photos.find(p => ['buzzer', 'game-winner', 'game winner', 'clutch'].some(w => cap(p).includes(w)))
-            || photos.find(p => ['shoots', 'jumper', 'three point basket'].some(w => cap(p).includes(w)))
-            || photos[0];
-    }
-
-    // Dunk / highlight / 50pt game → action priority
-    if (h.includes('fifty') || h.includes('dunk') || h.includes('feat') || h.includes('perfect')) {
-        return photos.find(p => ['dunk', 'alley-oop', 'slams', 'hangs on the rim'].some(w => cap(p).includes(w)))
-            || photos.find(p => ['drives', 'layup', 'scores', 'basket'].some(w => cap(p).includes(w)))
-            || photos[0];
-    }
-
-    // Triple double / 5x5 → reaction/celebration shot
-    if (h.includes('triple') || h.includes('5x5') || h.includes('double')) {
-        return photos.find(p => ['reacts', 'celebrates', 'points', 'pumps'].some(w => cap(p).includes(w)))
-            || photos.find(p => ['shoots', 'jumper', 'passes'].some(w => cap(p).includes(w)))
-            || photos[0];
-    }
-
-    // Injury → sideline preferred
-    if (h.includes('injury') || h.includes('injur')) {
-        return photos.find(p => ['sideline', 'bench', 'walks', 'limps', 'trainer'].some(w => cap(p).includes(w)))
-            || photos[0];
-    }
-
-    // OT thriller / blowout / general recap → best action
-    return photos.find(p => ['dunk', 'alley-oop', 'three point basket', 'buzzer'].some(w => cap(p).includes(w)))
-        || photos.find(p => ['shoots', 'layup', 'drives', 'basket'].some(w => cap(p).includes(w)))
-        || photos[0];
-}
-
-// ─── Caption subject check ────────────────────────────────────────────────────
-
-/**
- * Returns true if playerName is the SUBJECT of the caption.
- * Imagn captions always follow: "[Team] [Position] [Subject] (number) [verb]..."
- * The subject is simply the FIRST "Firstname Lastname (number)" match.
- */
-function isSubjectOfCaption(playerName: string, caption: string): boolean {
-    if (!caption || !playerName) return false;
-
-    // Find the very first "Firstname Lastname (number)" pattern in the caption.
-    // BUG FIX: was [a-z]+ which stopped at embedded uppercase — "DeMar" matched as "Mar",
-    // "LeBron" as "Bron". Changed first token to [a-zA-Z'-]+ to handle camelCase names.
-    const firstNameMatch = caption.match(/([A-Z][a-zA-Z'-]+(?:[\s'-][A-Z][a-zA-Z'-]+)+)\s*\(\d+\)/);
-    if (!firstNameMatch) return false;
-
-    const firstSubject = firstNameMatch[1].toLowerCase();
-    const lastName = playerName.toLowerCase().split(/\s+/).pop() || '';
-
-    const isSubject = firstSubject.includes(lastName) ||
-        playerName.toLowerCase().includes(firstSubject.split(/\s+/).pop() || '');
-
-    if (!isSubject) {
-        console.log(`[PhotoEnricher] SKIP "${playerName}" — subject is "${firstNameMatch[1]}" in: "${caption.slice(0, 80)}"`);
-        return false;
-    }
-
-    // Extra check: if player IS the subject but doing a defensive action,
-    // mark as NOT subject for offensive action photo purposes.
-    const lower = caption.toLowerCase();
-    const playerIndex = (firstNameMatch.index || 0) + firstNameMatch[0].length;
-    const afterPlayerText = lower.slice(playerIndex, playerIndex + 150);
-
-    // OFFENSE WINS: if the player is clearly on offense, keep the photo even if a
-    // defensive word appears later in the caption (e.g. "dribbles as X defends him").
-    const OFFENSIVE_VERBS = [
-        'dribbles', 'shoots', 'drives', 'dunks', 'scores',
-        'goes to the basket', 'goes to the hoop', 'layup',
-        'makes a', 'three point', 'jumper', 'pull-up',
-    ];
-    if (OFFENSIVE_VERBS.some(v => afterPlayerText.includes(v))) return true;
-
-    // BUG FIX: removed "defended by" — that phrase means the player IS the ball-handler
-    // (on offense). Only true defensive actions are excluded.
-    const DEFENSIVE_VERBS = [
-        'contests', 'contesting',
-        'defends', 'defending',
-        'looks on', 'watch',
-        'stands', 'reacts to',
-    ];
-    const isDefensive = DEFENSIVE_VERBS.some(v => afterPlayerText.includes(v));
-    if (isDefensive) {
-        console.log(`[PhotoEnricher] SKIP "${playerName}" — doing defensive action in: "${caption.slice(0, 80)}"`);
-        return false;
-    }
-
-    return true;
-}
-
 // ─── Main enrichment function ─────────────────────────────────────────────────
 
 /**
@@ -293,7 +127,7 @@ export async function enrichPostWithPhoto(
     }
 
     // Strip mediaUrl from non-nba_ template posts (keeps feed clean)
-    if (post.mediaUrl && !isAllowed(post)) {
+    if (post.mediaUrl && !isAllowedSocialPhoto(post)) {
         const handle = (post.handle || '').toLowerCase().replace('@', '').trim();
         if (!handle.includes('statmuse')) {
             resolvedPosts.set(post.id, null);
@@ -302,7 +136,7 @@ export async function enrichPostWithPhoto(
     }
 
     // Only nba_ templates (and StatMuse shield) get Imagn photos
-    if (!isAllowed(post)) {
+    if (!isAllowedSocialPhoto(post)) {
         const tplId = (post.data?.templateId || '') as string;
         if (tplId.startsWith('nba_')) {
             console.warn(`[PhotoEnricher] @NBA post "${tplId}" blocked by isAllowed — templateId check failed! handle="${post.handle}" post.data=`, post.data);

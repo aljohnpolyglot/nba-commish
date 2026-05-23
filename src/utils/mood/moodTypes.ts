@@ -25,5 +25,6 @@ export interface MoodComponents {
   roleStability: number;  // −1.5 to +0.5
   marketSize: number;     // −2 to +4 (High+2/Mid+1/Low+0; FAME doubles; DIVA/MERC extra)
   familyTies: number;     // 0 to +3 (+1 per relative on the same team, cap 3)
+  travelComfort: number;  // −1.5 to +1.5 (road standards and general player comfort)
   noise: number;          // −1 to +1 (seeded)
 }

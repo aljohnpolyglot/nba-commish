@@ -1,0 +1,26 @@
+# Codex hunks NOT found on current disk for src/components/central/view/TeamOffice/pages/TradingBlock.tsx
+# 4 hunks unapplied. Total ops: 3
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=8 line=286 ts=2026-05-10T20:55:57.467Z ---
+ import { PlayerBioView } from '../../PlayerBioView';
++import { isNoDraftLeague } from '../../../../../services/offseason/offseasonState';
+
+--- HUNK [op#0 hunk#1] session=8 line=286 ts=2026-05-10T20:55:57.467Z ---
+   const { state, dispatchAction } = useGame();
++  if (state.leagueStats?.tradesAllowed === false) return null;
+   const { players, teams, draftPicks } = state;
++  const noDraft = isNoDraftLeague(state.leagueStats as any);
+
+--- HUNK [op#1 hunk#1] session=8 line=301 ts=2026-05-10T20:56:17.645Z ---
+-              {editingColumn === 'block' && teamMode === 'contend' && teamPicks.length > 0 && (
++              {editingColumn === 'block' && !noDraft && teamMode === 'contend' && teamPicks.length > 0 && (
+
+--- HUNK [op#2 hunk#0] session=8 line=317 ts=2026-05-10T20:56:35.178Z ---
+   if (viewingPlayer) {
+     return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
+   }
++  if (state.leagueStats?.tradesAllowed === false) return null;
+ 
+   return (

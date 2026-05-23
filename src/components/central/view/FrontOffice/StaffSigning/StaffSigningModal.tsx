@@ -6,6 +6,7 @@ import { getCountryFlag } from '../../../../../utils/countryFlags';
 import { getNameData } from '../../../../../data/nameDataFetcher';
 import { FacilityKpi } from '../shared/FacilityKpi';
 import { SliderRow } from '../shared/SliderRow';
+import { getStaffMarketSalary, type StaffMarket } from '../../../../../services/tycoon/economyScale';
 import {
   buildDisplayAttributes,
   buildStaffAttrs,
@@ -25,10 +26,12 @@ export type StaffCandidate = {
   years: number;
   face: any;
   staffImageId?: number;
+  playerPortraitUrl?: string;
   attributes: Array<[string, number]>;
 };
 
 type WizardStep = 'candidates' | 'offer' | 'review';
+export type StaffSigningMode = 'hire' | 'extension';
 
 /** Focus tag labels for the candidate-list summary line. Derived from the
  *  shared ROLE_DISPLAY_KEYS so the strings here always match what the card
@@ -81,14 +84,17 @@ export const StaffSigningModal: React.FC<{
   roleFocus: string;
   onClose: () => void;
   onSign: (hire: any) => void;
-  renderPortrait: (face: any, initials: string, size?: string, staffImageId?: number) => React.ReactNode;
+  renderPortrait: (face: any, initials: string, size?: string, staffImageId?: number, name?: string, portraitUrl?: string) => React.ReactNode;
   /** Currency for salary display. NBA mode passes 'USD', Euro passes 'EUR'. */
   currency?: string;
+  mode?: StaffSigningMode;
+  market?: StaffMarket;
   /** Country pool the emergency fallback uses when the real FA list is thin.
    *  NBA mode passes ['USA']; Euro mode keeps the multi-country mix. Without
    *  this, a Mavs GM saw Edgar Hernández-Sonseca pop up as a Dev Coach. */
   emergencyCountries?: string[];
-}> = ({ selectedRole, pool, onClose, onSign, renderPortrait, currency = 'EUR', emergencyCountries }) => {
+}> = ({ selectedRole, pool, onClose, onSign, renderPortrait, currency = 'EUR', mode = 'hire', market = 'nba', emergencyCountries }) => {
+  const isExtension = mode === 'extension';
   const candidatePool = useMemo(() => {
     if (pool.length >= 3) return pool;
     const nameData = getNameData() as any;
@@ -114,16 +120,20 @@ export const StaffSigningModal: React.FC<{
         name: fullName,
         nationality: country,
         flag: getCountryFlag(country),
-        salary: 180_000 + i * 40_000,
+        salary: getStaffMarketSalary(undefined, selectedRole, rating, {
+          market,
+          yearsExperience: 2 + i * 2,
+          yearsWithTeam: 0,
+        }),
         rating,
-        years: 1,
+        years: 2 + i * 2,
         face: undefined,
         staffImageId: deterministicStaffImageId(fullName),
         attributes: buildDisplayAttributes(selectedRole, seed),
       });
     }
     return [...pool, ...emergency];
-  }, [pool, selectedRole]);
+  }, [emergencyCountries, market, pool, selectedRole]);
   const [step, setStep] = useState<WizardStep>('candidates');
   const [selectedId, setSelectedId] = useState<string>(candidatePool[0]?.id ?? '');
   const [sortKey, setSortKey] = useState<'overall' | 'salary-asc' | 'salary-desc' | 'years'>('overall');
@@ -165,8 +175,12 @@ export const StaffSigningModal: React.FC<{
         <div className="flex items-center justify-between border-b border-slate-800 p-5">
           <button onClick={onClose} className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-white"><ArrowLeft size={16} /> Back to Staff</button>
           <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.4em] text-violet-300">New Staff Signing</div>
-            <div className="text-xs text-slate-400">Negotiate and secure the right person for the role</div>
+            <div className="text-[10px] font-black uppercase tracking-[0.4em] text-violet-300">
+              {isExtension ? 'Staff Contract Extension' : 'New Staff Signing'}
+            </div>
+            <div className="text-xs text-slate-400">
+              {isExtension ? 'Negotiate terms to keep this staff member in place' : 'Negotiate and secure the right person for the role'}
+            </div>
           </div>
           <button onClick={onClose} className="w-10 h-10 rounded-xl border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><X size={18} /></button>
         </div>
@@ -176,7 +190,7 @@ export const StaffSigningModal: React.FC<{
           <div className="h-px w-8 bg-slate-800" />
           <StepperPill index={2} label="Candidates" status={step === 'candidates' ? 'current' : 'done'} />
           <div className="h-px w-8 bg-slate-800" />
-          <StepperPill index={3} label="Offer"      status={step === 'offer' ? 'current' : step === 'review' ? 'done' : 'todo'} />
+          <StepperPill index={3} label={isExtension ? 'Terms' : 'Offer'} status={step === 'offer' ? 'current' : step === 'review' ? 'done' : 'todo'} />
           <div className="h-px w-8 bg-slate-800" />
           <StepperPill index={4} label="Review"     status={step === 'review' ? 'current' : 'todo'} />
         </div>
@@ -228,7 +242,7 @@ export const StaffSigningModal: React.FC<{
                       active ? 'border-amber-400/60 bg-amber-400/10 ring-1 ring-amber-400/40' : 'border-slate-800 bg-slate-900/60 hover:border-slate-600'
                     }`}
                   >
-                    {renderPortrait(c.face, c.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-16 h-20', c.staffImageId)}
+                    {renderPortrait(c.face, c.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-16 h-20', c.staffImageId, c.name, c.playerPortraitUrl)}
                     <div className="flex-1 min-w-0">
                       <div className="text-base font-black text-white truncate">{c.name}</div>
                       <div className="flex items-center gap-2 mt-0.5">
@@ -257,7 +271,7 @@ export const StaffSigningModal: React.FC<{
                 onClick={() => setStep('offer')}
                 className="h-12 px-6 rounded-xl bg-amber-400 text-slate-950 font-black uppercase tracking-widest text-xs hover:bg-amber-300"
               >
-                Negotiate Offer →
+                {isExtension ? 'Negotiate Extension' : 'Negotiate Offer'} →
               </button>
             </div>
           </div>
@@ -268,7 +282,7 @@ export const StaffSigningModal: React.FC<{
             <main className="p-6">
               <div className="grid lg:grid-cols-[220px_1fr] gap-6">
                 <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 flex justify-center">
-                  {renderPortrait(candidate.face, candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-44 h-56', candidate.staffImageId)}
+                  {renderPortrait(candidate.face, candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-44 h-56', candidate.staffImageId, candidate.name, candidate.playerPortraitUrl)}
                 </div>
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-[0.35em] text-violet-300">{candidate.role}</div>
@@ -301,7 +315,9 @@ export const StaffSigningModal: React.FC<{
             </main>
             <aside className="border-l border-slate-800 p-6 space-y-5">
               <div>
-                <div className="text-xs font-black uppercase tracking-widest text-violet-300">Negotiation Package</div>
+                <div className="text-xs font-black uppercase tracking-widest text-violet-300">
+                  {isExtension ? 'Extension Package' : 'Negotiation Package'}
+                </div>
                 <p className="text-sm text-slate-400 mt-2">Tune the offer. Strength compares against the current ask.</p>
               </div>
               <SliderRow label="Annual Salary" value={salary} min={Math.max(80_000, Math.round(candidate.salary * 0.65 / 5_000) * 5_000)} max={Math.round(candidate.salary * 1.65 / 5_000) * 5_000} step={5_000} onChange={setSalary} formatter={(v) => formatCurrencyWithCode(v, currency, false)} />
@@ -348,7 +364,7 @@ export const StaffSigningModal: React.FC<{
                       }}
                       className="w-full h-14 rounded-xl border border-violet-400/60 bg-violet-400/15 text-violet-200 font-black uppercase tracking-widest hover:bg-violet-400/25"
                     >
-                      Submit Offer
+                      {isExtension ? 'Submit Terms' : 'Submit Offer'}
                     </button>
                   </>
                 );
@@ -365,10 +381,12 @@ export const StaffSigningModal: React.FC<{
               <div className={`text-[10px] font-black uppercase tracking-[0.4em] mb-4 ${
                 decision.accepted ? 'text-emerald-300' : 'text-rose-300'
               }`}>
-                {decision.accepted ? 'Offer Accepted' : 'Offer Rejected'}
+                {decision.accepted
+                  ? (isExtension ? 'Extension Accepted' : 'Offer Accepted')
+                  : (isExtension ? 'Extension Rejected' : 'Offer Rejected')}
               </div>
               <div className="flex justify-center mb-4">
-                {renderPortrait(candidate.face, candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-28 h-36', candidate.staffImageId)}
+                {renderPortrait(candidate.face, candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-28 h-36', candidate.staffImageId, candidate.name, candidate.playerPortraitUrl)}
               </div>
               <h3 className="text-3xl font-black tracking-tight mb-3">{candidate.name}</h3>
               <p className="text-sm text-slate-300 leading-relaxed mb-5 max-w-md mx-auto">
@@ -389,7 +407,7 @@ export const StaffSigningModal: React.FC<{
                   onClick={() => { setDecision(null); setStep('offer'); }}
                   className="flex-1 h-12 rounded-xl bg-slate-800 text-slate-200 font-black uppercase tracking-widest text-xs hover:bg-slate-700"
                 >
-                  {decision.accepted ? 'Adjust' : 'Adjust Offer'}
+                  {decision.accepted ? 'Adjust' : isExtension ? 'Adjust Terms' : 'Adjust Offer'}
                 </button>
                 {decision.accepted && (
                   <button
@@ -399,7 +417,7 @@ export const StaffSigningModal: React.FC<{
                     }}
                     className="flex-1 h-12 rounded-xl bg-emerald-400 text-slate-950 font-black uppercase tracking-widest text-xs hover:bg-emerald-300"
                   >
-                    Finalize Hire
+                    {isExtension ? 'Finalize Extension' : 'Finalize Hire'}
                   </button>
                 )}
               </div>

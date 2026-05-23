@@ -1,6 +1,23 @@
 import type { NBAGMPlayer, NBAPlayer as Player, DraftPick, NBATeam as Team, TransactionDto } from '../types';
 import { convertTo2KRating } from './helpers';
 import { activeClubDebuffs } from '../services/simulation/StatGenerator/helpers';
+import {
+    calculateOverallFromRating,
+    getDisplayAge,
+    getDisplayOverall,
+    getDisplayPotential,
+    estimatePotentialBbgm,
+    pickPlayerRating,
+} from '../store/playerRatingStore';
+
+export {
+    calculateOverallFromRating,
+    getDisplayAge,
+    getDisplayOverall,
+    getDisplayPotential,
+    estimatePotentialBbgm,
+    pickPlayerRating,
+};
 
 const STRENGTH_DEBUFF_AMOUNTS = { heavy: 5, moderate: 3, mild: 1 } as const;
 
@@ -20,121 +37,10 @@ export const calculatePlayerOverallForYear = (player: NBAGMPlayer, year: number)
     return calculateOverallFromRating(yearRating);
 };
 
-const calculateOverallFromRating = (rating: any): number => {
-    if (!rating) return 50;
-    const { hgt, stre, spd, jmp, endu, ins, dnk, ft, fg, tp, oiq, diq, drb, pss, reb } = rating;
-
-    // SCORING FIX: Take the average of the TOP 3 scoring stats + the average of all 5.
-    // This rewards players for being ELITE at one thing (like Shai's midrange or Giannis's dunks)
-    const scoringStats = [ins, dnk, ft, fg, tp].sort((a, b) => b - a);
-    const topScoring = (scoringStats[0] + scoringStats[1] + scoringStats[2]) / 3;
-    const avgScoring = (ins + dnk + ft + fg + tp) / 5;
-    const scoring = (topScoring * 0.7) + (avgScoring * 0.3);
-
-    // PHYSICALS: Height weight is good, but superstars usually have high SPD/ENDU
-    const physicals = (hgt * 1.5 + stre + spd * 1.2 + jmp + endu * 1.3) / 6;
-
-    // PLAYMAKING: Star power comes from IQ (oiq)
-    const playmaking = (drb * 0.9 + pss * 0.9 + oiq * 1.2) / 3;
-
-    // DEFENSE: Reward interior/perimeter specialists
-    const defense = (diq * 1.2 + reb * 0.9 + hgt * 0.9) / 3; 
-
-    let rawOvr = (scoring * 0.35) + (playmaking * 0.25) + (defense * 0.20) + (physicals * 0.20);
-
-    // THE SUPERSTAR BOOST: If a player is elite (rawOvr > 80), push them higher
-    // This is how 2K gets those 94-98 ratings.
-    if (rawOvr > 80) {
-        rawOvr = 80 + (rawOvr - 80) * 1.2;
-    } else if (rawOvr < 60) {
-        rawOvr = rawOvr * 0.95; // Keeps role players in the 60s-70s
-    }
-
-    return Math.max(25, Math.min(99, Math.round(rawOvr)));
-}
-
 export const calculatePlayerOverall = (player: NBAGMPlayer): number => {
     if (!player || !player.ratings || player.ratings.length === 0) return 50;
     const latestRating = player.ratings[player.ratings.length - 1];
     return calculateOverallFromRating(latestRating);
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CANONICAL DISPLAY RATINGS — single source of truth
-// ─────────────────────────────────────────────────────────────────────────────
-// Every view (NBA Central, Player Ratings, Team Office, modals, etc.) should
-// import from here instead of recomputing inline. Matches PlayerRatingsView's
-// formula exactly: live `player.overallRating` + current-season rating for
-// height/three-point shape, BBGM potEstimator for potential with age.
-
-/**
- * Resolve the rating row for a given season. Falls back to the most recent
- * entry when the season isn't tracked (e.g. retired players, historical sims).
- */
-const pickRating = (player: any, season?: number): any => {
-    const rs = player?.ratings;
-    if (!rs || rs.length === 0) return null;
-    if (season != null) {
-        const found = rs.find((r: any) => r.season === season);
-        if (found) return found;
-    }
-    return rs[rs.length - 1];
-};
-
-/**
- * Compute the age field the way every view does it:
- *   currentYear - born.year, falling back to player.age, then a safe default.
- */
-export const getDisplayAge = (player: any, currentYear: number): number => {
-    if (player?.born?.year) return currentYear - player.born.year;
-    if (typeof player?.age === 'number') return player.age;
-    return 27;
-};
-
-/**
- * Canonical 2K-scale OVR for display. Mirrors PlayerRatingsView:138.
- * Uses live `player.overallRating` (not stale precomputed `bbgmOvr`/`rating2K`)
- * and current-season rating for hgt/tp shape. Falls back to `r.ovr` from the
- * rating row when the top-level field is missing — matters for raw BBGM JSON
- * loads (e.g. CoachingViewMain) where `overallRating` isn't hydrated.
- */
-export const getDisplayOverall = (player: any, season?: number): number => {
-    const r = pickRating(player, season);
-    const hgt = r?.hgt ?? 50;
-    const tp  = r?.tp  ?? 50;
-    const bbgmOvr = player?.overallRating ?? r?.ovr ?? 60;
-    return convertTo2KRating(bbgmOvr, hgt, tp);
-};
-
-/**
- * BBGM potEstimator for DISPLAY — mirrors PlayerRatingsView:141 exactly.
- * Players 29+: POT = current OVR (no more growth). Younger: regression formula,
- * floored at current OVR so POT is never *below* present rating, then clamped
- * to [40, 99]. Distinct from `genDraftPlayers.potEstimator` which has no floor
- * since prospects don't have a "current" OVR yet.
- */
-export const estimatePotentialBbgm = (ovrBbgm: number, age: number): number => {
-    if (age >= 29) return ovrBbgm;
-    const regression = Math.round(72.31428908571982 + (-2.33062761 * age) + (0.83308748 * ovrBbgm));
-    return Math.min(99, Math.max(40, Math.max(ovrBbgm, regression)));
-};
-
-/**
- * Canonical 2K-scale POT for display. Mirrors PlayerRatingsView:141-142.
- * Falls back to `r.ovr` when `player.overallRating` is missing (raw BBGM JSON).
- */
-export const getDisplayPotential = (player: any, currentYear: number, season?: number): number => {
-    const r   = pickRating(player, season);
-    const hgt = r?.hgt ?? 50;
-    const tp  = r?.tp  ?? 50;
-    const age = getDisplayAge(player, currentYear);
-    const bbgmOvr = player?.overallRating ?? r?.ovr ?? 60;
-    // Prefer stored rating.pot (updated by seasonRollover drift) so busted/stalled players
-    // show a declining ceiling instead of the formula's perpetually-optimistic estimate.
-    const storedPot: number | undefined = r?.pot;
-    const rawPotBbgm = (storedPot != null && storedPot > 0) ? storedPot : estimatePotentialBbgm(bbgmOvr, age);
-    const potBbgm = Math.max(bbgmOvr, rawPotBbgm); // UI: ceiling never shown below current OVR
-    return convertTo2KRating(potBbgm, hgt, tp);
 };
 const teamStrengthCache = new Map<string, number>();
 

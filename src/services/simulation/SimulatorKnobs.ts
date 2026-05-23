@@ -1,33 +1,8 @@
-/**
- * SimulatorKnobs.ts
- *
- * Configurable parameters that let any caller tune the stat generator engine
- * without touching core logic.  Two use cases:
- *
- *   1. Exhibition games  — All-Star, Rising Stars, Celebrity Game each have
- *      their own preset that controls pace, shooting tendencies, rotation depth,
- *      and per-player minute distribution.
- *
- *   2. Rule-change experiments — 3PT line removal, FIBA quarter length (10 min),
- *      shot-clock changes, etc.  Flip the knobs from commissioner settings and
- *      the whole simulation adapts automatically.
- *
- * Usage:
- *   import { KNOBS_ALL_STAR, getKnobs } from '../SimulatorKnobs';
- *   generateStatsForTeam(..., getKnobs(KNOBS_ALL_STAR));
- */
-
-// ─────────────────────────────────────────────────────────────────────────────
-// INTERFACE
-// ─────────────────────────────────────────────────────────────────────────────
-
 export interface SimulatorKnobs {
-  // ── Scoring & Pace ────────────────────────────────────────────────────────
   /** Multiplies the incoming totalScore before stat distribution.
    *  1.0 = no change, 1.18 = All-Star pace (+18% more scoring) */
   paceMultiplier: number;
 
-  // ── Shooting ─────────────────────────────────────────────────────────────
   /** Multiplies 2PT and 3PT shooting % after all other modifiers.
    *  1.25 = All-Star (no defense); 0.70 = Celebrity (bad shooters) */
   efficiencyMultiplier: number;
@@ -164,14 +139,12 @@ export interface SimulatorKnobs {
    *  Set via: freeThrowDistance > 15 → <1.0 (farther line = harder shots). */
   ftEfficiencyMult: number;
 
-  // ── Exhibition score boost ─────────────────────────────────────────────────
   /** Applied in engine.ts to the raw game score BEFORE stat generation.
    *  Use for exhibition games (All-Star ~1.45, Rising Stars ~1.18) so the
    *  scoreboard shows realistic totals without double-counting paceMultiplier.
    *  When set, keep paceMultiplier = 1.0 so stats match the boosted score. */
   exhibitionScoreMult?: number;
 
-  // ── Play-through-injuries ──────────────────────────────────────────────────
   /** 0–4 scale. Controls how badly injured players are still included in the
    *  sim rotation and how much their performance is reduced.
    *  0 = injured players don't play (default).
@@ -183,10 +156,6 @@ export interface SimulatorKnobs {
    *  Applied per-player: factor = 1 − 0.025 × min(severity, playThroughInjuries). */
   playThroughInjuries?: number;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DEFAULTS — regular NBA game, no modifications
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const KNOBS_DEFAULT: SimulatorKnobs = {
   paceMultiplier:       1.0,
@@ -220,10 +189,6 @@ export const KNOBS_DEFAULT: SimulatorKnobs = {
   tovMult:              1.0,
   ftEfficiencyMult:     1.0,
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EXHIBITION PRESETS
-// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * All-Star Game
@@ -316,10 +281,6 @@ export const KNOBS_CELEBRITY: SimulatorKnobs = {
   ftEfficiencyMult:      1.0,
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RULE-CHANGE PRESETS  (examples — connect via commissioner rules tab)
-// ─────────────────────────────────────────────────────────────────────────────
-
 /**
  * Preseason Game
  * Low stakes — coaches experiment with lineups, stars get limited minutes,
@@ -346,13 +307,6 @@ export const KNOBS_PRESEASON: SimulatorKnobs = {
   tovMult:               1.0,
   ftEfficiencyMult:      1.0,
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// INTERNATIONAL PRESEASON KNOBS
-// Calibrated from real 2025-26 league averages.
-// B-League and Euroleague use 40-min FIBA games (10-min quarters).
-// PBA uses 48-min games but with heavy mid-range/FT tendencies.
-// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * B-League (Japan) — calibrated from Japan national team vs Philippines (FIBA).
@@ -392,6 +346,27 @@ export const KNOBS_EUROLEAGUE: SimulatorKnobs = {
 };
 
 /**
+ * EuroLeague / Liga ACB club competition — FIBA cadence and less heliocentric
+ * star usage than NBA. Tuned to keep MVP-level leaders nearer ~18-22 PPG.
+ */
+export const KNOBS_EURO_CLUB_COMPETITION: SimulatorKnobs = {
+  ...KNOBS_DEFAULT,
+  quarterLength:         10,
+  numQuarters:           4,
+  paceMultiplier:        0.95,
+  efficiencyMultiplier:  0.97,
+  threePointRateMult:    0.88,
+  ftRateMult:            0.84,
+  ftEfficiencyMult:      0.93,
+  tovMult:               0.98,
+  rotationDepthOverride: 11,
+  starMpgOverride:       30,
+  conferenceRank:        3,
+  gbFromLeader:          0,
+  gamesRemaining:        20,
+};
+
+/**
  * PBA — calibrated from real international data.
  * Serbia (BA-caliber) beat Philippines 126–67 in FIBA 40-min.
  * Japan beat Philippines 102–81. PBA style: inside-heavy (16.7% 3P vs Serbia),
@@ -425,9 +400,17 @@ export const KNOBS_FIBA_QUARTERS: SimulatorKnobs = {
   quarterLength: 10,
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// FACTORY
-// ─────────────────────────────────────────────────────────────────────────────
+export function isEuroClubTeamId(teamId: number): boolean {
+  return (teamId >= 1000 && teamId < 2000) || (teamId >= 5000 && teamId < 6000);
+}
+
+export function isEuroClubCompetitionGame(
+  team: { id: number } | number,
+  knobs: Pick<SimulatorKnobs, 'quarterLength'>,
+): boolean {
+  const tid = typeof team === 'number' ? team : team.id;
+  return isEuroClubTeamId(tid) && (knobs.quarterLength ?? 12) <= 10;
+}
 
 /**
  * Merge partial overrides on top of the default knobs.
@@ -440,14 +423,6 @@ export const KNOBS_FIBA_QUARTERS: SimulatorKnobs = {
 export function getKnobs(overrides?: Partial<SimulatorKnobs>): SimulatorKnobs {
   return { ...KNOBS_DEFAULT, ...overrides };
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SYSTEM KNOB MODS
-// Per-coaching-system multipliers applied on top of the roster-derived knobs
-// when a team is running that system.  All fields are multiplicative (1.0 = no
-// change).  helioStarPtsMod / helioStarEffMod are applied directly to the #1
-// scoring-option bias map entry, not to team-wide knobs.
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface SystemKnobMods {
   paceBonus:        number;  // ×paceMultiplier
@@ -467,39 +442,26 @@ const NEUTRAL_MODS: SystemKnobMods = {
 };
 
 const SYSTEM_MODS: Record<string, SystemKnobMods> = {
-  // ── Iso / Star-driven ────────────────────────────────────────────────────
   'Heliocentric':     { ...NEUTRAL_MODS, paceBonus: 0.93, efficiencyMod: 0.95, helioStarPtsMod: 1.28, helioStarEffMod: 0.91 },
-
-  // ── Fast-break / Up-tempo ────────────────────────────────────────────────
   'Run and Gun':      { ...NEUTRAL_MODS, paceBonus: 1.10, efficiencyMod: 0.96, threePointMod: 1.14 },
   '7 Seconds':        { ...NEUTRAL_MODS, paceBonus: 1.08, efficiencyMod: 0.97, threePointMod: 1.10 },
   'Point-Five':       { ...NEUTRAL_MODS, paceBonus: 1.10, efficiencyMod: 0.96, threePointMod: 1.08 },
   'Early Offense':    { ...NEUTRAL_MODS, paceBonus: 1.06, rimMod: 1.06 },
-
-  // ── Spacing / Perimeter ──────────────────────────────────────────────────
   'Pace and Space':   { ...NEUTRAL_MODS, paceBonus: 1.05, threePointMod: 1.12 },
   'Five-Out Drive':   { ...NEUTRAL_MODS, threePointMod: 1.10, rimMod: 1.08 },
   'Five-Out Slasher': { ...NEUTRAL_MODS, rimMod: 1.12, threePointMod: 1.08 },
   'Gravity Motion':   { ...NEUTRAL_MODS, paceBonus: 1.02, threePointMod: 1.15 },
   'Perimeter Centric':{ ...NEUTRAL_MODS, threePointMod: 1.12, midRangeMod: 1.08 },
   'Dribble Drive':    { ...NEUTRAL_MODS, paceBonus: 1.03, rimMod: 1.15 },
-
-  // ── Post / Interior ──────────────────────────────────────────────────────
   'Post Hub':         { ...NEUTRAL_MODS, paceBonus: 0.96, lowPostMod: 1.15, rimMod: 1.10 },
   'Post Anchor':      { ...NEUTRAL_MODS, paceBonus: 0.95, lowPostMod: 1.12, rimMod: 1.12 },
   'Post Centric':     { ...NEUTRAL_MODS, paceBonus: 0.94, lowPostMod: 1.18, rimMod: 1.08 },
   'Twin Towers':      { ...NEUTRAL_MODS, paceBonus: 0.95, lowPostMod: 1.20, rimMod: 1.15, threePointMod: 0.80 },
-
-  // ── Motion / Team-play ───────────────────────────────────────────────────
   'The Wheel':        { ...NEUTRAL_MODS, paceBonus: 1.05, threePointMod: 1.05, midRangeMod: 1.05 },
   'Triangle':         { ...NEUTRAL_MODS, paceBonus: 0.95, midRangeMod: 1.12 },
   'P&R Mastery':      { ...NEUTRAL_MODS, paceBonus: 1.02, rimMod: 1.10 },
-
-  // ── Defensive / Slow ────────────────────────────────────────────────────
   'Grit and Grind':   { ...NEUTRAL_MODS, paceBonus: 0.88, efficiencyMod: 0.96, rimMod: 1.05 },
   'Defense':          { ...NEUTRAL_MODS, paceBonus: 0.92, efficiencyMod: 0.94 },
-
-  // ── Balanced ─────────────────────────────────────────────────────────────
   'Balanced':         { ...NEUTRAL_MODS },
 };
 

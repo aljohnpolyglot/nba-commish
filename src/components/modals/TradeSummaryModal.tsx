@@ -25,6 +25,8 @@ import { OfferCard, type FoundOffer, type TradeItem } from '../central/view/Trad
 import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from '../../services/draft/draftClassStrength';
 import { getMaxTradableSeason } from '../../services/draft/DraftPickGenerator';
 import { teamPowerRanks } from '../../services/trade/tradeFinderEngine';
+import { isPbaIsolatedMode } from '../../utils/uiMode';
+import { getActiveLeagueTeams, isOnRoster } from '../../utils/teamLookup';
 
 interface TradeSummaryModalProps {
   isOpen: boolean;
@@ -109,6 +111,20 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
 
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const isGM = state.gameMode === 'gm';
+  const pbaMode = isPbaIsolatedMode(state);
+  const activeTeams = useMemo(() => {
+    if (!pbaMode) return state.teams;
+    return getActiveLeagueTeams({
+      teams: state.teams,
+      nonNBATeams: state.nonNBATeams ?? [],
+      userTeamId: state.userTeamId,
+    });
+  }, [pbaMode, state.teams, state.nonNBATeams, state.userTeamId]);
+  const activeTeamIds = useMemo(() => new Set(activeTeams.map(t => t.id)), [activeTeams]);
+  const activePlayers = useMemo(() => {
+    if (!pbaMode) return state.players;
+    return state.players.filter(p => activeTeamIds.has(p.tid) && isOnRoster(p));
+  }, [pbaMode, state.players, activeTeamIds]);
   const tradeIsValid = !salaryMismatchInfo;
   const seasonYear = currentYear;
   const tradeDeadline = toISODateString(getTradeDeadlineDate(seasonYear, state.leagueStats));
@@ -123,9 +139,9 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   const buildOutlook = (team: NBATeam): TradeOutlook => {
     const manual = resolveManualOutlook(team, state.gameMode, state.userTeamId);
     if (manual) return manual;
-    const payroll = getTeamPayrollUSD(state.players, team.id, team, currentYear);
+    const payroll = getTeamPayrollUSD(activePlayers, team.id, team, currentYear);
     const rec = effectiveRecord(team, currentYear);
-    const confTeams = state.teams.filter(t => t.conference === team.conference).map(t => ({
+    const confTeams = activeTeams.filter(t => t.conference === team.conference).map(t => ({
       t, rec: effectiveRecord(t, currentYear),
     })).sort((a, b) => (b.rec.wins - b.rec.losses) - (a.rec.wins - a.rec.losses));
     const leader = confTeams[0];
@@ -134,8 +150,8 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
     const idx = confTeams.findIndex(c => c.t.id === team.id);
     const confRank = idx >= 0 ? idx + 1 : 15;
     const gb = Math.max(0, ((lw - rec.wins) + (rec.losses - ll)) / 2);
-    const expiring = state.players.filter(p => p.tid === team.id && (p.contract?.exp ?? 0) <= currentYear).length;
-    const starAvg = topNAvgK2(state.players, team.id, 3);
+    const expiring = activePlayers.filter(p => p.tid === team.id && (p.contract?.exp ?? 0) <= currentYear).length;
+    const starAvg = topNAvgK2(activePlayers, team.id, 3);
     return getTradeOutlook(payroll, rec.wins, rec.losses, expiring, thresholds, confRank, gb, starAvg);
   };
 
@@ -144,24 +160,24 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   const teamAMode = roleToMode(teamAOutlook.role);
   const teamBMode = roleToMode(teamBOutlook.role);
 
-  const teamACapK = getTeamCapProfileFromState(state, teamA.id, thresholds).capSpaceUSD / 1000;
-  const teamBCapK = getTeamCapProfileFromState(state, teamB.id, thresholds).capSpaceUSD / 1000;
+  const teamACapK = state.leagueStats?.salaryCapEnabled === false ? undefined : getTeamCapProfileFromState(state, teamA.id, thresholds).capSpaceUSD / 1000;
+  const teamBCapK = state.leagueStats?.salaryCapEnabled === false ? undefined : getTeamCapProfileFromState(state, teamB.id, thresholds).capSpaceUSD / 1000;
 
   const classStrengthByYear = useMemo(
-    () => buildClassStrengthMap(state.players, currentYear, currentYear, getMaxTradableSeason(state)),
-    [state.players, currentYear, state.leagueStats?.tradableDraftPickSeasons],
+    () => buildClassStrengthMap(activePlayers, currentYear, currentYear, getMaxTradableSeason(state)),
+    [activePlayers, currentYear, state.leagueStats?.tradableDraftPickSeasons],
   );
   const lotterySlotByTid = useMemo(
-    () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
-    [(state as any).draftLotteryResult, state.teams],
+    () => buildFullDraftSlotMap((state as any).draftLotteryResult, activeTeams),
+    [(state as any).draftLotteryResult, activeTeams],
   );
   const powerRanks = useMemo(
-    () => teamPowerRanks(state.teams, currentYear),
-    [state.teams, currentYear],
+    () => teamPowerRanks(activeTeams, currentYear),
+    [activeTeams, currentYear],
   );
 
-  const teamAItems = buildItems(teamAPlayers, teamAPicks, teamAMode, currentYear, state.teams, classStrengthByYear, lotterySlotByTid, powerRanks);
-  const teamBItems = buildItems(teamBPlayers, teamBPicks, teamBMode, currentYear, state.teams, classStrengthByYear, lotterySlotByTid, powerRanks);
+  const teamAItems = buildItems(teamAPlayers, teamAPicks, teamAMode, currentYear, activeTeams, classStrengthByYear, lotterySlotByTid, powerRanks);
+  const teamBItems = buildItems(teamBPlayers, teamBPicks, teamBMode, currentYear, activeTeams, classStrengthByYear, lotterySlotByTid, powerRanks);
 
   const teamAOffer: FoundOffer = { tid: teamA.id, items: teamAItems, outlook: teamAOutlook, variant: 'match' };
   const teamBOffer: FoundOffer = { tid: teamB.id, items: teamBItems, outlook: teamBOutlook, variant: 'match' };
@@ -245,9 +261,10 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                 offer={teamAOffer}
                 myItems={teamBItems}
                 team={teamA}
-                teams={state.teams}
+                teams={activeTeams}
                 currentYear={currentYear}
                 dateStr={state.date ?? ''}
+                nonNBATeams={state.nonNBATeams ?? []}
                 capSpaceK={teamACapK}
                 salaryBadgeOverride={teamASalaryBadge}
                 hideActions
@@ -257,9 +274,10 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                 offer={teamBOffer}
                 myItems={teamAItems}
                 team={teamB}
-                teams={state.teams}
+                teams={activeTeams}
                 currentYear={currentYear}
                 dateStr={state.date ?? ''}
+                nonNBATeams={state.nonNBATeams ?? []}
                 capSpaceK={teamBCapK}
                 salaryBadgeOverride={teamBSalaryBadge}
                 hideActions

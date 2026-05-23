@@ -8,9 +8,10 @@ import { makePlaceholderCoach, makePlaceholderGM } from '../../../../../services
 import { MyFace, isRealFaceConfig } from '../../../../shared/MyFace';
 import { getStaffImageUrl, deterministicStaffImageId, resolveStaffImageId } from '../../../../../utils/staffPortrait';
 import { inferEuroStaffLeagueId } from '../../../../../services/euro/staffPool';
-import { getCoachPhoto, getNBA2KCoach, getTeamStaff, getCoachContract, OWNER_IMAGES } from '../../../../../services/staffService';
+import { getNBA2KCoach, getTeamStaff, getCoachContractSnapshot, getStaffCareerSnapshot, OWNER_IMAGES } from '../../../../../services/staffService';
+import { ensureStaffPhotoData, resolveCoachPortrait, resolveStaffPortrait, useStaffPhotoStore } from '../../../../../store/staffPhotoStore';
 import { StaffSigningModal, type StaffCandidate } from '../StaffSigning/StaffSigningModal';
-import { getStaffMarketSalary, getStaffRoleBaseSalary, normalizeStaffSalary } from '../../../../../services/tycoon/economyScale';
+import { getStaffMarketSalary, getStaffRoleBaseSalary, normalizeStaffSalary, type StaffMarket } from '../../../../../services/tycoon/economyScale';
 import { SectionTitle } from '../shared/helpers';
 import { FacilityKpi } from '../shared/FacilityKpi';
 import { PersonnelActionsModal, type PersonnelActionType } from '../../PersonnelActionsModal';
@@ -25,6 +26,7 @@ import {
   ROLE_DISPLAY_KEYS,
   STAFF_ATTRIBUTE_GROUPS,
 } from '../../../../../services/staff/displayAttributes';
+import { getStaffGameplayTooltip } from '../../../../../services/staff/staffGameplayEffects';
 
 export const StaffSection: React.FC<{
   state: any;
@@ -33,23 +35,30 @@ export const StaffSection: React.FC<{
   onFireStaff: (role: string) => void;
   onPromoteStaff: (person: any, fromRole: string, toRole: string) => void;
 }> = ({ state, team, onHireStaff, onFireStaff, onPromoteStaff }) => {
+  const formatYearsLeftLabel = (years: number) => `${years} ${years === 1 ? 'Year' : 'Years'} Left`;
   const [signingOpen, setSigningOpen] = useState(false);
+  const [signingMode, setSigningMode] = useState<'hire' | 'extension'>('hire');
   const [selectedRole, setSelectedRole] = useState('Head Coach');
   const [actionPerson, setActionPerson] = useState<{ role: string; person: any; years: number; salary: number } | null>(null);
   const [ratingsPerson, setRatingsPerson] = useState<{ role: string; person: any; years: number; salary: number } | null>(null);
   const [resignPool, setResignPool] = useState<any[] | null>(null);
+  const staffPhotoVersion = useStaffPhotoStore(s => s.version);
+  void staffPhotoVersion;
+  React.useEffect(() => {
+    ensureStaffPhotoData();
+  }, []);
   const firedRoles: string[] = (team.tycoon?.firedStaffRoles ?? []);
   const tycoonTier = team.tycoon?.tier;
   const currentYear: number = state.leagueStats?.year ?? new Date().getFullYear();
   const currency: string = state.leagueStats?.currency ?? 'EUR';
+  const tid = team.id ?? team.tid;
+  const staffMarket: StaffMarket = tid >= 0 && tid < 100 ? 'nba' : 'euro';
   const teamName = getTeamFullName(team);
+  const teamLogoUrl = team.logoUrl ?? team.imgURL ?? team.teamLogoUrl ?? team.imgURLSmall;
   const isGMOwnTeam = state.gameMode === 'gm' && (team.id ?? team.tid) === state.userTeamId;
   const commName: string | undefined = state.commissionerName;
-  // Mirror CoachingView's exact photo resolution chain so the real Erik
-  // Spoelstra / Ime Udoka / etc. shots show up here too. Order matters:
-  // gist photo > saved portrait > nba2k fan-wiki > deterministic Staff{N}.
   const resolveCoachPhoto = (name?: string, savedPortrait?: string): string | undefined =>
-    getCoachPhoto(name ?? '') ?? savedPortrait ?? getNBA2KCoach(name ?? '')?.image ?? undefined;
+    resolveCoachPortrait(name, savedPortrait);
   let coach: any = (state.staff?.coaches ?? []).find((s: any) => s.team === team.name || s.team === teamName)
     ?? makePlaceholderCoach(team);
   // Ensure coach record carries the best available portrait URL so the card
@@ -87,20 +96,35 @@ export const StaffSection: React.FC<{
     .filter(c => c.name !== coach?.name);
   // Build a real-coach record shaped like a persisted staffMember so the rest
   // of the render pipeline (attrs, photos, attributes seed) treats it the same.
-  const realCoachToPerson = (c: any) => ({
-    name: c.name,
-    nationality: c.nationality ?? 'USA',
-    position: c.position,
-    playerPortraitUrl: resolveCoachPhoto(c.name, undefined),
-    staffImageId: deterministicStaffImageId(c.name),
-    isPlaceholder: false,
-    isRealAutoFill: true,        // flag for downstream UI hints
-    // Auto-filled ACs sit on a one-year handshake that expires at the next
-    // rollover — so the user sees "1 Years Left" on the card and can re-sign
-    // them in the offseason instead of staring at a 0-year ghost contract.
-    contractYears: 1,
-    hiredYear: currentYear - 1,
-  });
+  const realCoachToPerson = (c: any) => {
+    const contract = getCoachContractSnapshot(c.name, currentYear);
+    const career = getStaffCareerSnapshot(c, currentYear);
+    return {
+      name: c.name,
+      nationality: c.nationality ?? 'USA',
+      position: c.position,
+      playerPortraitUrl: resolveCoachPhoto(c.name, undefined),
+      staffImageId: deterministicStaffImageId(c.name),
+      isPlaceholder: false,
+      isRealAutoFill: true,
+      salary: contract?.annualSalary ?? undefined,
+      contractYears: contract?.yearsLeft ?? 1,
+      hiredYear: currentYear - Math.max(1, career.yearsWithTeam || 1),
+      yearsWithTeam: career.yearsWithTeam,
+      careerStartYear: career.careerStartYear ?? undefined,
+      bornYear: career.bornYear ?? undefined,
+    };
+  };
+  const getSalaryContext = (person: any, persisted: any) => {
+    const career = getStaffCareerSnapshot(persisted ?? person, currentYear);
+    const contract = person?.name ? getCoachContractSnapshot(person.name, currentYear) : null;
+    const shouldTrustExternalSalary = !persisted || String(persisted?.id ?? '').startsWith('nba-real-staff-');
+    return {
+      yearsExperience: career.yearsExperience,
+      yearsWithTeam: career.yearsWithTeam,
+      externalSalary: shouldTrustExternalSalary ? contract?.annualSalary ?? null : null,
+    };
+  };
   let realACCursor = 0;
   const nextRealAC = () => realACPool[realACCursor++];
   const resolvePerson = (role: string, fallback: any) => {
@@ -117,15 +141,11 @@ export const StaffSection: React.FC<{
     return null;
   };
   const roles = [
-    { role: 'Head Coach', person: resolvePerson('Head Coach', coach), group: 'Coaching', focus: 'Tactics, rotations, game-day decisions', salary: getStaffRoleBaseSalary(tycoonTier, 'Head Coach'), years: (() => {
+    { role: 'Head Coach', person: resolvePerson('Head Coach', coach), group: 'Coaching', focus: 'Tactics, rotations, game-day decisions', salary: getStaffRoleBaseSalary(tycoonTier, 'Head Coach', staffMarket), years: (() => {
       const persisted = persistentStaff.get('Head Coach')?.contractYears;
-      if (persisted) return persisted;
-      // Real contract length from nbacoachescontract gist when available.
-      const contract = coach?.name ? getCoachContract(coach.name) : undefined;
-      if (contract && contract.history.length) {
-        const remaining = Math.max(1, contract.history[0].end_year - currentYear + 1);
-        return remaining;
-      }
+      if (persisted != null) return persisted;
+      const contract = getCoachContractSnapshot(coach?.name, currentYear);
+      if (contract?.yearsLeft != null) return contract.yearsLeft;
       return coach.yearsWithTeam ? Math.max(1, 4 - Math.min(3, coach.yearsWithTeam)) : 2;
     })() },
     // Resolve each AC slot exactly ONCE so the auto-fill cursor doesn't get
@@ -135,28 +155,37 @@ export const StaffSection: React.FC<{
       const ac2 = resolvePerson('Assistant Coach 2', null);
       const ac3 = resolvePerson('Assistant Coach 3', null);
       return [
-        { role: 'Assistant Coach',   person: ac1, group: 'Coaching', focus: 'Training sessions and opponent prep', salary: getStaffRoleBaseSalary(tycoonTier, 'Assistant Coach'), years: persistentStaff.get('Assistant Coach')?.contractYears   ?? (ac1 as any)?.contractYears ?? 0 },
-        { role: 'Assistant Coach 2', person: ac2, group: 'Coaching', focus: 'Training sessions and opponent prep', salary: getStaffRoleBaseSalary(tycoonTier, 'Assistant Coach 2'), years: persistentStaff.get('Assistant Coach 2')?.contractYears ?? (ac2 as any)?.contractYears ?? 0 },
-        { role: 'Assistant Coach 3', person: ac3, group: 'Coaching', focus: 'Training sessions and opponent prep', salary: getStaffRoleBaseSalary(tycoonTier, 'Assistant Coach 3'), years: persistentStaff.get('Assistant Coach 3')?.contractYears ?? (ac3 as any)?.contractYears ?? 0 },
+        { role: 'Assistant Coach',   person: ac1, group: 'Coaching', focus: 'Training sessions and opponent prep', salary: getStaffRoleBaseSalary(tycoonTier, 'Assistant Coach', staffMarket), years: persistentStaff.get('Assistant Coach')?.contractYears   ?? (ac1 as any)?.contractYears ?? 0 },
+        { role: 'Assistant Coach 2', person: ac2, group: 'Coaching', focus: 'Training sessions and opponent prep', salary: getStaffRoleBaseSalary(tycoonTier, 'Assistant Coach 2', staffMarket), years: persistentStaff.get('Assistant Coach 2')?.contractYears ?? (ac2 as any)?.contractYears ?? 0 },
+        { role: 'Assistant Coach 3', person: ac3, group: 'Coaching', focus: 'Training sessions and opponent prep', salary: getStaffRoleBaseSalary(tycoonTier, 'Assistant Coach 3', staffMarket), years: persistentStaff.get('Assistant Coach 3')?.contractYears ?? (ac3 as any)?.contractYears ?? 0 },
       ];
     })(),
-    { role: 'Head of Sports Science', person: resolvePerson('Head of Sports Science', null), group: 'Performance', focus: 'Injury prevention and workload monitoring', salary: getStaffRoleBaseSalary(tycoonTier, 'Head of Sports Science'), years: persistentStaff.get('Head of Sports Science')?.contractYears ?? 0 },
-    { role: 'Head Physio', person: resolvePerson('Head Physio', null), group: 'Performance', focus: 'Recovery speed and day-to-day availability', salary: getStaffRoleBaseSalary(tycoonTier, 'Head Physio'), years: persistentStaff.get('Head Physio')?.contractYears ?? 0 },
+    { role: 'Head of Sports Science', person: resolvePerson('Head of Sports Science', null), group: 'Performance', focus: 'Injury prevention and workload monitoring', salary: getStaffRoleBaseSalary(tycoonTier, 'Head of Sports Science', staffMarket), years: persistentStaff.get('Head of Sports Science')?.contractYears ?? 0 },
+    { role: 'Head Physio', person: resolvePerson('Head Physio', null), group: 'Performance', focus: 'Recovery speed and day-to-day availability', salary: getStaffRoleBaseSalary(tycoonTier, 'Head Physio', staffMarket), years: persistentStaff.get('Head Physio')?.contractYears ?? 0 },
     // Player Development Coach — drives off-floor skill growth. Will wire to
     // the player progression engine: their development + motivating attrs
     // multiply per-player progression deltas during the season.
-    { role: 'Player Development Coach', person: resolvePerson('Player Development Coach', null), group: 'Performance', focus: 'Individual workouts and off-season skill growth', salary: getStaffRoleBaseSalary(tycoonTier, 'Player Development Coach'), years: persistentStaff.get('Player Development Coach')?.contractYears ?? 0 },
-    { role: 'Chief Scout', person: resolvePerson('Chief Scout', gm), group: 'Scouting & Analytics', focus: 'Player evaluation and market intelligence', salary: getStaffRoleBaseSalary(tycoonTier, 'Chief Scout'), years: persistentStaff.get('Chief Scout')?.contractYears ?? 2 },
-    { role: 'Head of Analytics', person: resolvePerson('Head of Analytics', null), group: 'Scouting & Analytics', focus: 'Shot profile, lineup data, and opponent models', salary: getStaffRoleBaseSalary(tycoonTier, 'Head of Analytics'), years: persistentStaff.get('Head of Analytics')?.contractYears ?? 0 },
+    { role: 'Player Development Coach', person: resolvePerson('Player Development Coach', null), group: 'Performance', focus: 'Individual workouts and off-season skill growth', salary: getStaffRoleBaseSalary(tycoonTier, 'Player Development Coach', staffMarket), years: persistentStaff.get('Player Development Coach')?.contractYears ?? 0 },
+    { role: 'Chief Scout', person: resolvePerson('Chief Scout', gm), group: 'Scouting & Analytics', focus: 'Player evaluation and market intelligence', salary: getStaffRoleBaseSalary(tycoonTier, 'Chief Scout', staffMarket), years: persistentStaff.get('Chief Scout')?.contractYears ?? 2 },
+    { role: 'Head of Analytics', person: resolvePerson('Head of Analytics', null), group: 'Scouting & Analytics', focus: 'Shot profile, lineup data, and opponent models', salary: getStaffRoleBaseSalary(tycoonTier, 'Head of Analytics', staffMarket), years: persistentStaff.get('Head of Analytics')?.contractYears ?? 0 },
   ];
   const rolesWithLiveSalaries = roles.map(item => {
     const persisted = persistentStaff.get(item.role);
     const salary = item.person
-      ? normalizeStaffSalary(tycoonTier, item.role, persisted?.salary ?? item.person?.salary ?? item.salary, persisted?.rating ?? item.person?.rating)
+      ? normalizeStaffSalary(
+        tycoonTier,
+        item.role,
+        persisted?.salary ?? item.person?.salary ?? item.salary,
+        persisted?.rating ?? item.person?.rating,
+        { market: staffMarket, ...getSalaryContext(item.person, persisted) },
+      )
       : item.salary;
     return { ...item, salary };
   });
   const filledRoles = rolesWithLiveSalaries.filter((r) => r.person).length;
+  const openRoleCount = rolesWithLiveSalaries.filter((r) => !r.person).length;
+  const expiringRoleCount = rolesWithLiveSalaries.filter((r) => r.person && Number(r.years) <= 0).length;
+  const dueRoleCount = openRoleCount + expiringRoleCount;
   const totalCost = rolesWithLiveSalaries.reduce((sum, r) => sum + (r.person ? r.salary : 0), 0);
   const avgSkill = Math.round(rolesWithLiveSalaries.reduce((sum, r) => sum + (r.person ? staffOverallFor(r.role, r.person) : 58), 0) / rolesWithLiveSalaries.length);
   // Single source of truth for FA candidates: read from state.staffFreeAgents,
@@ -174,7 +203,12 @@ export const StaffSection: React.FC<{
         .filter((member: any) => {
           if ((member.position ?? member.jobTitle) !== poolRole) return false;
           // Tolerate legacy save members without leagueId (pre-pool-refactor).
-          return !member.leagueId || member.leagueId === userLeagueId;
+          if (member.leagueId && member.leagueId !== userLeagueId) return false;
+          if (userLeagueId === 'nba') {
+            const nationality = String(member.nationality ?? '').toLowerCase();
+            return !nationality || nationality === 'usa' || nationality === 'united states';
+          }
+          return true;
         })
         .map((member: any, index: number): StaffCandidate => {
           // Seed comes from the FA's stored identity (name + reputation), so
@@ -183,19 +217,30 @@ export const StaffSection: React.FC<{
           const seed = seedForStaff(member);
           const attrsFull = buildStaffAttrs(seed);
           const rating = computeStaffOverall(r.role, attrsFull);
-          const baseSalary = getStaffMarketSalary(tycoonTier, r.role, rating);
-          const salaryMult = 0.9 + (rating - 70) / 180;
+          const career = getStaffCareerSnapshot(member, currentYear);
+          const baseSalary = normalizeStaffSalary(
+            tycoonTier,
+            r.role,
+            member.salary,
+            rating,
+            {
+              yearsExperience: career.yearsExperience,
+              yearsWithTeam: career.yearsWithTeam,
+              market: staffMarket,
+            },
+          );
           return {
             id: member.id ?? `staff-fa-${r.role}-${member.name}-${index}`,
             role: r.role,
             name: member.name,
             nationality: member.nationality ?? 'Unknown',
             flag: getCountryFlag(member.nationality),
-            salary: Math.round((baseSalary * salaryMult) / 5_000) * 5_000,
+            salary: baseSalary,
             rating,
-            years: Math.max(1, (member.yearsWithTeam ?? 1) + 2),
+            years: Math.max(1, career.yearsExperience),
             face: member.face,
             staffImageId: resolveStaffImageId(member),
+            playerPortraitUrl: member.playerPortraitUrl,
             attributes: buildAttributes(r.role, seed),
           };
         })
@@ -204,13 +249,9 @@ export const StaffSection: React.FC<{
       map.set(r.role, generated);
     }
     return map;
-  }, [state.staffFreeAgents, userLeagueId, teamName, tycoonTier]);
+  }, [currentYear, staffMarket, state.staffFreeAgents, userLeagueId, teamName, tycoonTier]);
   const renderPortrait = (face: any, initials: string, size = 'w-16 h-20', staffImageId?: number, name?: string, portraitUrl?: string) => {
-    // Real photo (from nba2kcoachlist / state.staff.coaches) always wins over
-    // the random Staff{N}.png fallback. Without this Ime Udoka rendered as a
-    // bald stranger because the deterministic placeholder beat his real shot.
-    const resolvedId = staffImageId ?? (name ? deterministicStaffImageId(name) : undefined);
-    const staffImg = portraitUrl ?? getStaffImageUrl(resolvedId) ?? null;
+    const staffImg = resolveStaffPortrait({ name, savedPortrait: portraitUrl, staffImageId });
     return (
       <div className={`${size} rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0 relative`}>
         {staffImg ? (
@@ -230,9 +271,16 @@ export const StaffSection: React.FC<{
       <SectionTitle icon={<Users size={22} />} title="Staff" subtitle="Manage your coaching, performance, and support team." />
       <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <FacilityKpi icon={<Users size={22} />} label="Total Staff" value={`${filledRoles}/${roles.length}`} sub={`${roles.length - filledRoles} open roles`} />
-        <FacilityKpi icon={<Briefcase size={22} />} label="Annual Cost" value={formatCurrencyWithCode(totalCost, currency, false)} sub="Committed staff payroll" />
-        <FacilityKpi icon={<Star size={22} />} label="Average Skill" value={`${avgSkill}/100`} sub={avgSkill >= 80 ? 'Elite group' : 'Competitive group'} />
-        <FacilityKpi icon={<Search size={22} />} label="Open Roles" value={String(roles.length - filledRoles)} sub="Hiring market available" />
+        <FacilityKpi icon={<Briefcase size={22} />} label="Annual Cost" value={formatCurrencyWithCode(totalCost, currency, false)} sub="Current yearly payroll" />
+        <FacilityKpi icon={<Star size={22} />} label="Average Skill" value={`${avgSkill}/100`} sub={avgSkill >= 80 ? 'Elite staff group' : 'Solid staff group'} />
+        <FacilityKpi
+          icon={<Search size={22} />}
+          label="Roles Due"
+          value={String(dueRoleCount)}
+          sub={dueRoleCount === 0
+            ? 'No interviews or renewals needed'
+            : `${openRoleCount} open · ${expiringRoleCount} renewals due`}
+        />
       </div>
       <div className="grid xl:grid-cols-[1fr_390px] gap-6">
         <div className="space-y-6">
@@ -255,6 +303,7 @@ export const StaffSection: React.FC<{
                   const rating = personAttrs ? computeStaffOverall(item.role, personAttrs) : 0;
                   const face = getStaffFace(item.person);
                   const open = !item.person;
+                  const tooltip = getStaffGameplayTooltip(item.role, team);
                   if (open) {
                     const ctaLabel = item.role.includes('Coach') ? 'Hire Coach'
                       : item.role.includes('Scout') ? 'Hire Scout'
@@ -263,7 +312,8 @@ export const StaffSection: React.FC<{
                     return (
                       <button
                         key={item.role}
-                        onClick={() => { setSelectedRole(item.role); setSigningOpen(true); }}
+                        onClick={() => { setSelectedRole(item.role); setSigningMode('hire'); setSigningOpen(true); }}
+                        title={tooltip}
                         className="text-left rounded-xl border border-dashed border-slate-700 bg-slate-950/40 p-6 transition-all hover:border-amber-400/50 hover:bg-amber-400/5 flex flex-col items-center justify-center text-center min-h-[280px]"
                       >
                         <div className="w-14 h-14 rounded-full border border-dashed border-slate-600 flex items-center justify-center text-2xl font-black text-slate-500">+</div>
@@ -278,6 +328,7 @@ export const StaffSection: React.FC<{
                     <button
                       key={item.role}
                       onClick={() => setActionPerson({ role: item.role, person: item.person, years: item.years, salary: item.salary })}
+                      title={tooltip}
                       className="text-left rounded-xl border border-slate-800 bg-slate-950/70 p-4 transition-all hover:border-slate-600"
                     >
                       <div className="flex items-start gap-3">
@@ -295,7 +346,7 @@ export const StaffSection: React.FC<{
                           <div className="mt-2 text-xs text-slate-500">{item.person?.nationality}</div>
                         </div>
                       </div>
-                      <div className="text-xs text-slate-400 mt-3 leading-5">{item.focus}</div>
+                      <div className="text-xs text-slate-400 mt-3 leading-5" title={tooltip}>{item.focus}</div>
                       <div className="mt-4 space-y-2">
                         {attrs.map(([label, value]) => (
                           <div key={label} className="grid grid-cols-[96px_1fr_28px] gap-2 items-center">
@@ -306,7 +357,7 @@ export const StaffSection: React.FC<{
                         ))}
                       </div>
                       <div className="mt-4 flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
-                        <span className="text-slate-500">{item.years} Years Left</span>
+                        <span className="text-slate-500">{formatYearsLeftLabel(item.years)}</span>
                         <span className="text-slate-400">{formatCurrencyWithCode(item.salary, currency, false)}/yr</span>
                       </div>
                     </button>
@@ -360,22 +411,11 @@ export const StaffSection: React.FC<{
                   <div className="font-black text-white">Ownership group</div>
                 </div>
               );
-              // Owner display priority:
-              //   1. real saved photo URL
-              //   2. curated OWNER_IMAGES map (Ressler/Ballmer/etc.)
-              //   3. generated facesjs facepack (Euro owners get one in seedOwner)
-              //   4. owner's own staffImageId → Staff{N}.png
-              //   5. deterministic Staff{N}.png from name hash
-              // Face beats the indexed Staff sprite because those PNGs render
-              // as logo-shaped blobs in the small 14×16 owner frame.
               const realOwnerPhoto = op.playerPortraitUrl
                 ?? (OWNER_IMAGES as Record<string, string>)[op.name ?? '']
                 ?? null;
               const hasFace = isRealFaceConfig(op.face);
-              const fallbackStaffUrl = realOwnerPhoto
-                ? null
-                : (hasFace ? null : (getStaffImageUrl(op.staffImageId) ?? getStaffImageUrl(deterministicStaffImageId(op.name))));
-              const ownerImgFinal = realOwnerPhoto ?? fallbackStaffUrl;
+              const ownerImgFinal = realOwnerPhoto ?? (hasFace ? null : teamLogoUrl);
               const WEALTH_LABEL: Record<string, string> = { Billionaire: 'Billionaire', NationalMagnate: 'National Magnate', LocalWealthy: 'Local Wealthy' };
               const PATIENCE_BADGE: Record<string, string> = { LongTerm: 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300', Steady: 'border-amber-400/40 bg-amber-400/10 text-amber-300', TriggerHappy: 'border-rose-400/40 bg-rose-400/10 text-rose-300' };
               const VISION_LABEL: Record<string, string> = { WinNow: 'Win Now', Develop: 'Develop', Frugal: 'Frugal' };
@@ -385,10 +425,25 @@ export const StaffSection: React.FC<{
                   <div className="flex items-start gap-3">
                     <div className="w-14 h-16 rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0">
                       {ownerImgFinal
-                        ? <img src={ownerImgFinal} alt={op.name} className="w-full h-full object-cover" loading="lazy" />
+                        ? <img
+                            src={ownerImgFinal}
+                            alt={op.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            onError={(event) => {
+                              if (!teamLogoUrl) return;
+                              const img = event.currentTarget;
+                              if (img.dataset.fallbackLogo === '1') return;
+                              img.dataset.fallbackLogo = '1';
+                              img.className = 'w-full h-full object-contain p-1.5';
+                              img.src = teamLogoUrl;
+                            }}
+                          />
                         : isRealFaceConfig(op.face)
                         ? <div className="relative w-full h-full"><div className="absolute left-1/2 top-1/2" style={{ width: '92%', height: '138%', transform: 'translate(-50%, -45%)' }}><MyFace face={op.face} lazy style={{ width: '100%', height: '100%' }} /></div></div>
-                        : <div className="w-full h-full flex items-center justify-center text-xs font-black text-amber-200">{op.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</div>
+                        : teamLogoUrl
+                          ? <img src={teamLogoUrl} alt="" className="w-full h-full object-contain p-1.5" loading="lazy" />
+                          : <div className="w-full h-full flex items-center justify-center text-xs font-black text-amber-200">{op.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</div>
                       }
                     </div>
                     <div className="min-w-0 flex-1">
@@ -413,6 +468,8 @@ export const StaffSection: React.FC<{
           pool={resignPool ?? (candidatePool.get(selectedRole) ?? [])}
           roleFocus={rolesWithLiveSalaries.find((r) => r.role === selectedRole)?.focus ?? ''}
           currency={currency}
+          market={staffMarket}
+          mode={signingMode}
           // NBA tids (0-99) → USA-only emergency pool. Spaniards/Frenchmen as
           // "limited options" candidates for a Mavs GM was the bug.
           emergencyCountries={(() => {
@@ -421,12 +478,13 @@ export const StaffSection: React.FC<{
             if (tid >= 1000 && tid < 1100) return ['Spain', 'France', 'Italy', 'Serbia', 'Greece', 'Turkey'];
             return undefined;
           })()}
-          onClose={() => { setSigningOpen(false); setResignPool(null); }}
+          onClose={() => { setSigningOpen(false); setResignPool(null); setSigningMode('hire'); }}
           renderPortrait={renderPortrait}
           onSign={(payload) => {
             onHireStaff(payload);
             setSigningOpen(false);
             setResignPool(null);
+            setSigningMode('hire');
           }}
         />
       )}
@@ -441,24 +499,23 @@ export const StaffSection: React.FC<{
         // Trust the displayed "Years Left" so the action gates align with the
         // card. Member-based math missed Head Coaches living only in
         // state.staff.coaches (no tycoon.staffMembers entry).
-        const isExpiring = years <= 1;
+        const isExpiring = years <= 0;
         const staffPersonnel: Personnel = {
           id: person?.id ?? `staff-${role}`,
           name: person?.name ?? '',
           type: 'coach',
           jobTitle: role,
           team: teamName,
-          // Same photo chain as the card: real gist photo first, then nba2k
-          // image, then the saved portrait, then the placeholder. Keeps the
-          // PersonnelActionsModal aligned with the Staff card and CoachingView.
-          playerPortraitUrl: resolveCoachPhoto(person?.name, person?.playerPortraitUrl)
-            ?? getStaffImageUrl(person?.staffImageId)
-            ?? getStaffImageUrl(deterministicStaffImageId(person?.name ?? ''))
-            ?? undefined,
+          playerPortraitUrl: resolveStaffPortrait({
+            name: person?.name,
+            savedPortrait: person?.playerPortraitUrl,
+            staffImageId: person?.staffImageId,
+          }),
         };
         const filterActions: PersonnelActionType[] = [
           ...(isExpiring ? ['resign_staff' as PersonnelActionType] : []),
           'view_ratings',
+          'view_candidates',
           ...(isAC && hcVacant ? ['promote_to_hc' as PersonnelActionType] : []),
           'fire',
           // 'contact', // Direct Message — wire later
@@ -474,30 +531,52 @@ export const StaffSection: React.FC<{
               else if (action === 'promote_to_hc') { onPromoteStaff(person, role, 'Head Coach'); setActionPerson(null); }
               else if (action === 'resign_staff') {
                 const baseRole = role.replace(/ \d+$/, '');
-                const roleIdx = rolesWithLiveSalaries.findIndex(r => r.role === role);
-                const baseSalary = rolesWithLiveSalaries[Math.max(0, roleIdx)]?.salary ?? getStaffRoleBaseSalary(tycoonTier, role);
+                const career = getStaffCareerSnapshot(member ?? person, currentYear);
                 const rating = Math.min(95, (member?.rating ?? 72) + 1);
+                const baseSalary = getStaffMarketSalary(
+                  tycoonTier,
+                  role,
+                  rating,
+                  {
+                    market: staffMarket,
+                    yearsExperience: Math.max(1, career.yearsExperience),
+                    yearsWithTeam: career.yearsWithTeam + 1,
+                  },
+                );
                 const resignCandidate = {
                   id: member?.id ?? `resign-${role}`,
                   role,
                   name: person?.name ?? '',
                   nationality: person?.nationality ?? '',
                   flag: getCountryFlag(person?.nationality),
-                  salary: Math.round(baseSalary * (0.9 + rating / 200) / 10_000) * 10_000,
+                  salary: baseSalary,
                   rating,
                   years: 2,
                   face: person?.face,
                   staffImageId: person?.staffImageId,
+                  playerPortraitUrl: resolveStaffPortrait({
+                    name: person?.name,
+                    savedPortrait: person?.playerPortraitUrl,
+                    staffImageId: person?.staffImageId,
+                  }),
                   attributes: buildAttributes(baseRole, rating + 3),
                 };
                 setResignPool([resignCandidate]);
                 setSelectedRole(role);
+                setSigningMode('extension');
                 setActionPerson(null);
                 setSigningOpen(true);
               }
               else if (action === 'view_ratings') {
                 setRatingsPerson({ role, person, years, salary });
                 setActionPerson(null);
+              }
+              else if (action === 'view_candidates') {
+                setSelectedRole(role);
+                setResignPool(null);
+                setSigningMode('hire');
+                setActionPerson(null);
+                setSigningOpen(true);
               }
               else { setActionPerson(null); }
             }}
@@ -525,15 +604,11 @@ export const StaffSection: React.FC<{
           // derive deterministically from the same seed that drives attrs.
           // Real fields (person.born.year, person.bornYear, yearsWithTeam,
           // hiredYear) win when present.
-          const bornYear = person?.born?.year ?? person?.bornYear ?? (currentYear - (32 + (seed % 30)));
-          const age = Math.max(24, currentYear - bornYear);
-          const careerStartYear = person?.careerStartYear
-            ?? (person?.startSeason ? parseInt(String(person.startSeason).slice(0, 4), 10) : null);
-          const tenureFromHired = person?.hiredYear != null ? Math.max(1, currentYear - person.hiredYear) : null;
-          const tenure = person?.yearsWithTeam ?? tenureFromHired ?? 1;
-          const experience = careerStartYear != null
-            ? Math.max(tenure, currentYear - careerStartYear)
-            : Math.max(tenure, Math.min(35, age - 22));
+          const career = getStaffCareerSnapshot(person, currentYear);
+          const bornYear = career.bornYear ?? (currentYear - (32 + (seed % 30)));
+          const age = Math.max(24, career.age ?? (currentYear - bornYear));
+          const tenure = Math.max(0, career.yearsWithTeam);
+          const experience = Math.max(tenure, career.yearsExperience);
           const expTier = experience >= 20 ? 'Veteran'
             : experience >= 12 ? 'Established'
             : experience >= 6 ? 'Experienced'
@@ -542,11 +617,10 @@ export const StaffSection: React.FC<{
             : experience >= 12 ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300'
             : experience >= 6 ? 'border-amber-400/40 bg-amber-400/10 text-amber-300'
             : 'border-sky-400/40 bg-sky-400/10 text-sky-300';
-          const hiredYearDisplay = person?.hiredYear ?? (currentYear - tenure);
+          const hiredYearDisplay = career.hiredYear ?? (tenure > 0 ? currentYear - tenure : currentYear);
           const contractEndYear = currentYear + years;
-          const status = years <= 1 ? 'Expiring' : years === 2 ? 'Final Year' : 'Locked In';
-          const statusTone = years <= 1 ? 'border-rose-400/40 bg-rose-400/10 text-rose-300'
-            : years === 2 ? 'border-amber-400/40 bg-amber-400/10 text-amber-300'
+          const status = years <= 0 ? 'Renewal Due' : 'Locked In';
+          const statusTone = years <= 0 ? 'border-rose-400/40 bg-rose-400/10 text-rose-300'
             : 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300';
           return (
             <motion.div

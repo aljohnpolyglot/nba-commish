@@ -1,0 +1,42 @@
+# Codex hunks NOT found on current disk for src/services/AIFreeAgentHandler.ts
+# 3 hunks unapplied. Total ops: 1
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=10 line=181 ts=2026-05-13T07:17:54.617Z ---
+ import { getOffseasonState, logOffseasonDrift } from './offseason/offseasonState';
++import { projectYearEndCash } from './tycoon/budgetEngine';
+
+--- HUNK [op#0 hunk#1] session=10 line=181 ts=2026-05-13T07:17:54.617Z ---
+   const rfaEnabled = isRfaMatchingEnabled(state.leagueStats);
++  const aiSigningWouldBankrupt = (
++    team: NBATeam,
++    offer: { salaryUSD: number },
++  ): boolean => {
++    if ((state.leagueStats as any)?.uiMode !== 'euro_isolated' || !(team as any).tycoon) return false;
++    const roundSpendEUR = results
++      .filter(r => r.teamId === team.id)
++      .reduce((sum, r) => sum + r.salaryUSD, 0);
++    const projected = projectYearEndCash(team, {
++      year: state.leagueStats.year,
++      endesaFinishPosition: (team as any).lastEndesaFinish ?? 9,
++      euroleagueStage: (team as any).lastEuroleagueStage ?? 'none',
++      euroleagueAwayGames: (team as any).lastEuroAwayGames ?? 0,
++      endesaPrizeEUR: 0,
++      euroleaguePrizeEUR: 0,
++    }, roundSpendEUR + offer.salaryUSD, state.players);
++    return projected < 0;
++  };
+ 
+   const signPlayer = (
+
+--- HUNK [op#0 hunk#2] session=10 line=181 ts=2026-05-13T07:17:54.617Z ---
+     if (isUserTeam(finalTeam.id)) {
+       console.warn('[AI-FA] SKIPPING user team fill');
+       return;
+     }
++    if (aiSigningWouldBankrupt(finalTeam, offer)) {
++      return;
++    }
+ 
+     results.push({

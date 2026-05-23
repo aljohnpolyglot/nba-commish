@@ -366,14 +366,15 @@ export function getDraftCombineEndDate(seasonYear: number, stats?: TxnCalendar):
 }
 
 /**
- * Training Camp open: Sept 29 of the pre-season calendar year.
- * Real NBA: most teams report Sept 29 (overseas teams Sept 24, but main league
- * calendar pivots on the 29th). Preseason games then begin Oct 2-4.
- * e.g. seasonYear=2026 → 2025-09-29
+ * Training Camp open. NBA defaults to Sept 29; Euro isolated uses Aug 15,
+ * matching the Euro training scheduler window.
+ * e.g. NBA seasonYear=2026 → 2025-09-29; Euro → 2025-08-15
  */
 export function getTrainingCampDate(seasonYear: number, stats?: TxnCalendar): Date {
-  const m = stats?.trainingCampMonth ?? 9;
-  const d = stats?.trainingCampDay ?? 29;
+  const defaultMonth = stats?.uiMode === 'euro_isolated' ? 8 : 9;
+  const defaultDay = stats?.uiMode === 'euro_isolated' ? 15 : 29;
+  const m = stats?.trainingCampMonth ?? defaultMonth;
+  const d = stats?.trainingCampDay ?? defaultDay;
   return new Date(Date.UTC(seasonYear - 1, m - 1, d));
 }
 

@@ -1,0 +1,156 @@
+# Codex hunks NOT found on current disk for src/services/tycoon/sponsorshipEngine.ts
+# 7 hunks unapplied. Total ops: 7
+# Each block is a single V4A hunk.
+
+
+--- HUNK [op#0 hunk#0] session=9 line=258 ts=2026-05-12T21:40:17.838Z ---
+-import { TIER_BASE, SPAIN_INITIAL_SPONSORS } from './specs/spain';
++import { TIER_BASE, SPAIN_INITIAL_SPONSORS } from './specs/spain';
+
+--- HUNK [op#0 hunk#3] session=9 line=258 ts=2026-05-12T21:40:17.838Z ---
+-  const successBonus = recentSuccessBonus(history);
++  const successBonus = recentSuccessBonus(history);
+   const loyaltyBonus = existing ? 0.10 : 0;
+   const penalty = state.nextRenewalPenaltyFactor ?? 1.0;
+   const noise = 0.95 + Math.random() * 0.10;
+ 
+-  const floor = tb.sponsorshipFloor[slot] ?? 0;
++  const floor = sponsorFloor(state, slot, history);
+   const value = Math.round(
+     floor *
+-    cityScale(state) *
+     (1 + successBonus) *
+-    (1 + PRESTIGE_BUMP[state.tier]) *
+     (1 + loyaltyBonus) *
+     (1 + starBoost) *
+
+--- HUNK [op#2 hunk#0] session=10 line=403 ts=2026-05-13T07:32:02.805Z ---
+ export interface SponsorshipOffer {
+   slot: SponsorshipSlot;
+   sponsor: string;
+   valuePerYear: number;
+   signingBonus: number;
+   years: number;
++  performanceBonus?: number;
+ }
++
++export type NegotiationStance = 'conservative' | 'balanced' | 'aggressive';
++
++export interface SponsorEvaluation {
++  competitiveScore: number;
++  moodLabel: string;
++  willAccept: boolean;
++}
++
++export interface BrandImpact {
++  reach: 'Worldwide' | 'Regional' | 'Local';
++  globalAppeal: number;
++  socialReach: number;
++  brandImage: number;
++  brandFit: number;
++}
+
+--- HUNK [op#2 hunk#1] session=10 line=403 ts=2026-05-13T07:32:02.805Z ---
+ export function applyRenewal(state: TycoonState, slot: SponsorshipSlot, offer: SponsorshipOffer, currentYear: number): void {
++  const existingHistory = state.sponsorships[slot]?.relationshipHistory ?? [];
+   state.sponsorships[slot] = {
+     sponsor: offer.sponsor,
+     valuePerYear: offer.valuePerYear,
+     signingBonus: offer.signingBonus,
+     yearsRemaining: offer.years,
+     signedYear: currentYear,
++    relationshipHistory: [...existingHistory, { year: currentYear, value: offer.valuePerYear, eventType: existingHistory.length > 0 ? 'renew' : 'sign' }].slice(-8),
+   };
+
+--- HUNK [op#2 hunk#2] session=10 line=403 ts=2026-05-13T07:32:02.805Z ---
+ }
++
++export function evaluateOffer(
++  sponsor: SponsorshipOffer,
++  offer: SponsorshipOffer,
++  stance: NegotiationStance,
++): SponsorEvaluation {
++  const target = Math.max(1, sponsor.valuePerYear);
++  const baseRatio = offer.valuePerYear / target;
++  const bonusLift = Math.min(0.18, (offer.signingBonus ?? 0) / Math.max(1, target * offer.years) * 0.35);
++  const lengthFit = offer.years >= 3 ? 0.08 : offer.years === 2 ? 0.02 : -0.06;
++  const stancePenalty = stance === 'aggressive' ? -0.08 : stance === 'conservative' ? 0.04 : 0;
++  const score = Math.round(Math.max(0, Math.min(100, (baseRatio + bonusLift + lengthFit + stancePenalty) * 72)));
++  let moodLabel = 'Competitive';
++  if (score >= 88) moodLabel = 'Premium offer';
++  else if (score >= 72) moodLabel = 'Competitive';
++  else if (score >= 58) moodLabel = 'Borderline';
++  else if (score >= 42) moodLabel = 'Lowball';
++  else moodLabel = 'Insulting';
++  return { competitiveScore: score, moodLabel, willAccept: score >= 68 };
++}
++
++export function computeBrandImpact(offer: SponsorshipOffer, state: TycoonState): BrandImpact {
++  const prestige = state.cityPrestige ?? 0.5;
++  const yearly = offer.valuePerYear;
++  const reach: BrandImpact['reach'] = yearly > 2_000_000 || prestige > 0.8 ? 'Worldwide' : yearly > 500_000 || prestige > 0.45 ? 'Regional' : 'Local';
++  const tierBoost = state.tier === 'S' ? 20 : state.tier === 'A' ? 14 : state.tier === 'B' ? 9 : state.tier === 'C' ? 5 : 2;
++  return {
++    reach,
++    globalAppeal: Math.min(100, Math.round(prestige * 70 + tierBoost)),
++    socialReach: Math.min(100, Math.round(Math.log10(Math.max(10, yearly)) * 12 + tierBoost)),
++    brandImage: Math.min(100, Math.round(55 + prestige * 25 + tierBoost / 2)),
++    brandFit: Math.min(100, Math.round(50 + prestige * 30 + (offer.years >= 3 ? 8 : 0))),
++  };
++}
+
+--- HUNK [op#4 hunk#3] session=11 line=458 ts=2026-05-13T17:38:32.852Z ---
+ }
++
++export function classifySponsor(name: string): Pick<Sponsorship, 'industry' | 'archetype' | 'personality' | 'personalityProse'> {
++  const lower = name.toLowerCase();
++  const industry: SponsorIndustry =
++    lower.includes('bet') || lower.includes('betway') || lower.includes('bet365') ? 'gambling'
++    : lower.includes('air') || lower.includes('iberia') || lower.includes('qatar') || lower.includes('emirates') ? 'airline'
++    : lower.includes('bank') || lower.includes('santander') || lower.includes('bbva') || lower.includes('caixa') ? 'bank'
++    : lower.includes('tech') || lower.includes('digital') || lower.includes('vodafone') || lower.includes('movistar') ? 'tech'
++    : lower.includes('beer') || lower.includes('estrella') || lower.includes('mahou') ? 'beer'
++    : lower.includes('water') || lower.includes('aqua') ? 'water'
++    : lower.includes('energy') || lower.includes('red bull') ? 'energy_drink'
++    : lower.includes('auto') || lower.includes('seat') || lower.includes('cupra') ? 'auto'
++    : 'generic';
++  const archetype: Sponsorship['archetype'] =
++    industry === 'gambling' ? 'gambling'
++    : industry === 'tech' || industry === 'telecom' ? 'tech'
++    : industry === 'airline' || industry === 'bank' || industry === 'auto' ? 'premium'
++    : lower.includes('local') || lower.includes('ciudad') ? 'local'
++    : 'generic';
++  const personality = archetype === 'premium' ? 'Brand-protective'
++    : archetype === 'gambling' ? 'Volatile high-yield'
++    : archetype === 'tech' ? 'Growth-minded'
++    : archetype === 'local' ? 'Community loyalist'
++    : 'Commercially steady';
++  const personalityProse = archetype === 'premium'
++    ? 'Pays for clean visibility and reacts badly to scandals.'
++    : archetype === 'gambling'
++      ? 'Offers richer cash with higher board and fan scrutiny.'
++      : archetype === 'tech'
++        ? 'Values star power, data investment, and European reach.'
++        : archetype === 'local'
++          ? 'More patient in down years if the club protects local identity.'
++          : 'Prioritizes reliable placement and basic performance clauses.';
++  return { industry, archetype, personality, personalityProse };
++}
++
++export function getSponsorConflictWarnings(state: TycoonState): string[] {
++  const deals = ALL_SLOTS.map(slot => state.sponsorships[slot]).filter(Boolean) as Sponsorship[];
++  const gamblingCount = deals.filter(d => d.industry === 'gambling' || d.archetype === 'gambling').length;
++  const beerEnergyCount = deals.filter(d => d.industry === 'beer' || d.industry === 'energy_drink').length;
++  const premiumCount = deals.filter(d => d.archetype === 'premium').length;
++  const warnings: string[] = [];
++  if (gamblingCount >= 2) warnings.push('Multiple gambling sponsors raise board scrutiny and youth-development conflicts.');
++  if (beerEnergyCount >= 2) warnings.push('Alcohol and energy-drink overlap weakens family-brand positioning.');
++  if (premiumCount >= 4) warnings.push('Premium partners expect cleaner press conferences and lower player-drama noise.');
++  return warnings;
++}
+
+--- HUNK [op#4 hunk#8] session=11 line=458 ts=2026-05-13T17:38:32.852Z ---
+     return {
+       sponsor: pickSponsorName(tier, slot, null),
++      ...classifySponsor(pickSponsorName(tier, slot, null)),
+       valuePerYear: value,

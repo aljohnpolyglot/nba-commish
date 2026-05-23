@@ -18,6 +18,7 @@ export type PersonnelActionType =
   | 'movie'
   | 'suspension'
   | 'view_ratings'
+  | 'view_candidates'
   | 'fire'
   | 'promote_to_hc'
   | 'resign_staff';
@@ -32,7 +33,7 @@ interface PersonnelActionsModalProps {
 
 // Ordered list of actions shown in this modal.
 const MODAL_ACTION_IDS: PersonnelActionType[] = [
-  'resign_staff', 'view_ratings', 'promote_to_hc', 'view_bio', 'contact', 'bribe', 'fine', 'dinner', 'movie', 'suspension', 'fire',
+  'resign_staff', 'view_ratings', 'view_candidates', 'promote_to_hc', 'view_bio', 'contact', 'bribe', 'fine', 'dinner', 'movie', 'suspension', 'fire',
 ];
 
 // ─────────────────────────────────────────────────────────────────
