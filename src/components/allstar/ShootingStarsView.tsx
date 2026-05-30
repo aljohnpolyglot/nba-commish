@@ -67,15 +67,17 @@ const MemberCard: React.FC<{ player: any; fallbackName?: string; accent: string 
   const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0f172a&color=fff&size=160`;
 
   return (
-    <div className="relative h-24 min-w-0 overflow-hidden rounded-lg border bg-slate-950/80 shadow-lg sm:h-28" style={{ borderColor: `${accent}88` }}>
-      <img
-        src={image ?? fallback}
-        alt={name}
-        className="h-full w-full object-cover object-top"
-        referrerPolicy="no-referrer"
-        onError={(event) => { (event.currentTarget as HTMLImageElement).src = fallback; }}
-      />
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent px-2 pb-1.5 pt-8 text-center">
+    <div className="flex min-w-0 flex-col items-center justify-center gap-2 rounded-lg border bg-slate-950/70 p-3 shadow-lg" style={{ borderColor: `${accent}88` }}>
+      <div className="h-16 w-16 overflow-hidden rounded-full border-2 bg-slate-900 sm:h-20 sm:w-20" style={{ borderColor: `${accent}aa` }}>
+        <img
+          src={image ?? fallback}
+          alt={name}
+          className="h-full w-full object-cover object-top"
+          referrerPolicy="no-referrer"
+          onError={(event) => { (event.currentTarget as HTMLImageElement).src = fallback; }}
+        />
+      </div>
+      <div className="w-full min-w-0 text-center">
         <div className="truncate text-[10px] font-black uppercase leading-none text-white sm:text-xs">{parts.first}</div>
         <div className="truncate text-[10px] font-black uppercase leading-none text-white sm:text-xs">{parts.last}</div>
       </div>
@@ -209,6 +211,7 @@ export const ShootingStarsView: React.FC<ShootingStarsViewProps> = ({ allStar, p
             const entryTeam = resolveTeam(entry, teams, entryPlayers);
             const isWinner = entry.teamId === result.winnerTeamId;
             const displayName = teamName(entryTeam, entry.label);
+            const finalTime = entry.finalTime ?? (isWinner ? entry.timeSec : null);
 
             return (
               <div key={entry.teamId ?? `${displayName}-${index}`} className={`grid gap-4 border-l-4 ${accent.border} px-4 py-5 lg:grid-cols-[70px_350px_1fr_150px_180px] lg:items-center ${isWinner ? 'bg-cyan-500/10' : 'bg-slate-950/40'}`}>
@@ -231,8 +234,8 @@ export const ShootingStarsView: React.FC<ShootingStarsViewProps> = ({ allStar, p
                 </div>
                 <div className="flex items-center justify-between lg:block lg:text-right">
                   <span className="text-xs font-black uppercase tracking-widest text-slate-500 lg:hidden">Final</span>
-                  {entry.finalTime != null ? (
-                    <span className={`text-3xl font-black tabular-nums ${isWinner ? 'text-emerald-400' : 'text-white'}`}>{formatSeconds(entry.finalTime)}</span>
+                  {finalTime != null ? (
+                    <span className={`text-3xl font-black tabular-nums ${isWinner ? 'text-emerald-400' : 'text-white'}`}>{formatSeconds(finalTime)}</span>
                   ) : (
                     <span className="inline-flex rounded-full border border-rose-500/70 bg-rose-500/10 px-5 py-2 text-xl font-black text-rose-300">DNF</span>
                   )}
