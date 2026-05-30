@@ -1,6 +1,6 @@
-import { Crown, Star, Target, Users, Zap } from 'lucide-react';
+import { Crown, Sparkles, Star, Target, Users, Zap } from 'lucide-react';
 
-export type AllStarTab = 'overview' | 'votes' | 'roster' | 'rising-stars' | 'celebrity' | 'dunk' | 'three-point' | 'throne';
+export type AllStarTab = 'overview' | 'votes' | 'roster' | 'rising-stars' | 'celebrity' | 'dunk' | 'three-point' | 'shooting-stars' | 'skills' | 'throne';
 
 type AllStarTabConfig = {
   id: AllStarTab;
@@ -30,6 +30,20 @@ export const buildAllStarTabs = ({
   { id: 'celebrity', label: 'Celebrity Game', icon: Users, locked: !allStar?.celebrityRoster, hidden: !leagueStats.celebrityGameEnabled },
   { id: 'dunk', label: 'Dunk Contest', icon: Zap, locked: !allStar?.dunkContestAnnounced && currentDate < dates.saturday },
   { id: 'three-point', label: '3-Point Contest', icon: Target, locked: !allStar?.threePointAnnounced && currentDate < dates.saturday },
+  {
+    id: 'shooting-stars',
+    label: 'Shooting Stars',
+    icon: Sparkles,
+    hidden: leagueStats.allStarShootingStars === false,
+    locked: !(allStar as any)?.shootingStarsAnnounced && !(allStar as any)?.shootingStars?.complete && currentDate < dates.saturday,
+  },
+  {
+    id: 'skills',
+    label: 'Skills Challenge',
+    icon: Target,
+    hidden: leagueStats.allStarSkillsChallenge !== true,
+    locked: !(allStar as any)?.skillsChallengeAnnounced && !(allStar as any)?.skillsChallenge?.complete && currentDate < dates.saturday,
+  },
   {
     id: 'throne',
     label: 'The Throne',

@@ -133,20 +133,75 @@ export async function handleDirectDispatchAction({
   }
 
   if (action.type === 'SAVE_CONTEST_RESULT') {
-    const { contest, result } = action.payload;
-    setState(prev => prev.allStar ? {
-      ...prev,
-      allStar: {
-        ...prev.allStar,
-        ...(contest === 'dunk' ? { dunkContest: result } : { threePointContest: result }),
-      },
-    } : prev);
+    const { contest, result, contestants } = action.payload;
+    setState(prev => {
+      if (!prev.allStar) return prev;
+      const season = prev.leagueStats?.year;
+      const awardEntries: Array<{ playerId?: string; playerName?: string; awardType: string }> = [];
+      if (contest === 'dunk' && result?.winnerId) {
+        awardEntries.push({ playerId: result.winnerId, playerName: result.winnerName, awardType: 'Slam Dunk Contest Winner' });
+      }
+      if (contest === 'three' && result?.winnerId) {
+        awardEntries.push({ playerId: result.winnerId, playerName: result.winnerName, awardType: 'Three-Point Contest Winner' });
+      }
+      if (contest === 'shooting-stars' && result?.winnerTeamId) {
+        const winnerTeam = result.teams?.find((team: any) => team.teamId === result.winnerTeamId);
+        (winnerTeam?.playerIds ?? []).forEach((playerId: string, index: number) => {
+          awardEntries.push({ playerId, playerName: winnerTeam.playerNames?.[index], awardType: 'Shooting Stars Winner' });
+        });
+      }
+      if (contest === 'skills' && result?.winnerId) {
+        awardEntries.push({ playerId: result.winnerId, playerName: result.winnerName, awardType: 'Skills Challenge Winner' });
+      }
+      const players = awardEntries.length > 0
+        ? prev.players.map(player => {
+            const entry = awardEntries.find(item =>
+              (item.playerId && player.internalId === item.playerId) ||
+              (!item.playerId && item.playerName && player.name?.toLowerCase() === item.playerName.toLowerCase())
+            );
+            if (!entry || !season) return player;
+            if ((player.awards ?? []).some(award => award.type === entry.awardType && award.season === season)) return player;
+            return { ...player, awards: [...(player.awards ?? []), { type: entry.awardType, season }] };
+          })
+        : prev.players;
+
+      const scheduleGid = contest === 'dunk' ? 90003
+        : contest === 'three' ? 90004
+        : contest === 'shooting-stars' ? 90006
+        : contest === 'skills' ? 90007
+        : null;
+
+      return {
+        ...prev,
+        players,
+        schedule: scheduleGid == null ? prev.schedule : prev.schedule.map((game: any) => game.gid === scheduleGid ? { ...game, played: true } : game),
+        allStar: {
+          ...prev.allStar,
+          ...(contest === 'dunk' ? { dunkContest: result } : {}),
+          ...(contest === 'three' ? { threePointContest: result } : {}),
+          ...(contest === 'shooting-stars' ? { shootingStars: result, shootingStarsContestants: contestants ?? (prev.allStar as any).shootingStarsContestants, shootingStarsAnnounced: true } : {}),
+          ...(contest === 'skills' ? { skillsChallenge: result, skillsChallengeContestants: contestants ?? (prev.allStar as any).skillsChallengeContestants, skillsChallengeAnnounced: true } : {}),
+        },
+      };
+    });
     return true;
   }
 
   if (action.type === 'SAVE_THRONE_RESULT') {
     const { result } = action.payload;
-    setState(prev => prev.allStar ? { ...prev, allStar: { ...prev.allStar, throne: result } } : prev);
+    setState(prev => {
+      if (!prev.allStar) return prev;
+      const championId = result?.champion?.playerId;
+      const season = prev.leagueStats?.year;
+      const players = championId && season
+        ? prev.players.map(player => {
+            if (player.internalId !== championId) return player;
+            if ((player.awards ?? []).some(award => award.type === 'The Throne' && award.season === season)) return player;
+            return { ...player, awards: [...(player.awards ?? []), { type: 'The Throne', season }] };
+          })
+        : prev.players;
+      return { ...prev, players, allStar: { ...prev.allStar, throne: result } };
+    });
     return true;
   }
 
@@ -167,6 +222,7 @@ export async function handleDirectDispatchAction({
         ...result,
         gameId,
         date: prev.date,
+        season: prev.leagueStats?.year,
         competitionId: watchedGame?.competitionId ?? result.competitionId,
         competitionPhase: watchedGame?.competitionPhase ?? result.competitionPhase,
       };

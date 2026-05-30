@@ -192,6 +192,48 @@ export const autoSelectThreePointContestants = async (state: GameState): Promise
   }
 };
 
+export const autoSelectShootingStarsContestants = async (state: GameState): Promise<Partial<GameState>> => {
+  if (state.leagueStats.allStarShootingStars === false) return {};
+  if ((state.allStar as any)?.shootingStarsAnnounced) return {};
+  try {
+    const { AllStarShootingStarsSim } = await import('../../allStar/AllStarShootingStarsSim');
+    const teams = Math.min(30, Math.max(2, Math.round(state.leagueStats.allStarShootingStarsTeams ?? Math.round((state.leagueStats.allStarShootingStarsTotalPlayers ?? 12) / 3))));
+    const num = teams * 3;
+    const hostCity = state.leagueStats.allStarHosts?.find((host: any) => host.year === state.leagueStats.year)?.city;
+    const contestants = AllStarShootingStarsSim.selectContestants(state.players, state.leagueStats.year, num, state.teams, state.nonNBATeams ?? [], hostCity);
+    return {
+      allStar: {
+        ...(state.allStar as any),
+        shootingStarsContestants: contestants,
+        shootingStarsAnnounced: true,
+      },
+    };
+  } catch (err) {
+    console.warn('autoSelectShootingStarsContestants failed:', err);
+    return {};
+  }
+};
+
+export const autoSelectSkillsChallengeContestants = async (state: GameState): Promise<Partial<GameState>> => {
+  if (state.leagueStats.allStarSkillsChallenge !== true) return {};
+  if ((state.allStar as any)?.skillsChallengeAnnounced) return {};
+  try {
+    const { AllStarSkillsChallengeSim } = await import('../../allStar/AllStarSkillsChallengeSim');
+    const num = Math.min(30, Math.max(3, Math.round(state.leagueStats.allStarSkillsChallengeTeams ?? state.leagueStats.allStarSkillsChallengeTotalPlayers ?? 4)));
+    const contestants = AllStarSkillsChallengeSim.selectContestants(state.players, state.leagueStats.year, num);
+    return {
+      allStar: {
+        ...(state.allStar as any),
+        skillsChallengeContestants: contestants,
+        skillsChallengeAnnounced: true,
+      },
+    };
+  } catch (err) {
+    console.warn('autoSelectSkillsChallengeContestants failed:', err);
+    return {};
+  }
+};
+
 export function backfillAllStarAwards(state: GameState): Partial<GameState> {
   const allStarData = state.allStar as any;
   const year = state.leagueStats.year;
@@ -200,8 +242,18 @@ export function backfillAllStarAwards(state: GameState): Partial<GameState> {
     entries.push({ internalId: allStarData.dunkContest.winnerId, name: allStarData.dunkContest.winnerName, awardType: 'Slam Dunk Contest Winner' });
   if (allStarData?.threePointContest?.winnerId || allStarData?.threePointContest?.winnerName)
     entries.push({ internalId: allStarData.threePointContest.winnerId, name: allStarData.threePointContest.winnerName, awardType: 'Three-Point Contest Winner' });
+  if (allStarData?.shootingStars?.winnerTeamId) {
+    const winnerTeam = allStarData.shootingStars.teams?.find((team: any) => team.teamId === allStarData.shootingStars.winnerTeamId);
+    (winnerTeam?.playerIds ?? []).forEach((playerId: string, index: number) => {
+      entries.push({ internalId: playerId, name: winnerTeam.playerNames?.[index], awardType: 'Shooting Stars Winner' });
+    });
+  }
+  if (allStarData?.skillsChallenge?.winnerId || allStarData?.skillsChallenge?.winnerName)
+    entries.push({ internalId: allStarData.skillsChallenge.winnerId, name: allStarData.skillsChallenge.winnerName, awardType: 'Skills Challenge Winner' });
   if (allStarData?.gameMvp?.name)
     entries.push({ name: allStarData.gameMvp.name, awardType: 'All-Star Game MVP' });
+  if (allStarData?.throne?.champion?.playerId)
+    entries.push({ internalId: allStarData.throne.champion.playerId, name: allStarData.throne.champion.playerName, awardType: 'The Throne' });
 
   if (entries.length === 0) return {};
 

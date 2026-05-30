@@ -175,6 +175,14 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
       awardEntries.push({ internalId: allStarData.dunkContest.winnerId, name: allStarData.dunkContest.winnerName, awardType: 'Slam Dunk Contest Winner' });
     if (allStarData?.threePointContest?.winnerId)
       awardEntries.push({ internalId: allStarData.threePointContest.winnerId, name: allStarData.threePointContest.winnerName, awardType: 'Three-Point Contest Winner' });
+    if (allStarData?.shootingStars?.winnerTeamId) {
+      const winnerTeam = allStarData.shootingStars.teams?.find((team: any) => team.teamId === allStarData.shootingStars.winnerTeamId);
+      (winnerTeam?.playerIds ?? []).forEach((playerId: string, index: number) => {
+        awardEntries.push({ internalId: playerId, name: winnerTeam.playerNames?.[index], awardType: 'Shooting Stars Winner' });
+      });
+    }
+    if (allStarData?.skillsChallenge?.winnerId)
+      awardEntries.push({ internalId: allStarData.skillsChallenge.winnerId, name: allStarData.skillsChallenge.winnerName, awardType: 'Skills Challenge Winner' });
     if (allStarData?.gameMvp?.name)
       awardEntries.push({ name: allStarData.gameMvp.name, awardType: 'All-Star Game MVP' });
     if (allStarData?.throne?.champion?.playerId)

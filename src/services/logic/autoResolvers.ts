@@ -11,6 +11,8 @@ export {
   autoAnnounceReserves,
   autoSelectDunkContestants,
   autoSelectThreePointContestants,
+  autoSelectShootingStarsContestants,
+  autoSelectSkillsChallengeContestants,
 } from './autoResolversParts/allStarSelectionResolvers';
 
 export {

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Star, Target, Zap, Trophy } from 'lucide-react';
+import { Sparkles, Star, Target, Zap, Trophy } from 'lucide-react';
 
-type AllStarTab = 'overview' | 'votes' | 'roster' | 'rising-stars' | 'celebrity' | 'dunk' | 'three-point' | 'all-star-game';
+type AllStarTab = 'overview' | 'votes' | 'roster' | 'rising-stars' | 'celebrity' | 'dunk' | 'three-point' | 'shooting-stars' | 'skills' | 'all-star-game';
 
 interface AllStarOverviewProps {
   phase: string;
@@ -9,9 +9,20 @@ interface AllStarOverviewProps {
   onNavigate: (tab: AllStarTab) => void;
   onWatchDunkContest?: () => void;
   year: number;
+  leagueStats?: any;
 }
 
-export const AllStarOverview: React.FC<AllStarOverviewProps> = ({ phase, allStar, onNavigate, onWatchDunkContest, year }) => {
+const collapseRepeatedLocation = (label?: string) => {
+  const parts = (label ?? '').trim().split(/\s+/).filter(Boolean);
+  for (let size = 1; size <= Math.floor(parts.length / 2); size += 1) {
+    if (parts.slice(0, size).join(' ').toLowerCase() === parts.slice(size, size * 2).join(' ').toLowerCase()) {
+      return [...parts.slice(0, size), ...parts.slice(size * 2)].join(' ');
+    }
+  }
+  return parts.join(' ');
+};
+
+export const AllStarOverview: React.FC<AllStarOverviewProps> = ({ phase, allStar, onNavigate, onWatchDunkContest, year, leagueStats }) => {
   if (phase === 'upcoming') {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -54,6 +65,7 @@ export const AllStarOverview: React.FC<AllStarOverviewProps> = ({ phase, allStar
   }
 
   // Active phase — event cards grid
+  void onWatchDunkContest;
   const events = [
     {
       id: 'votes' as AllStarTab,
@@ -98,6 +110,20 @@ export const AllStarOverview: React.FC<AllStarOverviewProps> = ({ phase, allStar
       status: allStar?.threePointContest ? 'done' : 'soon',
       icon: Target,
     },
+    ...(leagueStats?.allStarShootingStars !== false ? [{
+      id: 'shooting-stars' as AllStarTab,
+      title: 'Shooting Stars',
+      sub: 'Saturday, Feb 14',
+      status: allStar?.shootingStars ? 'done' : allStar?.shootingStarsAnnounced ? 'partial' : 'soon',
+      icon: Sparkles,
+    }] : []),
+    ...(leagueStats?.allStarSkillsChallenge === true ? [{
+      id: 'skills' as AllStarTab,
+      title: 'Skills Challenge',
+      sub: 'Saturday, Feb 14',
+      status: allStar?.skillsChallenge ? 'done' : allStar?.skillsChallengeAnnounced ? 'partial' : 'soon',
+      icon: Target,
+    }] : []),
     {
       id: 'all-star-game' as AllStarTab,
       title: 'All-Star Game',
@@ -158,6 +184,16 @@ export const AllStarOverview: React.FC<AllStarOverviewProps> = ({ phase, allStar
           {ev.id === 'three-point' && allStar?.threePointContest && (
             <div className="mt-2 text-xs font-bold text-amber-400">
               🏆 {allStar.threePointContest.winnerName}
+            </div>
+          )}
+          {ev.id === 'shooting-stars' && allStar?.shootingStars && (
+            <div className="mt-2 text-xs font-bold text-amber-400">
+              🏆 {collapseRepeatedLocation(allStar.shootingStars.winnerLabel)}
+            </div>
+          )}
+          {ev.id === 'skills' && allStar?.skillsChallenge && (
+            <div className="mt-2 text-xs font-bold text-amber-400">
+              🏆 {allStar.skillsChallenge.winnerName}
             </div>
           )}
         </button>

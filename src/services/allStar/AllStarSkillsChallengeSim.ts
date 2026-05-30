@@ -24,10 +24,22 @@ const skillScore = (p: NBAPlayer): number =>
   // Obstacle course rewards speed, dribbling, passing, mid-range/3PT shooting equally.
   (ratingOf(p, 'spd') + ratingOf(p, 'drb') + ratingOf(p, 'pss') + ratingOf(p, 'tp')) / 4;
 
+const skillsInviteScore = (p: NBAPlayer): number => {
+  const age = (p as any).age ?? 27;
+  const youngBoost = age <= 22 ? 10 : age <= 25 ? 7 : age <= 28 ? 3 : age >= 33 ? -4 : 0;
+  return skillScore(p) + youngBoost;
+};
+
 export class AllStarSkillsChallengeSim {
   static selectContestants(players: NBAPlayer[], season: number, totalPlayers: number): NBAPlayer[] {
-    const eligible = players.filter(p => p.stats?.some(s => s.season === season && !s.playoffs && (s.gp ?? 0) > 0));
-    return eligible.sort((a, b) => skillScore(b) - skillScore(a)).slice(0, totalPlayers);
+    const ineligibleStatuses = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
+    const eligible = players.filter(p =>
+      p.tid >= 0 &&
+      p.tid < 100 &&
+      !ineligibleStatuses.has(p.status ?? '') &&
+      p.stats?.some(s => s.season === season && !s.playoffs && (s.gp ?? 0) > 0)
+    );
+    return eligible.sort((a, b) => skillsInviteScore(b) - skillsInviteScore(a)).slice(0, totalPlayers);
   }
 
   static simulate(contestants: NBAPlayer[]): SkillsChallengeResult {

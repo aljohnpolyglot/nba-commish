@@ -43,6 +43,8 @@ Save-State-Audit aus DevTools-Konsole: Snippet in `CLAUDE.md` → "Standard snip
 
 Für In-App-Repro/Diagnose ist `src/utils/debugCheats.ts` der zentrale Einstiegspunkt. Wenn ein TODO-Bug auf PlayButton, Phase, Offseason, Euro-Mode oder Stuck-State verweist, zuerst dort nach vorhandenen Cheats (`STUCK`, `PHASEDUMP`, `EUROAUDIT`, `WARP`, `WARPSLOW`) suchen und neue Diagnoseausgabe dort ergänzen statt zu raten.
 
+Nicht zuerst das ganze Repo nach Kontext durchsuchen. Erst `debugCheats` nutzen, um den fehlerhaften State/Phase-Pfad einzugrenzen, danach nur die betroffenen Codepfade lesen. Das reduziert Repo-Spam und hält Debugging an echter Laufzeitdiagnose statt an Vermutungen aus UI-Symptomen ausgerichtet.
+
 ## Planning and Change Intake
 
 Komplexe Features werden in `CHANGELOG.md` als Session-Eintrag dokumentiert (Format: Session N (Datum) — Titel, Bullet-Liste der Änderungen mit File-Pfaden). Vor größeren Refactors prüfen, ob ein TODO-Item dazu existiert; ist keines da, eines anlegen, dann implementieren.
@@ -58,11 +60,16 @@ ExecPlan-Format (light): Bei mehrtägigen Refactors einen `MULTI_SESSION_*.md` o
 
 - TypeScript strict, keine `any` außer an externen Daten-Boundaries (Gist-Fetch).
 - React Functional Components mit Hooks, Tailwind für Styling.
+- Teamnamen in UI, News, Minigames, Result-Labels, Dropdowns und History-Zeilen immer über `getTeamFullName(team)` aus `src/utils/teamNames.ts` rendern. Niemals inline `${team.region} ${team.name}` oder `region + name` für NBA-Teamobjekte bauen; das erzeugt Saves/Views wie `Boston Boston Celtics`.
 - Niemals commissioner-/league-konfigurierbare Settings hardcoden (z.B. Salary Cap, Contract-Scale, Toggles). Immer `leagueStats`, Setup-State oder den Commissioner-Settings-Flow als Source of Truth verwenden.
 - Nutzer-sichtbare Offseason-/Phase-Copy soll wie Spieltext klingen, nicht wie interne Pipeline-/Dev-Labels. Begriffe wie `Offseason Flow`, `Phase`, `resolver`, `gate` etc. in sichtbarer UI vermeiden, wenn eine natürliche Formulierung möglich ist.
+- Niemals versteckte Systeme/Internals in sichtbarer UI oder Standard-Antworten offenlegen. Keine Copy wie `exact internals`, `fuzz`, `fog`, `scout read`, `hidden formula`, `resolver`, `weight`, `band`, `roll`, `RNG` oder `computed estimate`, außer der User fragt explizit nach Debug-/Implementierungsdetails.
+- Niemals BBGM-/interne Ratings in sichtbarer UI zeigen. Wenn eine Nutzer-UI eine Zahl für Player-Rating/OVR anzeigt, muss sie auf der K2-/2K-Skala liegen; interne Sort-/Sim-Werte dürfen höchstens im Debug-Kontext auftauchen.
+- Competition-spezifische KPI/Outlook-Widgets nur zeigen, wenn das User-Team in dieser Competition teilnimmt. Für nicht qualifizierte Teams (z. B. EuroLeague) keine irreführenden Prozent-/Form-/Pressure-Kacheln rendern.
+- Mobile first. Jede neue oder geänderte UI muss zuerst auf schmalen Phone-Breiten funktionieren: keine abgeschnittenen Modals, keine starren Desktop-Grids auf Mobile, kein versteckter Overflow ohne nutzbaren vertikalen Scroll-Pfad und keine reine Horizontal-Tabellen-UI ohne Mobile-Card/List-Fallback.
 - **Default: keine Kommentare.** Nur das Warum dokumentieren wenn nicht offensichtlich (versteckter Constraint, Workaround, surprising Behavior).
 - Keine Multi-Paragraph-Docstrings. Ein-Zeile-Max.
-- Datei-Größe: <600 Zeilen Hand-Code bevorzugt; bestehende größere Files (z.B. `GameContext.tsx`, `simulationHandler.ts`) werden inkrementell aufgespalten — keine Vergrößerung ohne Grund.
+- Datei-Größe strikt beachten: Hand-Code nach Möglichkeit unter 500 Zeilen halten, neue Dateien standardmäßig unter diesem Limit anlegen und wachsende Legacy-Dateien eher aufspalten als weiter vergrößern, außer es gibt einen klaren Grund dagegen.
 - Backwards-Compatibility-Hacks vermeiden (renamed `_vars`, dead Re-Exports, `// removed` Kommentare). Wenn unused: löschen.
 - Error-Handling/Fallbacks nur an System-Boundaries (User-Input, externe APIs). Internal Code trust.
 

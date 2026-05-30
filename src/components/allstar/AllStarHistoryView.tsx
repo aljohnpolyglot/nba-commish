@@ -5,6 +5,7 @@ import { fetchAllStarHistory, AllStarHistoryEntry } from '../../data/allStarHist
 import { matchTeamByWikiName, generateAbbrev } from '../../data/brefFetcher';
 import { getAllStarSunday } from '../../services/allStar/AllStarWeekendOrchestrator';
 import { usePlayerQuickActions } from '../../hooks/usePlayerQuickActions';
+import { getTeamFullName } from '../../utils/teamNames';
 
 /**
  * All-Star history table — mirrors LeagueHistoryView layout.
@@ -134,6 +135,8 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
       mvps: Array<{ name: string; team: string }>;
       dunkWinner: { name: string; team: string } | null;
       threeWinner: { name: string; team: string } | null;
+      shootingStarsWinner: { name: string; team: string } | null;
+      skillsWinner: { name: string; team: string } | null;
       throneWinner: { name: string; team: string } | null;
       bracketRecap: string | null;
       rsMvp: { name: string; team: string } | null;
@@ -144,19 +147,23 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
       const stat = (p.stats ?? []).find((s: any) => s.season === season && !s.playoffs && (s.tid ?? -1) >= 0);
       if (!stat) return '';
       const team = state.teams.find((t: any) => t.id === stat.tid);
-      return team ? `${(team as any).region ?? ''} ${team.name}`.trim() : '';
+      return team ? getTeamFullName(team) : '';
     };
 
     // Build contest-winner lookup from player awards (covers all past sim seasons)
     type ContestEntry = { name: string; team: string };
-    const contestByYear = new Map<number, { dunk: ContestEntry | null; three: ContestEntry | null; throne: ContestEntry | null }>();
+    const contestByYear = new Map<number, { dunk: ContestEntry | null; three: ContestEntry | null; shootingStars: ContestEntry | null; skills: ContestEntry | null; throne: ContestEntry | null }>();
     state.players.forEach(p => {
       (p.awards ?? []).forEach((a: any) => {
-        const entry = contestByYear.get(a.season) ?? { dunk: null, three: null, throne: null };
+        const entry = contestByYear.get(a.season) ?? { dunk: null, three: null, shootingStars: null, skills: null, throne: null };
         if (a.type === 'Slam Dunk Contest Winner')
           contestByYear.set(a.season, { ...entry, dunk: { name: p.name, team: resolveTeamName(p, a.season) } });
         if (a.type === 'Three-Point Contest Winner')
           contestByYear.set(a.season, { ...entry, three: { name: p.name, team: resolveTeamName(p, a.season) } });
+        if (a.type === 'Shooting Stars Winner')
+          contestByYear.set(a.season, { ...entry, shootingStars: { name: p.name, team: resolveTeamName(p, a.season) } });
+        if (a.type === 'Skills Challenge Winner')
+          contestByYear.set(a.season, { ...entry, skills: { name: p.name, team: resolveTeamName(p, a.season) } });
         if (a.type === 'The Throne')
           contestByYear.set(a.season, { ...entry, throne: { name: p.name, team: resolveTeamName(p, a.season) } });
       });
@@ -180,6 +187,8 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
           mvps: played ? (h.mvps ?? []) : [],
           dunkWinner: contest?.dunk ?? null,
           threeWinner: contest?.three ?? null,
+          shootingStarsWinner: contest?.shootingStars ?? null,
+          skillsWinner: contest?.skills ?? null,
           throneWinner: contest?.throne ?? null,
           bracketRecap: null,
           rsMvp: null,
@@ -209,8 +218,17 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
       const curContest = contestByYear.get(currentYear);
       const asDunk = (state.allStar as any)?.dunkContest;
       const asThree = (state.allStar as any)?.threePointContest;
+      const asShootingStars = (state.allStar as any)?.shootingStars;
+      const asSkills = (state.allStar as any)?.skillsChallenge;
       const dunkWinner = curContest?.dunk ?? contestEntryFromAllStar(asDunk?.winnerName, asDunk?.winnerId);
       const threeWinner = curContest?.three ?? contestEntryFromAllStar(asThree?.winnerName, asThree?.winnerId);
+      const shootingStarsWinner = curContest?.shootingStars ?? (() => {
+        const winnerTeam = asShootingStars?.teams?.find((team: any) => team.teamId === asShootingStars?.winnerTeamId);
+        if (!winnerTeam?.playerNames?.length) return null;
+        const realTeam = state.teams.find((team: any) => String(team.id) === String(winnerTeam.teamId));
+        return { name: winnerTeam.playerNames.join(', '), team: realTeam ? getTeamFullName(realTeam) : (winnerTeam.label ?? asShootingStars?.winnerLabel ?? '') };
+      })();
+      const skillsWinner = curContest?.skills ?? contestEntryFromAllStar(asSkills?.winnerName, asSkills?.winnerId);
       const asThrone = (state.allStar as any)?.throne;
       const throneWinner = curContest?.throne ?? contestEntryFromAllStar(asThrone?.champion?.playerName, asThrone?.champion?.playerId);
 
@@ -246,6 +264,8 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
         mvps: mvp ? [{ name: mvp.name ?? mvp, team: mvp.teamAbbrev ?? mvp.team ?? '' }] : [],
         dunkWinner,
         threeWinner,
+        shootingStarsWinner,
+        skillsWinner,
         throneWinner,
         bracketRecap,
         rsMvp,
@@ -276,6 +296,8 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
         mvps: [],
         dunkWinner: contest?.dunk ?? null,
         threeWinner: contest?.three ?? null,
+        shootingStarsWinner: contest?.shootingStars ?? null,
+        skillsWinner: contest?.skills ?? null,
         throneWinner: contest?.throne ?? null,
         bracketRecap: null,
         rsMvp: null,
@@ -317,6 +339,12 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
                   <th className="p-3 font-bold text-sky-400 border-b border-slate-800 whitespace-nowrap">Rising Stars MVP 🌟</th>
                   <th className="p-3 font-bold text-orange-400 border-b border-slate-800 whitespace-nowrap">Dunk 🏀</th>
                   <th className="p-3 font-bold text-blue-400 border-b border-slate-800 whitespace-nowrap">3PT 🎯</th>
+                  {state.leagueStats.allStarShootingStars !== false && (
+                    <th className="p-3 font-bold text-sky-400 border-b border-slate-800 whitespace-nowrap">Shooting Stars</th>
+                  )}
+                  {state.leagueStats.allStarSkillsChallenge && (
+                    <th className="p-3 font-bold text-orange-400 border-b border-slate-800 whitespace-nowrap">Skills</th>
+                  )}
                   {state.leagueStats.allStarThroneEnabled && (
                     <th className="p-3 font-bold text-yellow-400 border-b border-slate-800 whitespace-nowrap">Throne 👑</th>
                   )}
@@ -327,7 +355,7 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
               </thead>
               <tbody className="divide-y divide-slate-800/50">
                 {rows.length === 0 && (
-                  <tr><td colSpan={state.leagueStats.allStarThroneEnabled ? 9 : 8} className="p-6 text-center text-slate-500 italic">Loading All-Star history…</td></tr>
+                  <tr><td colSpan={8 + (state.leagueStats.allStarShootingStars !== false ? 1 : 0) + (state.leagueStats.allStarSkillsChallenge ? 1 : 0) + (state.leagueStats.allStarThroneEnabled ? 1 : 0)} className="p-6 text-center text-slate-500 italic">Loading All-Star history…</td></tr>
                 )}
                 {rows.map(row => (
                   <tr
@@ -390,6 +418,16 @@ export const AllStarHistoryView: React.FC<AllStarHistoryViewProps> = ({ onClose 
                     <td className="p-3 whitespace-nowrap">
                       <MvpCell mvp={row.threeWinner} teams={state.teams} players={state.players} onOpenPlayer={quick.openFor} />
                     </td>
+                    {state.leagueStats.allStarShootingStars !== false && (
+                      <td className="p-3 whitespace-nowrap">
+                        <MvpCell mvp={row.shootingStarsWinner} teams={state.teams} players={state.players} onOpenPlayer={quick.openFor} />
+                      </td>
+                    )}
+                    {state.leagueStats.allStarSkillsChallenge && (
+                      <td className="p-3 whitespace-nowrap">
+                        <MvpCell mvp={row.skillsWinner} teams={state.teams} players={state.players} onOpenPlayer={quick.openFor} />
+                      </td>
+                    )}
                     {state.leagueStats.allStarThroneEnabled && (
                       <td className="p-3 whitespace-nowrap">
                         <MvpCell mvp={row.throneWinner} teams={state.teams} players={state.players} onOpenPlayer={quick.openFor} />

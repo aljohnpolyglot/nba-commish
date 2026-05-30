@@ -49,6 +49,8 @@ export function injectAllStarGames(schedule: any[], teams: any[], year: number, 
   const dunkContest = { gid: 90003, homeTid: -7, awayTid: -7, homeScore: 0, awayScore: 0, played: false, date: toNoonUTC(dates.saturday), isDunkContest: true, isExhibition: true };
   const threePointContest = { gid: 90004, homeTid: -8, awayTid: -8, homeScore: 0, awayScore: 0, played: false, date: toNoonUTC(dates.saturday), isThreePointContest: true, isExhibition: true };
   const throneEvent = { gid: 90005, homeTid: -9, awayTid: -9, homeScore: 0, awayScore: 0, played: false, date: toNoonUTC(dates.saturday), isThroneEvent: true, isExhibition: true };
+  const shootingStars = { gid: 90006, homeTid: -10, awayTid: -10, homeScore: 0, awayScore: 0, played: false, date: toNoonUTC(dates.saturday), isShootingStars: true, isExhibition: true };
+  const skillsChallenge = { gid: 90007, homeTid: -11, awayTid: -11, homeScore: 0, awayScore: 0, played: false, date: toNoonUTC(dates.saturday), isSkillsChallenge: true, isExhibition: true };
 
   const newGames: any[] = [];
   if (leagueStats.risingStarsEnabled !== false) newGames.push(...risingStarsGames);
@@ -56,6 +58,8 @@ export function injectAllStarGames(schedule: any[], teams: any[], year: number, 
   if (leagueStats.celebrityGameEnabled) newGames.push(celebrityGame);
   if (leagueStats.allStarDunkContest !== false) newGames.push(dunkContest);
   if (leagueStats.allStarThreePointContest !== false) newGames.push(threePointContest);
+  if (leagueStats.allStarShootingStars !== false) newGames.push(shootingStars);
+  if (leagueStats.allStarSkillsChallenge === true) newGames.push(skillsChallenge);
   if (leagueStats.allStarThroneEnabled === true) newGames.push(throneEvent);
 
   return [...schedule, ...newGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -181,34 +185,51 @@ export function simulateShootingStars(state: GameState): Partial<GameState> {
   const allStar = state.allStar!;
   const leagueStats = state.leagueStats;
   const newAllStarState: any = { ...allStar };
-  if (leagueStats.allStarShootingStars !== true) return { allStar: newAllStarState };
-  if ((allStar as any).shootingStars?.complete) return { allStar: newAllStarState };
+  const markPlayed = (schedule: any[]) => schedule.map((g) => (g.gid === 90006 ? { ...g, played: true } : g));
+  if (leagueStats.allStarShootingStars === false) return { allStar: newAllStarState };
+  if ((allStar as any).shootingStars?.complete) return { allStar: newAllStarState, schedule: markPlayed(state.schedule) };
 
-  const totalPlayers = leagueStats.allStarShootingStarsTotalPlayers ?? 12;
-  const teamCount = leagueStats.allStarShootingStarsTeams ?? 3;
-  const perTeam = leagueStats.allStarShootingStarsPlayersPerTeam ?? 3;
-  const contestants = AllStarShootingStarsSim.selectContestants(state.players, leagueStats.year, totalPlayers);
-  if (contestants.length < teamCount * perTeam) return { allStar: newAllStarState };
+  const teamLimit = Math.min(30, Math.max(2, Math.round(leagueStats.allStarShootingStarsTeams ?? Math.round((leagueStats.allStarShootingStarsTotalPlayers ?? 12) / 3))));
+  const totalPlayers = teamLimit * 3;
+  const perTeam = 3;
+  const hostCity = leagueStats.allStarHosts?.find((host: any) => host.year === leagueStats.year)?.city;
+  const contestants = ((allStar as any).shootingStarsContestants?.length
+    ? (allStar as any).shootingStarsContestants
+        .map((c: any) => state.players.find((p) => p.internalId === (c.internalId || c.playerId)))
+        .filter((p: NBAPlayer | undefined): p is NBAPlayer => p !== undefined)
+    : AllStarShootingStarsSim.selectContestants(state.players, leagueStats.year, totalPlayers, state.teams, state.nonNBATeams ?? [], hostCity));
+  newAllStarState.shootingStarsContestants = contestants;
+  newAllStarState.shootingStarsAnnounced = contestants.length > 0;
+  const teamCount = Math.floor(contestants.length / perTeam);
+  if (teamCount < 2 || contestants.length < teamCount * perTeam) return { allStar: newAllStarState };
 
-  const result = AllStarShootingStarsSim.simulate(contestants, teamCount, perTeam);
+  const result = AllStarShootingStarsSim.simulate(contestants, teamCount, perTeam, state.teams, leagueStats.year);
   newAllStarState.shootingStars = {
     teams: result.teams,
     winnerTeamId: result.winnerTeamId,
     winnerLabel: result.winnerLabel,
+    log: result.log,
     complete: true,
   };
-  return { allStar: newAllStarState };
+  return { allStar: newAllStarState, schedule: markPlayed(state.schedule) };
 }
 
 export function simulateSkillsChallenge(state: GameState): Partial<GameState> {
   const allStar = state.allStar!;
   const leagueStats = state.leagueStats;
   const newAllStarState: any = { ...allStar };
+  const markPlayed = (schedule: any[]) => schedule.map((g) => (g.gid === 90007 ? { ...g, played: true } : g));
   if (leagueStats.allStarSkillsChallenge !== true) return { allStar: newAllStarState };
-  if ((allStar as any).skillsChallenge?.complete) return { allStar: newAllStarState };
+  if ((allStar as any).skillsChallenge?.complete) return { allStar: newAllStarState, schedule: markPlayed(state.schedule) };
 
-  const total = leagueStats.allStarSkillsChallengeTotalPlayers ?? 8;
-  const contestants = AllStarSkillsChallengeSim.selectContestants(state.players, leagueStats.year, total);
+  const total = Math.min(30, Math.max(3, Math.round(leagueStats.allStarSkillsChallengeTeams ?? leagueStats.allStarSkillsChallengeTotalPlayers ?? 4)));
+  const contestants = ((allStar as any).skillsChallengeContestants?.length
+    ? (allStar as any).skillsChallengeContestants
+        .map((c: any) => state.players.find((p) => p.internalId === (c.internalId || c.playerId)))
+        .filter((p: NBAPlayer | undefined): p is NBAPlayer => p !== undefined)
+    : AllStarSkillsChallengeSim.selectContestants(state.players, leagueStats.year, total));
+  newAllStarState.skillsChallengeContestants = contestants;
+  newAllStarState.skillsChallengeAnnounced = contestants.length > 0;
   if (contestants.length < 2) return { allStar: newAllStarState };
 
   const result = AllStarSkillsChallengeSim.simulate(contestants);
@@ -216,9 +237,10 @@ export function simulateSkillsChallenge(state: GameState): Partial<GameState> {
     contestants: result.contestants,
     winnerId: result.winnerId,
     winnerName: result.winnerName,
+    log: result.log,
     complete: true,
   };
-  return { allStar: newAllStarState };
+  return { allStar: newAllStarState, schedule: markPlayed(state.schedule) };
 }
 
 export function simulateHorseTournament(state: GameState): Partial<GameState> {

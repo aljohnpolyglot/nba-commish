@@ -23,6 +23,9 @@ If you feel the urge to invoke `superpowers:*` skills or dispatch reviewer subag
 - NEVER bundle "parallel WIP" into a commit unless the user explicitly says so in *this* session — past approval doesn't carry over.
 - BEFORE writing a new file, grep the codebase for the symbol/feature. If it already exists, extend it instead of duplicating.
 - Offseason UI copy must read like player-facing game text, not internal pipeline/dev-tool wording. Avoid labels like "Offseason Flow", "Phase", "task resolver", or other implementation language when the user will see it.
+- Never expose hidden systems or internal mechanics in player-facing UI copy or normal user summaries. Avoid phrases like `exact internals`, `fuzz`, `fog`, `scout read`, `hidden formula`, `weight`, `band`, `roll`, `RNG`, `computed estimate`, or similar implementation disclosures unless the user explicitly asks for debugging/technical detail.
+- Never show BBGM/internal ratings in visible UI. If a user-facing surface displays an OVR/rating number, it must be on the K2/2K scale; internal scales may only appear in explicit debug tooling or technical discussion the user asked for.
+- Mobile first. Every new or edited UI surface must work on narrow phone widths before desktop polish: no clipped modals, no fixed desktop grids on mobile, no hidden overflow without a usable vertical scroll path, and no horizontal-only table layouts unless a mobile card/list fallback also exists.
 - NEVER hardcode gameplay/economy settings (salary cap, contract scales, league toggles, commissioner-configurable rules). Read them from `leagueStats`, setup payload/state, or commissioner settings flow.
 
 The `AskUserQuestion` rule in the next section applies ONLY to genuinely novel architecture work where the plan file is silent. If the plan file or TODO answers the question, skip the prompt.
@@ -51,6 +54,8 @@ These bugs have shipped multiple times across sessions. Before writing code, sca
    **Defense at write-side too:** when constructing a new team object (e.g. in `APPLY_EXPANSION_REALIGNMENT` reducer), set `name: \`${spec.region} ${spec.name}\`` so downstream code that uses `team.name` directly still gets a sane string.
 
    **Never** write `${team.region} ${team.name}` inline. Cite this rule in any PR review where you see the pattern.
+
+   This also applies to **stored/result labels**, minigame/live-contest builders, history rows, option labels, and news snippets. Do not "just build a label" with `region + name`; if the source is an NBA/league team object, resolve through `getTeamFullName(team)` first. The recurring symptom is `Boston Boston Celtics` / `Los Angeles Los Angeles Lakers` in All-Star and contest summaries.
 
 2. **`p.tid >= 0` is NOT the NBA-only filter.**
    External leagues use offsets: Euroleague +1000, PBA +2000, **WNBA +3000**, B-League +4000, Endesa +5000, G-League +6000, CBA +7000, NBL +8000. Correct filter is `p.tid >= 0 && p.tid < 100`. Add a `status`-not-in-(WNBA/Euroleague/…) check as defense-in-depth. Symptom: A'ja Wilson appears in NBA pools.
@@ -99,6 +104,9 @@ These bugs have shipped multiple times across sessions. Before writing code, sca
     - Symptom: `JERSEYAUDIT` shows Chris Paul/Klay/Kevin Love as `skip_existing` with wrong historical team numbers and impossible `scheduledYear` values like 1967/1979/2000.
     - Raw alexnoob jersey fields live in `players[].stats[].jerseyNumber`; use those raw fields, not hardcoded fallback maps.
 
+13. **Competition KPIs must respect qualification.**
+    In competition detail views (for example EuroLeague), only render team-specific KPI/Outlook/Pressure widgets when the user team is actually part of that competition. If the team is not qualified, hide those widgets instead of showing placeholder percentages (like 46% qualification) that imply participation.
+
 ## Project
 
 ## Project
@@ -121,6 +129,8 @@ The signing/cap system runs in this **execution order** inside `src/services/AIF
 ## Debug cheat entrypoint
 
 `src/utils/debugCheats.ts` is the first place to inspect for in-app repro/diagnostics. When a TODO bug mentions PlayButton, phase drift, offseason, Euro mode, or stuck simulation state, check existing cheats (`STUCK`, `PHASEDUMP`, `EUROAUDIT`, `WARP`, `WARPSLOW`) and extend them with targeted output before guessing from UI symptoms.
+
+Do this before broad repo-wide grep passes. Use `debugCheats` to narrow the failing phase/state first, then read only the code paths implicated by that output. The goal is to avoid spamming the repo for context when the app already has a purpose-built diagnostic surface.
 
 Two browser-console scripts validate fixes against a real save (`scripts/`):
 
@@ -213,4 +223,5 @@ Always read `TODO.md` first. The MULTI-SEASON ECONOMY section tracks what's been
 
 - Don't add error handling/fallbacks for impossible scenarios (see global instructions).
 - Don't write multi-paragraph docstrings — one short line max.
+- Enforce the hand-written file-size rule: keep files under 500 lines where practical, keep new files below that cap by default, and split growing legacy files instead of expanding them further unless there is a clear reason not to.
 - Don't auto-run trim/cut logic without checking for the **family-ties protection** (`hasFamilyOnRoster`) — siblings/relatives are untouchable in nepotism passes.

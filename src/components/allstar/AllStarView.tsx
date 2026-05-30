@@ -13,8 +13,13 @@ import { RisingStarsView } from './RisingStarsView';
 import { CelebrityGameView } from './CelebrityGameView';
 import { DunkContestView } from './DunkContestView';
 import { ThreePointView } from './ThreePointView';
+import { ShootingStarsView } from './ShootingStarsView';
+import { SkillsChallengeView } from './SkillsChallengeView';
 import { ThroneContestView } from './ThroneContestView';
 import { ThroneWatchOverlay } from './ThroneWatchOverlay';
+import { ShootingStarsLiveContest } from '../../minigames/shootingstars/ShootingStarsLiveContest';
+import { SkillsChallengeLiveContest } from '../../minigames/skills/SkillsChallengeLiveContest';
+import { buildShootingStarsLiveTeams, buildSkillsLiveTeams } from '../../minigames/shared/liveContestBuilders';
 import { AllStarGameView } from './AllStarGameView';
 import { GameSimulatorScreen } from '../shared/GameSimulatorScreen';
 import { WatchGamePreviewModal } from '../modals/WatchGamePreviewModal';
@@ -41,6 +46,10 @@ export const AllStarView: React.FC = () => {
   const [watchingDunkContest, setWatchingDunkContest] = useState(false);
   const [watchingThreePoint, setWatchingThreePoint] = useState(false);
   const [simulatingThrone, setSimulatingThrone] = useState(false);
+  const simulatingShootingStars = false;
+  const simulatingSkillsChallenge = false;
+  const [watchingShootingStars, setWatchingShootingStars] = useState(false);
+  const [watchingSkillsChallenge, setWatchingSkillsChallenge] = useState(false);
   const [watchingThrone, setWatchingThrone] = useState(false);
   const [showingHistory, setShowingHistory] = useState(false);
   const [viewingPlayer, setViewingPlayer] = useState<any | null>(null);
@@ -71,7 +80,7 @@ export const AllStarView: React.FC = () => {
       normalizeDate(g.date) === norm &&
       !g.played &&
       g.gid !== watchingGame.gid &&
-      (g.isAllStar || g.isRisingStars || (g as any).isCelebrity || (g as any).isCelebrityGame || (g as any).isThroneEvent)
+      (g.isAllStar || g.isRisingStars || (g as any).isCelebrity || (g as any).isCelebrityGame || (g as any).isShootingStars || (g as any).isSkillsChallenge || (g as any).isThroneEvent)
     ).length;
   }, [watchingGame, state.schedule, state.date]);
 
@@ -186,6 +195,18 @@ export const AllStarView: React.FC = () => {
     dispatchAction({ type: 'SAVE_CONTEST_RESULT', payload: { contest: 'three', result } });
   };
 
+  const shootingStarsPlayers = useMemo(() => ((allStar as any)?.shootingStarsContestants ?? [])
+    .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
+    .filter(Boolean), [allStar, state.players]);
+  const skillsChallengePlayers = useMemo(() => ((allStar as any)?.skillsChallengeContestants ?? [])
+    .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
+    .filter(Boolean), [allStar, state.players]);
+  const shootingStarsLiveTeams = useMemo(() => buildShootingStarsLiveTeams(shootingStarsPlayers, state.teams), [shootingStarsPlayers, state.teams]);
+  const skillsLiveTeams = useMemo(() => buildSkillsLiveTeams(skillsChallengePlayers, state.teams), [skillsChallengePlayers, state.teams]);
+
+  const handleRunShootingStars = () => setWatchingShootingStars(true);
+  const handleRunSkillsChallenge = () => setWatchingSkillsChallenge(true);
+
   if (showingHistory) {
     return (
       <div className="h-full flex flex-col bg-slate-950 text-slate-200">
@@ -293,6 +314,7 @@ export const AllStarView: React.FC = () => {
             onNavigate={(tab) => setActiveTab(tab as any)}
             onWatchDunkContest={() => setWatchingDunkContest(true)}
             year={state.leagueStats.year}
+            leagueStats={state.leagueStats}
           />
         )}
         {activeTab === 'votes' && (
@@ -334,6 +356,26 @@ export const AllStarView: React.FC = () => {
         )}
         {activeTab === 'three-point' && (
           <ThreePointView allStar={allStar} players={state.players} ownTid={ownTid} />
+        )}
+        {activeTab === 'shooting-stars' && (
+          <ShootingStarsView
+            allStar={allStar}
+            players={state.players}
+            teams={state.teams}
+            ownTid={ownTid}
+            onRun={handleRunShootingStars}
+            isSimulating={simulatingShootingStars}
+          />
+        )}
+        {activeTab === 'skills' && (
+          <SkillsChallengeView
+            allStar={allStar}
+            players={state.players}
+            teams={state.teams}
+            ownTid={ownTid}
+            onRun={handleRunSkillsChallenge}
+            isSimulating={simulatingSkillsChallenge}
+          />
         )}
         {activeTab === 'throne' && (
           <ThroneContestView
@@ -451,6 +493,42 @@ export const AllStarView: React.FC = () => {
             </div>
           );
         })()}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {watchingShootingStars && !allStar?.shootingStars?.complete && (
+          <div className="fixed inset-0 z-[100] bg-black overflow-y-auto">
+            <ShootingStarsLiveContest
+              teams={shootingStarsLiveTeams}
+              year={state.leagueStats.year}
+              onClose={() => setWatchingShootingStars(false)}
+              onComplete={(result) => {
+                dispatchAction({
+                  type: 'SAVE_CONTEST_RESULT',
+                  payload: { contest: 'shooting-stars', result: { ...result, complete: true }, contestants: shootingStarsPlayers },
+                });
+              }}
+            />
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {watchingSkillsChallenge && !allStar?.skillsChallenge?.complete && (
+          <div className="fixed inset-0 z-[100] bg-black overflow-y-auto">
+            <SkillsChallengeLiveContest
+              teams={skillsLiveTeams}
+              year={state.leagueStats.year}
+              onClose={() => setWatchingSkillsChallenge(false)}
+              onComplete={(result) => {
+                dispatchAction({
+                  type: 'SAVE_CONTEST_RESULT',
+                  payload: { contest: 'skills', result: { ...result, complete: true }, contestants: skillsChallengePlayers },
+                });
+              }}
+            />
+          </div>
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
