@@ -19,6 +19,7 @@ import { effectiveRecord, getCapThresholds, getTeamPayrollUSD, getTeamDeadMoneyF
 import { processSimulationResults } from '../../store/logic/turn/postProcessor';
 import { ROSTER_URL } from '../../constants';
 import { copyTextToClipboard, type CheatContext, type CheatResult } from './shared';
+import { injectCompetitionPostseasonGames } from '../../services/competition/competitionResolver';
 import { runFaAudit, runEconAudit } from './economyAuditCheats';
 import { runSample12, runScoreProf, runPlayerDist } from './realisticSamplingCheats';
 import { runTeamCheck, runLeaders, runDistShape } from './realisticSeasonShapeCheats';
@@ -76,6 +77,7 @@ export const CHEAT_CODES = {
   PICKS: 'Draft pick inventory — picks per season, per-team ownership counts, missing-team detector',
   PBADRAFT: 'PBA draft-pool audit — logs current mock-draft visibility inputs, year buckets, Filipino filter matches, and blocked prospects',
   PBADRAFTFIX: 'Retune the current save’s Filipino draft prospects in place — rewrites age/OVR/POT for the already-seeded PBA class',
+  PBAQFREPAIR: 'Repair missing or incomplete PBA quarterfinal games in-place so the bracket can progress (run in pba_isolated only)',
   SALARYAUDIT: 'Players with 3+ NBA seasons played but sparse/missing contractYears — tracks contract history gaps as sim progresses',
   JERSEYAUDIT: 'Jersey retirement audit — shows current candidates, pre-save retirees, and why each case was included or skipped',
   JERSEYRETIREMENT: 'Alias for JERSEYAUDIT',
@@ -1063,6 +1065,11 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
   const { state, dispatchAction, healPlayer } = ctx;
 
   switch (code) {
+    case 'PBAQFREPAIR': {
+      const res = await runPbaQfRepair(ctx);
+      return res;
+    }
+
     case 'HEALSTUCK': {
       // Strip offseason-checklist + FA-tag fields from the newest save's gzipped
       // blob in IndexedDB, then reload. Used when the Tasks sidebar refuses to
