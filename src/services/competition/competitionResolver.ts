@@ -129,11 +129,11 @@ function seriesCompleteFromWins(
   const lowWins = wins.get(match.lowSeedTid) ?? 0;
   const highNeeded = winsNeededForMatch(match, match.highSeedTid);
   const lowNeeded = winsNeededForMatch(match, match.lowSeedTid);
-  if (highWins >= highNeeded && highWins !== lowWins) {
-    return { complete: true, winnerTid: match.highSeedTid };
-  }
-  if (lowWins >= lowNeeded && highWins !== lowWins) {
+  if (lowWins >= lowNeeded) {
     return { complete: true, winnerTid: match.lowSeedTid };
+  }
+  if (highWins >= highNeeded) {
+    return { complete: true, winnerTid: match.highSeedTid };
   }
   return { complete: false, winnerTid: null };
 }
@@ -420,16 +420,47 @@ export function injectCompetitionPostseasonGames(
     }
     if (
       qfStart &&
-      !phaseExists(schedule, spec.id, 'qf') &&
       playInComplete
     ) {
       const qf = quarterfinalMatchesForResolution(spec, resolution, state.boxScores, season);
-      const qfGames = qf.flatMap(match => {
-        const games = makeSeriesGames(nextGid, match, spec, 'qf', qfStart);
-        nextGid += games.length;
-        return games;
-      });
-      schedule = [...schedule, ...qfGames];
+      const existingQf = schedule.filter(game => game.competitionId === spec.id && game.competitionPhase === 'qf');
+      if (existingQf.length === 0) {
+        const qfGames = qf.flatMap(match => {
+          const games = makeSeriesGames(nextGid, match, spec, 'qf', qfStart);
+          nextGid += games.length;
+          return games;
+        });
+        schedule = [...schedule, ...qfGames];
+      } else if (spec.id.startsWith('pba-')) {
+        // Repair missing QF games for PBA: ensure each quarterfinal has the expected number of games
+        for (const match of qf) {
+          const pairGames = schedule
+            .filter(game =>
+              game.competitionId === spec.id &&
+              game.competitionPhase === 'qf' &&
+              ((game.homeTid === match.highSeedTid && game.awayTid === match.lowSeedTid) ||
+                (game.homeTid === match.lowSeedTid && game.awayTid === match.highSeedTid)),
+            )
+            .sort((a, b) => normalizeDate(a.date).localeCompare(normalizeDate(b.date)) || a.gid - b.gid);
+          const needed = (match.maxGames ?? match.bestOf) - pairGames.length;
+          let baseDate = pairGames[pairGames.length - 1]?.date ?? qfStart;
+          for (let i = 0; i < needed; i++) {
+            const newGame = {
+              gid: nextGid++,
+              homeTid: i % 2 === 0 ? match.highSeedTid : match.lowSeedTid,
+              awayTid: i % 2 === 0 ? match.lowSeedTid : match.highSeedTid,
+              homeScore: 0,
+              awayScore: 0,
+              played: false,
+              date: addDays(baseDate, 2 * (i + 1)),
+              competitionId: spec.id,
+              competitionPhase: 'qf',
+              isPlayoff: true,
+            } as any;
+            schedule.push(newGame);
+          }
+        }
+      }
     }
     const qfForSf = quarterfinalMatchesForResolution(spec, resolution, state.boxScores, season);
     if (spec.playoffFormat?.qfFormat === 'twice-to-beat') {
