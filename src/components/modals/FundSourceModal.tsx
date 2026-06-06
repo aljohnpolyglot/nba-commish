@@ -20,35 +20,35 @@ export const FundSourceModal: React.FC<FundSourceModalProps> = ({ onClose, onSel
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 20 }}
-          className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+          className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden flex max-h-[calc(100vh-2rem)] flex-col"
         >
-          <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-            <h3 className="text-xl font-black uppercase tracking-tight text-white">Select Fund Source</h3>
+          <div className="flex items-start justify-between gap-3 border-b border-slate-800 bg-slate-900/50 p-4 sm:p-6">
+            <h3 className="pr-2 text-lg font-black uppercase tracking-tight text-white sm:text-xl">Select Fund Source</h3>
             <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
               <X size={20} />
             </button>
           </div>
-          <div className="p-6 space-y-4">
+          <div className="space-y-4 overflow-y-auto p-4 sm:p-6">
             <button 
               onClick={() => onSelect('personal')}
-              className="w-full flex items-center gap-4 p-4 bg-slate-950 border border-slate-800 rounded-xl hover:border-emerald-500/50 transition-all group"
+              className="group flex w-full items-center gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-left transition-all hover:border-emerald-500/50 sm:gap-4"
             >
-              <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-500">
+              <div className="rounded-lg bg-emerald-500/10 p-3 text-emerald-500">
                 <User size={24} />
               </div>
-              <div className="text-left">
+              <div className="min-w-0 text-left">
                 <div className="font-bold text-white">Personal Wealth</div>
                 <div className="text-xs text-slate-500">Use your own savings</div>
               </div>
             </button>
             <button 
               onClick={() => onSelect('league')}
-              className="w-full flex items-center gap-4 p-4 bg-slate-950 border border-slate-800 rounded-xl hover:border-indigo-500/50 transition-all group"
+              className="group flex w-full items-center gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 text-left transition-all hover:border-indigo-500/50 sm:gap-4"
             >
-              <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-500">
+              <div className="rounded-lg bg-indigo-500/10 p-3 text-indigo-500">
                 <Landmark size={24} />
               </div>
-              <div className="text-left">
+              <div className="min-w-0 text-left">
                 <div className="font-bold text-white">League Funds</div>
                 <div className="text-xs text-slate-500">Use official league treasury</div>
               </div>

@@ -22,7 +22,7 @@ export const ExpansionSchedulePin: React.FC = () => {
   const schedule = (state as any).expansionSchedule;
   const lsYear = state.leagueStats?.year;
   if (!schedule || lsYear == null || schedule.year < lsYear) return null;
-  if (state.leagueStats?.uiMode === 'euro_isolated') return null;
+  if (state.leagueStats?.uiMode === 'euro_isolated' || state.leagueStats?.uiMode === 'pba_isolated') return null;
 
   const isThisYear = schedule.year === lsYear;
   const teamCount = schedule.teams?.length ?? 0;

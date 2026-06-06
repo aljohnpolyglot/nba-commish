@@ -25,6 +25,8 @@ import { R } from './StatGenerator/helpers';
 import { StarterService } from './StarterService';
 import { getPlayerInjuryProfile } from '../../data/playerInjuryData';
 import { injurySeverityLevel } from './playThroughInjuriesFactor';
+import { getTeamRotationManagementEffects } from '../staff/staffGameplayEffects';
+import { applyManManagementToPool } from './rotationManagement';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -278,22 +280,22 @@ export class MinutesPlayedService {
     // Floor raised from 8 to 9 so regular-season Ideal/Gameplan plans show a realistic
     // 9-man rotation instead of playoff-tight 8. Playoff games already tighten naturally
     // via the blowout/age pipeline; 9 is still plausible for deeper playoff teams.
+    const management = getTeamRotationManagementEffects(team as any);
     const depth = depthOverride
       ? Math.min(depthOverride, pool.length)
-      : Math.max(9, Math.min(13, finalDepth));
+      : Math.max(9, Math.min(13, finalDepth + management.depthShift));
 
     // ── Ordered rotation — StarterService for role-aware starters + bench ───
     // StarterService.getRotation returns [5 starters, N bench] sorted by role fit
     // then OVR. Pass `depth` through so the bench fill honors the full rotation
     // (All-Star override=12 was getting clipped to StarterService's legacy 10-cap).
-    const roleOrdered = StarterService.getRotation(team, players, lead, season, pool, true, depth);
+    const managedPool = applyManManagementToPool(team, pool, season);
+    const originalById = new Map(pool.map(player => [player.internalId, player] as const));
+    const roleOrdered = StarterService
+      .getRotation(team, players, lead, season, managedPool, true, depth)
+      .map(player => originalById.get(player.internalId) ?? player);
 
     const finalRotation = roleOrdered.slice(0, depth);
-    console.debug(
-      `[Rotation] ${team.name} | rank=${conferenceRank} gb=${gbFromLeader} rem=${gamesRemaining}` +
-      ` | baseDepth=${depthOverride ? `OVERRIDE→${depthOverride}` : baseDepth} health=${pool.length} ctx=${ctxDepth} final=${depth}` +
-      ` | starMPG=${starMpg.toFixed(1)} | players=[${finalRotation.map(p => p.name).join(', ')}]`
-    );
     return {
       players:       finalRotation,
       depth,
@@ -477,10 +479,6 @@ export class MinutesPlayedService {
       total = weights.reduce((a, b) => a + b, 0);
     }
 
-    console.debug(
-      `[Minutes] ${rotation.length}p | target=${TARGET} allocated=${total.toFixed(1)} | ` +
-      rotation.map((p, i) => `${p.name.split(' ').pop()}=${weights[i].toFixed(1)}`).join(' ')
-    );
     return { minutes: weights, totalMinutes: total };
   }
 }

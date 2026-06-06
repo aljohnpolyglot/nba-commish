@@ -12,20 +12,20 @@
 
 import type { NBAPlayer, NBATeam, DraftPick, LeagueStats, TradeProposal } from '../../types';
 import {
-  calcOvr2K, calcPlayerTV, getPickTV, isRecentlySignedLocked, isSalaryLegal, isUntouchable, isWalkingExpiring,
+  calcOvr2K, calcPot2K, calcPlayerTV, getPickTV, isRecentlySignedLocked, isSalaryLegal, isUntouchable, isWalkingExpiring,
   getTradeCandidateFloor, type TeamMode, type PickValueContext,
 } from './tradeValueEngine';
 import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 import { validateCBATradeRules } from '../../utils/cbaTradeRules';
 import { wouldStepienViolateForTid } from './stepienRule';
 import { DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
-
-const EXTERNAL = new Set(['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
+import { isTradeExcludedStatus } from './tradeFinderShared';
 
 const TV_PARITY_TOLERANCE = 0.15;    // ±15% on either side = "fair" trade
 const MAX_COMBO_SIZE = 3;            // up to 3 players per side
 const MAX_PROPOSALS_PER_TEAM = 2;    // keep the inbox readable
 const MAX_TOTAL_PROPOSALS = 20;      // overall cap
+const MIN_BODY_PLAYER_TV = 0.5;      // keep low-end roster bodies eligible for filler-for-filler offers
 
 function roleToMode(role: string): TeamMode {
   return tradeRoleToTeamMode(role);
@@ -74,6 +74,8 @@ export interface InboundProposalInput {
   isPostDeadlinePreFA?: boolean;
   /** Optional timestamps for the recently-signed trade lock. */
   recentlySignedLockMs?: { currentDate: string; leagueStats?: LeagueStats };
+  /** Allow PBA roster members to be treated as tradeable when the current mode is PBA. */
+  allowPbaRoster?: boolean;
   /** Optional player.internalId → 1-based MVP-race rank. Top-30 candidates are
    *  treated as untouchable (top-10 globally, top-30 for contenders) and get a
    *  TV premium so the engine demands franchise-tier compensation. */
@@ -96,6 +98,7 @@ interface RawProposal {
   fitScore: number;           // higher = tighter parity + better need match
   cbaValid: boolean;
   cbaReason?: string;
+  cbaOffendingSide?: 'A' | 'B';
 }
 
 function formatTradeValue(tv: number): string {
@@ -109,7 +112,7 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
     userTid, userGMName, blockPlayerIds, blockPickIds,
     players, teams, draftPicks, currentYear, minTradableSeason,
     teamOutlooks, proposedDate, classStrengthByYear, lotterySlotByTid, powerRanks,
-    isPostDeadlinePreFA = false, recentlySignedLockMs, mvpRank, leagueStats,
+    isPostDeadlinePreFA = false, recentlySignedLockMs, mvpRank, leagueStats, allowPbaRoster = false,
   } = input;
   if ((leagueStats as any)?.tradesAllowed === false) return [];
   const tradablePickWindow = (leagueStats as any)?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
@@ -139,7 +142,7 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
 
   if (userBlockPlayers.length === 0 && userBlockPicks.length === 0) return [];
 
-  const userPlayerTVs = new Map(userBlockPlayers.map(p => [p.internalId, calcPlayerTV(p, userMode, currentYear, tvCtx)]));
+  const userPlayerTVs = new Map(userBlockPlayers.map(p => [p.internalId, Math.max(MIN_BODY_PLAYER_TV, calcPlayerTV(p, userMode, currentYear, tvCtx))]));
   const userPickTVs = new Map(userBlockPicks.map(dp => [dp.dpid, getPickTV(dp, pickCtx)]));
   const blockScale = Math.max(
     1,
@@ -159,10 +162,10 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
 
     // Their tradeable roster — non-external, non-untouchable from their POV.
     const theirRoster = players
-      .filter(p => p.tid === team.id && !EXTERNAL.has(p.status ?? ''))
+      .filter(p => p.tid === team.id && !isTradeExcludedStatus(p.status, allowPbaRoster))
       .filter(p => !isWalking(p) && !isLocked(p))
       .filter(p => !isUntouchable(p, theirMode, currentYear, mvpRank))
-      .map(p => ({ player: p, tv: calcPlayerTV(p, theirMode, currentYear, tvCtx), salary: (p.contract?.amount ?? 0) * 1000 }))
+      .map(p => ({ player: p, tv: Math.max(MIN_BODY_PLAYER_TV, calcPlayerTV(p, theirMode, currentYear, tvCtx)), salary: (p.contract?.amount ?? 0) * 1000, ovr: calcOvr2K(p) }))
       .filter(r => r.tv >= deadWeightFloor)
       .sort((a, b) => b.tv - a.tv)
       .slice(0, 12); // top 12 candidates — keeps combo explosion bounded
@@ -229,6 +232,13 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
             const offeredPlayers = theirCombo.map(r => r.player.internalId);
             const requestedPlayers = userCombo.filter(a => a.kind === 'player').map(a => a.id);
             const requestedPicks = userCombo.filter(a => a.kind === 'pick').map(a => parseInt(a.id, 10));
+            const requestedPlayerObjs = userCombo
+              .filter(a => a.kind === 'player')
+              .map(a => players.find(p => p.internalId === a.id))
+              .filter((p): p is NBAPlayer => !!p);
+            const premiumIncoming = requestedPlayerObjs.some(p => calcPot2K(p, currentYear) > 84)
+              || userCombo.some(a => a.kind === 'pick' && userBlockPicks.some(dp => dp.dpid === parseInt(a.id, 10) && dp.round === 1));
+            if (!premiumIncoming && theirCombo.some(r => r.ovr > 84)) continue;
 
             // ── CBA + Stepien validation ────────────────────────────────────────
             // We do NOT filter — illegal proposals stay visible as "available with
@@ -239,8 +249,7 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
               teamAId: team.id,
               teamBId: userTid,
               teamAPlayers: theirCombo.map(r => r.player),
-              teamBPlayers: userCombo.filter(a => a.kind === 'player').map(a =>
-                players.find(p => p.internalId === a.id)!).filter(Boolean),
+              teamBPlayers: requestedPlayerObjs,
               teamAPicks: offeredPickObjs,
               teamBPicks: requestedPickObjs,
               teams, players, leagueStats,
@@ -249,16 +258,19 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
             });
             let cbaValid = cba.ok;
             let cbaReason = cba.ok ? undefined : (cba.reason ?? 'CBA rule violation');
+            let cbaOffendingSide = cba.ok ? undefined : cba.offendingSide;
             if (cbaValid && stepienEnabled) {
               if (offeredPickObjs.length > 0 &&
                   wouldStepienViolateForTid(liveDraftPicks, currentYear, tradablePickWindow, team.id, offeredPickObjs)) {
                 cbaValid = false;
                 cbaReason = 'Stepien violation: trading these picks leaves no consecutive 1st rounders';
+                cbaOffendingSide = 'A';
               }
               if (cbaValid && requestedPickObjs.length > 0 &&
                   wouldStepienViolateForTid(liveDraftPicks, currentYear, tradablePickWindow, userTid, requestedPickObjs)) {
                 cbaValid = false;
                 cbaReason = 'Stepien violation on your side';
+                cbaOffendingSide = 'B';
               }
             }
 
@@ -274,6 +286,7 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
               fitScore,
               cbaValid,
               cbaReason,
+              cbaOffendingSide,
             });
           }
         }
@@ -330,5 +343,6 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
     tradeText: `Fit ${p.fitScore.toFixed(0)}% · TV ${formatTradeValue(p.offerTV)} ↔ ${formatTradeValue(p.requestTV)}`,
     cbaValid: p.cbaValid,
     cbaReason: p.cbaReason,
+    cbaOffendingSide: p.cbaOffendingSide,
   }));
 }

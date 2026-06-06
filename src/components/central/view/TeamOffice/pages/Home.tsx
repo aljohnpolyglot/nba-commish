@@ -1,9 +1,9 @@
 import React from 'react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
-import { calculateTeamStrength } from '../../../../../utils/playerRatings';
 import { NBATeam, NBAPlayer } from '../../../../../types';
 import { getActiveLeagueTeams, isOnRoster } from '../../../../../utils/teamLookup';
+import { calculateDisplayTeamOverall } from '../../../../../utils/playerRatings';
 
 interface HomeProps {
   onSelectTeam: (teamId: number) => void;
@@ -72,7 +72,7 @@ export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pic
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {sortedTeams.map((team) => {
           const roster = players.filter(p => p.tid === team.id && isOnRoster(p));
-          const teamOverall = calculateTeamStrength(team.id, players);
+          const teamOverall = calculateDisplayTeamOverall(team.id, players, roster);
           const teamColor = team.colors?.[0] || '#552583';
           const isUserTeam = team.id === userTid;
           const isHighlighted = highlightedSet.has(team.id);

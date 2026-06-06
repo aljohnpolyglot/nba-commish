@@ -7,6 +7,7 @@ import {
   defaultOffseasonChecklist,
   getOffseasonState,
   initialEuroOffseasonChecklist,
+  initialPbaChecklist,
   initialPreseasonChecklist,
   isNoDraftLeague,
 } from '../../services/offseason/offseasonState';
@@ -47,10 +48,11 @@ export const useOffseasonChecklistLifecycle = (
     const isInitialFirstSeason = !state.seasonHistory || state.seasonHistory.length === 0;
     const isFullyInSeason = phase === 'inSeason' && !inOffseason;
     const hasChecklist = !!state.offseasonChecklist;
+    const isPbaIsolated = isPbaIsolatedMode(state);
     const noDraftLeague = isNoDraftLeague(state.leagueStats);
-    const lotteryResolved = noDraftLeague || !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
-    const draftNotDone = !noDraftLeague && !state.draftComplete;
-    const isRealOffseasonNow = lotteryResolved && draftNotDone;
+    const lotteryResolved = noDraftLeague || isPbaIsolated || !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
+    const draftNotDone = !noDraftLeague && !isPbaIsolated && !state.draftComplete;
+    const isRealOffseasonNow = !isPbaIsolated && lotteryResolved && draftNotDone;
 
     let forceGate = false;
     let pastTrainingCampOpen = false;
@@ -67,22 +69,34 @@ export const useOffseasonChecklistLifecycle = (
       const campStr = toISODateString(getTrainingCampDate(upcomingSeasonYear, lsAny));
       upcomingTrainingCampIso = campStr;
       pastTrainingCampOpen = !!todayStr && !!campStr && todayStr >= campStr;
-      forceGate = !noDraftLeague && !!todayStr && !!draftStr && todayStr >= draftStr && !state.draftComplete && !pastTrainingCampOpen;
+      forceGate = !isPbaIsolated && !noDraftLeague && !!todayStr && !!draftStr && todayStr >= draftStr && !state.draftComplete && !pastTrainingCampOpen;
     } catch {}
 
     const isEuroIsolated = state.leagueStats?.uiMode === 'euro_isolated';
+    if (isPbaIsolated && hasChecklist && (state.leagueStats as any)?.pbaConferencePhase !== 'offseason') {
+      setState(prev => ({
+        ...prev,
+        offseasonChecklist: undefined,
+        faTagCounter: undefined,
+        pendingOfferDecisions: [],
+      }));
+      return;
+    }
+
     const shouldAutoCloseEuroTransferTask = (() => {
       if (!isEuroIsolated || !hasChecklist || !upcomingTrainingCampIso || !state.date) return false;
       const checklist = state.offseasonChecklist!;
       const unresolved = checklist.transferMarket === 'pending' || checklist.transferMarket === 'in-progress';
       if (!unresolved) return false;
-      const prerequisitesDone = (['sponsorRenewals', 'facilityUpgrades', 'staffSignings'] as OffseasonChecklistRow[])
+      const prerequisitesDone = (['sponsorRenewals', 'facilityUpgrades', 'staffRetirements', 'staffSignings'] as OffseasonChecklistRow[])
         .every(row => checklist[row] === 'done' || checklist[row] === 'skipped');
       return prerequisitesDone && normalizeDate(state.date) >= upcomingTrainingCampIso;
     })();
 
     if (inOffseason && !hasChecklist && (!userManuallyExited || isRealOffseasonNow || forceGate)) {
-      const checklist = isEuroIsolated && isInitialFirstSeason && !isRealOffseasonNow
+      const checklist = isPbaIsolated
+        ? initialPbaChecklist()
+        : isEuroIsolated && isInitialFirstSeason && !isRealOffseasonNow
         ? initialEuroOffseasonChecklist()
         : isInitialFirstSeason && !isRealOffseasonNow
           ? initialPreseasonChecklist()
@@ -105,6 +119,13 @@ export const useOffseasonChecklistLifecycle = (
       const offseasonYear = Number(todayStr.slice(0, 4));
       const next: OffseasonChecklist = { ...checklist };
       let changed = false;
+      if (typeof checklist.seasonSummary === 'undefined') {
+        next.seasonSummary = state.draftComplete ? 'done' : lotteryResolved ? 'pending' : 'skipped';
+        changed = true;
+      } else if (state.draftComplete && checklist.seasonSummary === 'pending') {
+        next.seasonSummary = 'done';
+        changed = true;
+      }
       if (Number.isFinite(offseasonYear)) {
         if (todayStr >= `${offseasonYear}-07-01` && checklist.retiredPlayersReview === 'skipped') {
           next.retiredPlayersReview = 'pending';
@@ -172,7 +193,7 @@ export const useOffseasonChecklistLifecycle = (
       const hasInitialModeArtifacts =
         checklist.myFAs === 'skipped' || checklist.freeAgency === 'skipped' ||
         checklist.qualifyingOffers === 'skipped' || checklist.options === 'skipped' ||
-        checklist.retiredPlayersReview === 'skipped' || checklist.hofCeremony === 'skipped';
+        checklist.retiredPlayersReview === 'skipped' || checklist.staffRetirements === 'skipped' || checklist.hofCeremony === 'skipped';
       const cMonthNow = new Date(state.date).getUTCMonth() + 1;
       const cDayNow = new Date(state.date).getUTCDate();
       const isInCampWindowNow = (cMonthNow === 9 && cDayNow >= 29) || (cMonthNow === 10 && cDayNow <= 20);

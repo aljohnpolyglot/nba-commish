@@ -32,7 +32,7 @@ export function resolveExhibitionRules(
       overtimeDuration: leagueStats.risingStarsOvertimeDuration,
     },
     celebrity: {
-      mirror: leagueStats.celebrityGameMirrorLeagueRules,
+      mirror: leagueStats.celebrityGameMirrorLeagueRules ?? true,
       gameFormat: 'timed',
       targetScore: 100,
       quarterLength: leagueStats.celebrityGameQuarterLength,

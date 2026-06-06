@@ -32,6 +32,13 @@ import {
 } from '../../../../../services/draftScoutingGist';
 import type { NBAPlayer } from '../../../../../types';
 import { isNoDraftLeague } from '../../../../../services/offseason/offseasonState';
+import { getDraftCombineStartDate, toISODateString } from '../../../../../utils/dateUtils';
+import { normalizeDate } from '../../../../../utils/helpers';
+import { fuzzRatingValue } from '../../../../../utils/scoutingFuzz';
+import { isPbaIsolatedMode } from '../../../../../utils/uiMode';
+import { isFilipino } from '../../../../../services/pba/importManager';
+import { isOnRoster, resolveAnyTeam } from '../../../../../utils/teamLookup';
+import { getPbaComparisonPool } from '../../../../../services/pba/draftRules';
 
 interface DraftScoutingProps {
   teamId: number;
@@ -58,10 +65,14 @@ const PROJECTION_LABELS: Record<PickProjection, { label: string; color: string; 
 
 export function DraftScouting({ teamId }: DraftScoutingProps) {
   const { state } = useGame();
+  const pbaMode = isPbaIsolatedMode(state);
   const noDraft = isNoDraftLeague(state.leagueStats as any);
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const nextDraftYear = currentYear; // draft happens in the current leagueStats.year
+  const currentDateNorm = normalizeDate(state.date ?? '');
+  const currentCombineDate = toISODateString(getDraftCombineStartDate(currentYear, state.leagueStats as any));
+  const showCombineTab = pbaMode || currentDateNorm >= currentCombineDate;
   const lotterySlotByTid = useMemo(
     () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
     [(state as any).draftLotteryResult, state.teams],
@@ -71,15 +82,19 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
   // Modal + bio-view state
   const [scoutingPlayer, setScoutingPlayer] = useState<NBAPlayer | null>(null);
   const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
-  const [gistByYear, setGistByYear] = useState<GistProspect[] | null>(getCachedDraftScouting(nextDraftYear) ?? null);
+  const [gistByYear, setGistByYear] = useState<GistProspect[] | null>(() => pbaMode ? null : getCachedDraftScouting(nextDraftYear) ?? null);
 
   useEffect(() => {
+    if (pbaMode) {
+      setGistByYear(null);
+      return;
+    }
     let cancelled = false;
     ensureDraftScouting(nextDraftYear).then(data => {
       if (!cancelled) setGistByYear(data);
     });
     return () => { cancelled = true; };
-  }, [nextDraftYear]);
+  }, [nextDraftYear, pbaMode]);
 
   // Team mode (contend vs rebuild) — determines how we weight OVR vs POT
   const teamMode: TeamMode = useMemo(() => {
@@ -110,7 +125,7 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
 
   // Team needs — weakest positions
   const teamNeeds = useMemo(() => {
-    const roster = state.players.filter(p => p.tid === teamId && p.status === 'Active');
+    const roster = state.players.filter(p => p.tid === teamId && isOnRoster(p));
     const posGroups: Record<string, number[]> = { G: [], F: [], C: [] };
     for (const p of roster) {
       const pos = p.pos ?? 'F';
@@ -144,10 +159,19 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
   // Draft prospects (tid === -2)
   const prospects = useMemo(() => {
     return state.players
-      .filter(p => p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect')
+      .filter(p => {
+        const isProspect = p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect';
+        if (!isProspect) return false;
+        if (pbaMode && !isFilipino(p)) return false;
+        const draftYear = Number((p as any).draft?.year);
+        if (pbaMode) return !Number.isFinite(draftYear) || draftYear === nextDraftYear;
+        return Number.isFinite(draftYear) && draftYear === nextDraftYear;
+      })
       .map(p => {
-        const ovr = calcOvr2K(p);
-        const pot = calcPot2K(p, currentYear);
+        const baseOvr = calcOvr2K(p);
+        const basePot = calcPot2K(p, currentYear);
+        const ovr = fuzzRatingValue(baseOvr, state, p, 'draft-board-ovr');
+        const pot = fuzzRatingValue(basePot, state, p, 'draft-board-pot');
         const pos = p.pos ?? 'F';
         const posGroup = pos.includes('G') || pos === 'PG' || pos === 'SG' ? 'Guard'
           : pos.includes('C') || pos === 'FC' ? 'Center' : 'Forward';
@@ -165,7 +189,7 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
         return { player: p, ovr, pot, score, posGroup, fitBonus: fitBonus > 0 };
       })
       .sort((a, b) => b.score - a.score);
-  }, [state.players, currentYear, teamMode, weakPositions]);
+  }, [state.players, currentYear, teamMode, weakPositions, nextDraftYear, pbaMode]);
 
   // Pick projection for the team
   const projection = team ? projectPickRange(team.wins, team.losses, state.teams.length) : 'mid-first';
@@ -177,13 +201,16 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
     [prospects],
   );
   const activePlayers = useMemo(() =>
-    state.players.filter(p =>
-      p.tid >= 0 && p.tid < 100 &&
-      p.status !== 'Draft Prospect' &&
-      p.status !== 'Prospect' &&
-      ((p as any).draft?.year ?? 0) < currentYear,
-    ),
-  [state.players, currentYear]);
+    (pbaMode
+      ? getPbaComparisonPool(state.players)
+      : state.players.filter(p =>
+          p.tid >= 0 &&
+          isOnRoster(p) &&
+          p.status !== 'Draft Prospect' &&
+          p.status !== 'Prospect' &&
+          ((p as any).draft?.year ?? 0) < currentYear,
+        )),
+  [state.players, currentYear, pbaMode]);
   const classAverages = useMemo(() => getClassAverages(classProspects), [classProspects]);
   const percentilesByPos = useMemo(() => {
     const m = new Map<string, ClassPercentileMaps>();
@@ -225,7 +252,7 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
         ) : (
           <div className="space-y-2">
             {ownedPicks.map(pk => {
-              const orig = state.teams.find(t => t.id === pk.originalTid);
+              const orig = resolveAnyTeam(pk.originalTid, state.teams, state.nonNBATeams ?? []);
               const isOwn = pk.originalTid === teamId;
               const origTeam = orig ? orig : team;
               const origProjection = orig ? projectPickRange(orig.wins, orig.losses, state.teams.length) : projection;
@@ -248,7 +275,7 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
               );
             })}
             {picksOwedByUs.map(pk => {
-              const owner = state.teams.find(t => t.id === pk.tid);
+              const owner = resolveAnyTeam(pk.tid, state.teams, state.nonNBATeams ?? []);
               return (
                 <div key={pk.dpid} className="flex items-center justify-between p-3 bg-red-950/20 border border-red-900/30 rounded opacity-60">
                   <div className="flex items-center gap-3">
@@ -341,6 +368,7 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
         draftYear={nextDraftYear}
         gistData={scoutingPlayer && gistByYear ? matchProspectToGist(scoutingPlayer, gistByYear) : null}
         onViewPlayerBio={(p) => setViewingBioPlayer(p)}
+        showCombineTab={showCombineTab}
       />
     </div>
   );

@@ -65,7 +65,7 @@ export const MentorshipModal: React.FC<MentorshipModalProps> = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -78,10 +78,10 @@ export const MentorshipModal: React.FC<MentorshipModalProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+            className="relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)]"
           >
             {/* Header */}
-            <div className="p-6 border-b border-slate-800 flex items-center justify-between gap-4 flex-shrink-0">
+            <div className="p-4 sm:p-6 border-b border-slate-800 flex items-start justify-between gap-4 flex-shrink-0">
               <div className="flex items-center gap-4 min-w-0">
                 <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-400 shrink-0">
                   <GraduationCap size={22} />
@@ -102,8 +102,8 @@ export const MentorshipModal: React.FC<MentorshipModalProps> = ({
             </div>
 
             {/* Search + counter */}
-            <div className="px-6 pt-4 pb-2 flex items-center gap-3 flex-shrink-0">
-              <div className="relative flex-1 max-w-sm">
+            <div className="px-4 sm:px-6 pt-4 pb-2 flex flex-col gap-3 sm:flex-row sm:items-center flex-shrink-0">
+              <div className="relative w-full sm:flex-1 sm:max-w-sm">
                 <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   type="text"
@@ -120,7 +120,7 @@ export const MentorshipModal: React.FC<MentorshipModalProps> = ({
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 pt-3">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 pt-3">
               {filtered.length === 0 ? (
                 <div className="py-16 text-center text-slate-500 italic text-sm">
                   {potentialMentors.length === 0
@@ -188,13 +188,13 @@ export const MentorshipModal: React.FC<MentorshipModalProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="p-4 bg-slate-950/50 border-t border-slate-800 flex justify-between items-center flex-shrink-0">
+            <div className="p-4 bg-slate-950/50 border-t border-slate-800 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center flex-shrink-0">
               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest hidden md:block">
                 Click selected mentor to remove · Higher EXP = better mentor
               </span>
               <button
                 onClick={onClose}
-                className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+                className="w-full sm:w-auto px-6 py-3 sm:py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all"
               >
                 Close
               </button>

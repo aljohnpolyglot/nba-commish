@@ -250,9 +250,9 @@ export const ActionModalsRenderer: React.FC<ActionModalsRendererProps> = ({
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-slate-900 border border-slate-800 p-8 rounded-[2rem] max-w-lg w-full shadow-2xl"
+              className="bg-slate-900 border border-slate-800 p-4 sm:p-8 rounded-[2rem] max-w-lg w-full max-h-[calc(100vh-2rem)] overflow-y-auto shadow-2xl"
             >
-              <div className="flex items-center gap-4 mb-6">
+              <div className="flex items-start gap-4 mb-6">
                 <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400">
                   <Mic size={24} />
                 </div>
@@ -267,17 +267,17 @@ export const ActionModalsRenderer: React.FC<ActionModalsRendererProps> = ({
                 className="w-full h-32 bg-slate-950 border border-slate-800 rounded-xl p-4 text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition-colors resize-none mb-6"
                 placeholder="Enter your statement..."
               />
-              <div className="flex justify-end gap-4">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-4">
                 <button
                   onClick={() => modals.setAnnouncementModalOpen(false)}
-                  className="px-6 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors font-bold uppercase tracking-wider text-sm"
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors font-bold uppercase tracking-wider text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleAnnouncementSubmit}
                   disabled={!modals.announcementText.trim()}
-                  className="px-6 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors font-bold uppercase tracking-wider text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors font-bold uppercase tracking-wider text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Broadcast
                 </button>
@@ -297,33 +297,33 @@ export const ActionModalsRenderer: React.FC<ActionModalsRendererProps> = ({
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
-              className="bg-slate-900 border border-slate-800 p-8 rounded-[2rem] max-w-md w-full shadow-2xl"
+              className="bg-slate-900 border border-slate-800 p-4 sm:p-8 rounded-[2rem] max-w-md w-full max-h-[calc(100vh-2rem)] overflow-y-auto shadow-2xl"
             >
-              <div className="flex items-center gap-4 mb-6">
+              <div className="flex items-start gap-4 mb-6">
                 <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
                   <AlertTriangle size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-white uppercase tracking-widest">{modals.confirmActionDetails.title}</h3>
+                  <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-widest break-words">{modals.confirmActionDetails.title}</h3>
                 </div>
               </div>
               <p className="text-slate-300 mb-8 leading-relaxed">
                   {modals.confirmActionDetails.desc}
               </p>
-              <div className="flex justify-end gap-4">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-4">
                 <button
                   onClick={() => {
                       modals.setConfirmModalOpen(false);
                       modals.setConfirmActionType(null);
                       modals.setConfirmActionDetails(null);
                   }}
-                  className="px-6 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors font-bold uppercase tracking-wider text-sm"
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors font-bold uppercase tracking-wider text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={executeConfirmedAction}
-                  className="px-6 py-3 rounded-xl bg-amber-600 text-white hover:bg-amber-500 transition-colors font-bold uppercase tracking-wider text-sm"
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-amber-600 text-white hover:bg-amber-500 transition-colors font-bold uppercase tracking-wider text-sm"
                 >
                   Confirm Action
                 </button>

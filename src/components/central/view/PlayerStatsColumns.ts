@@ -103,7 +103,7 @@ export function getPlayerStatsTypeLabel(statType: StatType): string {
 }
 
 export function getPlayerStatsPhaseLabel(phase: Phase, cupShort: string): string {
-  if (phase === 'regular') return 'Reg Season';
+  if (phase === 'regular') return 'Regular Season';
   if (phase === 'playoffs') return 'Playoffs';
   if (phase === 'cup') return cupShort;
   return 'Combined';

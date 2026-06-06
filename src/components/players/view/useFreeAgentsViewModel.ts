@@ -9,7 +9,8 @@ import { calcPot2K } from '../../../services/trade/tradeValueEngine';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import type { NBAPlayer } from '../../../types';
 import { isEuroIsolatedMode, isNonNbaIsolatedMode } from '../../../utils/uiMode';
-import { getDisplayAge } from '../../../store/playerRatingStore';
+import { getDisplayAge, getDisplayOverall } from '../../../store/playerRatingStore';
+import { fuzzRatingValue } from '../../../utils/scoutingFuzz';
 import {
   MARKET_POOLS_EURO,
   MARKET_POOLS_FICTIONAL,
@@ -135,6 +136,15 @@ export function useFreeAgentsViewModel() {
     const profile = getTeamCapProfileFromState(state, state.userTeamId, getCapThresholds(state.leagueStats as any));
     const payroll = getTeamPayrollUSD(state.players, state.userTeamId, userTeam, state.leagueStats?.year);
     const mle = getMLEAvailability(state.userTeamId, payroll, 0, getCapThresholds(state.leagueStats as any), state.leagueStats as any);
+    const reservedMleUSD = (state.faBidding?.markets ?? [])
+      .filter((market: any) => !market?.resolved)
+      .reduce((sum: number, market: any) => {
+        const myTopActive = (market.bids ?? [])
+          .filter((bid: any) => bid.teamId === state.userTeamId && bid.status === 'active')
+          .sort((a: any, b: any) => (b.salaryUSD ?? 0) - (a.salaryUSD ?? 0))[0];
+        return sum + (myTopActive?.salaryUSD ?? 0);
+      }, 0);
+    const mleAvailableNet = Math.max(0, ((mle?.available as number) ?? 0) - reservedMleUSD);
     return {
       standardCount,
       twoWayCount,
@@ -146,7 +156,7 @@ export function useFreeAgentsViewModel() {
       isTrainingCamp,
       totalCount: roster.length,
       capSpaceUSD: profile.capSpaceUSD as number,
-      mleAvailable: (mle?.available as number) ?? 0,
+      mleAvailable: mleAvailableNet,
       mleType: (mle?.type as string | null) ?? null,
     };
   }, [isGM, state.userTeamId, state.players, state.leagueStats, state.teams, state.date, nonNbaIsolated, state]);
@@ -167,6 +177,20 @@ export function useFreeAgentsViewModel() {
   }, [selectedPool, state.nonNBATeams]);
 
   const filteredPlayers = useMemo(() => {
+    const currentYear = state.leagueStats?.year ?? seasonYear;
+    const ratingCache = new Map<string, { ovr: number; pot: number; age: number }>();
+    const getSortMetrics = (player: NBAPlayer) => {
+      const id = String(player.internalId ?? player.name);
+      const cached = ratingCache.get(id);
+      if (cached) return cached;
+      const metrics = {
+        ovr: fuzzRatingValue(getDisplayOverall(player, currentYear), state, player, 'ovr'),
+        pot: calcPot2K(player, currentYear),
+        age: getDisplayAge(player, currentYear),
+      };
+      ratingCache.set(id, metrics);
+      return metrics;
+    };
     const filtered = sourcePool.filter(player => {
       if (searchTerm && !player.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       if (selectedPool !== 'all') {
@@ -189,19 +213,20 @@ export function useFreeAgentsViewModel() {
       return true;
     });
     filtered.sort((a, b) => {
-      const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+      const aMetrics = getSortMetrics(a);
+      const bMetrics = getSortMetrics(b);
       const comparison =
         sortBy === 'ovr'
-          ? (a.overallRating || 0) - (b.overallRating || 0)
+          ? aMetrics.ovr - bMetrics.ovr || a.name.localeCompare(b.name)
           : sortBy === 'pot'
-            ? calcPot2K(a, currentYear) - calcPot2K(b, currentYear)
+            ? aMetrics.pot - bMetrics.pot
             : sortBy === 'age'
-              ? getDisplayAge(a, currentYear) - getDisplayAge(b, currentYear)
+              ? aMetrics.age - bMetrics.age
               : a.name.localeCompare(b.name);
       return sortOrder === 'asc' ? comparison : -comparison;
     });
     return filtered;
-  }, [sourcePool, searchTerm, selectedPool, viewMode, selectedPosition, selectedCountry, selectedTeamId, upcomingTeamFilter, sortBy, sortOrder, state.leagueStats?.year, leagueTeams]);
+  }, [sourcePool, searchTerm, selectedPool, viewMode, selectedPosition, selectedCountry, selectedTeamId, upcomingTeamFilter, sortBy, sortOrder, state, seasonYear, leagueTeams]);
 
   useEffect(() => {
     setPage(1);

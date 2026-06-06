@@ -18,6 +18,7 @@ type Args = {
     endorsementCount: number;
   };
   dueSponsorCount: number;
+  staffRetirementCount: number;
   rfaCandidates: any[];
   isEuroMode: boolean;
   expiringGate: { forceOpen: () => void };
@@ -32,6 +33,7 @@ type Args = {
   setPreseasonFriendliesOpen: (open: boolean) => void;
   setSponsorModalOpen: (open: boolean) => void;
   setRetiredReviewOpen: (open: boolean) => void;
+  setStaffRetirementsOpen: (open: boolean) => void;
   setHofCeremonyOpen: (open: boolean) => void;
   openStepConfirm: (spec: OffseasonConfirmSpec, action: () => void) => void;
   simToDateIfBefore: (targetISO: string) => void;
@@ -43,6 +45,7 @@ export function createHandleEnter({
   openStaffCount,
   sponsorCoverage,
   dueSponsorCount,
+  staffRetirementCount,
   rfaCandidates,
   isEuroMode,
   expiringGate,
@@ -57,6 +60,7 @@ export function createHandleEnter({
   setPreseasonFriendliesOpen,
   setSponsorModalOpen,
   setRetiredReviewOpen,
+  setStaffRetirementsOpen,
   setHofCeremonyOpen,
   openStepConfirm,
   simToDateIfBefore,
@@ -137,24 +141,7 @@ export function createHandleEnter({
     }
     if (row === 'sponsorRenewals') {
       if (dueSponsorCount === 0 && sponsorCoverage.emptySlotCount === 0) {
-        const endorsementSlotsLeft = Math.max(0, ENDORSEMENT_SLOT_CAP - sponsorCoverage.endorsementCount);
-        openStepConfirm(
-          {
-            eyebrow: 'Club Office',
-            title: 'Sponsor Check',
-            body: endorsementSlotsLeft > 0
-              ? `All ${ALL_SLOTS.length} sponsorship slots are active, but ${endorsementSlotsLeft}/${ENDORSEMENT_SLOT_CAP} endorsement slot${endorsementSlotsLeft === 1 ? '' : 's'} remain open. Review the open market before closing sponsor renewals.`
-              : `All ${ALL_SLOTS.length} sponsorship slots and ${ENDORSEMENT_SLOT_CAP}/${ENDORSEMENT_SLOT_CAP} endorsements are active.`,
-            confirmLabel: endorsementSlotsLeft > 0 ? 'Review Endorsements' : 'Complete Review',
-          },
-          () => {
-            if (endorsementSlotsLeft > 0) {
-              dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row: 'sponsorRenewals' } } as any);
-              return;
-            }
-            dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'sponsorRenewals' } } as any);
-          },
-        );
+        dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'sponsorRenewals' } } as any);
         return;
       }
       setSponsorModalOpen(true);
@@ -163,6 +150,15 @@ export function createHandleEnter({
     }
     if (row === 'retiredPlayersReview') {
       setRetiredReviewOpen(true);
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
+    if (row === 'staffRetirements') {
+      if (staffRetirementCount === 0) {
+        dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any);
+        return;
+      }
+      setStaffRetirementsOpen(true);
       dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
       return;
     }
@@ -188,17 +184,36 @@ export function createHandleEnter({
       }
       return;
     }
-    if (row === 'pbaImportDecision' || row === 'pbaMuseSelection' || row === 'pbaOpeningCeremony' || row === 'pbaAllStarWeekend' || row === 'pbaConferenceAwards') {
+    if (row === 'pbaLocalFreeAgency') {
+      dispatchAction({
+        type: 'UPDATE_STATE',
+        payload: { pendingTeamOfficeNav: { tab: 'intel', intelTab: 'fa' } },
+      } as any);
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
+    if (row === 'pbaImportSearch') {
+      dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+      return;
+    }
+    if (row === 'pbaImportDecision' || row === 'pbaMuseSelection' || row === 'pbaOpeningCeremony' || row === 'pbaAllStarWeekend') {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any);
       return;
     }
     const ls = state.leagueStats as any;
+    const isPbaMode = ls?.uiMode === 'pba_isolated';
     const lsYear = lsYearOf(state);
     if (row === 'draftLottery') {
-      simToDateIfBefore(toISODateString(getDraftLotteryDate(lsYear, ls)));
+      if (!isPbaMode) {
+        simToDateIfBefore(toISODateString(getDraftLotteryDate(lsYear, ls)));
+      }
     } else if (row === 'draft') {
       simToDateIfBefore(toISODateString(getDraftDate(lsYear, ls)));
     } else if (row === 'trainingCamp') {
+      if (isPbaMode) {
+        dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'trainingCamp' } } as any);
+        return;
+      }
       simToDateIfBefore(getUpcomingTrainingCampISO(state));
       if (isEuroMode) {
         dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'trainingCamp' } } as any);
@@ -210,3 +225,5 @@ export function createHandleEnter({
 
   return handleEnter;
 }
+
+

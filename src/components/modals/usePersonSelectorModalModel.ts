@@ -8,6 +8,7 @@ import { getAllReferees, fetchRefereeData, getRefereePhoto } from '../../data/ph
 import { PERSON_ACTION_MAP } from '../../data/personActionDefs';
 import { useGame } from '../../store/GameContext';
 import { Restaurant, RESTAURANT_DATA_URL, Movie, MOVIE_DATA_URL } from './PersonSelector/types';
+import { resolveAnyTeam } from '../../utils/teamLookup';
 import type {
   PersonSelectorActionType,
   PersonSelectorModalProps,
@@ -240,18 +241,22 @@ export function usePersonSelectorModalModel({
       let organization = 'NBA';
       let title = 'Player';
       let league = 'NBA';
-      const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect'].includes(player.status || '');
-      const nbaTeam = isNBA ? teams.find(team => team.id === player.tid) : null;
-      const nonNBATeam = !isNBA ? nonNBATeams.find(team => team.tid === player.tid && team.league === player.status) : null;
+      const resolvedTeam = player.tid >= 0
+        ? resolveAnyTeam(player.tid, teams, nonNBATeams)
+        : null;
+      const nbaTeam = player.tid >= 0 && player.tid < 100
+        ? teams.find(team => team.id === player.tid) ?? resolvedTeam
+        : null;
+      const nonNBATeam = player.tid >= 100
+        ? nonNBATeams.find(team => team.tid === player.tid) ?? resolvedTeam
+        : null;
 
       if (player.tid === -100 || player.status === 'WNBA') {
         organization = 'WNBA';
         title = 'WNBA Player';
         league = 'WNBA';
-      } else if (nbaTeam) {
-        organization = nbaTeam.name;
-      } else if (nonNBATeam) {
-        organization = nonNBATeam.name;
+      } else if (resolvedTeam) {
+        organization = resolvedTeam.name;
         league = player.status || 'International';
       } else if (player.tid === -1 && player.status === 'Free Agent') {
         organization = 'Free Agent';
@@ -276,7 +281,7 @@ export function usePersonSelectorModalModel({
         organization,
         type: 'player' as const,
         playerPortraitUrl: player.imgURL,
-        teamLogoUrl: nbaTeam?.logoUrl || nonNBATeam?.imgURL,
+        teamLogoUrl: nbaTeam?.logoUrl || (nonNBATeam as any)?.imgURL || (resolvedTeam as any)?.logoUrl,
         ovr: Math.round(rating2K),
         league,
       });

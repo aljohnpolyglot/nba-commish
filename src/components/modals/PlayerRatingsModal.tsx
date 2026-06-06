@@ -8,7 +8,7 @@ import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { K2_CATS, getRadarValues, type K2Data } from '../../services/simulation/convert2kAttributes';
 import { convertTo2KRating } from '../../utils/helpers';
 import { LEAGUE_DISPLAY_MULTIPLIERS } from '../../hooks/useLeagueScaledRatings';
-import { formatFuzzedRating, fuzzRatingValue } from '../../utils/scoutingFuzz';
+import { formatFuzzedRating, fuzzRatingValue, getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../utils/scoutingFuzz';
 import { ensurePlayerRatingData, resolvePlayerRatingBundle, usePlayerRatingStore } from '../../store/playerRatingStore';
 import { BBGM_DISPLAY_NAMES, BBGM_EDITABLE_KEYS, K2_DRIVERS, K2_CAT_COLORS, RadarChart, RatingBar, getRatingColor } from './PlayerRatingsModalShared';
 import { PlayerRatingsProgressionTab } from './PlayerRatingsProgressionTab';
@@ -22,6 +22,9 @@ interface PlayerRatingsModalProps {
 export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, season, onClose }) => {
   const { state, updatePlayerRatings } = useGame();
   const ratingVersion = usePlayerRatingStore(s => s.version);
+  const safeNumber = React.useCallback((value: number, fallback = 50) => (
+    Number.isFinite(value) ? value : fallback
+  ), []);
 
   React.useEffect(() => {
     ensurePlayerRatingData();
@@ -126,7 +129,7 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
     if (!driver) return;
     const currentK2 = (k2 as any)[catKey].sub[subIdx] as number;
     const delta2k = newK2Val - currentK2;
-    if (delta2k === 0) return;
+    if (!Number.isFinite(currentK2) || delta2k === 0) return;
     const deltaRating = delta2k / driver.multiplier;
     const currentRating = localRatings[driver.bbgmKey] ?? 50;
     const newRating = Math.max(0, Math.min(100, Math.round(currentRating + deltaRating)));
@@ -144,9 +147,10 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
   };
 
   const potK2 = ratingBundle.potential2k;
-  const displayOverall2k = fuzzRatingValue(overall2k, state, player);
-  const displayOverallText = formatFuzzedRating(overall2k, state, player);
-  const displayPotText = formatFuzzedRating(potK2, state, player, 'pot');
+  const displayOverall2k = getScoutedDisplayOverall(state, player, season);
+  const displayOverallText = String(displayOverall2k);
+  const displayPot2k = getScoutedDisplayPotential(state, player, season, season);
+  const displayPotText = String(displayPot2k);
   const ovrColor = getRatingColor(displayOverall2k);
 
   return (
@@ -197,7 +201,7 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                   <span className="text-2xl font-black leading-none mt-0.5" style={{ color: ovrColor }}>{displayOverallText}</span>
                 </div>
                 {(() => {
-                  const potDisplay = fuzzRatingValue(potK2, state, player, 'pot');
+                  const potDisplay = displayPot2k;
                   const potColor = potDisplay >= 90 ? '#3b82f6' : potDisplay >= 80 ? '#22c55e' : potDisplay >= 70 ? '#eab308' : '#94a3b8';
                   return (
                     <div
@@ -323,7 +327,7 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                             <div className="space-y-1.5">
                               {cat.sub.map((subName, subIdx) => {
                                 const driver = K2_DRIVERS.find(d => d.catKey === cat.k && d.subIdx === subIdx);
-                                const currentK2Val = (k2 as any)[cat.k].sub[subIdx] as number;
+                                const currentK2Val = safeNumber((k2 as any)[cat.k].sub[subIdx] as number);
                                 return (
                                   <div key={subName} className="flex items-center gap-2">
                                     <span className="text-[10px] font-bold text-slate-300 w-28 flex-shrink-0 truncate">
@@ -400,14 +404,14 @@ export const PlayerRatingsModal: React.FC<PlayerRatingsModalProps> = ({ player, 
                                 <span className="text-sm font-bold text-white">{cat.n}</span>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-black" style={{ color: catColor }}>{catData.ovr}</span>
+                                <span className="text-sm font-black" style={{ color: catColor }}>{safeNumber(catData.ovr)}</span>
                                 {isCollapsed ? <ChevronDown size={14} className="text-slate-500" /> : <ChevronUp size={14} className="text-slate-500" />}
                               </div>
                             </button>
                             {!isCollapsed && (
                               <div className="px-4 pb-3 pt-1 border-t border-slate-700/50">
                                 {cat.sub.map((subName, idx) => (
-                                  <RatingBar key={subName} value={catData.sub[idx] ?? 50} label={subName} />
+                                  <RatingBar key={subName} value={safeNumber(catData.sub[idx] ?? 50)} label={subName} />
                                 ))}
                               </div>
                             )}

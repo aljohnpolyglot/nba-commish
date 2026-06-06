@@ -26,7 +26,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ url, onClose }) => {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
                     // bg-black/90 and p-4/p-8 creates that Twitter feel
-                    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 md:p-10"
+                    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm md:p-10"
                     onClick={onClose}
                 >
                     {/* Close button - Top Left like Twitter mobile/web */}
@@ -39,7 +39,7 @@ export const ImageModal: React.FC<ImageModalProps> = ({ url, onClose }) => {
                     </button>
 
                     {/* Image Container */}
-                    <div className="relative w-full h-full flex items-center justify-center">
+                    <div className="relative flex h-full w-full items-center justify-center overflow-hidden">
                         <motion.img
                             src={url}
                             alt="Preview"

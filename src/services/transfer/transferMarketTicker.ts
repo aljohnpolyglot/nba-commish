@@ -265,8 +265,10 @@ export function tickTransferMarket(state: GameState): TickResult {
     )) continue;
     const meetsAsk = highest.amountEUR >= l.askingEUR;
     const nearAsk = highest.amountEUR >= l.askingEUR * 0.9;
+    const strongOverpay = highest.amountEUR >= l.askingEUR * 1.12;
     const lastDay = l.daysLeft <= 1;
-    const eagerSell = rng() < (windowStatus.window === 'winter' ? 0.005 : 0.02);
+    const earlyListing = l.daysLeft >= Math.max(2, l.totalDays - 1);
+    const eagerSell = rng() < (windowStatus.window === 'winter' ? 0.003 : 0.012);
     const v = evaluateOffer(highest.amountEUR, l.askingEUR, l.playerId);
     if (v.playerVeto && (meetsAsk || eagerSell || lastDay)) {
       bids = bids.map(b => b.id === highest.id ? { ...b, status: 'rejected' as const } : b);
@@ -284,7 +286,10 @@ export function tickTransferMarket(state: GameState): TickResult {
       }
       continue;
     }
-    if (meetsAsk || (nearAsk && lastDay && rng() < 0.35) || (nearAsk && eagerSell)) {
+    const sellerReadyNow = meetsAsk && v.clubInterest >= 86 && (!earlyListing || strongOverpay);
+    const sellerReadyLate = nearAsk && lastDay && v.clubInterest >= 74 && rng() < 0.28;
+    const sellerFlashSale = nearAsk && eagerSell && v.clubInterest >= 82 && !earlyListing;
+    if (sellerReadyNow || sellerReadyLate || sellerFlashSale) {
       const player = playerById.get(highest.playerId);
       const buyerRosterStatus =
         highest.bidderTid >= 1000 && highest.bidderTid < 2000 ? 'Euroleague'

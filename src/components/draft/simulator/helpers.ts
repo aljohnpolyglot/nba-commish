@@ -35,20 +35,24 @@ export const getOrdinalSuffix = (n: number) => {
  *  Used by both immediate per-pick commits and finalizeDraft. */
 export function computeDraftPickFields(pickSlot: number, team: any, ls: any) {
   if (!team) return null;
+  const teamId = Number(team.id ?? team.tid);
+  if (!Number.isFinite(teamId)) return null;
   const season: number = getLsYear({ leagueStats: ls } as any);
-  const round = pickSlot <= 30 ? 1 : 2;
-  const pickInRound = pickSlot <= 30 ? pickSlot : pickSlot - 30;
+  const pbaMode = ls?.uiMode === 'pba_isolated';
+  const roundSize = pbaMode ? (Number((team as any)._roundSize) || 12) : 30;
+  const round = pbaMode ? ((team as any)._round ?? ((team as any)._r2 ? 2 : 1)) : (pickSlot <= 30 ? 1 : 2);
+  const pickInRound = pickSlot - ((round - 1) * roundSize);
   const guaranteedYrs: number = (ls as any).rookieContractLength ?? 2;
   const teamOptEnabled: boolean = (ls as any).rookieTeamOptionsEnabled ?? true;
   const teamOptYears: number = (ls as any).rookieTeamOptionYears ?? 2;
   const restrictedFA: boolean = (ls as any).rookieRestrictedFreeAgentEligibility ?? true;
 
-  const salaryAmtUSD = computeRookieSalaryUSD(pickSlot, ls);
+  const salaryAmtUSD = computeRookieSalaryUSD(pickSlot, ls, roundSize);
 
   const baseYrs = round === 1 ? guaranteedYrs : 2;
   const optionYrs = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
 
-  const r2NonGuaranteed = round === 2 && ((ls as any)?.r2ContractsNonGuaranteed ?? true);
+  const r2NonGuaranteed = round >= 2 && ((ls as any)?.r2ContractsNonGuaranteed ?? true);
 
   // Seed per-season salary rows so PlayerBioContractTab can render every rookie
   // year including the base years that precede the current season. Without this,
@@ -66,10 +70,10 @@ export function computeDraftPickFields(pickSlot: number, team: any, ls: any) {
   });
 
   return {
-    tid: team.id as number,
-    status: 'Active' as const,
+    tid: teamId,
+    status: pbaMode ? 'PBA' as const : 'Active' as const,
     ...(r2NonGuaranteed && { nonGuaranteed: true }),
-    draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: (team as any)._originalTid ?? team.id },
+    draft: { round, pick: pickInRound, year: season, tid: teamId, originalTid: (team as any)._originalTid ?? teamId },
     contract: {
       amount: Math.round(salaryAmtUSD / 1_000),
       exp: season + baseYrs + optionYrs,

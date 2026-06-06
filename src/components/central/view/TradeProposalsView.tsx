@@ -99,6 +99,9 @@ function buildOfferFromProposal(
     items,
     outlook,
     variant: 'match',
+    cbaValid: proposal.cbaValid,
+    cbaReason: proposal.cbaReason,
+    cbaOffendingSide: proposal.cbaOffendingSide,
   };
 }
 
@@ -379,16 +382,6 @@ export const TradeProposalsView: React.FC = () => {
                     <div className={`absolute top-2 right-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-widest ${STATUS_META[proposal.status as keyof typeof STATUS_META]?.cls ?? ''}`}>
                       {STATUS_META[proposal.status as keyof typeof STATUS_META]?.icon}
                       {STATUS_META[proposal.status as keyof typeof STATUS_META]?.label}
-                    </div>
-                  )}
-                  {/* CBA-illegal badge — keeps proposal visible (player IS available),
-                      but flags the cap/Stepien/moratorium adjustment needed. */}
-                  {proposal.cbaValid === false && (
-                    <div
-                      className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-black uppercase tracking-widest bg-amber-500/15 text-amber-400 border-amber-500/40"
-                      title={proposal.cbaReason ?? 'CBA rule violation'}
-                    >
-                      Needs Adjust
                     </div>
                   )}
                   <OfferCard

@@ -38,6 +38,10 @@ interface AllStarEventsSectionProps {
     setAllStarHorse: (val: boolean) => void;
     allStarHorseParticipants: number;
     setAllStarHorseParticipants: (val: number) => void;
+    allStarHorseNoPlayerRepeat: boolean;
+    setAllStarHorseNoPlayerRepeat: (val: boolean) => void;
+    allStarHorseNoGlobalRepeat: boolean;
+    setAllStarHorseNoGlobalRepeat: (val: boolean) => void;
 }
 
 export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props) => {
@@ -67,6 +71,18 @@ export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props)
                 />
             </div>
         </div>
+    );
+
+    const EventCheckbox = ({ label, value, onChange }: { label: string, value: boolean, onChange: (v: boolean) => void }) => (
+        <label className="flex items-center justify-between pl-4 border-l border-slate-800 cursor-pointer">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
+            <input
+                type="checkbox"
+                checked={value}
+                onChange={(e) => onChange(e.target.checked)}
+                className="h-4 w-4 accent-indigo-500"
+            />
+        </label>
     );
 
     return (
@@ -105,9 +121,7 @@ export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props)
                     {props.allStarShootingStars && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                             <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest pl-2">Shooting Stars Settings</h3>
-                            <EventInput label="Teams" value={props.allStarShootingStarsTeams} onChange={props.setAllStarShootingStarsTeams} min={2} max={6} />
-                            <EventInput label="Players / Team" value={props.allStarShootingStarsPlayersPerTeam} onChange={props.setAllStarShootingStarsPlayersPerTeam} min={2} max={5} />
-                            <EventInput label="Total Players" value={props.allStarShootingStarsTotalPlayers} onChange={props.setAllStarShootingStarsTotalPlayers} min={4} max={30} />
+                            <EventInput label="Teams" value={props.allStarShootingStarsTeams} onChange={props.setAllStarShootingStarsTeams} min={2} max={30} />
                         </div>
                     )}
                 </div>
@@ -118,18 +132,20 @@ export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props)
                     {props.allStarSkillsChallenge && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                             <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest pl-2">Skills Challenge Settings</h3>
-                            <EventInput label="Total Players" value={props.allStarSkillsChallengeTotalPlayers} onChange={props.setAllStarSkillsChallengeTotalPlayers} min={4} max={16} />
+                            <EventInput label="Competitors" value={props.allStarSkillsChallengeTeams} onChange={props.setAllStarSkillsChallengeTeams} min={3} max={30} />
                         </div>
                     )}
                 </div>
 
                 {/* HORSE Tournament */}
                 <div className="space-y-4">
-                    <EventToggle label="HORSE Tournament" value={props.allStarHorse} onChange={props.setAllStarHorse} />
+                    <EventToggle label="H-O-R-S-E" value={props.allStarHorse} onChange={props.setAllStarHorse} />
                     {props.allStarHorse && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                            <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest pl-2">HORSE Settings</h3>
-                            <EventInput label="Participants" value={props.allStarHorseParticipants} onChange={props.setAllStarHorseParticipants} min={2} max={16} />
+                            <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest pl-2">H-O-R-S-E Settings</h3>
+                            <EventInput label="Participants" value={props.allStarHorseParticipants} onChange={props.setAllStarHorseParticipants} min={3} max={10} />
+                            <EventCheckbox label="No player repeat" value={props.allStarHorseNoPlayerRepeat} onChange={props.setAllStarHorseNoPlayerRepeat} />
+                            <EventCheckbox label="No global repeat" value={props.allStarHorseNoGlobalRepeat} onChange={props.setAllStarHorseNoGlobalRepeat} />
                         </div>
                     )}
                 </div>

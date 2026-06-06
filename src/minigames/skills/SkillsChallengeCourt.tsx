@@ -3,11 +3,10 @@ import { AnimatePresence, motion } from 'motion/react';
 import { SkillStation } from '../shared/liveContestTypes';
 
 interface SkillsChallengeCourtProps {
-  activeCompetitorPos?: { x: number | (number | null)[]; y: number | (number | null)[] };
+  activeCompetitorPos?: { x: number; y: number };
   completedStations: number;
   locations: SkillStation[];
   isCompeting?: boolean;
-  activeCompetitorSpeed?: number;
   className?: string;
   toastFeedback?: { text: string; type: 'MAKE' | 'MISS'; id: number } | null;
 }
@@ -23,7 +22,6 @@ export const SkillsChallengeCourt: React.FC<SkillsChallengeCourtProps> = ({
   completedStations,
   locations,
   isCompeting,
-  activeCompetitorSpeed = 50,
   className = '',
   toastFeedback,
 }) => (
@@ -118,24 +116,7 @@ export const SkillsChallengeCourt: React.FC<SkillsChallengeCourtProps> = ({
 
       <AnimatePresence>
         {activeCompetitorPos && (
-          <motion.g
-            initial={false}
-            animate={{ x: activeCompetitorPos.x, y: activeCompetitorPos.y }}
-            transition={{
-              type: 'tween',
-              duration: (() => {
-                if (completedStations === 0) return 0.3;
-                if (completedStations === 1) return 6.0 - (activeCompetitorSpeed / 100) * 2.5;
-                if (completedStations === 2) return 0.2;
-                if (completedStations === 3) return 2.4 - (activeCompetitorSpeed / 100) * 1.0;
-                if (completedStations === 4) return 6.5 - (activeCompetitorSpeed / 100) * 2.5;
-                if (completedStations === 5) return 0.2;
-                if (completedStations === 6) return 2.0 - (activeCompetitorSpeed / 100) * 0.8;
-                return 1.0;
-              })(),
-              ease: 'linear',
-            }}
-          >
+          <g transform={`translate(${activeCompetitorPos.x} ${activeCompetitorPos.y})`}>
             {isCompeting && (
               <motion.circle r="35" fill="#ffffff" opacity="0.3" animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0, 0.3] }} transition={{ duration: 0.8, repeat: Infinity }} />
             )}
@@ -158,7 +139,7 @@ export const SkillsChallengeCourt: React.FC<SkillsChallengeCourtProps> = ({
                 </motion.g>
               )}
             </AnimatePresence>
-          </motion.g>
+          </g>
         )}
       </AnimatePresence>
     </svg>

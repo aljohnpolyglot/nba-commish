@@ -40,10 +40,11 @@ export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({ isOpen, 
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden">
-        <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-          <div>
-            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl flex max-h-[calc(100vh-2rem)] flex-col shadow-2xl overflow-hidden">
+        <div className="border-b border-slate-800 bg-slate-900/50 p-4 sm:p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-xl font-bold text-white sm:text-2xl">
               <ArrowRightLeft className="text-indigo-500" />
               Transfer Funds
             </h2>
@@ -52,24 +53,25 @@ export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({ isOpen, 
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors">
             <X size={24} />
           </button>
+          </div>
         </div>
 
-        <div className="p-8">
-          <div className="grid grid-cols-2 gap-6 mb-8">
-            <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800">
+        <div className="overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:mb-8 sm:grid-cols-2 sm:gap-6">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 sm:p-6">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">League Funds</p>
-              <p className="text-3xl font-mono font-bold text-emerald-400">${state.stats.leagueFunds.toFixed(2)}M</p>
+              <p className="text-2xl font-mono font-bold text-emerald-400 sm:text-3xl">${state.stats.leagueFunds.toFixed(2)}M</p>
             </div>
-            <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 sm:p-6">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Personal Wealth</p>
-              <p className="text-3xl font-mono font-bold text-amber-400">${state.stats.personalWealth.toFixed(2)}M</p>
+              <p className="text-2xl font-mono font-bold text-amber-400 sm:text-3xl">${state.stats.personalWealth.toFixed(2)}M</p>
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-5 sm:space-y-6">
             <div>
               <label className="block text-sm font-bold text-slate-400 mb-2">Transfer Direction</label>
-              <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+              <div className="flex flex-col rounded-xl border border-slate-800 bg-slate-900 p-1 sm:flex-row">
                 <button
                   onClick={() => setTransferDirection('league_to_personal')}
                   className={`flex-1 py-3 text-sm font-bold rounded-lg transition-colors ${
@@ -117,7 +119,7 @@ export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({ isOpen, 
                 (transferDirection === 'league_to_personal' && (transferAmount / 1000000) > state.stats.leagueFunds) ||
                 (transferDirection === 'personal_to_league' && (transferAmount / 1000000) > state.stats.personalWealth)
               }
-              className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-4 font-bold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
             >
               <ArrowRightLeft size={20} />
               Execute Transfer

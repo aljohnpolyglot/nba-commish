@@ -35,6 +35,8 @@ type TeamWithStaff = NBATeam & {
       rating?: number;
       reputation?: number;
       attributeSeed?: number;
+      attributeProfile?: 'default' | 'nba';
+      attributeOverrides?: Partial<StaffAttributes>;
     }>;
     medicalBudget?: number;
   };
@@ -53,6 +55,14 @@ export interface TeamCoachingGameplayEffects {
 export interface TeamMedicalGameplayEffects {
   injuryRiskMultiplier: number;
   recoveryMultiplier: number;
+}
+
+export interface TeamRotationManagementEffects {
+  rating: number;
+  perTrust: number;
+  politicsBias: number;
+  orderNoise: number;
+  depthShift: number;
 }
 
 type GameplayRatingKey =
@@ -84,9 +94,13 @@ function getStaffMember(team: TeamWithStaff | null | undefined, role: string) {
   return getStaffMembers(team).find(member => member?.role === role) ?? null;
 }
 
-function getStaffAttrs(member: { name?: string; attributeSeed?: number; rating?: number; reputation?: number } | null | undefined): StaffAttributes | null {
+function getStaffAttrs(member: { name?: string; role?: string; attributeSeed?: number; attributeProfile?: 'default' | 'nba'; attributeOverrides?: Partial<StaffAttributes>; rating?: number; reputation?: number } | null | undefined): StaffAttributes | null {
   if (!member?.name) return null;
-  return attrsForCoach(member.name, seedForStaff(member));
+  return attrsForCoach(member.name, seedForStaff(member), {
+    role: member.role,
+    attributeProfile: member.attributeProfile,
+    attributeOverrides: member.attributeOverrides,
+  });
 }
 
 function getRoleAttrs(team: TeamWithStaff | null | undefined, role: string): StaffAttributes | null {
@@ -148,6 +162,23 @@ export function getTeamCoachingGameplayEffects(team?: TeamWithStaff | null): Tea
     defensiveAuraBonus: clamp((scaleAroundNeutral(head.defense) + scaleAroundNeutral(assistants.defense)) * 6, -12, 12),
     defensiveTrainingMultiplier: clamp(1 + defensiveTrainingBase * 0.35, 0.65, 1.35),
     dramaMultiplier: clamp(1 - managementBase * 0.35, 0.65, 1.35),
+  };
+}
+
+export function getTeamRotationManagementEffects(team?: TeamWithStaff | null): TeamRotationManagementEffects {
+  const head = getRoleAttrs(team, 'Head Coach') ?? NEUTRAL_STAFF_ATTRS;
+  const assistants = buildAssistantAttrs(team);
+  const rating = clamp(head.manManagement * 0.75 + assistants.manManagement * 0.25, MIN_STAFF_ATTR, MAX_STAFF_ATTR);
+  const scale = scaleAroundNeutral(rating);
+  const bad = Math.max(0, -scale);
+  const good = Math.max(0, scale);
+
+  return {
+    rating,
+    perTrust: clamp(1 + good * 0.55 - bad * 0.50, 0.45, 1.55),
+    politicsBias: clamp(bad * 4.5 - good * 1.2, -1.2, 4.5),
+    orderNoise: clamp(bad * 4.0 - good * 1.2, 0, 4.0),
+    depthShift: Math.round(good * -1 + bad * 2),
   };
 }
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { Star, Trophy, Zap } from 'lucide-react';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { normalizeDate, getPlayerHeadshot, getTeamLogo, extractTeamId, extractNbaId } from '../../utils/helpers';
+import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
 
 interface AllStarGameViewProps {
   allStar: any;
@@ -13,6 +14,44 @@ interface AllStarGameViewProps {
 export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state, onWatchGame, onViewBoxScore }) => {
   const boxScore = state.boxScores?.find((b: any) => b.gameId === allStar?.allStarGameId || (b.homeTeamId === -1 && b.awayTeamId === -2));
   const game = state.schedule?.find((g: any) => g.gid === allStar?.allStarGameId);
+  const isPba = state.leagueStats?.uiMode === 'pba_isolated';
+  const isCaptainsDraft = state.leagueStats?.allStarFormat === 'captains_draft';
+  const allTeams = React.useMemo(
+    () => [
+      ...(state.teams ?? []),
+      ...((state.nonNBATeams ?? []).map((team: any) => ({ ...team, id: team.tid ?? team.id, logoUrl: team.logoUrl ?? team.imgURL }))),
+    ],
+    [state.nonNBATeams, state.teams],
+  );
+  const playerById = React.useMemo(
+    () => new Map<string, any>((state.players ?? []).map((player: any) => [player.internalId, player])),
+    [state.players],
+  );
+  const getBucketLabel = React.useCallback((bucket: string) => {
+    if (isCaptainsDraft) {
+      const captain = allStar?.roster?.find((entry: any) => entry.conference === bucket && entry.isCaptain);
+      if (captain?.playerName) {
+        const parts = String(captain.playerName).trim().split(/\s+/);
+        return `Team ${parts[parts.length - 1]}`;
+      }
+      return bucket === 'East' ? (isPba ? 'Team A' : 'East All-Stars') : (isPba ? 'Team B' : 'West All-Stars');
+    }
+    if (bucket === 'East') return isPba ? 'Team A' : 'Eastern Conference';
+    if (bucket === 'West') return isPba ? 'Team B' : 'Western Conference';
+    return bucket;
+  }, [allStar?.roster, isCaptainsDraft, isPba]);
+  const getEntryTeam = React.useCallback((entry: any) => {
+    const player = playerById.get(entry?.playerId);
+    return allTeams.find((team: any) => team.abbrev === entry?.teamAbbrev)
+      ?? allTeams.find((team: any) => Number(team.id ?? team.tid) === Number(player?.tid));
+  }, [allTeams, playerById]);
+  const getTeamLogoFor = React.useCallback((team: any, fallbackTeamId?: number | string | null) => {
+    const resolved = getResolvedTeamLogoUrl(team);
+    if (resolved) return resolved;
+    const numericTeamId = Number(fallbackTeamId);
+    if (Number.isFinite(numericTeamId) && numericTeamId > 0) return getTeamLogo(numericTeamId);
+    return team?.logoUrl ?? team?.imgURL ?? '';
+  }, []);
   const isToday = game && normalizeDate(game.date) === normalizeDate(state.date);
   const canWatch = isToday && !game.played;
   const formatLabel = game?.gameFormat === 'target_score'
@@ -22,14 +61,20 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
       : 'Timed Game';
 
   if (!boxScore) {
-    const east = allStar?.roster?.filter((p: any) => p.conference === 'East') ?? [];
-    const west = allStar?.roster?.filter((p: any) => p.conference === 'West') ?? [];
+    const buckets = Array.from(new Set((allStar?.roster ?? []).map((p: any) => p.conference).filter(Boolean)));
+    const order = ['East', 'West', 'USA1', 'USA2', 'WORLD', 'WORLD1', 'WORLD2'];
+    buckets.sort((a: any, b: any) => order.indexOf(a) - order.indexOf(b));
+    const groups = buckets.map((bucket: any, index: number) => ({
+      label: getBucketLabel(bucket),
+      players: allStar?.roster?.filter((p: any) => p.conference === bucket) ?? [],
+      color: index === 0 ? 'text-blue-400' : 'text-red-400',
+    }));
 
     return (
       <div>
         <div className="text-center mb-8">
           <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">
-            The 75th All-Star Game
+            {isPba ? 'PBA All-Star Game' : 'The 75th All-Star Game'}
           </h3>
           <p className="text-slate-400 text-sm">
             Sunday, Feb 15 · {formatLabel}
@@ -47,10 +92,7 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {[
-            { label: 'Eastern Conference', players: east, color: 'text-blue-400' },
-            { label: 'Western Conference', players: west, color: 'text-red-400' }
-          ].map(conf => (
+          {groups.map(conf => (
             <div key={conf.label} className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
               <div className="px-6 py-4 bg-slate-800/50 border-b border-slate-800 flex items-center justify-between">
                 <span className={`text-xs font-black uppercase tracking-widest ${conf.color}`}>
@@ -62,10 +104,11 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
               </div>
               <div className="divide-y divide-slate-800/50">
                 {conf.players.map((p: any) => {
-                  const team = state.teams?.find((t: any) => t.abbrev === p.teamAbbrev);
-                  const teamId = p.teamNbaId || (team ? extractTeamId(team.logoUrl, p.teamAbbrev) : null) || 1610612737;
+                  const team = getEntryTeam(p);
+                  const teamId = p.teamNbaId || (team ? extractTeamId(team.logoUrl ?? team.imgURL ?? '', p.teamAbbrev) : null) || 1610612737;
                   const teamColor = team?.colors?.[0] || '#64748b';
-                  const fullPlayer = state.players?.find((pl: any) => pl.internalId === p.playerId);
+                  const fullPlayer = playerById.get(p.playerId);
+                  const teamLogo = getTeamLogoFor(team, teamId);
 
                   return (
                     <div key={p.playerId} className="px-6 py-3 flex items-center justify-between hover:bg-slate-800/20 transition-colors">
@@ -98,12 +141,14 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
                                 ? <PlayerNameWithHover player={fullPlayer}>{p.playerName}</PlayerNameWithHover>
                                 : p.playerName}
                             </span>
-                            <img 
-                              src={getTeamLogo(teamId)}
-                              className="w-4 h-4 object-contain"
-                              alt={p.teamAbbrev}
-                              referrerPolicy="no-referrer"
-                            />
+                            {teamLogo && (
+                              <img
+                                src={teamLogo}
+                                className="w-4 h-4 object-contain"
+                                alt={p.teamAbbrev}
+                                referrerPolicy="no-referrer"
+                              />
+                            )}
                           </div>
                           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{p.teamAbbrev}</span>
                         </div>
@@ -130,6 +175,10 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
 
   const mvpPlayer = topScorers[0] ? state.players?.find((pl: any) => pl.internalId === topScorers[0].playerId) : null;
   const isHomeWinner = boxScore.homeScore > boxScore.awayScore;
+  const homeBucket = game?.homeTid === -1 ? 'East' : 'West';
+  const awayBucket = game?.awayTid === -2 ? 'West' : 'East';
+  const homeLabel = boxScore.homeTeamName ?? getBucketLabel(homeBucket);
+  const awayLabel = boxScore.awayTeamName ?? getBucketLabel(awayBucket);
 
   return (
     <div>
@@ -142,7 +191,7 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
               {boxScore.homeScore}
             </div>
             <div className="text-[10px] text-blue-400 font-black uppercase tracking-widest">
-              East All-Stars
+              {homeLabel}
             </div>
           </div>
           <div className="text-2xl font-black text-slate-700">VS</div>
@@ -151,7 +200,7 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
               {boxScore.awayScore}
             </div>
             <div className="text-[10px] text-red-400 font-black uppercase tracking-widest">
-              West All-Stars
+              {awayLabel}
             </div>
           </div>
         </div>
@@ -204,11 +253,12 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
             </thead>
             <tbody className="divide-y divide-slate-800/50">
               {topScorers.map((p: any, i: number) => {
-                const team = state.teams?.find((t: any) => t.id === p.tid);
-                const teamId = team ? extractTeamId(team.logoUrl, team.abbrev) : null;
+                const team = allTeams.find((t: any) => Number(t.id ?? t.tid) === Number(p.tid));
+                const teamId = team ? extractTeamId(team.logoUrl ?? team.imgURL ?? '', team.abbrev) : null;
                 const teamColor = team?.colors?.[0] || '#64748b';
                 const player = state.players?.find((pl: any) => pl.internalId === p.playerId);
                 const nbaId = player ? extractNbaId(player.imgURL || "", p.name) : null;
+                const teamLogo = getTeamLogoFor(team, teamId);
 
                 return (
                   <tr key={i} className="hover:bg-slate-800/30 transition-colors">
@@ -235,9 +285,9 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
                               ? <PlayerNameWithHover player={player}>{p.name}</PlayerNameWithHover>
                               : p.name}
                           </div>
-                            {teamId && (
+                            {teamLogo && (
                               <img 
-                                src={getTeamLogo(teamId)}
+                                src={teamLogo}
                                 className="w-4 h-4 object-contain"
                                 alt="team"
                                 referrerPolicy="no-referrer"
@@ -248,7 +298,7 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
                             <div className="px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700">
                               <span className="text-[8px] font-black text-slate-500 uppercase">{p.pos}</span>
                             </div>
-                            <span className="text-[10px] text-slate-500 font-bold uppercase">{team?.abbrev || 'NBA'}</span>
+                            <span className="text-[10px] text-slate-500 font-bold uppercase">{team?.abbrev || (isPba ? 'PBA' : 'NBA')}</span>
                           </div>
                         </div>
                       </div>

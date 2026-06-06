@@ -21,6 +21,11 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
+function toFiniteNumber(value: unknown, fallback = 0): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 // Simple seeded float 0–1
 function seededFloat(seed: number): number {
   const x = Math.sin(seed + 1) * 10000;
@@ -58,14 +63,15 @@ export function computeMoodScore(
   currentYear?: number,
 ): { score: number; components: MoodComponents } {
   const traits: MoodTrait[] = normalizeMoodTraits((player as any).moodTraits ?? []);
+  const playerId = String(player.internalId ?? '');
 
   // ── Playing time ───────────────────────────────────────────────────────────
   const isInjured = player.injury?.type !== 'Healthy' && player.injury?.gamesRemaining > 0;
   let ptDelta = 0;
   if (!isInjured) {
     const season = (player.stats ?? []).find(s => !s.playoffs);
-    const actualMPG = season ? (season.min / Math.max(1, season.gp)) : 0;
-    const expMPG = expectedMPG(player.overallRating);
+    const actualMPG = season ? (toFiniteNumber(season.min) / Math.max(1, toFiniteNumber(season.gp, 1))) : 0;
+    const expMPG = expectedMPG(toFiniteNumber(player.overallRating, 0));
     ptDelta = clamp((actualMPG - expMPG) / 2, -5, 5);
   }
 
@@ -73,8 +79,10 @@ export function computeMoodScore(
   let winDelta = 0;
   if (team) {
     const rec = currentYear ? effectiveRecord(team, currentYear) : { wins: team.wins, losses: team.losses };
-    const gp = rec.wins + rec.losses;
-    const winPct = gp > 0 ? rec.wins / gp : 0.5;
+    const wins = toFiniteNumber(rec.wins);
+    const losses = toFiniteNumber(rec.losses);
+    const gp = wins + losses;
+    const winPct = gp > 0 ? wins / gp : 0.5;
     winDelta = clamp((winPct - 0.5) * 10, -5, 5);
     if (winPct >= 0.56) winDelta += 1; // contender floor bonus
     if (winPct >= 0.65) winDelta += 1; // elite-record bonus
@@ -87,7 +95,8 @@ export function computeMoodScore(
   let contractDelta = 0;
   if (player.contract?.amount) {
     const market = estimateMarketValue(player);
-    const ratio = (player.contract.amount * 1_000_000) / market;
+    const contractAmount = toFiniteNumber(player.contract.amount);
+    const ratio = (contractAmount * 1_000_000) / market;
     contractDelta = clamp((ratio - 1.0) * 8, -4, 4);
   }
 
@@ -105,7 +114,7 @@ export function computeMoodScore(
   // ── Market size (tier-based: all players get base; FAME doubles; DIVA/MERC extras) ────
   let marketDelta = 0;
   if (team) {
-    const pop = (team as any).pop ?? 0; // BBGM population field (millions)
+    const pop = toFiniteNumber((team as any).pop, 0); // BBGM population field (millions)
     // Tier thresholds: top-third of NBA cities ≈ pop ≥ 5M; bottom-third < 2.5M
     const marketBase = pop >= 5 ? 3 : pop >= 2.5 ? 1 : 0; // High=+3, Mid=+1, Low=0
     const fameMult = traits.includes('FAME') ? 2 : 1;
@@ -124,8 +133,8 @@ export function computeMoodScore(
 
   // ── Role stability ─────────────────────────────────────────────────────────
   const season = (player.stats ?? []).find(s => !s.playoffs);
-  const isStarter = season ? (season.gs / Math.max(1, season.gp)) >= 0.5 : false;
-  const isStar = player.overallRating >= 65; // BBGM 65+ = All-Star caliber (70+ = superstar)
+  const isStarter = season ? (toFiniteNumber(season.gs) / Math.max(1, toFiniteNumber(season.gp, 1))) >= 0.5 : false;
+  const isStar = toFiniteNumber(player.overallRating, 0) >= 65; // BBGM 65+ = All-Star caliber (70+ = superstar)
   const roleDelta = isStarter ? 2 : isStar ? -3 : 0;
 
   // ── Family ties ────────────────────────────────────────────────────────────
@@ -144,7 +153,7 @@ export function computeMoodScore(
   let dateSeed = 0;
   for (let i = 0; i < dateStr.length; i++) dateSeed += dateStr.charCodeAt(i);
   let idSeed = 0;
-  for (let i = 0; i < player.internalId.length; i++) idSeed += player.internalId.charCodeAt(i);
+  for (let i = 0; i < playerId.length; i++) idSeed += playerId.charCodeAt(i);
   const noiseDelta = seededFloat(idSeed + dateSeed) * 2 - 1;
 
   // ── Apply trait multipliers ────────────────────────────────────────────────
@@ -171,8 +180,10 @@ export function computeMoodScore(
     // Use effectiveRecord so offseason 0-0 falls back to last season's record
     if (team) {
       const compRec = currentYear ? effectiveRecord(team, currentYear) : { wins: team.wins, losses: team.losses };
-      const compGP = compRec.wins + compRec.losses;
-      if (compGP > 0 && (compRec.wins / compGP) < 0.40) {
+      const compWins = toFiniteNumber(compRec.wins);
+      const compLosses = toFiniteNumber(compRec.losses);
+      const compGP = compWins + compLosses;
+      if (compGP > 0 && (compWins / compGP) < 0.40) {
         win -= 2; // extra penalty on rebuilder
       }
     }
@@ -195,18 +206,19 @@ export function computeMoodScore(
   }
 
   const components: MoodComponents = {
-    playingTime: clamp(pt, -5, 5),
-    teamSuccess: clamp(win, -8, 7),
-    contractSatisfaction: clamp(contract, -4, 4),
-    commishRelationship: clamp(relDelta, -3, 3),
-    roleStability: clamp(role, -3, 2),
-    marketSize: clamp(marketDelta, -3, 6),
-    familyTies: clamp(familyDelta, 0, 3),
-    travelComfort: clamp(travelDelta, -1.5, 1.5),
-    noise: clamp(noiseDelta, -1, 1),
+    playingTime: clamp(toFiniteNumber(pt), -5, 5),
+    teamSuccess: clamp(toFiniteNumber(win), -8, 7),
+    contractSatisfaction: clamp(toFiniteNumber(contract), -4, 4),
+    commishRelationship: clamp(toFiniteNumber(relDelta), -3, 3),
+    roleStability: clamp(toFiniteNumber(role), -3, 2),
+    marketSize: clamp(toFiniteNumber(marketDelta), -3, 6),
+    familyTies: clamp(toFiniteNumber(familyDelta), 0, 3),
+    travelComfort: clamp(toFiniteNumber(travelDelta), -1.5, 1.5),
+    noise: clamp(toFiniteNumber(noiseDelta), -1, 1),
   };
 
   let raw = Object.values(components).reduce((a, b) => a + b, 0);
+  if (!Number.isFinite(raw)) raw = 0;
 
   // LOYAL: floor at −2
   if (traits.includes('LOYAL')) raw = Math.max(raw, -2);

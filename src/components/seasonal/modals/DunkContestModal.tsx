@@ -27,7 +27,7 @@ const ModalShell = ({ children, wide }: { children: React.ReactNode; wide?: bool
   <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <motion.div
       initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
-      className={`bg-slate-900 border border-slate-800 rounded-[2rem] w-full shadow-2xl flex flex-col max-h-[90vh] ${wide ? 'max-w-3xl' : 'max-w-xl'}`}
+      className={`flex max-h-[calc(100vh-2rem)] w-full flex-col rounded-[2rem] border border-slate-800 bg-slate-900 shadow-2xl ${wide ? 'max-w-3xl' : 'max-w-xl'}`}
     >
       {children}
     </motion.div>
@@ -115,7 +115,7 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
   if (step === 1) {
     return (
       <ModalShell wide>
-        <div className="p-8 pb-4">
+        <div className="p-4 pb-4 sm:p-8">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
               <Zap size={22} />
@@ -132,8 +132,8 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
             </button>
           </div>
         </div>
-        <div className="overflow-y-auto custom-scrollbar px-8 pb-6 flex-1">
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
+        <div className="custom-scrollbar flex-1 overflow-y-auto px-4 pb-6 sm:px-8">
+          <div className="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-6">
             {existingContestants.map((p) => {
               const team = state.teams.find(t => t.id === p.tid);
               return (
@@ -155,7 +155,7 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
             })}
           </div>
         </div>
-        <div className="p-8 pt-4 border-t border-slate-800 flex justify-end">
+        <div className="flex justify-end border-t border-slate-800 p-4 pt-4 sm:p-8">
           <button onClick={onClose} className="px-6 py-3 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-bold uppercase tracking-wider text-xs">Close</button>
         </div>
       </ModalShell>
@@ -165,13 +165,13 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
   // ── Step 2: Player picker (grid) ──────────────────────────────────────────
   return (
     <ModalShell wide>
-      <div className="p-8 pb-4">
+      <div className="p-4 pb-4 sm:p-8">
         {isEditMode && (
           <button onClick={() => setStep(1)} className="text-slate-500 hover:text-white text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5">
             ← Back to lineup
           </button>
         )}
-        <div className="flex items-center gap-4 mb-3">
+        <div className="mb-3 flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-400">
             <Zap size={22} />
           </div>
@@ -194,11 +194,11 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
         </div>
       </div>
 
-      <div className="overflow-y-auto custom-scrollbar px-8 pb-6 flex-1">
+      <div className="custom-scrollbar flex-1 overflow-y-auto px-4 pb-6 sm:px-8">
         {loading ? (
           <div className="text-center py-12 text-slate-500 text-sm">Loading ratings...</div>
         ) : (
-          <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
             {visiblePlayers.map(x => {
               const isSelected = selected.has(x.player.internalId);
               const canSelect = isSelected || selected.size < 6;
@@ -236,14 +236,14 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
         )}
       </div>
 
-      <div className="p-8 pt-4 border-t border-slate-800 flex items-center justify-between">
+      <div className="flex flex-col gap-3 border-t border-slate-800 p-4 pt-4 sm:flex-row sm:items-center sm:justify-between sm:p-8">
         <p className="text-xs text-slate-500">{selected.size}/6 selected</p>
-        <div className="flex gap-3">
-          <button onClick={onClose} className="px-6 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-bold uppercase tracking-wider text-xs">Cancel</button>
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+          <button onClick={onClose} className="w-full rounded-xl px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:bg-slate-800 hover:text-white sm:w-auto">Cancel</button>
           <button
             disabled={selected.size < 2}
             onClick={() => onConfirm(selectedPlayers)}
-            className="px-6 py-3 rounded-xl bg-amber-600 text-white hover:bg-amber-500 font-bold uppercase tracking-wider text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full rounded-xl bg-amber-600 px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >
             {isEditMode ? 'Update Contestants' : 'Set Contestants'}
           </button>

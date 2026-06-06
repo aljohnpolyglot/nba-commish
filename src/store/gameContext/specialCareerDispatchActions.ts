@@ -10,6 +10,7 @@ import { mapSetupTierToTycoonTier } from '../../utils/tierMapping';
 import { normalizeDate } from '../../utils/helpers';
 import { ensureEuroUserAcademyProspects } from '../../services/externalLeagueSustainer';
 import { tickTransferMarket } from '../../services/transfer/transferMarketTicker';
+import { isInitialSpanishEuroleagueWildcard, isLicensedSpanishEuroleagueClub } from '../../utils/euroleagueQualification';
 import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
 import { generateForCompetition, selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
 import { EURO_ISOLATED_DEFAULTS, PBA_ISOLATED_DEFAULTS } from '../../constants';
@@ -19,6 +20,7 @@ import {
   initialPbaInterConferenceChecklist,
   initialPbaEndOfSeasonChecklist,
 } from '../../services/offseason/offseasonState';
+import { getNextConference, type PbaConference } from '../../services/pba/conferenceTransition';
 import {
   buildSetupSponsorships,
   EURO_TRANSFER_MARKET_DEFAULTS,
@@ -76,6 +78,10 @@ export async function handleSpecialCareerDispatchAction({
       const tids = selectCompetitionTeamTids(philCupSpec, source);
       const philCupStart = new Date(Date.UTC(signedYear, philCupSpec.seasonStart.month - 1, philCupSpec.seasonStart.day));
       const philCupGames = generateForCompetition(philCupSpec, tids.map(tid => ({ tid })), philCupStart, 800_000);
+      const stockedPool = ensureStaffPoolDepth(
+        { players: prev.players ?? [], nonNBATeams: prev.nonNBATeams ?? [], teams: prev.teams ?? [], staffFreeAgents: prev.staffFreeAgents ?? [], saveId: prev.saveId } as any,
+        'pba',
+      );
       return {
         ...prev,
         leagueStats: {
@@ -84,10 +90,15 @@ export async function handleSpecialCareerDispatchAction({
           moddedLeagueBase: 'philippines',
           pbaConference: 'philippine',
           pbaConferencePhase: 'regularSeason',
+          staffPoolSeeded: true,
+          pbaStaffPoolSeeded: true,
         },
+        activeCompetitions: PBA_COMPETITIONS,
         userTeamId: teamId,
         date: pbaStartDate,
-        schedule: [...(prev.schedule ?? []), ...philCupGames],
+        schedule: philCupGames,
+        boxScores: [],
+        staffFreeAgents: stockedPool.staffFreeAgents ?? prev.staffFreeAgents,
         offseasonChecklist: initialPbaChecklist(),
         isProcessing: false,
       };
@@ -98,8 +109,7 @@ export async function handleSpecialCareerDispatchAction({
   if (action.type === 'ADVANCE_PBA_CONFERENCE') {
     setState(prev => {
       const leagueStats = prev.leagueStats as any;
-      const current: import('../../services/pba/conferenceTransition').PbaConference = leagueStats?.pbaConference ?? 'philippine';
-      const { getNextConference } = require('../../services/pba/conferenceTransition');
+      const current: PbaConference = leagueStats?.pbaConference ?? 'philippine';
       const next = getNextConference(current);
       if (!next) {
         return {
@@ -178,6 +188,23 @@ export async function handleSpecialCareerDispatchAction({
         face: seed.owner.face,
         isPlaceholder: true,
       };
+      const euroleagueGoal = isLicensedSpanishEuroleagueClub(teamFromState as any)
+        ? 'You start every season in EuroLeague. The board expects you to stay competitive in Europe while fighting for the Liga Endesa title.'
+        : isInitialSpanishEuroleagueWildcard(teamFromState as any)
+          ? 'You begin with Spain\'s current EuroLeague invitation. Stay ahead of every other non-licensed Spanish club in Liga Endesa to keep that place.'
+          : 'Your EuroLeague route is clear: finish as the highest non-licensed Spanish club in Liga Endesa and Spain\'s open invitation is yours next season.';
+      const briefingEmail = {
+        id: `euro-briefing-${teamId}-${seasonYear}`,
+        sender: `${teamName} Board`,
+        senderRole: 'Owner',
+        subject: 'Five-Year Briefing',
+        body: `${seed.owner.name} welcomes you to ${teamName}. ${euroleagueGoal}`,
+        date: euroStartDate,
+        read: false,
+        replied: false,
+        teamLogoUrl: (teamFromState as any)?.logoUrl ?? (teamFromState as any)?.imgURL,
+        playerPortraitUrl: (teamFromState as any)?.logoUrl ?? (teamFromState as any)?.imgURL,
+      };
       const tycoonStaff = teamStaff.map((member, index) => ({
         id: `staff-${teamId}-${member.position ?? index}`,
         role: member.position ?? member.jobTitle ?? 'Staff',
@@ -250,6 +277,7 @@ export async function handleSpecialCareerDispatchAction({
           referees: prev.staff?.referees,
         },
         staffFreeAgents: initialStaffPool,
+        inbox: [briefingEmail as any, ...(prev.inbox ?? []).filter(email => email.id !== briefingEmail.id)],
         euroSetupSeed: {
           teamId,
           leagueId,

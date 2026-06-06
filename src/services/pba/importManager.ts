@@ -1,10 +1,26 @@
 import { getCountryFromLoc } from '../../utils/helpers';
-import type { NBAPlayer } from '../../types';
+import type { LeagueStats, NBAPlayer } from '../../types';
 
 export type ImportRule = 'none' | 'one_no_height_limit' | 'one_max_6ft5';
 export type PbaConference = 'philippine' | 'commissioners' | 'governors';
 
 const MAX_HEIGHT_INCHES_GOV_CUP = 77; // 6'5"
+const IMPORT_MONTHS_BY_CONFERENCE: Record<PbaConference, number> = {
+  philippine: 0,
+  commissioners: 2,
+  governors: 2,
+};
+const PBA_IMPORT_MONTHLY_FLOOR = 25_000;
+
+export function getEffectivePbaConference(
+  leagueStats?: { pbaConference?: PbaConference; pbaConferencePhase?: string } | null,
+): PbaConference {
+  const current = leagueStats?.pbaConference ?? 'philippine';
+  if (leagueStats?.pbaConferencePhase !== 'offseason') return current;
+  if (current === 'philippine') return 'commissioners';
+  if (current === 'commissioners') return 'governors';
+  return current;
+}
 
 export function getImportRuleForConference(conference?: PbaConference): ImportRule {
   if (conference === 'commissioners') return 'one_no_height_limit';
@@ -21,14 +37,27 @@ export function isFilipino(player: NBAPlayer): boolean {
   return country === 'philippines';
 }
 
-export function isImportEligible(player: NBAPlayer, conference?: PbaConference): { eligible: boolean; reason?: string } {
+export function isPbaRosterLocal(player: NBAPlayer, leagueStats?: Pick<LeagueStats, 'pbaLocalEligibilityMode'>): boolean {
+  if (isFilipino(player)) return true;
+  if (leagueStats?.pbaLocalEligibilityMode === 'filipino_only') return false;
+  if ((player as any).pbaLocalEligible) return true;
+  const tid = Number(player.tid);
+  const hasPbaRosterIdentity = player.status === 'PBA' || (Number.isFinite(tid) && tid >= 2000 && tid < 3000);
+  return hasPbaRosterIdentity && !(player as any).isImport;
+}
+
+export function isImportEligible(
+  player: NBAPlayer,
+  conference?: PbaConference,
+  leagueStats?: Pick<LeagueStats, 'pbaLocalEligibilityMode'>,
+): { eligible: boolean; reason?: string } {
   const rule = getImportRuleForConference(conference);
 
   if (rule === 'none') {
     return { eligible: false, reason: 'No imports allowed in the Philippine Cup' };
   }
 
-  if (isFilipino(player)) {
+  if (isPbaRosterLocal(player, leagueStats)) {
     return { eligible: true };
   }
 
@@ -45,12 +74,64 @@ export function getActiveImport(players: NBAPlayer[], teamId: number): NBAPlayer
   return players.find(p => p.tid === teamId && (p as any).isImport);
 }
 
-export function stampImportFlags(players: NBAPlayer[], conference?: PbaConference): NBAPlayer[] {
+export function isPbaImportForTeam(
+  player: NBAPlayer,
+  teamId: number,
+  conference: PbaConference | undefined,
+  leagueStats?: Pick<LeagueStats, 'pbaLocalEligibilityMode'>,
+): boolean {
+  if (teamId < 2000 || teamId >= 2100) return false;
+  if (!conference || conference === 'philippine') return false;
+  return !isPbaRosterLocal(player, leagueStats);
+}
+
+export function getPbaImportConferenceSalary(
+  requestedSalary: number,
+  leagueStats: Pick<LeagueStats, 'salaryCap'> | undefined,
+  conference: PbaConference,
+): number {
+  const cap = leagueStats?.salaryCap ?? 33_750_000;
+  const months = IMPORT_MONTHS_BY_CONFERENCE[conference] || 2;
+  const monthlyFloor = Math.max(PBA_IMPORT_MONTHLY_FLOOR, Math.round(cap * 0.06));
+  const conferenceFloor = monthlyFloor * months;
+  return Math.max(Math.round(requestedSalary || 0), conferenceFloor);
+}
+
+export function getPbaImportContractLabel(conference: PbaConference): string {
+  if (conference === 'commissioners') return "Commissioner's Cup import deal";
+  if (conference === 'governors') return "Governors' Cup import deal";
+  return 'PBA import deal';
+}
+
+export function buildPbaImportContractMetadata(
+  teamId: number,
+  conference: PbaConference,
+  signedDate?: string,
+  replacementsUsed = 0,
+) {
+  return {
+    type: 'conference',
+    league: 'PBA',
+    conference,
+    teamId,
+    signedDate,
+    months: IMPORT_MONTHS_BY_CONFERENCE[conference] || 2,
+    replacementsUsed,
+    reserveActivationsUsed: 0,
+    status: 'active',
+  };
+}
+
+export function stampImportFlags(
+  players: NBAPlayer[],
+  conference?: PbaConference,
+  leagueStats?: Pick<LeagueStats, 'pbaLocalEligibilityMode'>,
+): NBAPlayer[] {
   if (!conference || conference === 'philippine') return players;
   return players.map(p => {
     if (p.tid < 2000 || p.tid >= 2100) return p;
     if ((p as any).isImport) return p;
-    if (isFilipino(p)) return p;
+    if (isPbaRosterLocal(p, leagueStats)) return p;
     return { ...p, isImport: true, importConference: conference } as any;
   });
 }
@@ -60,18 +141,24 @@ export function canSignInPba(
   teamId: number,
   conference: PbaConference | undefined,
   allPlayers: NBAPlayer[],
+  leagueStats?: Pick<LeagueStats, 'pbaLocalEligibilityMode' | 'year'>,
 ): { allowed: boolean; reason?: string } {
-  if (isFilipino(player)) return { allowed: true };
+  if (isPbaRosterLocal(player, leagueStats)) return { allowed: true };
 
   const rule = getImportRuleForConference(conference);
+  const season = leagueStats?.year ?? new Date().getFullYear();
 
   if (rule === 'none') {
     return { allowed: false, reason: 'This is a no-import conference. You can only sign Filipino players.' };
   }
 
-  const existing = getActiveImport(allPlayers, teamId);
-  if (existing) {
-    return { allowed: false, reason: `Max imports reached. You already have ${existing.name} as your import.` };
+  const sameConferenceHistory = ((player as any).pbaImportHistory ?? []).find((entry: any) =>
+    Number(entry.season) === Number(season) &&
+    entry.conference === conference &&
+    Number(entry.teamId) !== Number(teamId)
+  );
+  if (sameConferenceHistory) {
+    return { allowed: false, reason: `Imports cannot play for two PBA teams in the same conference.` };
   }
 
   if (rule === 'one_max_6ft5' && (player.hgt ?? 0) > MAX_HEIGHT_INCHES_GOV_CUP) {

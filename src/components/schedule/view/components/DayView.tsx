@@ -8,7 +8,7 @@ import { AllStarGameCard } from './AllStarGameCard';
 import { useLeagueLabels } from '../../../../utils/leagueLabels';
 import { CompetitionBadge } from '../../../competition/CompetitionBadge';
 import { isNoDraftLeague } from '../../../../services/offseason/offseasonState';
-import { isEuroIsolatedMode } from '../../../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../../utils/uiMode';
 
 interface DayViewProps {
   selectedDate: string;
@@ -25,6 +25,9 @@ interface DayViewProps {
   onViewRosters: (tab: string) => void;
   onWatchDunkContest: () => void;
   onWatchThreePoint: () => void;
+  onWatchShootingStars: () => void;
+  onWatchSkillsChallenge: () => void;
+  onWatchHorse: () => void;
   onViewContestDetails: (type: 'dunk' | 'three') => void;
   onViewBoxScore: (game: Game) => void;
   maxSimulatableDate: Date;
@@ -53,6 +56,9 @@ export const DayView: React.FC<DayViewProps> = ({
   onViewRosters,
   onWatchDunkContest,
   onWatchThreePoint,
+  onWatchShootingStars,
+  onWatchSkillsChallenge,
+  onWatchHorse,
   onViewContestDetails,
   onViewBoxScore,
   maxSimulatableDate,
@@ -67,6 +73,7 @@ export const DayView: React.FC<DayViewProps> = ({
 }) => {
   const labels = useLeagueLabels();
   const euroIsolated = isEuroIsolatedMode(state);
+  const pbaIsolated = isPbaIsolatedMode(state);
   const noDraft = isNoDraftLeague(state?.leagueStats);
   const stateDateNorm = normalizeDate(state.date);
   const selectedDateNorm = normalizeDate(selectedDate);
@@ -85,18 +92,18 @@ export const DayView: React.FC<DayViewProps> = ({
   const isAllStarGameDay    = selectedDateNorm === allStarGameStr;
   const isCelebrityGameDay  = selectedDateNorm === allStarFriStr;
 
-  const isAllStarWeekend = !euroIsolated && (isRisingStarsDay || isSaturdayEventsDay || isAllStarGameDay || isCelebrityGameDay);
+  const isAllStarWeekend = !euroIsolated && !pbaIsolated && (isRisingStarsDay || isSaturdayEventsDay || isAllStarGameDay || isCelebrityGameDay);
 
   // Draft calendar events — derived from leagueStats so dates update when scheduler changes
   const draftLotteryDateStr = toISODateString(getDraftLotteryDate(seasonYear, ls));
   const draftDateStr        = toISODateString(getDraftDate(seasonYear, ls));
   const draftBlockedByPlayoffs = isDraftBlockedByUnresolvedPlayoffs(state);
-  const isDraftLotteryDay   = !noDraft && selectedDateNorm === draftLotteryDateStr;
-  const isNBADraftDay       = !noDraft && selectedDateNorm === draftDateStr && !draftBlockedByPlayoffs;
+  const isDraftLotteryDay   = !pbaIsolated && !noDraft && selectedDateNorm === draftLotteryDateStr;
+  const isNBADraftDay       = !pbaIsolated && !noDraft && selectedDateNorm === draftDateStr && !draftBlockedByPlayoffs;
 
   // Season Preview — shows throughout October (training camp → opening night) until dismissed
   const isPreseasonMonth = month === 10;
-  const showSeasonPreviewCard = !euroIsolated && isPreseasonMonth && !state?.seasonPreviewDismissed && !!state?.seasonHistory?.length;
+  const showSeasonPreviewCard = !euroIsolated && !pbaIsolated && isPreseasonMonth && !state?.seasonPreviewDismissed && !!state?.seasonHistory?.length;
 
   // Non-playoff teams sorted by worst record (for lottery odds display)
   const lotteryTeams = useMemo(() => {
@@ -244,6 +251,9 @@ export const DayView: React.FC<DayViewProps> = ({
             onWatchGame={handleWatchGame}
             onWatchDunkContest={onWatchDunkContest}
             onWatchThreePoint={onWatchThreePoint}
+            onWatchShootingStars={onWatchShootingStars}
+            onWatchSkillsChallenge={onWatchSkillsChallenge}
+            onWatchHorse={onWatchHorse}
             onViewContestDetails={onViewContestDetails}
             onViewBoxScore={onViewBoxScore}
             state={state}
@@ -404,7 +414,7 @@ export const DayView: React.FC<DayViewProps> = ({
               </div>
             ) : gamesForSelectedDate.length > 0 ? (
               gamesForSelectedDate.map(game => {
-                if ((game as any).isDunkContest || (game as any).isThreePointContest || (game as any).isThroneEvent) {
+                if ((game as any).isDunkContest || (game as any).isThreePointContest || (game as any).isShootingStars || (game as any).isSkillsChallenge || (game as any).isHorseContest || (game as any).isThroneEvent) {
                   return null;
                 }
 

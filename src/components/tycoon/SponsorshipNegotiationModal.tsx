@@ -147,7 +147,7 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
   if (mode === 'find-new' && SPONSORSHIP_SLOTS.every((s) => sponsorships[s])) {
     return (
       <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-        <div className="bg-slate-950 border border-amber-500/30 rounded-2xl max-w-md w-full p-6">
+        <div className="w-full max-w-md rounded-2xl border border-amber-500/30 bg-slate-950 p-5 sm:p-6">
           <div className="text-xs font-black uppercase tracking-widest text-amber-300">Commercial Department</div>
           <h2 className="text-2xl font-black text-white mt-1">All slots full</h2>
           <p className="text-sm text-slate-400 mt-2">Every sponsorship slot has an active deal. Use Renegotiate or Find Replacement on the relevant slot.</p>
@@ -195,9 +195,9 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-950 border border-amber-500/30 rounded-2xl max-w-7xl w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl shadow-amber-950/30">
-        <div className="flex justify-between items-start mb-5">
-          <div>
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl shadow-amber-950/30">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-800 p-4 sm:p-6">
+          <div className="min-w-0">
             <div className="text-xs font-black uppercase tracking-widest text-amber-300">Commercial Department</div>
             <h2 className="text-2xl font-black text-white">Sponsorship Negotiation</h2>
             <p className="text-sm text-slate-400">Shape the offer, read the sponsor mood, and decide whether this partnership fits your club.</p>
@@ -205,7 +205,7 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
           <button onClick={onClose}><X size={20} className="text-slate-400 hover:text-white" /></button>
         </div>
 
-        <div className={`grid ${browseMode ? 'lg:grid-cols-[220px_1fr]' : 'lg:grid-cols-[220px_1fr_330px]'} gap-5`}>
+        <div className={`grid flex-1 gap-5 overflow-y-auto p-4 sm:p-6 ${browseMode ? 'lg:grid-cols-[220px_1fr]' : 'lg:grid-cols-[220px_1fr_330px]'}`}>
           <aside className="rounded-2xl border border-slate-800 bg-slate-900/70 p-3 space-y-2">
             <div className="text-xs font-black uppercase tracking-widest text-slate-500 px-2 pb-1">Sponsor Slots</div>
             {visibleSlots.map((slot) => {
@@ -235,10 +235,10 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
             })}
           </aside>
 
-          <main className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+          <main className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-5">
             {browseMode ? (
               <>
-                <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="text-xs font-black uppercase tracking-widest text-amber-300">Open Market</div>
                     <h3 className="text-xl font-black text-white">{SPONSORSHIP_SLOT_LABEL[activeSlot]} — Available Sponsors</h3>
@@ -271,7 +271,7 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
                     No brands match this filter.
                   </div>
                 ) : (
-                  <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {filteredPool.map((item) => (
                       <button
                         key={item.name}
@@ -303,13 +303,13 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
               </div>
             )}
             {mode === 'find-new' && offer && (
-              <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+              <div className="mb-3 flex flex-col gap-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-200 sm:flex-row sm:items-center sm:justify-between">
                 <span>Negotiating with <span className="font-bold">{offer.sponsor}</span> for {SPONSORSHIP_SLOT_LABEL[activeSlot]}.</span>
                 <button onClick={handleBackToMarket} className="text-xs font-black uppercase tracking-widest text-emerald-200 hover:text-white">← Back to market</button>
               </div>
             )}
             {offer && impact && (
-            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 mb-5 flex items-center gap-4">
+            <div className="mb-5 flex flex-col gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 sm:flex-row sm:items-center">
               <SponsorLogo name={offer.sponsor} meta={getBrandMeta('spain', offer.sponsor)} industry={offer.industry ?? 'generic'} size={56} />
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-black uppercase tracking-widest text-amber-300">Negotiating with Sponsor</div>
@@ -320,7 +320,7 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
             )}
 
             {offer && evaluation && (
-            <div className="grid md:grid-cols-[1fr_180px] gap-5">
+            <div className="grid gap-5 md:grid-cols-[1fr_180px]">
               <div className="space-y-5">
                 <SponsorshipControl label="Annual Value" value={annualValue || offer.valuePerYear} min={Math.round(offer.valuePerYear * 0.65)} max={Math.round(offer.valuePerYear * 1.45)} step={25_000} fmt={fmt} onChange={setAnnualValue} disabled={mode === 'details'} />
                 <SponsorshipControl label="Signing Bonus" value={signingBonus} min={0} max={Math.round(offer.valuePerYear * 2.5)} step={25_000} fmt={fmt} onChange={setSigningBonus} disabled={mode === 'details'} />
@@ -339,7 +339,7 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
                 </label>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4 flex flex-col items-center justify-center">
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
                 <div className="relative w-32 h-32 rounded-full border-[10px] border-slate-800 flex items-center justify-center">
                   <div className="absolute inset-[-10px] rounded-full border-[10px] border-amber-400" style={{ clipPath: `inset(${100 - evaluation.competitiveScore}% 0 0 0)` }} />
                   <div className="text-center">

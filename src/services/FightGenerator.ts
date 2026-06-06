@@ -138,6 +138,11 @@ function fillTemplate(
 // ─── Main generator ───────────────────────────────────────────────────────────
 
 const BASE_PROB = 0.004; // 0.4% per game
+const MAX_CONTEXT_MULT = 3.5;
+
+function cheapPlayerWeight(player: NBAPlayer): number {
+  return getPropensity(player.name) * traitMult(player) * MAX_CONTEXT_MULT;
+}
 
 /**
  * Should be called once per simulated game with the full player list.
@@ -155,15 +160,34 @@ export function generateFight(
 
   // Build candidate pool from home + away active players
   const lookup = new Map(players.map(p => [p.internalId, p]));
+  const teamLookup = new Map(teams.map(team => [team.id, team] as const));
+  const endorsedSet = new Set(endorsedPlayers ?? []);
 
   const homePlayers = homePlayerIds.map(id => lookup.get(id)).filter(Boolean) as NBAPlayer[];
   const awayPlayers = awayPlayerIds.map(id => lookup.get(id)).filter(Boolean) as NBAPlayer[];
 
   if (homePlayers.length === 0 || awayPlayers.length === 0) return null;
 
+  // Cheap preflight: fights are rare, so avoid the expensive mood/coaching path
+  // unless a coarse trigger even survives. The coarse probability intentionally
+  // overestimates context (MAX_CONTEXT_MULT) so we can safely reject most games
+  // before computeMoodScore() runs.
+  const bestCheapHome = homePlayers.reduce((best, player) =>
+    cheapPlayerWeight(player) > cheapPlayerWeight(best) ? player : best,
+  homePlayers[0]);
+  const bestCheapAway = awayPlayers.reduce((best, player) =>
+    cheapPlayerWeight(player) > cheapPlayerWeight(best) ? player : best,
+  awayPlayers[0]);
+  const coarseProbability = Math.min(
+    0.2,
+    BASE_PROB * Math.sqrt(cheapPlayerWeight(bestCheapHome) * cheapPlayerWeight(bestCheapAway)),
+  );
+  const triggerRoll = Math.random();
+  if (triggerRoll > coarseProbability) return null;
+
   // Compute per-player combined weight (propensity × trait mult × mood factor)
   function playerWeight(p: NBAPlayer, team: NBATeam | undefined): number {
-    const endorsed = endorsedPlayers?.includes(p.internalId) ?? false;
+    const endorsed = endorsedSet.has(p.internalId);
     const { score } = computeMoodScore(p, team, dateStr, endorsed);
     // Mood contribution: disgruntled players are more volatile
     const moodFactor = 1 + Math.max(0, -score) * 0.15;
@@ -171,38 +195,34 @@ export function generateFight(
     return getPropensity(p.name) * traitMult(p) * moodFactor * dramaMultiplier;
   }
 
-  // Pick the most volatile player from each side
-  const pickHighest = (pool: NBAPlayer[], team: NBATeam | undefined) =>
-    pool.reduce((best, p) => playerWeight(p, team) > playerWeight(best, team) ? p : best, pool[0]);
+  const weightCache = new Map<string, number>();
+  const getCachedWeight = (player: NBAPlayer): number => {
+    const cached = weightCache.get(player.internalId);
+    if (cached != null) return cached;
+    const team = teamLookup.get(player.tid);
+    const weight = playerWeight(player, team);
+    weightCache.set(player.internalId, weight);
+    return weight;
+  };
 
-  // For game-level probability, use the max weight pair across both sides
-  let maxPairWeight = 0;
-  let bestHome = homePlayers[0];
-  let bestAway = awayPlayers[0];
-
-  for (const hp of homePlayers) {
-    for (const ap of awayPlayers) {
-      const hTeam = teams.find(t => t.id === hp.tid);
-      const aTeam = teams.find(t => t.id === ap.tid);
-      const pairW = playerWeight(hp, hTeam) * playerWeight(ap, aTeam);
-      if (pairW > maxPairWeight) {
-        maxPairWeight = pairW;
-        bestHome = hp;
-        bestAway = ap;
-      }
-    }
-  }
+  const bestHome = homePlayers.reduce((best, player) =>
+    getCachedWeight(player) > getCachedWeight(best) ? player : best,
+  homePlayers[0]);
+  const bestAway = awayPlayers.reduce((best, player) =>
+    getCachedWeight(player) > getCachedWeight(best) ? player : best,
+  awayPlayers[0]);
+  const maxPairWeight = getCachedWeight(bestHome) * getCachedWeight(bestAway);
 
   // Game-level probability: base × geometric mean of the best pair weight
   const gameProbability = BASE_PROB * Math.sqrt(maxPairWeight);
-  if (Math.random() > gameProbability) return null;
+  if (triggerRoll > gameProbability) return null;
 
   // Fight fired — determine severity via second roll
   const severityRoll = Math.random();
   const scenario = pickScenario(severityRoll);
 
-  const homeTeam = teams.find(t => t.id === bestHome.tid);
-  const awayTeam = teams.find(t => t.id === bestAway.tid);
+  const homeTeam = teamLookup.get(bestHome.tid);
+  const awayTeam = teamLookup.get(bestAway.tid);
 
   // Randomly decide who's p1 vs p2
   const [p1, t1, p2, t2] = Math.random() < 0.5

@@ -80,7 +80,7 @@ export const getActionsConfig = (state: GameState, callbacks: {
         color: "emerald",
         onClick: () => callbacks.openPersonSelector('drug_test')
       },
-      (() => {
+      ...((state.leagueStats?.uiMode === 'euro_isolated' || state.leagueStats?.uiMode === 'pba_isolated') ? [] : [(() => {
         const sched = state.expansionSchedule;
         const lsYear = state.leagueStats?.year;
         const isDueNow = !!sched && lsYear != null && sched.year === lsYear;
@@ -109,7 +109,7 @@ export const getActionsConfig = (state: GameState, callbacks: {
           disabled: isScheduledFuture,
           onClick: () => callbacks.confirmAction('EXPANSION_DRAFT', titleText, confirmDesc),
         };
-      })(),
+      })()]),
       {
         id: 'ENDORSE_HOF',
         title: "Endorse for Hall of Fame",

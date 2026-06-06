@@ -13,6 +13,9 @@ import { SeriesDetailPanel } from './detail/SeriesDetailPanel';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 import { useLeagueLabels } from '../../utils/leagueLabels';
 import { addDaysISO, shouldWarnForLottery } from './playoffDateGuards';
+import { isPbaIsolatedMode } from '../../utils/uiMode';
+import { CompetitionBracketView } from '../competition/CompetitionBracketView';
+import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
 
 export const PlayoffView: React.FC = () => {
   const { state, dispatchAction } = useGame();
@@ -20,6 +23,13 @@ export const PlayoffView: React.FC = () => {
   const rosterGate = useRosterComplianceGate();
   const playoffs = state.playoffs;
   const year = state.leagueStats.year;
+  const pbaIsolated = isPbaIsolatedMode(state);
+  const pbaConference = (state.leagueStats as any)?.pbaConference ?? 'philippine';
+  const pbaSpecId = pbaConference === 'commissioners'
+    ? PBA_COMPETITIONS[1].id
+    : pbaConference === 'governors'
+      ? PBA_COMPETITIONS[2].id
+      : PBA_COMPETITIONS[0].id;
 
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
   const [selectedGameIdx, setSelectedGameIdx] = useState<number>(0);
@@ -31,6 +41,10 @@ export const PlayoffView: React.FC = () => {
 
   const isHistorical = viewYear !== year;
   const navYear = (dir: 1 | -1) => setViewYear(y => Math.max(1984, Math.min(year, y + dir)));
+
+  if (pbaIsolated) {
+    return <CompetitionBracketView specId={pbaSpecId} />;
+  }
 
   // ─── Derived ──────────────────────────────────────────────────────────────
   const roundLabel = ['', 'First Round', 'Second Round', 'Conf. Finals', labels.finals];

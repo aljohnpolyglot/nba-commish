@@ -16,7 +16,7 @@ import { resolveTeamStrategyProfile } from '../../../../../utils/teamStrategy';
 import { compareGameDates, getCurrentOffseasonEffectiveFAStart, parseGameDate } from '../../../../../utils/dateUtils';
 import { getOffseasonState } from '../../../../../services/offseason/offseasonState';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
-import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../../../utils/uiMode';
 import { getTeamFullName } from '../../../../../utils/teamNames';
 import { getDisplayAge } from '../../../../../store/playerRatingStore';
 
@@ -34,6 +34,7 @@ function getK2Ovr(p: NBAPlayer): number {
 
 export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   const { state, dispatchAction } = useGame();
+  const pbaMode = isPbaIsolatedMode(state);
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const players = (state.players || []).filter(p => p.tid === teamId && isOnRoster(p));
   const expiringAnchorYear = state.date
@@ -225,8 +226,13 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   // computed above when the team has no saved entry yet.
   const rosterIdSet = useMemo(() => new Set(players.map(p => p.internalId)), [players]);
   const otherIdSet = useMemo(
-    () => new Set(state.players.filter(p => p.tid >= 0 && p.tid !== teamId && isOnRoster(p)).map(p => p.internalId)),
-    [state.players, teamId],
+    () => new Set(
+      state.players
+        .filter(p => p.tid >= 0 && p.tid !== teamId && isOnRoster(p))
+        .filter(p => !pbaMode || p.status === 'PBA' || (p.tid >= 2000 && p.tid < 3000))
+        .map(p => p.internalId),
+    ),
+    [pbaMode, state.players, teamId],
   );
   const initialFromStore = useMemo(() => {
     const saved = getTradingBlock(teamId);
@@ -291,12 +297,13 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   const leagueTargetItems: PlayerSelectorItem[] = useMemo(() =>
     state.players
       .filter(p => p.tid >= 0 && p.tid !== teamId && isOnRoster(p))
+      .filter(p => !pbaMode || p.status === 'PBA' || (p.tid >= 2000 && p.tid < 3000))
       .map(p => ({
         player: p,
         score: getK2Ovr(p),
         subtitle: `${getK2Ovr(p)} OVR`,
       })),
-  [state.players, teamId]);
+  [pbaMode, state.players, teamId]);
 
   // Untouchable and block are mutually exclusive — adding to one removes
   // from the other so the narrative + Trading Block UI never disagree.

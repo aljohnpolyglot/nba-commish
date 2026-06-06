@@ -141,6 +141,22 @@ export function cupStateToViewData(
   const wildcardTids = new Set<number>();
   if (cup.wildcards?.East != null) wildcardTids.add(cup.wildcards.East);
   if (cup.wildcards?.West != null) wildcardTids.add(cup.wildcards.West);
+  const eastWildcardTid = cup.wildcards?.East ?? null;
+  const westWildcardTid = cup.wildcards?.West ?? null;
+  const qfByConf = { East: new Set<number>(), West: new Set<number>() };
+  for (const ko of cup.knockout) {
+    if (ko.round !== 'QF') continue;
+    const seeds = [ko.tid1, ko.tid2];
+    for (const tid of seeds) {
+      if (tid == null || tid < 0) continue;
+      const conf = cup.groups.find(group => group.teamIds.includes(tid))?.conference;
+      if (conf === 'East' || conf === 'West') qfByConf[conf].add(tid);
+    }
+  }
+  const groupWinnerTids = {
+    East: new Set<number>([...qfByConf.East].filter(tid => tid !== eastWildcardTid)),
+    West: new Set<number>([...qfByConf.West].filter(tid => tid !== westWildcardTid)),
+  };
   const phaseLocked = cup.status !== 'group';
   const groups: Record<string, Standing[]> = {};
   for (const group of cup.groups) {
@@ -148,7 +164,7 @@ export function cupStateToViewData(
     groups[group.id] = sorted.map((standing, idx) => {
       let advancement: Standing['advancement'] | undefined;
       if (phaseLocked) {
-        if (idx === 0) advancement = 'winner';
+        if (groupWinnerTids[group.conference].has(standing.tid)) advancement = 'winner';
         else if (wildcardTids.has(standing.tid)) advancement = 'wildcard';
         else advancement = 'eliminated';
       }

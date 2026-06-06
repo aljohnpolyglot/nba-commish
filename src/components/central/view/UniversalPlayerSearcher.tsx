@@ -5,9 +5,9 @@ import type { NBAPlayer, NBATeam, NonNBATeam } from '../../../types';
 import { getCountryFromLoc, getCountryCode } from '../../../utils/helpers';
 import { PlayerSearchCard } from './PlayerSearchCard';
 import { useGame } from '../../../store/GameContext';
-import { getDisplayOverall } from '../../../utils/playerRatings';
+import { getScoutedDisplayOverall } from '../../../utils/scoutingFuzz';
 import { getDefaultEuroLeagueSearcherIds } from '../../../utils/euroLeagueDefaults';
-import { isEuroIsolatedMode } from '../../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import { PLAYER_SEARCH_GENDERS, PLAYER_SEARCH_LEAGUES, PLAYER_SEARCH_POSITIONS } from './playerSearchConfig';
 import { usePlayerSearchReferenceData } from './usePlayerSearchReferenceData';
 
@@ -21,7 +21,9 @@ interface UniversalPlayerSearcherProps {
 
 export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = ({ players, teams, nonNBATeams = [], onActionClick, onTeamClick }) => {
   const { state } = useGame();
+  const isPba = isPbaIsolatedMode(state);
   const getInitialLeagues = () => {
+    if (isPba) return ['pba'];
     const euroIds = getDefaultEuroLeagueSearcherIds(state as any);
     return isEuroIsolatedMode(state) && euroIds.length > 0 ? euroIds : ['nba'];
   };
@@ -57,7 +59,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
       const country = getCountryFromLoc(p.born?.loc);
       const calculatedAge = p.born?.year ? (simYear - p.born.year) : (p.age || 0);
       
-      const displayOvr = getDisplayOverall(p);
+      const displayOvr = getScoutedDisplayOverall(state, p);
 
       return {
         ...p,
@@ -66,7 +68,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
         displayOvr,
       };
     });
-  }, [players, state.leagueStats?.year]);
+  }, [players, state]);
 
   const { allColleges, allCountries } = usePlayerSearchReferenceData(playersWithParsedData);
 

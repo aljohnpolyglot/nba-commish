@@ -39,8 +39,54 @@ const FLAGS: Record<string, string> = {
   Indonesia: '🇮🇩', Vietnam: '🇻🇳', Thailand: '🇹🇭', Malaysia: '🇲🇾',
 };
 
+const US_STATE_CODES = new Set([
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA',
+  'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK',
+  'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC',
+]);
+
+export const normalizeNationality = (value?: string): string => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return 'Unknown';
+  const upper = raw.toUpperCase();
+  const codePlusCountry = raw.match(/^[A-Z]{2}\s+(.+)$/);
+  if (codePlusCountry?.[1]) return normalizeNationality(codePlusCountry[1]);
+  const adjectiveAliases: Record<string, string> = {
+    BRAZILIAN: 'Brazil',
+    DOMINICAN: 'Dominican Republic',
+    FRENCH: 'France',
+    GERMAN: 'Germany',
+    ITALIAN: 'Italy',
+    GREEK: 'Greece',
+    TURKISH: 'Turkey',
+    SERBIAN: 'Serbia',
+    CROATIAN: 'Croatia',
+    SLOVENIAN: 'Slovenia',
+    LITHUANIAN: 'Lithuania',
+    LATVIAN: 'Latvia',
+    ESTONIAN: 'Estonia',
+    RUSSIAN: 'Russia',
+    SPANISH: 'Spain',
+    FILIPINO: 'Philippines',
+    CANADIAN: 'Canada',
+  };
+  if (upper === 'USA' || upper === 'US' || upper === 'U.S.A.' || upper === 'U.S.' || upper === 'AMERICA' || upper === 'UNITED STATES' || upper === 'UNITED STATES OF AMERICA' || US_STATE_CODES.has(upper)) {
+    return 'American';
+  }
+  if (upper === 'BR') return 'Brazil';
+  if (upper === 'DO') return 'Dominican Republic';
+  if (upper === 'PH') return 'Philippines';
+  if (upper === 'ES') return 'Spain';
+  if (upper === 'FR') return 'France';
+  if (adjectiveAliases[upper]) return adjectiveAliases[upper];
+  return raw;
+};
+
 /** Lookup by exact country name (e.g. "Spain", "USA"). */
-export const getCountryFlag = (country?: string) => FLAGS[country ?? ''] ?? '🏳️';
+export const getCountryFlag = (country?: string) => {
+  const normalized = normalizeNationality(country);
+  return FLAGS[normalized] ?? FLAGS[country ?? ''] ?? '🏳️';
+};
 
 /** Lookup by a BBGM-style "City, Country" or bare country string.
  *  Tries the trailing comma segment first, then the whole string. */

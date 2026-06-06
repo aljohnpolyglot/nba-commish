@@ -86,8 +86,8 @@ export const EuroBankruptcyModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl rounded-2xl border border-rose-500/40 bg-slate-950 shadow-2xl shadow-rose-950/40 overflow-hidden">
-        <div className="p-6 border-b border-slate-800 bg-rose-950/20 flex items-start gap-4">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-rose-500/40 bg-slate-950 shadow-2xl shadow-rose-950/40">
+        <div className="flex items-start gap-4 border-b border-slate-800 bg-rose-950/20 p-4 sm:p-6">
           <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-rose-200">
             <ShieldAlert size={26} />
           </div>
@@ -102,7 +102,7 @@ export const EuroBankruptcyModal: React.FC = () => {
         </div>
 
         <div className="grid lg:grid-cols-[1fr_320px] gap-0">
-          <div className="p-5 max-h-[62vh] overflow-y-auto">
+          <div className="max-h-[62vh] overflow-y-auto p-4 sm:p-5">
             <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
               {candidates.map(team => {
                 const active = (selected ? teamId(selected) : selectedTid) === teamId(team);
@@ -142,7 +142,7 @@ export const EuroBankruptcyModal: React.FC = () => {
             </div>
           </div>
 
-          <aside className="border-t lg:border-t-0 lg:border-l border-slate-800 p-5 bg-slate-900/50">
+          <aside className="border-t border-slate-800 bg-slate-900/50 p-4 sm:p-5 lg:border-l lg:border-t-0">
             <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
               <div className="flex items-center gap-2 text-amber-200 font-black uppercase tracking-widest text-xs">
                 <AlertTriangle size={16} /> New Assignment

@@ -1,5 +1,6 @@
 import React from 'react';
 import { getCoachPhoto } from '../lib/staffService';
+import { normalizeNationality } from '../../../../../../utils/countryFlags';
 
 interface CoachingSidebarProps {
   coachName: string;
@@ -57,16 +58,16 @@ export function CoachingSidebar({
         <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black via-black/90 to-transparent p-4 pt-20">
           <h2 className="text-xl md:text-2xl font-bold uppercase mb-0.5">{coachName}</h2>
           <div className="text-[10px] md:text-xs text-yellow-500 font-bold uppercase mb-4">
-            {nba2kCoach?.position || teamCoachRecord?.position || 'Head Coach'}
+            {teamCoachRecord?.role || teamCoachRecord?.jobTitle || teamCoachRecord?.position || nba2kCoach?.position || 'Head Coach'}
           </div>
           <div className="flex flex-col gap-1.5 text-xs md:text-sm text-gray-300">
             {[
-              ['Years with team:', coachBio?.yearsInRole ?? teamCoachRecord?.yearsWithTeam ?? '-'],
+              ['Years with team:', teamCoachRecord?.yearsWithTeam ?? coachBio?.yearsInRole ?? '-'],
               ['Contract Exp:', contractDisplay],
               ['Coaching Career:', coachingCareer],
               ['Age:', coachAge || '-'],
               ['Born:', born],
-              ['Nationality:', nationality],
+              ['Nationality:', normalizeNationality(nationality)],
             ].map(([label, value]) => (
               <div key={label} className="flex justify-between items-center">
                 <span className="uppercase text-[10px] text-gray-500">{label}</span>

@@ -70,7 +70,9 @@ export function seedStaffSix(
   const normalizedTeam = { ...team, id: tid };
   const nationalityPool = buildCoachNationalityPool(state as Pick<GameState, 'players'>, leagueId);
   const homeCountry = getTeamCountry(normalizedTeam, state);
-  const repBase = TIER_REP_BASE[tier];
+  const repBase = leagueId === 'pba'
+    ? Math.max(42, TIER_REP_BASE[tier] - 10)
+    : TIER_REP_BASE[tier];
   const label = teamLabel(normalizedTeam);
 
   return ROLES.map(role => {

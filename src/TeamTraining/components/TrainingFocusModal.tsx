@@ -222,7 +222,7 @@ export function TrainingFocusModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -234,12 +234,12 @@ export function TrainingFocusModal({
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full md:max-w-6xl max-h-[90vh] md:h-auto h-full bg-slate-900 md:border border-slate-800 md:rounded-[3rem] rounded-none shadow-[0_0_100px_rgba(0,0,0,1)] overflow-hidden flex flex-col"
+            className="relative w-full md:max-w-6xl md:max-h-[calc(100vh-2rem)] md:h-auto h-full bg-slate-900 md:border border-slate-800 md:rounded-[3rem] rounded-none shadow-[0_0_100px_rgba(0,0,0,1)] overflow-hidden flex flex-col"
           >
             {/* Header */}
             <div className="flex-shrink-0 p-6 md:p-10 border-b border-slate-800 bg-slate-900/80">
-              <div className="flex justify-between items-start mb-6 md:mb-8">
-                <div className="flex items-center gap-4 md:gap-6">
+              <div className="flex justify-between items-start gap-3 mb-6 md:mb-8">
+                <div className="flex items-center gap-4 md:gap-6 min-w-0">
                   {imgURL ? (
                     <div className="w-12 h-12 md:w-16 md:h-16 rounded-[1rem] md:rounded-[1.5rem] bg-indigo-600/20 border border-indigo-500/30 overflow-hidden shrink-0">
                       <img src={imgURL} alt={playerName} className="w-full h-full object-cover scale-110 translate-y-1" referrerPolicy="no-referrer" />
@@ -255,7 +255,7 @@ export function TrainingFocusModal({
                        <span className="text-indigo-400 font-black text-xl">{playerPos[0]}</span>
                     </div>
                   )}
-                  <div>
+                  <div className="min-w-0">
                     <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tighter leading-none mb-1 md:mb-2 text-balance lg:text-3xl">
                        {selectedArchetype ? 'Review Program' : 'Player Program'}
                     </h2>
@@ -266,7 +266,7 @@ export function TrainingFocusModal({
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-2 md:p-3 bg-slate-800 hover:bg-slate-700 rounded-xl md:rounded-2xl text-slate-400 hover:text-white transition-all shadow-xl border border-slate-700"
+                  className="p-2 md:p-3 bg-slate-800 hover:bg-slate-700 rounded-xl md:rounded-2xl text-slate-400 hover:text-white transition-all shadow-xl border border-slate-700 flex-shrink-0"
                 >
                   <X size={18} className="md:w-5 md:h-5" />
                 </button>

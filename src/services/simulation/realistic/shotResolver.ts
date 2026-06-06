@@ -1,9 +1,10 @@
-import { OnCourt, PlayerComposite, ShotZone } from './types';
+import { OnCourt, PlayerComposite, ShotRules, ShotZone } from './types';
 
 const ZONE_DISTRIBUTION: Record<ShotZone, number> = {
   rim: 0.30,
   midRange: 0.13,
   three: 0.52,
+  four: 0.00,
   lowPost: 0.05,
 };
 
@@ -11,6 +12,7 @@ const ZONE_BASE_MAKE: Record<ShotZone, number> = {
   rim: 0.62,
   midRange: 0.42,
   three: 0.36,
+  four: 0.22,
   lowPost: 0.48,
 };
 
@@ -18,24 +20,28 @@ const ZONE_PTS: Record<ShotZone, number> = {
   rim: 2,
   midRange: 2,
   three: 3,
+  four: 4,
   lowPost: 2,
 };
 
-export function pickShotZone(shooter: PlayerComposite): ShotZone {
+export function pickShotZone(shooter: PlayerComposite, rules?: ShotRules, offense?: OnCourt): ShotZone {
   // Reweight base distribution by shooter strengths. Power-law on three so
   // a center with three=0.30 fires 3s far less often than a guard at 0.65 —
   // linear reweighting was letting bigs camp behind the line ~3PA/game.
+  const fourOn = !!rules?.fourPointAvailable;
   const w: Record<ShotZone, number> = {
-    rim:      ZONE_DISTRIBUTION.rim      * (0.4 + 0.8 * shooter.rim + 0.4 * shooter.driving),
-    midRange: ZONE_DISTRIBUTION.midRange * (0.4 + 0.9 * shooter.midRange),
-    three:    ZONE_DISTRIBUTION.three    * Math.pow(shooter.three + 0.20, 1.4),
-    lowPost:  ZONE_DISTRIBUTION.lowPost  * Math.pow(shooter.lowPost + 0.15, 1.3),
+    rim:      ZONE_DISTRIBUTION.rim      * (0.4 + 0.8 * shooter.rim + 0.4 * shooter.driving) * (offense?.gameplayModifiers?.rimRateMult ?? 1),
+    midRange: ZONE_DISTRIBUTION.midRange * (0.4 + 0.9 * shooter.midRange) * (offense?.gameplayModifiers?.midRangeRateMult ?? 1),
+    three:    ZONE_DISTRIBUTION.three    * Math.pow(shooter.three + 0.20, 1.4) * (offense?.gameplayModifiers?.threePointRateMult ?? 1),
+    four:     fourOn ? 0.02 * Math.pow(shooter.three + 0.18, 1.5) * (rules?.fourPointRateMult ?? 1) : 0,
+    lowPost:  ZONE_DISTRIBUTION.lowPost  * Math.pow(shooter.lowPost + 0.15, 1.3) * (offense?.gameplayModifiers?.lowPostRateMult ?? 1),
   };
-  const total = w.rim + w.midRange + w.three + w.lowPost;
+  const total = w.rim + w.midRange + w.three + w.four + w.lowPost;
   let roll = Math.random() * total;
   if ((roll -= w.rim)      < 0) return 'rim';
   if ((roll -= w.midRange) < 0) return 'midRange';
   if ((roll -= w.three)    < 0) return 'three';
+  if ((roll -= w.four)     < 0) return 'four';
   return 'lowPost';
 }
 
@@ -52,12 +58,14 @@ interface ShotResolution {
 export function resolveShot(
   zone: ShotZone,
   shooter: PlayerComposite,
+  offense: OnCourt,
   defense: OnCourt,
+  rules?: ShotRules,
 ): ShotResolution {
   const shooterSkill =
     zone === 'rim'      ? shooter.rim
     : zone === 'midRange' ? shooter.midRange
-    : zone === 'three'    ? shooter.three
+    : zone === 'three' || zone === 'four' ? shooter.three
     : shooter.lowPost;
 
   // Pick a primary defender — interior shots get a rim/post defender; perimeter gets a perimeter defender.
@@ -69,7 +77,7 @@ export function resolveShot(
   // Power-law on defender.block so elite shot-blockers (Wembanyama 4.0 BPG,
   // Holmgren 2.8) actually dominate their tier — linear scaling only gave them
   // ~1.7x the average defender's block rate, far short of their real ~4x edge.
-  const blockChance = (zone === 'rim' ? 0.090 : zone === 'lowPost' ? 0.058 : 0.022)
+  const blockChance = (zone === 'rim' ? 0.090 : zone === 'lowPost' ? 0.058 : zone === 'four' ? 0.014 : 0.022)
     * (0.34 + 2.20 * Math.pow(defender.block, 1.8));
   if (Math.random() < blockChance) {
     return { made: false, pts: 0, blockerId: defender.id, fouled: false, ftAttempts: 0, ftMade: 0 };
@@ -78,13 +86,20 @@ export function resolveShot(
   // Foul check (more likely on rim/post). Calibrated against NBA 2025-26
   // shooting-foul rate: ~10 shooting fouls / team-game on ~80 shots → ~12.5%
   // overall, weighted toward interior contact.
-  const foulBase = zone === 'rim' ? 0.22 : zone === 'lowPost' ? 0.18 : zone === 'midRange' ? 0.07 : 0.04;
-  const foulChance = foulBase * (0.6 + 0.9 * shooter.drawingFouls);
+  const foulBase = zone === 'rim' ? 0.20 : zone === 'lowPost' ? 0.16 : zone === 'midRange' ? 0.065 : zone === 'four' ? 0.020 : 0.035;
+  const foulChance = foulBase
+    * (0.55 + 0.75 * shooter.drawingFouls)
+    * (1.08 - 0.28 * defenseSkill)
+    * (offense.gameplayModifiers?.ftRateMult ?? 1);
   const fouled = Math.random() < foulChance;
 
   // Make probability
   const skillDelta = shooterSkill - defenseSkill;       // -1..+1 typically -0.4..+0.4
-  let pMake = ZONE_BASE_MAKE[zone] + skillDelta * 0.18;
+  let pMake = ZONE_BASE_MAKE[zone] + skillDelta * (zone === 'four' ? 0.14 : 0.18);
+  if (zone === 'four') pMake *= rules?.fourPointEfficiencyMult ?? 1;
+  if (zone === 'rim' || zone === 'lowPost') {
+    pMake *= offense.gameplayModifiers?.interiorEffMult ?? 1;
+  }
   pMake = Math.max(0.05, Math.min(0.85, pMake));
   const made = Math.random() < pMake;
 
@@ -97,7 +112,7 @@ export function resolveShot(
         made: true,
         pts: baseShotPts,
         fouled: true,
-        foulerId: defender.id,
+        foulerId: pickFouler(defense, zone, defender).id,
         ftAttempts: 1,
         ftMade: rollFt(shooter, 1),
       };
@@ -108,7 +123,7 @@ export function resolveShot(
       made: false,
       pts: 0,
       fouled: true,
-      foulerId: defender.id,
+      foulerId: pickFouler(defense, zone, defender).id,
       ftAttempts: fta,
       ftMade: rollFt(shooter, fta),
     };
@@ -121,6 +136,24 @@ export function resolveShot(
     ftAttempts: 0,
     ftMade: 0,
   };
+}
+
+function pickFouler(defense: OnCourt, zone: ShotZone, primary: PlayerComposite): PlayerComposite {
+  const interior = zone === 'rim' || zone === 'lowPost';
+  const weights = defense.composites.map(c => {
+    const skill = interior ? c.defRim : c.defPerimeter;
+    const activity = c.id === primary.id ? 1.9 : 0.75 + skill;
+    const discipline = Math.max(0.55, Math.min(1.20, 1.20 - skill * 0.45));
+    return activity * discipline;
+  });
+  const total = weights.reduce((sum, value) => sum + value, 0);
+  if (total <= 0) return primary;
+  let roll = Math.random() * total;
+  for (let i = 0; i < defense.composites.length; i++) {
+    roll -= weights[i];
+    if (roll < 0) return defense.composites[i];
+  }
+  return primary;
 }
 
 function pickDefender(defense: OnCourt, zone: ShotZone): PlayerComposite {

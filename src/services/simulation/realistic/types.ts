@@ -1,6 +1,24 @@
 import { NBAPlayer as Player, NBATeam as Team } from '../../../types';
 
-export type ShotZone = 'rim' | 'midRange' | 'three' | 'lowPost';
+export type ShotZone = 'rim' | 'midRange' | 'three' | 'four' | 'lowPost';
+
+export interface ShotRules {
+  fourPointAvailable?: boolean;
+  fourPointRateMult?: number;
+  fourPointEfficiencyMult?: number;
+}
+
+export interface TeamGameplayModifiers {
+  paceMultiplier?: number;
+  tovMult?: number;
+  ftRateMult?: number;
+  orbMult?: number;
+  interiorEffMult?: number;
+  rimRateMult?: number;
+  lowPostRateMult?: number;
+  midRangeRateMult?: number;
+  threePointRateMult?: number;
+}
 export type PossessionEnd =
   | { kind: 'shot'; zone: ShotZone; made: boolean; pts: number; shooterId: string; assisterId?: string; blockerId?: string; fouled: boolean; foulerId?: string; ftAttempts: number; ftMade: number }
   | { kind: 'turnover'; offenderId: string; stealerId?: string }
@@ -10,6 +28,7 @@ export interface OnCourt {
   players: Player[];          // 5 actives
   composites: PlayerComposite[]; // parallel array, same order
   isEuroClubGame?: boolean;
+  gameplayModifiers?: TeamGameplayModifiers;
 }
 
 export interface PlayerComposite {

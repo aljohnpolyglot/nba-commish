@@ -4,7 +4,7 @@ import { getFreeAgencyStartDate, getRolloverDate, toISODateString, formatGameDat
 import { getOffseasonState, logOffseasonDrift } from '../offseason/offseasonState';
 import { hasUnresolvedEuroSeasonCompetitions, type CompetitionSeasonResolution } from '../competition/competitionResolver';
 import { deriveLeagueStartYearFromHistory } from '../playerDevelopment/jerseyRetirementChecker';
-import { generateFuturePicks, pruneExpiredPicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
+import { generateFuturePicks, generateFuturePicksForTeamIds, pruneExpiredPicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
 import { buildSeasonRolloverNewsAndPruning } from './seasonRollover/newsAndPruning';
 import { runSeasonRolloverPlayerPass } from './seasonRollover/playerPass';
 import { runSeasonRolloverTeamPass } from './seasonRollover/teamPass';
@@ -50,6 +50,10 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     optionDateStr,
     computeBirdRightsForRollover,
   });
+  const playersAfterOffseasonFatigueReset = playerPass.playersFinalized.map(player => {
+    if ((player as any).trainingFatigue == null || (player as any).trainingFatigue === 0) return player;
+    return { ...player, trainingFatigue: 0 } as NBAPlayer;
+  });
 
   const leagueStats = state.leagueStats;
   let newSalaryCap = leagueStats.salaryCap ?? 154_647_000;
@@ -86,7 +90,11 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
   const windowSize = state.leagueStats.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
   const nbaTeams = (state.teams ?? []).filter(team => team.id >= 0 && team.id < 100);
   const prunedPicks = pruneExpiredPicks(state.draftPicks ?? [], currentYear);
-  const updatedPicks = generateFuturePicks(prunedPicks, nbaTeams as any, nextYear, windowSize);
+  const nbaUpdatedPicks = generateFuturePicks(prunedPicks, nbaTeams as any, nextYear, windowSize);
+  const pbaTeamIds = (state.nonNBATeams ?? []).filter((team: any) => team.league === 'PBA').map((team: any) => team.tid);
+  const updatedPicks = pbaTeamIds.length > 0
+    ? generateFuturePicksForTeamIds(nbaUpdatedPicks, pbaTeamIds, nextYear, windowSize, 2)
+    : nbaUpdatedPicks;
 
   const newsAndPruning = buildSeasonRolloverNewsAndPruning({
     state,
@@ -105,12 +113,40 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     deaths: playerPass.deaths,
   });
 
+  const staffFreeAgentsForHiring = [
+    ...playerPass.newRetireeStaffCandidates,
+    ...(state.staffFreeAgents ?? []),
+  ];
+
   const teamPass = runSeasonRolloverTeamPass({
     state,
     currentYear,
     nextYear,
     teamsAfterJerseyRetirements: playerPass.teamsAfterJerseyRetirements,
     playersFinalized: playerPass.playersFinalized,
+    staffFreeAgentsForHiring,
+  });
+  const consumedStaffFreeAgentIds = new Set(teamPass.nbaStaffLifecycle.consumedFreeAgentIds);
+  const employedStaffNames = new Set<string>();
+  const normalizeNameKey = (value: string | undefined | null) => String(value ?? '').trim().toLowerCase();
+  for (const team of (teamPass.nbaStaffLifecycle.teams ?? []) as any[]) {
+    for (const member of (team?.tycoon?.staffMembers ?? []) as any[]) {
+      const key = normalizeNameKey(member?.name);
+      if (key) employedStaffNames.add(key);
+    }
+  }
+  for (const team of (teamPass.nonNBATeamsWithTycoon ?? []) as any[]) {
+    for (const member of (team?.tycoon?.staffMembers ?? []) as any[]) {
+      const key = normalizeNameKey(member?.name);
+      if (key) employedStaffNames.add(key);
+    }
+  }
+  const combinedStaffFreeAgents = [
+    ...staffFreeAgentsForHiring.filter(member => !member.id || !consumedStaffFreeAgentIds.has(member.id)),
+    ...teamPass.nbaStaffLifecycle.freeAgents,
+  ].filter(member => {
+    const key = normalizeNameKey((member as any)?.name);
+    return !key || !employedStaffNames.has(key);
   });
 
   console.log(
@@ -121,12 +157,13 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     `${playerPass.teamOptionDeclinedCount} team opts declined | ` +
     `${playerPass.optionExtensionsCount} rookie extensions signed | ` +
     `${playerPass.newRetirees.length} retirements | ${playerPass.newFarewells.length} farewell tours | ` +
+    `${teamPass.staffRetirementRecords.length} staff retirements | ` +
     `${playerPass.newInductees.length} HOF inductions | ${playerPass.newJerseyRetirements.length} jersey retirements | ${playerPass.deaths.length} deaths | ` +
     `${updatedPicks.length} total draft picks`,
   );
 
   return {
-    players: playerPass.playersFinalized,
+    players: playersAfterOffseasonFatigueReset,
     teams: teamPass.nbaStaffLifecycle.teams,
     nonNBATeams: teamPass.nonNBATeamsWithTycoon,
     draftPicks: updatedPicks,
@@ -175,6 +212,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
     })(),
     draftLotteryResult: undefined,
     activeDraftPicks: undefined,
+    activeDraftPassedPicks: undefined,
     activeDraftOrder: undefined,
     historicalAwards: teamPass.euroHistoricalAwards.length > 0
       ? [
@@ -185,7 +223,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
         ]
       : state.historicalAwards,
     faBidding: { markets: playerPass.preservedUserBidMarkets },
-    staffFreeAgents: [...(state.staffFreeAgents ?? []), ...teamPass.nbaStaffLifecycle.freeAgents],
+    staffFreeAgents: combinedStaffFreeAgents,
     pendingRFAMatchResolutions: [],
     leagueStats: {
       ...state.leagueStats,
@@ -222,9 +260,11 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
         : {}),
     },
     retirementAnnouncements: playerPass.newRetirees,
+    staffRetirementAnnouncements: teamPass.staffRetirementRecords,
     seasonPreviewDismissed: true,
     draftComplete: undefined,
     ...(teamPass.pendingEuroBankruptcy ? { pendingEuroBankruptcy: teamPass.pendingEuroBankruptcy } : {}),
+    ...(teamPass.pendingEuroleagueWelcome ? { pendingEuroleagueWelcome: teamPass.pendingEuroleagueWelcome } : {}),
     news: [
       ...teamPass.euroBankruptcyNews,
       ...newsAndPruning.jerseyRetirementNewsItems,
@@ -252,6 +292,7 @@ export function applySeasonRollover(state: GameState): Partial<GameState> {
       ...playerPass.extRetireHistory,
       ...playerPass.extFAHistory,
       ...teamPass.nbaStaffLifecycle.historyEntries,
+      ...teamPass.nonNBAStaffRetirementHistory,
     ],
     ...(playerPass.pendingOptionToasts.length > 0
       ? { pendingOptionToasts: [...(state.pendingOptionToasts ?? []), ...playerPass.pendingOptionToasts] }

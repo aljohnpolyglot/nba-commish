@@ -73,6 +73,7 @@ export interface GameState {
   headToHead?: HeadToHead;
   lazySimProgress?: LazySimProgress;
   tradeFinderPreselect?: { tid: number; playerId: string };
+  pendingTransferListingPlayerId?: string | null;
   tradeProposals?: TradeProposal[];
   bets: Bet[];
   realEstateInventory?: OwnedRealEstateAsset[];
@@ -81,6 +82,7 @@ export interface GameState {
   pendingNarratives?: string[];
   draftLotteryResult?: any[];
   retirementAnnouncements?: import('../services/playerDevelopment/retirementChecker').RetireeRecord[];
+  staffRetirementAnnouncements?: import('../services/staff/staffRetirement').StaffRetirementRecord[];
   seasonPreviewDismissed?: boolean;
   draftComplete?: boolean;
   activeDraftPicks?: Record<number, any>;
@@ -95,11 +97,17 @@ export interface GameState {
   pendingTransferToasts?: { playerName: string; accepted: boolean; sellerTeamName: string; feeEUR: number; reason?: string; userInitiated?: boolean }[];
   pendingElimToast?: boolean;
   pendingInjuryToasts?: { playerName: string; injuryType: string; gamesRemaining: number; pos?: string; teamName?: string }[];
+  pendingFightToasts?: { playerName: string; opponentName: string; teamName: string; severity: 'scuffle' | 'ejection' | 'brawl' }[];
+  pendingSuspensionToasts?: { playerName: string; teamName: string; pos?: string; gamesRemaining: number; reason: string }[];
   pendingFeatToasts?: { playerName: string; teamName: string; oppName: string; homeScore: number; awayScore: number; isHome: boolean; won: boolean; pts: number; reb: number; ast: number; isOwnTeam: boolean }[];
   pendingRecoveryToasts?: { playerName: string; teamName: string; pos: string }[];
   pendingAwardToasts?: { playerName: string; teamName: string; teamAbbrev: string; awardLabel: string }[];
   pendingPlayoffsToasts?: { teamName: string; body: string }[];
   pendingOptionToasts?: { playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number }[];
+  pendingDeathToasts?: { entityType: 'player' | 'staff'; playerName: string; teamName: string; roleLabel?: string; cause: string; deathType: 'natural' | 'tragic' }[];
+  pendingDraftCombineToast?: { year: number } | null;
+  draftCombineResultsAvailableYear?: number;
+  draftCombineResultsViewedYear?: number;
   offseasonChecklist?: OffseasonChecklist;
   expansionTeamIds?: number[];
   expansionEligiblePlayers?: string[];
@@ -123,6 +131,12 @@ export interface GameState {
     teamName: string;
     cashOnHand: number;
     year: number;
+  };
+  pendingEuroleagueWelcome?: {
+    season: number;
+    teamId: number;
+    teamName: string;
+    endesaFinish?: number;
   };
   staffFreeAgents?: StaffMember[];
   euroSetupSeed?: {

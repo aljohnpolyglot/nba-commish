@@ -106,8 +106,8 @@ export default function SigningModalOffersTab({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white/[0.04] p-7 rounded-sm border border-white/5">
+    <div className="space-y-5 sm:space-y-6">
+      <div className="bg-white/[0.04] p-4 sm:p-7 rounded-sm border border-white/5">
         <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/50 mb-2 italic">
           Active Market Bids
         </h4>
@@ -119,7 +119,7 @@ export default function SigningModalOffersTab({
         ) : (
           <div className="space-y-4">
             {market && (
-              <div className="flex items-center justify-between pb-3 border-b border-white/5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/5">
                 <div className="text-[9px] uppercase tracking-widest text-white/50">Decision window</div>
                 <div className="text-[11px] font-bold text-[#FDB927]">
                   {decisionLabel}

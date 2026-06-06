@@ -1,4 +1,5 @@
 import type { GameState, NBACupState, NonNBATeam } from '../../../types';
+import { normalizeDate } from '../../../utils/helpers';
 import { getRolloverDate, toISODateString } from '../../../utils/dateUtils';
 import { isNbaCupEnabled } from '../../../utils/ruleFlags';
 import { generateSchedule } from '../../gameScheduler';
@@ -7,12 +8,20 @@ import { drawCupGroups } from '../../nbaCup/drawGroups';
 import { injectCupGroupGames } from '../../nbaCup/scheduleInjector';
 
 export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
+  const pbaIsolated = state.leagueStats?.uiMode === 'pba_isolated';
   const year = state.leagueStats.year;
   const seasonStart = `${year - 1}-10-01`;
-  const seasonEnd = toISODateString(getRolloverDate(year, state.leagueStats as any, state.schedule as any));
+  const seasonEnd = pbaIsolated
+    ? `${year}-06-30`
+    : toISODateString(getRolloverDate(year, state.leagueStats as any, state.schedule as any));
   const hasRegularSeason = state.schedule.some(
-    g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn && !(g as any).isNBACup && !(g as any).isCupTBD
-         && g.date >= seasonStart && g.date <= seasonEnd
+    g => !(g as any).competitionId
+         && !(g as any).isPreseason
+         && !(g as any).isPlayoff
+         && !(g as any).isPlayIn
+         && !(g as any).isNBACup
+         && !(g as any).isCupTBD
+         && normalizeDate(g.date) >= seasonStart && normalizeDate(g.date) <= seasonEnd
   );
   if (hasRegularSeason) {
     if (isNbaCupEnabled(state.leagueStats) && state.nbaCup?.groups?.length) {
@@ -58,7 +67,7 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
     };
   }
 
-  let schedule = generateSchedule(
+  const generatedSchedule = generateSchedule(
     state.teams,
     state.christmasGames,
     state.globalGames,
@@ -69,7 +78,17 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
     cupGroups.length > 0 ? cupGroups : undefined,
     state.saveId,
   );
-  if (state.activeCompetitions?.length) {
+  let schedule = generatedSchedule;
+  if (pbaIsolated) {
+    const maxExistingGid = Math.max(0, ...state.schedule.map(g => g.gid));
+    const backgroundNbaGames = generatedSchedule.map((game, index) => ({
+      ...game,
+      gid: maxExistingGid + 1 + index,
+    }));
+    schedule = [...state.schedule, ...backgroundNbaGames].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.gid - b.gid,
+    );
+  } else if (state.activeCompetitions?.length) {
     const compGames = state.activeCompetitions.flatMap((spec, index) => {
       const teams = selectCompetitionTeamTids(spec, state).map(tid => ({ tid }));
       const start = new Date(`${state.leagueStats.year - 1}-${String(spec.seasonStart.month).padStart(2, '0')}-${String(spec.seasonStart.day).padStart(2, '0')}T00:00:00Z`);
@@ -77,7 +96,7 @@ export const autoGenerateSchedule = (state: GameState): Partial<GameState> => {
     });
     schedule = [...schedule, ...compGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
-  if (intlPreseasonGames.length > 0) {
+  if (!pbaIsolated && intlPreseasonGames.length > 0) {
     const maxGid = Math.max(0, ...schedule.map(g => g.gid));
     const renumbered = intlPreseasonGames.map((g, i) => ({ ...g, gid: maxGid + 1 + i }));
     schedule = [...schedule, ...renumbered].sort(

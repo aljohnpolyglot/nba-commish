@@ -28,6 +28,14 @@ import { runSimBench } from './realisticBenchmarkLeagueCheats';
 import { runPlayerBench } from './realisticBenchmarkPlayerCheats';
 import { runSimLeaders, runSimTrace } from './realisticBenchmarkLeaderCheats';
 import { runSpam, runWarp, runStuck, runPhaseDump, runGateScan, runWarpSlow } from './stressCheats';
+import { resolveEffectiveTrainingPlan } from '../../services/training/trainingPlanResolver';
+import { MinutesPlayedService } from '../../services/simulation/MinutesPlayedService';
+import { resolveRotationPlan } from '../../services/simulation/rotationPlan';
+import { KNOBS_DEFAULT } from '../../services/simulation/SimulatorKnobs';
+import { deriveOfficialNbaRecords } from '../nbaOfficialRecords';
+import { rebuildCupGroupStandingsFromSchedule } from '../../services/nbaCup/resolveGroupStage';
+import { isFilipino } from '../../services/pba/importManager';
+import { tunePbaDraftProspects } from '../../services/pba/draftRules';
 
 export type { CheatContext, CheatResult } from './shared';
 
@@ -46,6 +54,10 @@ export const CHEAT_CODES = {
   HEALALL: 'Heal all injured players on user team (GM mode)',
   STATE: 'Dump condensed state summary to console',
   PLAYERS: 'Player count by status (league distribution)',
+  NUGROT: 'Rotation debug for Denver (or user team fallback): inputs, computed depth/order, allocated minutes, and Jokic row',
+  FATIGUEAUDIT: 'Investigate trainingFatigue spikes. Logs league-wide 90+ fatigue outliers, your roster with MPG/training/recent game load, and the next/last 7 days of schedule + plans.',
+  FATIGUEFIX: 'Emergency league fatigue repair: caps NBA roster fatigue to MPG-based sane values and logs before/after rows. Use after FATIGUEAUDIT.',
+  FATIGUEFIXALL: 'Alias for FATIGUEFIX.',
   EUROAUDIT: 'Euro-isolated save audit: roster ids/statuses, external club roster counts, contaminated Euro box scores, NBA-state leaks.',
   EUROFIX: 'Euro-isolated save repair: normalize external player tids/statuses, clear NBA FA state, heal FIBA timing, purge contaminated Euro box scores and rebuild Euro season stats.',
   COPYTP: 'Copy current Player Stats rows with TP/FG ratings + 3PA context as TSV',
@@ -62,6 +74,8 @@ export const CHEAT_CODES = {
   TWOWAYAGE: 'Two-way contract age distribution — should be dominated by ≤24yo / ≤2-YOS players',
   RESIGNS: 'Players with multiple "re-signed" entries in the same offseason — duplicate label bug check',
   PICKS: 'Draft pick inventory — picks per season, per-team ownership counts, missing-team detector',
+  PBADRAFT: 'PBA draft-pool audit — logs current mock-draft visibility inputs, year buckets, Filipino filter matches, and blocked prospects',
+  PBADRAFTFIX: 'Retune the current save’s Filipino draft prospects in place — rewrites age/OVR/POT for the already-seeded PBA class',
   SALARYAUDIT: 'Players with 3+ NBA seasons played but sparse/missing contractYears — tracks contract history gaps as sim progresses',
   JERSEYAUDIT: 'Jersey retirement audit — shows current candidates, pre-save retirees, and why each case was included or skipped',
   JERSEYRETIREMENT: 'Alias for JERSEYAUDIT',
@@ -72,6 +86,7 @@ export const CHEAT_CODES = {
   CUPSIM: 'Sim-jump to Dec 17 to play out the entire Cup window (group stage → knockouts → awards)',
   CUPINJECT: 'Retroactively inject Cup group games into a save where groups exist but no Cup games were scheduled (recovers broken pre-fix saves)',
   SCHEDAUDIT: 'Schedule integrity audit — orphaned games, per-team GP vs 82, All-Star blackout casualties, asymmetric W/L',
+  SCHEDFIX: 'Repair current-season 82-game schedule gaps: moves orphaned unplayed games to today and adds makeup games for teams scheduled below 82',
   FIXPOT: 'Clamp inflated POT on PBA (→50) and ChinaCBA (→54) players in the current save',
   APRON: 'List teams over the 2nd apron with cap status, live payroll, and dead-money load',
   DEADAUDIT: 'Per-team dead-money ranking (current-season hit + total remaining + entry count)',
@@ -97,6 +112,7 @@ export const CHEAT_CODES = {
   PERSAMPLE: 'Random 30-player PER audit. For each player: stored season PER, minute-weighted recomputed PER from current season game samples, GP/MPG, and three recent game-PER entries. Shows whether season PER is stale/aggregated wrong or the underlying game PER is wrong.',
   RESTOREPER: 'Rebuild current-season PER and advanced season fields from saved boxScores. Repairs stale/bugged season advanced rows in older saves without resimming games.',
   HEALSTUCK: 'Heal stuck offseason — strips offseasonChecklist, faTagCounter, faTagsTotal, offseasonExitedYear from the newest save in IndexedDB and reloads. Use when the FA Tasks sidebar refuses to dismiss.',
+  HISTORYHEAL: 'NBA season-history heal — rebuilds current-season All-NBA / All-Defensive / All-Rookie flat awards from Award Races, restores All-Star player awards from the live roster, removes stale composite current-season award blobs, and rewrites NBA team season W-L rows from played schedule.',
   SIMBENCH: 'Aggregate per-team-game stats from already-played NBA box scores and compare against 2026SimBenchmark.md league averages. Logs delta table (PPG, FG%, 3P%, eFG%, TS%, AST, REB, ORB, TOV, PF, PACE) + TSV to clipboard.',
   PLAYERBENCH: 'Aggregate per-player-game stats from already-played NBA box scores and compare against 2026SimBenchmark.md Part 5 (distribution shape: P10/P25/median/P75/P90) and Part 6 (positional averages PG/SG/SF/PF/C). TSV to clipboard.',
   SIMTRACE: 'Toggle realistic-engine possession trace. When ON, every possession of the next sim logs to console (zone, made/miss, shooter, assister, fouled, FT). Run again to turn OFF.',
@@ -121,6 +137,402 @@ function normalizeRawPlayerName(name: any): string {
 
 function rawPlayerKey(player: any): string {
   return `${normalizeRawPlayerName(player?.name)}|${player?.born?.year ?? ''}`;
+}
+
+function aggregateCurrentSeasonRegularStats(player: any, season: number): {
+  gp: number;
+  min: number;
+  pts: number;
+} {
+  const rows = Array.isArray(player?.stats)
+    ? player.stats.filter((s: any) => Number(s?.season) === season && !s?.playoffs)
+    : [];
+  return rows.reduce(
+    (acc: { gp: number; min: number; pts: number }, row: any) => {
+      acc.gp += Number(row?.gp ?? 0);
+      acc.min += Number(row?.min ?? 0);
+      acc.pts += Number(row?.pts ?? 0);
+      return acc;
+    },
+    { gp: 0, min: 0, pts: 0 },
+  );
+}
+
+function recentMpgForAudit(player: any, season: number): number {
+  const agg = aggregateCurrentSeasonRegularStats(player, season);
+  if (agg.gp > 0) return agg.min / agg.gp;
+  const regularRows = Array.isArray(player?.stats)
+    ? player.stats.filter((s: any) => !s?.playoffs)
+    : [];
+  const latest = regularRows[regularRows.length - 1];
+  const gp = Number(latest?.gp ?? 0);
+  return gp > 0 ? Number(latest?.min ?? 0) / gp : 0;
+}
+
+function runPbaDraftAudit(state: GameState): CheatResult {
+  const uiMode = (state.leagueStats as any)?.uiMode;
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const date = String(state.date ?? '');
+  const draftComplete = !!(state as any).draftComplete;
+  const selectedYear = draftComplete ? currentYear + 1 : currentYear;
+  const allProspects = (state.players ?? []).filter((player: any) =>
+    player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect',
+  );
+  const pbaProspects = allProspects.filter((player: any) => isFilipino(player));
+  const visibleToMockDraft = pbaProspects.filter((player: any) => {
+    const rawDraftYear = Number((player as any).draft?.year);
+    return !Number.isFinite(rawDraftYear) || rawDraftYear === selectedYear;
+  });
+  const yearBuckets = new Map<string, number>();
+  for (const player of pbaProspects) {
+    const rawDraftYear = (player as any).draft?.year;
+    const key = rawDraftYear == null || rawDraftYear === '' ? 'missing' : String(rawDraftYear);
+    yearBuckets.set(key, (yearBuckets.get(key) ?? 0) + 1);
+  }
+  const visibleRows = visibleToMockDraft.slice(0, 25).map((player: any) => ({
+    name: player.name,
+    status: player.status,
+    tid: player.tid,
+    draftYear: (player as any).draft?.year ?? 'missing',
+    bornLoc: player.born?.loc ?? '',
+    nationality: (player as any).nationality ?? (player as any).born?.country ?? '',
+    ovr: player.overallRating ?? player.ratings?.[player.ratings.length - 1]?.ovr ?? '—',
+    pot: player.ratings?.[player.ratings.length - 1]?.pot ?? '—',
+  }));
+  const blockedRows = allProspects
+    .filter((player: any) => !isFilipino(player))
+    .slice(0, 25)
+    .map((player: any) => ({
+      name: player.name,
+      status: player.status,
+      tid: player.tid,
+      draftYear: (player as any).draft?.year ?? 'missing',
+      bornLoc: player.born?.loc ?? '',
+      nationality: (player as any).nationality ?? (player as any).born?.country ?? '',
+    }));
+
+  console.group('%c🇵🇭 PBADRAFT', 'color:#f59e0b;font-weight:bold');
+  console.log({
+    date,
+    uiMode,
+    currentYear,
+    draftComplete,
+    selectedYear,
+    allProspectCount: allProspects.length,
+    pbaProspectCount: pbaProspects.length,
+    visibleToMockDraftCount: visibleToMockDraft.length,
+  });
+  console.log('PBA prospect draft.year buckets:');
+  console.table(Array.from(yearBuckets.entries()).map(([draftYear, count]) => ({ draftYear, count })));
+  console.log('Visible to mock draft right now:');
+  console.table(visibleRows);
+  if (blockedRows.length > 0) {
+    console.log('Blocked by Filipino filter:');
+    console.table(blockedRows);
+  } else {
+    console.log('No prospects blocked by Filipino filter.');
+  }
+  console.groupEnd();
+
+  return {
+    title: 'PBADRAFT',
+    body: visibleToMockDraft.length > 0
+      ? `${visibleToMockDraft.length} PBA prospect(s) are visible for ${selectedYear}. See console for the sample table.`
+      : `No PBA prospects are visible for ${selectedYear}. See console for draft.year buckets and Filipino-filter blockers.`,
+    ok: visibleToMockDraft.length > 0,
+  };
+}
+
+async function runPbaDraftFix(ctx: CheatContext): Promise<CheatResult> {
+  const live = getLive(ctx);
+  if ((live.leagueStats as any)?.uiMode !== 'pba_isolated') {
+    return { title: 'PBADRAFTFIX', body: 'This cheat only applies in PBA isolated mode.', ok: false };
+  }
+
+  const currentYear = live.leagueStats?.year ?? new Date().getFullYear();
+  const before = (live.players ?? []).filter((player: any) =>
+    (player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect') && isFilipino(player),
+  );
+  const tunedPlayers = tunePbaDraftProspects((live.players ?? []) as any, currentYear, live.leagueStats);
+  const after = tunedPlayers.filter((player: any) =>
+    (player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect') && isFilipino(player),
+  );
+  const beforeById = new Map(before.map((player: any) => [player.internalId, player]));
+  const changedRows = after
+    .map((player: any) => {
+      const prev = beforeById.get(player.internalId);
+      if (!prev) return null;
+      const prevRating = prev.ratings?.[prev.ratings.length - 1];
+      const nextRating = player.ratings?.[player.ratings.length - 1];
+      const prevOvr = Number(prev.overallRating ?? prevRating?.ovr ?? 0);
+      const nextOvr = Number(player.overallRating ?? nextRating?.ovr ?? 0);
+      const prevPot = Number(prev.potential ?? prevRating?.pot ?? 0);
+      const nextPot = Number(player.potential ?? nextRating?.pot ?? 0);
+      const prevAge = Number(prev.age ?? 0);
+      const nextAge = Number(player.age ?? 0);
+      if (prevOvr === nextOvr && prevPot === nextPot && prevAge === nextAge) return null;
+      return {
+        name: player.name,
+        draftYear: (player as any).draft?.year ?? 'missing',
+        ageBefore: prevAge,
+        ageAfter: nextAge,
+        ovrBefore: prevOvr,
+        ovrAfter: nextOvr,
+        potBefore: prevPot,
+        potAfter: nextPot,
+      };
+    })
+    .filter(Boolean);
+
+  await ctx.dispatchAction({ type: 'UPDATE_STATE', payload: { players: tunedPlayers } } as any);
+  console.group('%c🛠️ PBADRAFTFIX', 'color:#22c55e;font-weight:bold');
+  console.log(`Current year: ${currentYear} | Filipino prospects tuned: ${after.length} | changed rows: ${changedRows.length}`);
+  if (changedRows.length > 0) console.table(changedRows.slice(0, 60));
+  console.groupEnd();
+
+  return {
+    title: 'PBADRAFTFIX',
+    body: changedRows.length > 0
+      ? `Retuned ${changedRows.length} existing PBA draft prospect row(s). Reopen Mock Draft if it was already on screen.`
+      : `No existing PBA draft prospects needed retuning. Total Filipino prospects checked: ${after.length}.`,
+    ok: true,
+  };
+}
+
+function runFatigueAudit(state: GameState): CheatResult {
+  const today = normalizeDate(state.date);
+  const season = state.leagueStats?.year ?? new Date().getFullYear();
+  const teams = state.teams ?? [];
+  const players = state.players ?? [];
+  const schedule = state.schedule ?? [];
+  const teamById = new Map(teams.map(team => [team.id, team] as const));
+  const userTid = (state as any).userTeamId;
+  const userTeam = typeof userTid === 'number' ? teamById.get(userTid) : undefined;
+
+  const gamesByTeam = new Map<number, any[]>();
+  for (const game of schedule) {
+    for (const tid of [game.homeTid, game.awayTid]) {
+      if (typeof tid !== 'number') continue;
+      const list = gamesByTeam.get(tid);
+      if (list) list.push(game);
+      else gamesByTeam.set(tid, [game]);
+    }
+  }
+  for (const games of gamesByTeam.values()) {
+    games.sort((a: any, b: any) => String(a?.date ?? '').localeCompare(String(b?.date ?? '')));
+  }
+
+  const getRecentLoad = (tid: number) => {
+    const games = gamesByTeam.get(tid) ?? [];
+    const last7Start = new Date(today);
+    last7Start.setDate(last7Start.getDate() - 6);
+    const next7End = new Date(today);
+    next7End.setDate(next7End.getDate() + 6);
+    let recentGames = 0;
+    let recentAwayGames = 0;
+    let upcomingGames = 0;
+    let upcomingAwayGames = 0;
+    let lastGameDate = '';
+    let nextGameDate = '';
+    for (const game of games) {
+      const iso = normalizeDate(String(game.date ?? ''));
+      if (!iso) continue;
+      const time = new Date(iso).getTime();
+      const isAway = game.awayTid === tid;
+      if (iso <= today) lastGameDate = iso;
+      if (!nextGameDate && iso >= today && !game.played) nextGameDate = iso;
+      if (time >= last7Start.getTime() && time <= new Date(today).getTime()) {
+        recentGames++;
+        if (isAway) recentAwayGames++;
+      }
+      if (time >= new Date(today).getTime() && time <= next7End.getTime() && !game.played) {
+        upcomingGames++;
+        if (isAway) upcomingAwayGames++;
+      }
+    }
+    return { recentGames, recentAwayGames, upcomingGames, upcomingAwayGames, lastGameDate, nextGameDate };
+  };
+
+  const fatigueLeaders = players
+    .filter((player: any) => player.tid >= 0 && player.tid < 100)
+    .map((player: any) => {
+      const team = teamById.get(player.tid);
+      const fatigue = Math.round(Number(player.trainingFatigue ?? 0) * 10) / 10;
+      const agg = aggregateCurrentSeasonRegularStats(player, season);
+      return {
+        player: player.name,
+        team: team?.abbrev ?? `tid${player.tid}`,
+        pos: player.position ?? player.pos ?? '—',
+        fatigue,
+        intensity: player.trainingIntensity ?? 'Normal',
+        mpg: Number(recentMpgForAudit(player, season).toFixed(1)),
+        gp: agg.gp,
+        ppg: agg.gp > 0 ? Number((agg.pts / agg.gp).toFixed(1)) : 0,
+        injured: Number((player as any).injury?.gamesRemaining ?? 0),
+        status: (player as any).status ?? '—',
+      };
+    })
+    .filter(row => row.fatigue >= 90)
+    .sort((a, b) => b.fatigue - a.fatigue || b.mpg - a.mpg);
+
+  console.group('%c🥵 FATIGUEAUDIT', 'color:#f97316;font-weight:bold');
+  console.log(`today=${today} season=${season} userTeam=${userTeam?.abbrev ?? 'none'}`);
+  console.log(`Players at 90+ fatigue: ${fatigueLeaders.length}`);
+  if (fatigueLeaders.length > 0) console.table(fatigueLeaders.slice(0, 60));
+
+  if (!userTeam) {
+    console.groupEnd();
+    return {
+      title: 'FATIGUEAUDIT',
+      body: `Logged ${fatigueLeaders.length} league-wide 90+ fatigue outliers. No user team found for roster drilldown.`,
+      ok: true,
+    };
+  }
+
+  const teamPlayers = players
+    .filter((player: any) => player.tid === userTeam.id)
+    .map((player: any) => {
+      const fatigue = Number(player.trainingFatigue ?? 0);
+      const agg = aggregateCurrentSeasonRegularStats(player, season);
+      const load = getRecentLoad(userTeam.id);
+      const hasGameToday = (gamesByTeam.get(userTeam.id) ?? []).some((game: any) => normalizeDate(String(game.date ?? '')) === today);
+      const plan = resolveEffectiveTrainingPlan(userTeam as any, today);
+      return {
+        player: player.name,
+        pos: player.position ?? player.pos ?? '—',
+        fatigue: Number(fatigue.toFixed(1)),
+        intensity: player.trainingIntensity ?? 'Normal',
+        mpg: Number(recentMpgForAudit(player, season).toFixed(1)),
+        gp: agg.gp,
+        ppg: agg.gp > 0 ? Number((agg.pts / agg.gp).toFixed(1)) : 0,
+        injured: Number((player as any).injury?.gamesRemaining ?? 0),
+        todayGame: hasGameToday ? 'Y' : 'N',
+        todayPlan: plan ? `${plan.paradigm}-${plan.intensity}` : 'none',
+        last7Games: load.recentGames,
+        last7Away: load.recentAwayGames,
+        next7Games: load.upcomingGames,
+        next7Away: load.upcomingAwayGames,
+        lastGame: load.lastGameDate || '—',
+        nextGame: load.nextGameDate || '—',
+      };
+    })
+    .sort((a, b) => b.fatigue - a.fatigue || b.mpg - a.mpg);
+
+  const teamGames = gamesByTeam.get(userTeam.id) ?? [];
+  const scheduleWindow = teamGames
+    .filter((game: any) => {
+      const iso = normalizeDate(String(game.date ?? ''));
+      if (!iso) return false;
+      const diffDays = Math.round((new Date(iso).getTime() - new Date(today).getTime()) / 86_400_000);
+      return diffDays >= -7 && diffDays <= 7;
+    })
+    .map((game: any) => {
+      const iso = normalizeDate(String(game.date ?? ''));
+      const isHome = game.homeTid === userTeam.id;
+      const oppTid = isHome ? game.awayTid : game.homeTid;
+      const opp = teamById.get(oppTid);
+      const plan = resolveEffectiveTrainingPlan(userTeam as any, iso);
+      return {
+        date: iso,
+        type: game.played ? 'played' : 'upcoming',
+        site: isHome ? 'vs' : '@',
+        opp: opp?.abbrev ?? `tid${oppTid}`,
+        score: game.played ? `${game.awayScore}-${game.homeScore}` : '—',
+        plan: plan ? `${plan.paradigm}-${plan.intensity}` : 'none',
+      };
+    });
+
+  const suspicious = teamPlayers.filter(row => row.fatigue >= 95 && row.last7Games <= 3);
+  console.log(`User roster: ${userTeam.abbrev}`);
+  console.table(teamPlayers);
+  console.log(`Schedule window (${userTeam.abbrev}, ${today} ± 7d)`);
+  console.table(scheduleWindow);
+  if (suspicious.length > 0) {
+    console.warn('High-fatigue low-load cases:', suspicious.map(row => `${row.player} (${row.fatigue})`).join(', '));
+  }
+  console.groupEnd();
+
+  return {
+    title: 'FATIGUEAUDIT',
+    body: `${fatigueLeaders.length} league-wide 90+ fatigue outliers logged. ${userTeam.abbrev} roster drilldown printed${suspicious.length > 0 ? `; ${suspicious.length} suspicious low-load cases flagged.` : '.'}`,
+    ok: true,
+  };
+}
+
+async function runFatigueFix(ctx: CheatContext): Promise<CheatResult> {
+  const state = getLive(ctx);
+  const userTid = (state as any).userTeamId;
+  const season = state.leagueStats?.year ?? new Date().getFullYear();
+  const teamById = new Map((state.teams ?? []).map(team => [team.id, team] as const));
+  const userTeam = typeof userTid === 'number' ? teamById.get(userTid) : undefined;
+  const rows: Array<{
+    player: string;
+    team: string;
+    pos: string;
+    mpg: number;
+    before: number;
+    after: number;
+    injured: number;
+    intensity: string;
+  }> = [];
+  let changed = 0;
+
+  const patchedPlayers = (state.players ?? []).map((player: any) => {
+    const team = teamById.get(player.tid);
+    if (!team || player.tid < 0 || player.tid > 29) return player;
+    if (player.status && player.status !== 'Active') return player;
+    const before = Math.max(0, Math.min(100, Number(player.trainingFatigue ?? 0)));
+    const mpg = recentMpgForAudit(player, season);
+    const injured = Math.max(0, Number(player.injury?.gamesRemaining ?? 0));
+    const cap =
+      injured > 0 ? 18
+      : mpg >= 34 ? 45
+      : mpg >= 28 ? 38
+      : mpg >= 20 ? 30
+      : mpg >= 10 ? 22
+      : 12;
+    const after = Math.min(before, cap);
+    rows.push({
+      player: player.name,
+      team: team.abbrev ?? String(player.tid),
+      pos: player.position ?? player.pos ?? '-',
+      mpg: Number(mpg.toFixed(1)),
+      before: Number(before.toFixed(1)),
+      after: Number(after.toFixed(1)),
+      injured,
+      intensity: player.trainingIntensity ?? 'Normal',
+    });
+    if (Math.abs(after - before) < 0.05) return player;
+    changed++;
+    return { ...player, trainingFatigue: after };
+  });
+
+  rows.sort((a, b) => b.before - a.before || b.mpg - a.mpg);
+  const changedRows = rows.filter(row => Math.abs(row.before - row.after) >= 0.05);
+  const userRows = userTeam ? rows.filter(row => row.team === userTeam.abbrev) : [];
+  console.group('%c🧊 FATIGUEFIX', 'color:#38bdf8;font-weight:bold');
+  console.log(`season=${season} changed=${changed} scanned=${rows.length}`);
+  if (changedRows.length > 0) {
+    console.log('Changed players, top 120 by previous fatigue:');
+    console.table(changedRows.slice(0, 120));
+  }
+  if (userRows.length > 0) {
+    console.log(`User roster after caps: ${userTeam?.abbrev ?? userTeam?.name}`);
+    console.table(userRows);
+  }
+  console.groupEnd();
+
+  if (changed > 0) {
+    await ctx.dispatchAction({ type: 'UPDATE_STATE', payload: { players: patchedPlayers } } as any);
+  }
+
+  return {
+    title: 'FATIGUEFIX',
+    body: changed > 0
+      ? `Capped fatigue for ${changed} NBA player${changed === 1 ? '' : 's'}. Before/after tables logged. Save to persist.`
+      : 'NBA fatigue already within sane caps. Table logged.',
+    ok: true,
+  };
 }
 
 function rawStatKey(stat: any): string {
@@ -712,6 +1124,140 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
       }
     }
 
+    case 'HISTORYHEAL': {
+      if (state.leagueStats?.uiMode === 'euro_isolated' || state.leagueStats?.uiMode === 'pba_isolated') {
+        return { title: 'HISTORYHEAL', body: 'This heal is for NBA-mode saves only.', ok: false };
+      }
+      try {
+        const season = state.leagueStats?.year ?? new Date().getFullYear();
+        const { AwardService } = await import('../../services/logic/AwardService');
+        const races = AwardService.calculateAwardRaces(
+          state.players,
+          state.teams,
+          season,
+          state.staff,
+          state.leagueStats.minGamesRequirement,
+        );
+
+        const teamAwardLabels = new Set([
+          'All-NBA First Team',
+          'All-NBA Second Team',
+          'All-NBA Third Team',
+          'All-Defensive First Team',
+          'All-Defensive Second Team',
+          'All-Rookie First Team',
+          'All-Rookie Second Team',
+        ]);
+        const rebuiltTeamAwards: any[] = [];
+        const pushTeamAwards = (label: string, team: any[]) => {
+          for (const spot of team ?? []) {
+            if (!spot?.player) continue;
+            rebuiltTeamAwards.push({
+              season,
+              type: label,
+              name: spot.player.name,
+              pid: spot.player.internalId,
+              tid: spot.team?.id,
+            });
+          }
+        };
+        pushTeamAwards('All-NBA First Team', races.allNBATeams.allNBA[0]);
+        pushTeamAwards('All-NBA Second Team', races.allNBATeams.allNBA[1]);
+        pushTeamAwards('All-NBA Third Team', races.allNBATeams.allNBA[2]);
+        pushTeamAwards('All-Defensive First Team', races.allNBATeams.allDefense[0]);
+        pushTeamAwards('All-Defensive Second Team', races.allNBATeams.allDefense[1]);
+        pushTeamAwards('All-Rookie First Team', races.allNBATeams.allRookie[0]);
+        pushTeamAwards('All-Rookie Second Team', races.allNBATeams.allRookie[1]);
+
+        const filteredAwards = (state.historicalAwards ?? []).filter((award: any) => {
+          if (Number(award?.season) !== season) return true;
+          if (!award?.type) return false;
+          return !teamAwardLabels.has(String(award.type));
+        });
+
+        const allStarIds = Array.from(new Set(
+          ((state.allStar as any)?.roster ?? [])
+            .map((entry: any) => entry?.playerId)
+            .filter((value: any) => typeof value === 'string' && value.length > 0),
+        ));
+        const players = state.players.map((player: any) => {
+          const nextAwards = [...(player.awards ?? [])].filter((award: any) => {
+            if (Number(award?.season) !== season) return true;
+            if (typeof award?.type !== 'string') return true;
+            return !teamAwardLabels.has(award.type);
+          });
+          const rebuiltPlayerAwards = rebuiltTeamAwards
+            .filter((award: any) => award.pid === player.internalId)
+            .map((award: any) => ({ season, type: award.type }));
+          const hasAllStar = nextAwards.some((award: any) => award.season === season && award.type === 'All-Star');
+          if (allStarIds.includes(player.internalId) && !hasAllStar) {
+            nextAwards.push({ season, type: 'All-Star' });
+          }
+          return { ...player, awards: [...nextAwards, ...rebuiltPlayerAwards] };
+        });
+
+        const recordMap = deriveOfficialNbaRecords(state.schedule, state.teams, season);
+        const champTid = (state.playoffs as any)?.bracketComplete ? state.playoffs?.champion : undefined;
+        const finalsSeries = (state.playoffs?.series ?? []).find((series: any) => series.round === 4);
+        const runnerTid = champTid != null && finalsSeries
+          ? (finalsSeries.higherSeedTid === champTid ? finalsSeries.lowerSeedTid : finalsSeries.higherSeedTid)
+          : undefined;
+
+        const teams = state.teams.map((team: any) => {
+          if (typeof team?.id !== 'number' || team.id < 0 || team.id >= 100) return team;
+          const rec = recordMap.get(team.id);
+          const wins = rec?.totalWins ?? team.wins ?? 0;
+          const losses = rec?.totalLosses ?? team.losses ?? 0;
+          const seasons = Array.isArray(team.seasons) ? [...team.seasons] : [];
+          const seasonIndex = seasons.findIndex((entry: any) => Number(entry?.season) === season);
+          const prev = seasonIndex >= 0 ? seasons[seasonIndex] : {};
+          const playoffRoundsWon = team.id === champTid
+            ? 4
+            : team.id === runnerTid
+              ? 3
+              : prev?.playoffRoundsWon;
+          const nextSeasonRow = {
+            ...prev,
+            season,
+            won: wins,
+            lost: losses,
+            wins,
+            losses,
+            playoffRoundsWon,
+          };
+          if (seasonIndex >= 0) seasons[seasonIndex] = nextSeasonRow;
+          else seasons.push(nextSeasonRow);
+          return {
+            ...team,
+            wins,
+            losses,
+            seasons,
+          };
+        });
+
+        const patched = {
+          ...state,
+          historicalAwards: [...filteredAwards, ...rebuiltTeamAwards],
+          players,
+          teams,
+        } as any;
+        await dispatchAction({ type: 'LOAD_GAME', payload: patched } as any);
+        console.group('%c🩹 HISTORYHEAL', 'color:#22c55e;font-weight:bold');
+        console.log('Rebuilt team-award rows:', rebuiltTeamAwards.length);
+        console.log('Stamped All-Star player awards from live roster:', allStarIds.length);
+        console.log('Removed stale current-season composite/no-type history rows and rewrote NBA season rows from played schedule.');
+        console.groupEnd();
+        return {
+          title: 'HISTORYHEAL',
+          body: `Rebuilt ${rebuiltTeamAwards.length} All-NBA/Defense/Rookie rows, restored All-Star awards for ${allStarIds.length} roster entries, and rewrote current NBA team season records. Save to persist.`,
+          ok: true,
+        };
+      } catch (err) {
+        console.error('[HISTORYHEAL] failed:', err);
+        return { title: 'HISTORYHEAL', body: `Failed: ${(err as Error).message ?? err}`, ok: false };
+      }
+    }
+
     case 'FIXROOKIES': {
       // Repair contracts created by the pre-rollover draft bug where minSalaryUSD
       // was multiplied by 1_000_000 a second time (minContract=950000 USD treated
@@ -1252,6 +1798,147 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
       return { title: 'Players counted', body: 'See console table', ok: true };
     }
 
+    case 'NUGROT': {
+      const season = state.leagueStats?.year ?? new Date().getFullYear();
+      const den = state.teams.find(team => team.abbrev === 'DEN' || /denver nuggets/i.test(team.name));
+      const userTid = (state as any).userTeamId;
+      const team = den ?? (typeof userTid === 'number' ? state.teams.find(t => t.id === userTid) : undefined);
+      if (!team) {
+        return { title: 'NUGROT', body: 'No DEN team found and no user team fallback available.', ok: false };
+      }
+
+      const confTeams = state.teams
+        .filter(t => t.conference === team.conference)
+        .slice()
+        .sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses));
+      const conferenceRank = Math.max(1, confTeams.findIndex(t => t.id === team.id) + 1 || 8);
+      const leader = confTeams[0];
+      const gbFromLeader = leader
+        ? Math.max(0, ((leader.wins - team.wins) + (team.losses - leader.losses)) / 2)
+        : 0;
+      const gamesRemaining = Math.max(0, 82 - ((team.wins ?? 0) + (team.losses ?? 0)));
+
+      const rotationResult = MinutesPlayedService.getRotation(
+        team as any,
+        state.players as any,
+        0,
+        season,
+        undefined,
+        conferenceRank,
+        gbFromLeader,
+        gamesRemaining,
+      );
+      const allocation = MinutesPlayedService.allocateMinutes(
+        rotationResult.players as any,
+        season,
+        0,
+        0,
+        rotationResult.starMpgTarget,
+      );
+      const resolvedPlan = resolveRotationPlan(
+        team as any,
+        state.players as any,
+        season,
+        KNOBS_DEFAULT,
+        0,
+        undefined,
+      );
+
+      const rows = rotationResult.players.map((p: any, idx: number) => {
+        const rating = p.ratings?.[p.ratings.length - 1] ?? {};
+        const k2 = convertTo2KRating(p.overallRating ?? rating.ovr ?? 50, rating.hgt ?? 50, rating.tp ?? 50);
+        const seasonStats = (p.stats ?? []).find((s: any) => s.season === season && !s.playoffs);
+        const gp = Number(seasonStats?.gp ?? 0);
+        const mpg = gp > 0 ? Number(((seasonStats?.min ?? 0) / gp).toFixed(1)) : 0;
+        const simIdx = resolvedPlan.rotation.findIndex((rp: any) => rp.internalId === p.internalId);
+        const simTarget = simIdx >= 0 ? Number((resolvedPlan.minuteTargets[simIdx] ?? 0).toFixed(1)) : 0;
+        return {
+          slot: idx + 1,
+          name: p.name,
+          pos: p.pos ?? '—',
+          starter: idx < 5 ? 'Y' : 'N',
+          k2,
+          ovrRaw: p.overallRating ?? rating.ovr ?? 0,
+          endu: rating.endu ?? 50,
+          injuryGames: p.injury?.gamesRemaining ?? 0,
+          targetMin: Number((allocation.minutes[idx] ?? 0).toFixed(1)),
+          simTargetMin: simTarget,
+          seasonMpg: mpg,
+          delta: Number(((allocation.minutes[idx] ?? 0) - mpg).toFixed(1)),
+        };
+      });
+
+      const jokicRow = rows.find(r => /jokic/i.test(r.name));
+      const valRow = rows.find(r => /valanciunas/i.test(r.name));
+      console.group(`%cNUGROT ${team.abbrev} (${season})`, 'color:#f59e0b;font-weight:bold');
+      console.log({
+        team: `${team.name} (${team.abbrev})`,
+        conferenceRank,
+        gbFromLeader: Number(gbFromLeader.toFixed(1)),
+        gamesRemaining,
+        computedDepth: rotationResult.depth,
+        starMpgTarget: Number(rotationResult.starMpgTarget.toFixed(1)),
+        simPlanDepth: resolvedPlan.rotation.length,
+        simPlanStarMpgTarget: Number(resolvedPlan.starMpgTarget.toFixed(1)),
+      });
+      console.table(rows);
+      if (jokicRow) console.log('Jokic row:', JSON.stringify(jokicRow));
+      if (valRow) console.log('Valanciunas row:', JSON.stringify(valRow));
+      if (jokicRow && valRow) {
+        const relation = jokicRow.targetMin >= valRow.targetMin ? 'OK' : 'WARN';
+        console.log(`[NUGROT:${relation}] Jokic target ${jokicRow.targetMin} vs Val target ${valRow.targetMin}`);
+      }
+
+      const jokic = state.players.find((p: any) => /nikola jokic/i.test(p.name));
+      if (jokic) {
+        const denGames = (state.boxScores ?? [])
+          .filter((b: any) => b.homeTeamId === team.id || b.awayTeamId === team.id)
+          .filter((b: any) => (b.season ?? season) === season)
+          .slice(-25);
+        const jokicRecent = denGames.map((b: any) => {
+          const line = [...(b.homeStats ?? []), ...(b.awayStats ?? [])]
+            .find((s: any) => s.playerId === jokic.internalId);
+          if (!line) return null;
+          const teamScore = b.homeTeamId === team.id ? b.homeScore : b.awayScore;
+          const oppScore = b.homeTeamId === team.id ? b.awayScore : b.homeScore;
+          const diff = teamScore - oppScore;
+          return {
+            date: String(b.date ?? '').slice(0, 10),
+            min: Number((line.min ?? 0).toFixed?.(1) ?? line.min ?? 0),
+            pf: Number(line.pf ?? 0),
+            pts: Number(line.pts ?? 0),
+            reb: Number(line.reb ?? line.trb ?? 0),
+            ast: Number(line.ast ?? 0),
+            diff,
+          };
+        }).filter(Boolean) as Array<{ date: string; min: number; pf: number; pts: number; reb: number; ast: number; diff: number }>;
+        const last10 = jokicRecent.slice(-10);
+        if (last10.length > 0) {
+          const avgMin = last10.reduce((sum, row) => sum + row.min, 0) / last10.length;
+          console.log(`[NUGROT] Jokic last ${last10.length} games avg min: ${avgMin.toFixed(1)}`);
+          console.table(last10);
+        } else {
+          console.log('[NUGROT] No Jokic lines found in recent DEN box scores.');
+        }
+      }
+      console.groupEnd();
+
+      return {
+        title: 'NUGROT',
+        body: `Logged ${team.abbrev} rotation + minute allocation to console. ${jokicRow ? `Jokic target ${jokicRow.targetMin} mpg=${jokicRow.seasonMpg}.` : ''}`,
+        ok: true,
+      };
+    }
+
+    case 'FATIGUEAUDIT': {
+      return runFatigueAudit(state);
+    }
+
+    case 'FATIGUEFIX':
+    case 'FATIGUEFIXALL': {
+      return await runFatigueFix(ctx);
+    }
+
     case 'COPYTP': {
       const playerStatsDebug = (window as any).__nbaPlayerStatsDebugRows;
       const rows = Array.isArray(playerStatsDebug?.rows) && playerStatsDebug.rows.length > 0
@@ -1772,6 +2459,11 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
         ok: true,
       };
     }
+
+    case 'PBADRAFT':
+      return runPbaDraftAudit(state);
+    case 'PBADRAFTFIX':
+      return await runPbaDraftFix(ctx);
 
     case 'SALARYAUDIT': {
       const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
@@ -2500,6 +3192,144 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
       return {
         title: 'Schedule audit',
         body: `Missing ${(expected - totalWL) / 2} games. Short: ${short.join(',') || '—'} · Long: ${long.join(',') || '—'} · Orphans: ${orphans.length}`,
+        ok: true,
+      };
+    }
+
+    case 'SCHEDFIX': {
+      const sched = state.schedule ?? [];
+      const teams = (state.teams ?? []).filter((team: any) => team.id >= 0 && team.id < 100);
+      const teamIds = new Set(teams.map((team: any) => team.id));
+      const today = normalizeDate(state.date);
+      const todayMs = new Date(`${today}T00:00:00Z`).getTime();
+      const maxGid = Math.max(0, ...sched.map((game: any) => Number(game.gid ?? 0)));
+      let nextGid = maxGid + 1;
+
+      const isRecordGame = (game: any): boolean => {
+        if (game.isAllStar || game.isRisingStars || game.isCelebrityGame || game.isExhibition) return false;
+        if (game.isPlayoff || game.isPlayIn || game.isPreseason || game.excludeFromRecord) return false;
+        const homeTid = game.homeTid ?? game.homeTeamId;
+        const awayTid = game.awayTid ?? game.awayTeamId;
+        return teamIds.has(homeTid) && teamIds.has(awayTid);
+      };
+      const gameDate = (game: any): string => normalizeDate(String(game.date ?? state.date));
+      const addDays = (date: string, offset: number): string => {
+        const d = new Date(`${date}T00:00:00Z`);
+        d.setUTCDate(d.getUTCDate() + offset);
+        return d.toISOString().split('T')[0];
+      };
+
+      const orphanGids = new Set<number>();
+      for (const game of sched as any[]) {
+        if (!isRecordGame(game) || game.played) continue;
+        if (new Date(`${gameDate(game)}T00:00:00Z`).getTime() < todayMs) {
+          orphanGids.add(Number(game.gid));
+        }
+      }
+
+      const busyByDate = new Map<string, Set<number>>();
+      const stampBusy = (date: string, homeTid: number, awayTid: number) => {
+        let set = busyByDate.get(date);
+        if (!set) { set = new Set(); busyByDate.set(date, set); }
+        set.add(homeTid);
+        set.add(awayTid);
+      };
+      for (const game of sched as any[]) {
+        if (!isRecordGame(game) || orphanGids.has(Number(game.gid))) continue;
+        stampBusy(gameDate(game), game.homeTid ?? game.homeTeamId, game.awayTid ?? game.awayTeamId);
+      }
+      const pickSlot = (homeTid: number, awayTid: number): string => {
+        for (let offset = 0; offset <= 21; offset++) {
+          const date = addDays(today, offset);
+          const busy = busyByDate.get(date);
+          if (!busy?.has(homeTid) && !busy?.has(awayTid)) return date;
+        }
+        return today;
+      };
+
+      let movedOrphans = 0;
+      let patchedSchedule = (sched as any[]).map(game => {
+        if (!orphanGids.has(Number(game.gid))) return game;
+        const homeTid = game.homeTid ?? game.homeTeamId;
+        const awayTid = game.awayTid ?? game.awayTeamId;
+        const slot = pickSlot(homeTid, awayTid);
+        stampBusy(slot, homeTid, awayTid);
+        movedOrphans++;
+        return { ...game, date: new Date(`${slot}T20:00:00Z`).toISOString() };
+      });
+
+      const scheduledCounts = new Map<number, number>(teams.map((team: any) => [team.id, 0]));
+      for (const game of patchedSchedule) {
+        if (!isRecordGame(game)) continue;
+        scheduledCounts.set(game.homeTid ?? game.homeTeamId, (scheduledCounts.get(game.homeTid ?? game.homeTeamId) ?? 0) + 1);
+        scheduledCounts.set(game.awayTid ?? game.awayTeamId, (scheduledCounts.get(game.awayTid ?? game.awayTeamId) ?? 0) + 1);
+      }
+
+      const owed: number[] = [];
+      for (const team of teams as any[]) {
+        const missing = Math.max(0, 82 - (scheduledCounts.get(team.id) ?? 0));
+        for (let i = 0; i < missing; i++) owed.push(team.id);
+      }
+
+      const newGames: any[] = [];
+      while (owed.length >= 2) {
+        const homeTid = owed.shift()!;
+        const opponentIndex = owed.findIndex(tid => tid !== homeTid);
+        if (opponentIndex < 0) break;
+        const [awayTid] = owed.splice(opponentIndex, 1);
+        const slot = pickSlot(homeTid, awayTid);
+        stampBusy(slot, homeTid, awayTid);
+        newGames.push({
+          gid: nextGid++,
+          homeTid,
+          awayTid,
+          homeScore: 0,
+          awayScore: 0,
+          played: false,
+          date: new Date(`${slot}T20:00:00Z`).toISOString(),
+          isMakeupGame: true,
+        });
+      }
+
+      if (movedOrphans === 0 && newGames.length === 0) {
+        return { title: 'SCHEDFIX', body: 'No schedule repair needed: no orphaned games and every NBA team already has 82 scheduled record games.', ok: true };
+      }
+
+      patchedSchedule = [...patchedSchedule, ...newGames].sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)));
+      const nbaCup = (state as any).nbaCup
+        ? rebuildCupGroupStandingsFromSchedule((state as any).nbaCup, patchedSchedule as any)
+        : undefined;
+
+      await dispatchAction({
+        type: 'UPDATE_STATE',
+        payload: {
+          schedule: patchedSchedule,
+          ...(nbaCup ? { nbaCup } : {}),
+        },
+      } as any);
+
+      const rows = teams.map((team: any) => {
+        const before = scheduledCounts.get(team.id) ?? 0;
+        const added = newGames.filter(game => game.homeTid === team.id || game.awayTid === team.id).length;
+        return { team: team.abbrev ?? team.name, before, added, after: before + added, wl: (team.wins ?? 0) + (team.losses ?? 0) };
+      }).filter(row => row.added > 0 || row.wl < 82).sort((a, b) => a.after - b.after || a.team.localeCompare(b.team));
+      console.group('🗓 SCHEDFIX');
+      console.log(`Moved orphaned games: ${movedOrphans}`);
+      console.log(`Added makeup games: ${newGames.length}`);
+      if (newGames.length > 0) {
+        console.table(newGames.map(game => ({
+          gid: game.gid,
+          date: String(game.date).split('T')[0],
+          home: teams.find((team: any) => team.id === game.homeTid)?.abbrev ?? game.homeTid,
+          away: teams.find((team: any) => team.id === game.awayTid)?.abbrev ?? game.awayTid,
+        })));
+      }
+      if (rows.length > 0) console.table(rows);
+      console.groupEnd();
+
+      return {
+        title: 'SCHEDFIX',
+        body: `Moved ${movedOrphans} orphaned game${movedOrphans === 1 ? '' : 's'} and added ${newGames.length} makeup game${newGames.length === 1 ? '' : 's'}. Sim the new makeup dates, then run SCHEDAUDIT again.`,
         ok: true,
       };
     }

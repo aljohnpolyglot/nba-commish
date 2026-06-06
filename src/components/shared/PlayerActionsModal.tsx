@@ -1,12 +1,15 @@
 import React from 'react';
-import { X, HeartPulse, TrendingUp } from 'lucide-react';
+import { X, HeartPulse, Repeat, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { NBAPlayer } from '../../types';
 import { PERSON_ACTION_DEFS, isPlayerEligible } from '../../data/personActionDefs';
 import { useGame } from '../../store/GameContext';
 import { MyFace, isRealFaceConfig } from './MyFace';
-import { isEuroIsolatedMode } from '../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
 import { getPlayerImage } from '../../utils/playerImage';
+import { computeAge } from '../../utils/helpers';
+import { isOnRoster } from '../../utils/teamLookup';
+import { isTransferWindowOpen } from '../../utils/transferWindow';
 
 interface PlayerActionsModalProps {
   player: NBAPlayer;
@@ -44,11 +47,29 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
   const currentYear = state.leagueStats?.year ?? new Date().getUTCFullYear();
   const userTeamId = isGM ? state.userTeamId ?? null : null;
   const euroIsolated = isEuroIsolatedMode(state);
+  const pbaIsolated = isPbaIsolatedMode(state);
+  const playerAge = computeAge(player, currentYear);
+  const isEuroAcademyPlayer =
+    euroIsolated &&
+    userTeamId != null &&
+    player.tid === userTeamId &&
+    !(player as any).promotedFromAcademy &&
+    playerAge >= 15 &&
+    playerAge <= 19;
+  const showTransferMarketAction =
+    euroIsolated &&
+    isGM &&
+    userTeamId != null &&
+    player.tid === userTeamId &&
+    isOnRoster(player) &&
+    isTransferWindowOpen(state.date, state.leagueStats) &&
+    !(state.transferListings ?? []).some(listing => listing.status === 'active' && listing.playerId === player.internalId);
   const actions = MODAL_ACTION_IDS
     .map(id => PERSON_ACTION_DEFS.find(def => def.id === id))
     .filter((def): def is NonNullable<typeof def> => !!def)
-    .filter(def => isPlayerEligible(player, def.eligibility, { currentYear, userTeamId, euroIsolated }))
+    .filter(def => isPlayerEligible(player, def.eligibility, { currentYear, userTeamId, euroIsolated, pbaIsolated }))
     .filter(def => !(euroIsolated && def.id === 'trade_player'))
+    .filter(def => !(isEuroAcademyPlayer && def.id === 'view_scouting'))
     .filter(def => !isGM || !GM_HIDDEN_ACTIONS.has(def.id));
 
   const faMarket = state.faBidding?.markets?.find(
@@ -123,6 +144,20 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
                       ? `${activeBidCount} competing bid${activeBidCount > 1 ? 's' : ''} on the market`
                       : 'Your offer is on the market'}
                   </p>
+                </div>
+              </button>
+            )}
+            {showTransferMarketAction && (
+              <button
+                onClick={() => onActionSelect('open_transfer_market')}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10 transition-all text-left group"
+              >
+                <div className="p-3 rounded-xl bg-rose-500/20 text-rose-300">
+                  <Repeat size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-rose-200 uppercase tracking-wider">Transfer Market</h4>
+                  <p className="text-xs text-slate-500 mt-0.5">Open the transfer listing flow for this player.</p>
                 </div>
               </button>
             )}

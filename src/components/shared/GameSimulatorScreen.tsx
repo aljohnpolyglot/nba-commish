@@ -31,6 +31,12 @@ interface GameSimulatorScreenProps {
   precomputedResult?: any;
 }
 
+function isBoxScoreRosterPlayer(player: NBAPlayer, teamId: number): boolean {
+  if (player.tid !== teamId) return false;
+  const status = player.status ?? 'Active';
+  return status !== 'Retired' && status !== 'Free Agent' && status !== 'Draft Prospect' && status !== 'Prospect';
+}
+
 function fmtMin(totalSeconds: number) {
   const m = Math.floor(totalSeconds / 60);
   const s = Math.floor(totalSeconds % 60);
@@ -168,6 +174,8 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
     if (type === 'blk')   return 'text-yellow-400';
     if (type === 'reb')   return 'text-blue-300';
     if (type === 'ft')    return 'text-gray-200';
+    if (type === 'injury') return 'text-rose-300';
+    if (type === 'fight') return 'text-orange-300';
     if (type === 'jumpball') return 'text-indigo-400';
     if (type === 'ghost') return 'text-gray-400';
     return 'text-gray-400';
@@ -558,8 +566,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                       {(() => {
                         const teamId = tm === 'HOME' ? game.homeTid : game.awayTid;
                         const allDnp = players.filter(p =>
-                          p.tid === teamId &&
-                          p.status === 'Active' &&
+                          isBoxScoreRosterPlayer(p, teamId) &&
                           !liveStats[tm][p.internalId]
                         );
                         // Pre-sim: filter to injured only so we don't spoil coach rotations

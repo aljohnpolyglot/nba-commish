@@ -2,6 +2,7 @@ import { formatExternalSalary } from '../../../../constants';
 import type { GameState, NBAPlayer as Player } from '../../../../types';
 import { normalizeDate } from '../../../../utils/helpers';
 import { routeUnsignedPlayers } from '../../../../services/externalSigningRouter';
+import type { ExternalRoutingResult } from '../../../../services/externalSigningRouter';
 import { getActiveUserBidMarketPlayerIds } from '../../../../services/freeAgencyBidding';
 import { applyMidSeasonExtensionsPass, applySeasonEndExtensionsPass } from './extensionPasses';
 import { applyDailyProgression, applySeasonalBreakouts } from '../../../../services/playerDevelopment/ProgressionEngine';
@@ -9,6 +10,7 @@ import { markLightningStrikes, resolveLightningStrikes } from '../../../../servi
 import { markFatherTimeInjections, resolveFatherTimeInjections, applyMiddleClassBoosts } from '../../../../services/playerDevelopment/washedAlgorithm';
 import { markBustLottery, resolveBustLottery } from '../../../../services/playerDevelopment/bustLottery';
 import { markTrainingCampShuffle, resolveTrainingCampChanges } from '../../../../services/playerDevelopment/trainingCampShuffle';
+import { runDailyDeathPass } from '../../../../services/playerDevelopment/deathEngine';
 
 type SeasonCalendarPassResult = {
   stateWithSim: GameState;
@@ -27,29 +29,7 @@ export function applySeasonCalendarPasses(stateWithSim: GameState): SeasonCalend
       stateWithSim.saveId ?? 'default',
     );
     stateWithSim = { ...stateWithSim, players: playersWithEvents };
-    if (events.length > 0) {
-      const eventNews = events.map(e => ({
-        id: `seasonal-${e.playerId}-${stateWithSim.leagueStats.year}`,
-        headline: e.type === 'breakout'
-          ? `${e.playerName} Turns Heads in Training Camp with Breakout ${e.attr.toUpperCase()} Improvement`
-          : e.type === 'late_bloomer'
-            ? `${e.playerName} Showing Surprising Development Heading Into Season`
-            : `Concerns Emerge Around ${e.playerName}'s ${e.attr.toUpperCase()} in Camp`,
-        content: e.type === 'breakout'
-          ? `${e.playerName} has shown significant improvement in ${e.attr} (+${e.delta}) during the offseason. Could be a steal.`
-          : e.type === 'late_bloomer'
-            ? `At ${stateWithSim.players.find(p => p.internalId === e.playerId)?.age ?? '??'}, ${e.playerName} is reportedly showing improved ${e.attr} (+${e.delta}). Late bloomers do exist.`
-            : `${e.playerName}'s ${e.attr} has regressed (${e.delta}) heading into camp. High expectations may need to be tempered.`,
-        date: stateWithSim.date,
-        type: 'player' as const,
-        isNew: true,
-        read: false,
-      }));
-      stateWithSim = {
-        ...stateWithSim,
-        news: [...eventNews, ...(stateWithSim.news ?? [])].slice(0, 200),
-      };
-    }
+    void events;
   }
 
   const prePreseasonDate = `${stateWithSim.leagueStats.year - 1}-10-01`;
@@ -137,6 +117,9 @@ export function applySeasonCalendarPasses(stateWithSim: GameState): SeasonCalend
     const protectedRoutingPlayerIds = getActiveUserBidMarketPlayerIds(stateWithSim);
     const { results: routedResults, players: routedPlayers } = routeUnsignedPlayers(stateWithSim, {
       protectedPlayerIds: protectedRoutingPlayerIds,
+      excludedDestinationLeagues: (stateWithSim.leagueStats as any)?.uiMode === 'pba_isolated'
+        ? new Set<ExternalRoutingResult['league']>(['PBA'])
+        : undefined,
     });
     if (routedResults.length > 0) {
       stateWithSim = { ...stateWithSim, players: routedPlayers };
@@ -243,6 +226,68 @@ export function applySeasonCalendarPasses(stateWithSim: GameState): SeasonCalend
 
     const { players: pCampResolve } = resolveTrainingCampChanges(stateWithSim.players, simDateNorm, currentYear);
     stateWithSim = { ...stateWithSim, players: pCampResolve };
+  }
+
+  {
+    const deathPass = runDailyDeathPass(stateWithSim);
+    if (deathPass.deaths.length > 0) {
+      const deathNews = deathPass.deaths.map((death, index) => {
+        const fullSentence = death.cause.startsWith(death.name);
+        const teamLead = death.teamName ? `${death.teamName} ` : '';
+        const roleLead = death.roleLabel ? `${death.roleLabel} ` : '';
+        const activeLead = death.wasActive
+          ? death.entityType === 'staff'
+            ? `${teamLead}${roleLead}`.trim()
+            : `${teamLead}${roleLead}`.trim()
+          : 'Former NBA ';
+        return {
+          id: `daily-death-${death.entityType}-${death.playerId ?? death.staffId ?? death.name}-${simDateNorm}-${index}`,
+          headline: death.wasActive
+            ? `${death.name} Passes Away at Age ${death.age}`
+            : `${death.name} Dies at Age ${death.age}`,
+          content: fullSentence
+            ? death.cause
+            : death.wasActive
+              ? `${activeLead ? `${activeLead} ` : ''}${death.name} passed away at age ${death.age}. Cause of death: ${death.cause}.`
+              : `${death.name} passed away at age ${death.age}. Cause of death: ${death.cause}.`,
+          date: stateWithSim.date,
+          type: death.wasActive ? 'player' as const : 'league' as const,
+          isNew: true,
+          read: false,
+        };
+      });
+      const deathHistory = deathPass.deaths.map(death => ({
+        text: death.cause.startsWith(death.name)
+          ? death.cause
+          : `${death.name} died at age ${death.age}. Cause of death: ${death.cause}.`,
+        date: stateWithSim.date,
+        type: 'Death',
+        ...(death.playerId ? { playerIds: [death.playerId] } : {}),
+      }));
+      stateWithSim = {
+        ...stateWithSim,
+        players: deathPass.players,
+        staff: deathPass.staff,
+        staffFreeAgents: deathPass.staffFreeAgents,
+        news: [...deathNews, ...(stateWithSim.news ?? [])].slice(0, 200),
+        history: [...(stateWithSim.history ?? []), ...deathHistory],
+        pendingDeathToasts: [
+          ...(stateWithSim.pendingDeathToasts ?? []),
+          ...deathPass.pendingDeathToasts,
+        ],
+      };
+    } else if (
+      deathPass.players !== stateWithSim.players ||
+      deathPass.staff !== stateWithSim.staff ||
+      deathPass.staffFreeAgents !== (stateWithSim.staffFreeAgents ?? [])
+    ) {
+      stateWithSim = {
+        ...stateWithSim,
+        players: deathPass.players,
+        staff: deathPass.staff,
+        staffFreeAgents: deathPass.staffFreeAgents,
+      };
+    }
   }
 
   const isPlayoffDay = !!(stateWithSim.playoffs && !stateWithSim.playoffs.bracketComplete);

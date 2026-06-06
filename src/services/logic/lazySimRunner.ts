@@ -13,6 +13,7 @@ import { getInsiderHandle } from '../../data/social/handles';
 import { generateLazySimNews } from '../news/lazySimNewsGenerator';
 import { convertTo2KRating } from '../../utils/helpers';
 import { applySeasonRollover } from './seasonRollover';
+import { applyDailyFamiliarityTick, applyDailyFatigueTick } from '../training/trainingTick';
 import { getOffseasonDayPlan, logPlanEvent } from '../offseason/offseasonPlan';
 import { autoResolveAllStarHosts } from '../allStar/hostAutoResolver';
 import { PlayoffSeries } from '../../types';
@@ -159,7 +160,7 @@ export const runLazySim = async (
       const iterStart = perfNow();
       const currentNorm = normalizeDate(state.date);
       state = autoResolveEuroSetupOffseasonTasks(state, options?.autoResolveOffseasonTasks === true);
-      currentPhase = getPhaseLabel(currentNorm, state.leagueStats.year);
+      currentPhase = getPhaseLabel(currentNorm, state.leagueStats.year, state.leagueStats);
 
       if (state.leagueStats?.uiMode === 'euro_isolated') {
         try {
@@ -214,7 +215,7 @@ export const runLazySim = async (
         }
       }
 
-      currentPhase = getPhaseLabel(currentNorm, seasonYear);
+      currentPhase = getPhaseLabel(currentNorm, seasonYear, state.leagueStats);
       report();
 
       state = repairEuroCompetitionScheduleForToday(state);
@@ -257,14 +258,14 @@ export const runLazySim = async (
       }
 
       const runSimulationStart = perfNow();
-      const { stateWithSim, allSimResults, perDayResults, userInterrupted } = await runSimulation(state, batchDays, undefined, options?.onGame);
+      let { stateWithSim, allSimResults, perDayResults, userInterrupted } = await runSimulation(state, batchDays, undefined, options?.onGame);
       const runSimulationMs = perfMs(runSimulationStart);
       console.log(`[LAZY_SIM] 🎮 iter ${iterNum} — after runSimulation: state.date=${stateWithSim.date}, simResults=${allSimResults.length}, perDayResults=${perDayResults.length}, userInterrupted=${!!userInterrupted}`);
       lastBatchSimResults = allSimResults; // track for silent mode return
       console.log(`[LAZY_SIM] ✓ 581 post-runSim — iter ${iterNum}`);
 
       const postProcessStart = perfNow();
-      const { updatedPlayers, updatedDraftPicks } = processSimulationResults(
+      let { updatedPlayers, updatedDraftPicks } = processSimulationResults(
         allSimResults,
         stateWithSim.players,
         stateWithSim.draftPicks,
@@ -274,6 +275,39 @@ export const runLazySim = async (
       );
       const postProcessMs = perfMs(postProcessStart);
       console.log(`[LAZY_SIM] ✓ 591 post-processSimulationResults — iter ${iterNum}, updatedPlayers=${updatedPlayers.length}`);
+
+      const trainingTickStart = perfNow();
+      const batchCalendarDays = Math.max(0, daysBetween(currentNorm, normalizeDate(stateWithSim.date)));
+      if (batchCalendarDays > 0) {
+        const teamsAfterTraining = applyDailyFamiliarityTick(
+          stateWithSim.teams,
+          state.date,
+          batchCalendarDays,
+          {
+            schedule: stateWithSim.schedule,
+            currentYear: stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
+            userTeamId: stateWithSim.userTeamId,
+            gameMode: stateWithSim.gameMode,
+          },
+        );
+        const isTrainingCampChecklistOpen =
+          !!state.offseasonChecklist &&
+          state.offseasonChecklist.trainingCamp !== 'done' &&
+          state.offseasonChecklist.trainingCamp !== 'skipped';
+        const teamsForFatigueTick = isTrainingCampChecklistOpen
+          ? teamsAfterTraining.map(team => ({ ...team, trainingCalendar: {} as any }))
+          : teamsAfterTraining;
+        updatedPlayers = applyDailyFatigueTick(
+          updatedPlayers,
+          teamsForFatigueTick,
+          state.date,
+          batchCalendarDays,
+          stateWithSim.schedule,
+        );
+        stateWithSim = { ...stateWithSim, teams: teamsAfterTraining };
+      }
+      const trainingTickMs = perfMs(trainingTickStart);
+      console.log(`[LAZY_SIM] ✓ 592 trainingTick — iter ${iterNum}, days=${batchCalendarDays}, ms=${trainingTickMs}`);
 
       let runningState = { ...state };
       const newHistoricalPoints: HistoricalStatPoint[] = [];
@@ -405,6 +439,14 @@ export const runLazySim = async (
       const safeSchedule = !yearAdvanced && stateWithSim.schedule.length === 0 && state.schedule.length > 0
         ? state.schedule
         : stateWithSim.schedule;
+      const committedLeagueStats = stateWithSim.leagueStats?.uiMode === 'pba_isolated'
+        ? {
+            ...runningState.leagueStats,
+            pbaConference: (stateWithSim.leagueStats as any).pbaConference,
+            pbaConferencePhase: (stateWithSim.leagueStats as any).pbaConferencePhase,
+            pbaConferenceChampions: (stateWithSim.leagueStats as any).pbaConferenceChampions,
+          }
+        : runningState.leagueStats;
 
       const commitStart = perfNow();
       state = {
@@ -414,7 +456,7 @@ export const runLazySim = async (
           ...runningState.stats,
           personalWealth: Number((runningState.stats.personalWealth + batchPayWealth + passiveBatchWealth).toFixed(2)),
         },
-        leagueStats: runningState.leagueStats,
+        leagueStats: committedLeagueStats,
         players: updatedPlayersWithPlayoffAwards,
         draftPicks: updatedDraftPicks,
         historicalStats: [...(state.historicalStats || []), ...newHistoricalPoints].slice(-365),
@@ -454,6 +496,7 @@ export const runLazySim = async (
         shamsMs,
         newsMs,
         playoffOutcomesMs,
+        trainingTickMs,
         commitMs,
         totalIterMs: perfMs(iterStart),
       });
@@ -474,7 +517,7 @@ export const runLazySim = async (
       state = advanceDateByOne(state);
       console.log(`[LAZY_SIM] ⏭️ iter ${iterNum} — advanceDateByOne → state.date=${state.date}, state.day=${state.day}`);
 
-      currentPhase = getPhaseLabel(normalizeDate(state.date), state.leagueStats.year);
+      currentPhase = getPhaseLabel(normalizeDate(state.date), state.leagueStats.year, state.leagueStats);
       report();
 
       await new Promise(resolve => setTimeout(resolve, 0));

@@ -1,6 +1,11 @@
 import { GameState, Game, NBAPlayer as Player } from '../../../../types';
 import { applyCupResult } from '../../../../services/nbaCup/updateCupStandings';
-import { resolveCupGroupStage, advanceKnockoutBracket } from '../../../../services/nbaCup/resolveGroupStage';
+import {
+    advanceKnockoutBracket,
+    isCupGroupStageScheduleComplete,
+    rebuildCupGroupStandingsFromSchedule,
+    resolveCupGroupStage,
+} from '../../../../services/nbaCup/resolveGroupStage';
 import { buildKnockoutGames, trimAndPairReplacements, hasCupTBDPlaceholders, materializeTBDSlots } from '../../../../services/nbaCup/scheduleInjector';
 import { computeCupAwards, applyPrizePool, applyCupAwardsToPlayers } from '../../../../services/nbaCup/awards';
 import { isNbaCupEnabled } from '../../../../utils/ruleFlags';
@@ -29,9 +34,8 @@ export function applyCupSimulationPass<TPatch extends SimulationPatchBase>(state
     }
 
     if (cup.status === 'group') {
-        const totalGroupGames = cup.groups.length * 10;
-        const playedGroupGames = schedule.filter(g => g.isNBACup && g.nbaCupRound === 'group' && g.played).length;
-        if (playedGroupGames >= totalGroupGames) {
+        cup = rebuildCupGroupStandingsFromSchedule(cup, schedule);
+        if (isCupGroupStageScheduleComplete(cup, schedule)) {
             cup = resolveCupGroupStage(cup, schedule, stateWithSim.saveId ?? 'default', stateWithSim.teams);
             const prevYr = stateWithSim.leagueStats.year - 1;
             const qfMatchups = cup.knockout
@@ -40,9 +44,6 @@ export function applyCupSimulationPass<TPatch extends SimulationPatchBase>(state
             const qfTeams = qfMatchups.flatMap(m => [m.tid1, m.tid2]);
 
             if (hasCupTBDPlaceholders(schedule)) {
-                for (const ko of cup.knockout) {
-                    if (ko.round === 'SF') ko.countsTowardRecord = false;
-                }
                 const koSet = new Set(qfTeams);
                 const allTids = stateWithSim.teams.filter(t => t.id >= 0 && t.id < 100).map(t => t.id);
                 const nonKOTeams = allTids.filter(t => !koSet.has(t));

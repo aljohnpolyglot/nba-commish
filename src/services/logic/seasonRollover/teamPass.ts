@@ -3,11 +3,13 @@ import { selectCompetitionTeamTids } from '../../competition/competitionSchedule
 import { evaluateSeasonForOwner, type SeasonStatsForOwner } from '../../euro/evaluateSeasonForOwner';
 import { drawCupGroups } from '../../nbaCup/drawGroups';
 import { processNBAStaffLifecycle } from '../../staff/nbaRealStaffSeed';
+import { processStaffRetirementsForTeams, type StaffRetirementRecord } from '../../staff/staffRetirement';
 import * as tycoonBudget from '../../tycoon/budgetEngine';
 import * as tycoonFacility from '../../tycoon/facilityEngine';
 import * as tycoonLedger from '../../tycoon/ledgerEngine';
 import * as tycoonSponsor from '../../tycoon/sponsorshipEngine';
 import { formatGameDateShort, getRolloverDate } from '../../../utils/dateUtils';
+import { isLicensedSpanishEuroleagueClub, selectEuroleagueParticipants } from '../../../utils/euroleagueQualification';
 import { isNbaCupEnabled } from '../../../utils/ruleFlags';
 import { getTeamFullName } from '../../../utils/teamNames';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
@@ -41,6 +43,7 @@ export interface SeasonRolloverTeamPassArgs {
   nextYear: number;
   teamsAfterJerseyRetirements: NonNullable<GameState['teams']>;
   playersFinalized: NBAPlayer[];
+  staffFreeAgentsForHiring?: StaffFreeAgent[];
 }
 
 export interface SeasonRolloverTeamPassResult {
@@ -52,12 +55,17 @@ export interface SeasonRolloverTeamPassResult {
   euroBankruptcyNews: NewsItem[];
   euroBankruptcyHistory: HistoryEntry[];
   pendingEuroBankruptcy: GameState['pendingEuroBankruptcy'] | undefined;
+  pendingEuroleagueWelcome: GameState['pendingEuroleagueWelcome'] | undefined;
   euroHistoricalAwards: HistoricalAward[];
   nbaStaffLifecycle: {
     teams: NonNullable<GameState['teams']>;
     historyEntries: HistoryEntry[];
     freeAgents: StaffFreeAgent[];
+    consumedFreeAgentIds: string[];
+    retirementRecords: StaffRetirementRecord[];
   };
+  nonNBAStaffRetirementHistory: HistoryEntry[];
+  staffRetirementRecords: StaffRetirementRecord[];
 }
 
 export function runSeasonRolloverTeamPass({
@@ -66,6 +74,7 @@ export function runSeasonRolloverTeamPass({
   nextYear,
   teamsAfterJerseyRetirements,
   playersFinalized,
+  staffFreeAgentsForHiring = [],
 }: SeasonRolloverTeamPassArgs): SeasonRolloverTeamPassResult {
   const teamsAfterCashReset = teamsAfterJerseyRetirements.map(team =>
     team.cashUsedInTrades ? { ...team, cashUsedInTrades: 0 } : team,
@@ -161,6 +170,7 @@ export function runSeasonRolloverTeamPass({
   });
 
   let pendingEuroBankruptcy: GameState['pendingEuroBankruptcy'] | undefined;
+  let pendingEuroleagueWelcome: GameState['pendingEuroleagueWelcome'] | undefined;
   const euroBankruptcyNews: NewsItem[] = [];
   const euroBankruptcyHistory: HistoryEntry[] = [];
   const nonNBATeamsWithTycoon = (state.nonNBATeams ?? []).map(team => ({ ...team }));
@@ -297,6 +307,27 @@ export function runSeasonRolloverTeamPass({
         console.warn(`[tycoon] year-end snapshot failed for team ${team.id ?? team.tid}`, error);
       }
     }
+
+    const euroleagueSelection = selectEuroleagueParticipants({
+      nonNBATeams: nonNBATeamsWithTycoon as any,
+      clubAliasMap: state.clubAliasMap,
+      userTeamId: state.userTeamId,
+    }, state.activeCompetitions?.find(competition => competition.id === 'euroleague')?.teamCount);
+    const userTeam = state.gameMode === 'gm' && state.userTeamId != null
+      ? (nonNBATeamsWithTycoon as any[]).find(team => (team.tid ?? team.id) === state.userTeamId)
+      : null;
+    if (
+      userTeam &&
+      euroleagueSelection.wildcardTid === state.userTeamId &&
+      !isLicensedSpanishEuroleagueClub(userTeam)
+    ) {
+      pendingEuroleagueWelcome = {
+        season: nextYear,
+        teamId: state.userTeamId,
+        teamName: getTeamFullName(userTeam),
+        endesaFinish: euroleagueSelection.wildcardFinish ?? undefined,
+      };
+    }
   }
 
   const euroHistoricalAwards: HistoricalAward[] = euroCompetitionResolutions.flatMap(result => {
@@ -320,25 +351,51 @@ export function runSeasonRolloverTeamPass({
     ];
   });
 
+  const nonNBAStaffRetirementPass = processStaffRetirementsForTeams(
+    nonNBATeamsWithTycoon as any[],
+    currentYear,
+    state.date ?? formatGameDateShort(getRolloverDate(currentYear)),
+  );
+
   const nbaStaffLifecycle = state.leagueType !== 'fictional'
     ? processNBAStaffLifecycle(
         teamsWithSweptTPEs,
         nextYear,
         state.date ?? formatGameDateShort(getRolloverDate(currentYear)),
         state.gameMode === 'gm' ? state.userTeamId : null,
+        staffFreeAgentsForHiring,
       )
-    : { teams: teamsWithSweptTPEs, historyEntries: [], freeAgents: [] };
+    : (() => {
+        const fictionalRetirementPass = processStaffRetirementsForTeams(
+          teamsWithSweptTPEs,
+          currentYear,
+          state.date ?? formatGameDateShort(getRolloverDate(currentYear)),
+        );
+        return {
+          teams: fictionalRetirementPass.teams,
+          historyEntries: fictionalRetirementPass.historyEntries as HistoryEntry[],
+          freeAgents: [],
+          consumedFreeAgentIds: [],
+          retirementRecords: fictionalRetirementPass.retirements,
+        };
+      })();
 
   return {
     teamsWithSweptTPEs,
-    nonNBATeamsWithTycoon,
+    nonNBATeamsWithTycoon: nonNBAStaffRetirementPass.teams as NonNullable<GameState['nonNBATeams']>,
     nbaCupPatch,
     euroCompetitionResolutions,
     euroChampionHistory,
     euroBankruptcyNews,
     euroBankruptcyHistory,
     pendingEuroBankruptcy,
+    pendingEuroleagueWelcome,
     euroHistoricalAwards,
     nbaStaffLifecycle,
+    nonNBAStaffRetirementHistory: nonNBAStaffRetirementPass.historyEntries as HistoryEntry[],
+    staffRetirementRecords: [
+      ...nbaStaffLifecycle.retirementRecords,
+      ...nonNBAStaffRetirementPass.retirements,
+    ],
   };
 }

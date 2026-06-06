@@ -22,6 +22,21 @@ const ENDORSEMENT_SLOT_CAP = 4;
 const COACHING_ROLES = ['Head Coach', 'Assistant Coach', 'Assistant Coach 2', 'Assistant Coach 3'];
 const SUPPORT_ROLES = ['Head of Sports Science', 'Head Physio', 'Player Development Coach', 'Chief Scout', 'Head of Analytics'];
 
+const canonicalStaffRole = (role: unknown): string => {
+  const raw = String(role ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!raw) return '';
+  if (raw === 'head coach') return 'Head Coach';
+  if (raw === 'assistant coach' || raw === 'lead assistant coach') return 'Assistant Coach';
+  if (raw === 'assistant coach 2') return 'Assistant Coach 2';
+  if (raw === 'assistant coach 3') return 'Assistant Coach 3';
+  if (raw === 'head of sports science') return 'Head of Sports Science';
+  if (raw === 'head physio') return 'Head Physio';
+  if (raw === 'player development coach') return 'Player Development Coach';
+  if (raw === 'chief scout') return 'Chief Scout';
+  if (raw === 'head of analytics') return 'Head of Analytics';
+  return String(role ?? '').trim();
+};
+
 type LeagueYearState = Pick<GameState, 'date' | 'leagueStats' | 'offseasonChecklist' | 'schedule'>;
 
 export function lsYearOf(state: { leagueStats?: { year?: number } | null }): number {
@@ -35,6 +50,7 @@ export function getUpcomingTrainingCampISO(state: {
   const ls = state.leagueStats as any;
   const lsYear = lsYearOf(state);
   const todayNorm = state.date ? normalizeDate(state.date) : '';
+  if (ls?.uiMode === 'pba_isolated') return todayNorm;
   const currentMonth = state.date ? parseGameDate(state.date).getUTCMonth() + 1 : 7;
   const currentYear = state.date ? parseGameDate(state.date).getUTCFullYear() : lsYear;
   let seasonYear = computeUpcomingSeasonYear(currentMonth, currentYear, lsYear);
@@ -114,17 +130,17 @@ export function getSponsorCoverage(team: any, currentYear: number): { dueCount: 
     dueCoreCount,
     emptySlotCount,
     endorsementCount,
-    complete: dueSlots.length === 0 && emptySlotCount === 0 && endorsementCount >= ENDORSEMENT_SLOT_CAP,
+    complete: dueSlots.length === 0 && emptySlotCount === 0,
   };
 }
 
 export function getStaffOpenByGroup(team: any, staff: any, currentYear: number): { coaching: number; support: number } {
   const members: any[] = team?.tycoon?.staffMembers ?? [];
-  const fired: string[] = team?.tycoon?.firedStaffRoles ?? [];
+  const fired = new Set<string>(((team?.tycoon?.firedStaffRoles ?? []) as string[]).map(canonicalStaffRole));
   const teamName: string | undefined = team?.name;
   const teamFullName = team ? getTeamFullName(team) : teamName;
   const persistedEntries = members
-    .map((m): [string | undefined, any] => [m.role, m])
+    .map((m): [string, any] => [canonicalStaffRole(m.role), m])
     .filter((entry): entry is [string, any] => !!entry[0]);
   const persistedByRole = new Map<string, any>(persistedEntries);
   const headCoach = (staff?.coaches ?? []).find(
@@ -139,7 +155,7 @@ export function getStaffOpenByGroup(team: any, staff: any, currentYear: number):
     .filter((s: any) => !members.some(m => m.name === s.name));
   const missingAssistantRoles = COACHING_ROLES
     .filter(role => role.startsWith('Assistant Coach'))
-    .filter(role => !fired.includes(role) && !persistedByRole.has(role));
+    .filter(role => !fired.has(role) && !persistedByRole.has(role));
   const autoFilledAssistants = new Map<string, any>();
   missingAssistantRoles.slice(0, realAssistantSlots.length).forEach((role, index) => {
     autoFilledAssistants.set(role, realAssistantSlots[index]);
@@ -154,7 +170,8 @@ export function getStaffOpenByGroup(team: any, staff: any, currentYear: number):
     return null;
   };
   const isOpenOrExpiring = (role: string) => {
-    if (fired.includes(role)) return true;
+    const canonicalRole = canonicalStaffRole(role);
+    if (fired.has(canonicalRole)) return true;
     const persisted = persistedByRole.get(role);
     if (persisted) return (yearsLeftFor(persisted) ?? 0) <= 0;
     if (role === 'Head Coach') {

@@ -1,5 +1,6 @@
 import type { Game } from '../../types';
 import type { CompetitionDayOfWeek, CompetitionSpec } from './types';
+import { selectEuroleagueParticipants } from '../../utils/euroleagueQualification';
 
 type CompetitionTeamSource = {
   nonNBATeams?: Array<{ tid: number; league?: string; pop?: number }>;
@@ -10,6 +11,7 @@ type CompetitionTeamSource = {
 type CompetitionScheduleRepairState = CompetitionTeamSource & {
   date: string;
   schedule: Game[];
+  leagueStats?: { uiMode?: string; pbaConference?: string; pbaConferencePhase?: string } | null;
 };
 
 const DAY_TO_INDEX: Record<CompetitionDayOfWeek, number> = {
@@ -41,9 +43,7 @@ export function selectCompetitionTeamTids(spec: CompetitionSpec, source: Competi
     return capTeamCount(uniqueTids(teams.filter(t => t.league === 'Endesa').map(t => t.tid)), spec.teamCount, source.userTeamId);
   }
   if (spec.teamSelector === 'allEuroleague') {
-    const euroTids = teams.filter(t => t.league === 'Euroleague').map(t => source.clubAliasMap?.[t.tid] ?? t.tid);
-    const mergedClubTids = Object.values(source.clubAliasMap ?? {});
-    return capTeamCount(uniqueTids([...euroTids, ...mergedClubTids]), spec.teamCount, source.userTeamId);
+    return selectEuroleagueParticipants(source, spec.teamCount).tids;
   }
   // Domestic-cup selectors (Supercopa, Copa del Rey) — Endesa-only, sorted by
   // market size as a stand-in for "qualified contender". Real Supercopa uses
@@ -108,11 +108,16 @@ function roundRobin(spec: CompetitionSpec, teams: { tid: number }[], seasonStart
 
   const pool = teams.length % 2 === 0 ? [...teams] : [...teams, { tid: -1 }];
   const rounds = pool.length - 1;
+  const requestedGamesPerTeam = Number(spec.gamesPerTeam ?? rounds);
+  const firstLegRounds = requestedGamesPerTeam > 0 && requestedGamesPerTeam < rounds
+    ? Math.max(1, Math.floor(requestedGamesPerTeam))
+    : rounds;
   const half = pool.length / 2;
   const phaseForRound = (round: number) => spec.format === 'regular-league' ? `r${round}` : 'group';
   const buildLeg = (reverseHomeAway: boolean) => {
     let rotation = [...pool];
-    for (let round = 1; round <= rounds; round++) {
+    const roundLimit = reverseHomeAway ? rounds : firstLegRounds;
+    for (let round = 1; round <= roundLimit; round++) {
       for (let i = 0; i < half; i++) {
         const a = rotation[i];
         const b = rotation[rotation.length - 1 - i];
@@ -128,7 +133,7 @@ function roundRobin(spec: CompetitionSpec, teams: { tid: number }[], seasonStart
   };
 
   buildLeg(false);
-  if ((spec.gamesPerTeam ?? 0) >= (teams.length - 1) * 2) {
+  if (requestedGamesPerTeam >= (teams.length - 1) * 2) {
     buildLeg(true);
   }
   return games;
@@ -224,6 +229,10 @@ function dateForCompetitionSeason(season: number, month: number, day: number): s
 
 function expectedRegularSeasonGames(spec: CompetitionSpec, teamCount: number): number {
   if (teamCount < 2) return 0;
+  const gamesPerTeam = Math.floor(Number(spec.gamesPerTeam ?? teamCount - 1));
+  if (gamesPerTeam > 0 && gamesPerTeam < teamCount - 1) {
+    return Math.floor((teamCount * gamesPerTeam) / 2);
+  }
   const singleRoundRobin = (teamCount * (teamCount - 1)) / 2;
   return (spec.gamesPerTeam ?? 0) >= (teamCount - 1) * 2 ? singleRoundRobin * 2 : singleRoundRobin;
 }
@@ -232,15 +241,45 @@ function gameKey(game: Pick<Game, 'homeTid' | 'awayTid'>): string {
   return `${game.homeTid}->${game.awayTid}`;
 }
 
+function pbaCompetitionIdForConference(conference?: string | null): string {
+  if (conference === 'commissioners') return 'pba-commissioners-cup';
+  if (conference === 'governors') return 'pba-governors-cup';
+  return 'pba-philippine-cup';
+}
+
+function activePbaCompetitionId(state: CompetitionScheduleRepairState): string | null {
+  const leagueStats = state.leagueStats as any;
+  if (leagueStats?.uiMode !== 'pba_isolated') return null;
+  if (leagueStats.pbaConferencePhase === 'offseason' || leagueStats.pbaConferencePhase === 'complete') return null;
+  return pbaCompetitionIdForConference(leagueStats.pbaConference);
+}
+
+function shouldHandleCompetitionSpec(state: CompetitionScheduleRepairState, spec: CompetitionSpec): boolean {
+  const activePbaId = activePbaCompetitionId(state);
+  if (!spec.id.startsWith('pba-')) return true;
+  if ((state.leagueStats as any)?.uiMode !== 'pba_isolated') return true;
+  return activePbaId === spec.id;
+}
+
+function pruneInactivePbaGames(schedule: Game[], state: CompetitionScheduleRepairState): Game[] {
+  if ((state.leagueStats as any)?.uiMode !== 'pba_isolated') return schedule;
+  const activePbaId = activePbaCompetitionId(state);
+  return schedule.filter(game =>
+    !String(game.competitionId ?? '').startsWith('pba-') ||
+    game.played ||
+    (activePbaId != null && game.competitionId === activePbaId),
+  );
+}
+
 export function repairCompetitionSchedules(
   state: CompetitionScheduleRepairState,
   specs: CompetitionSpec[] = [],
   season: number,
 ): Game[] {
-  let schedule = [...state.schedule];
+  let schedule = pruneInactivePbaGames([...state.schedule], state);
   let nextGid = Math.max(700_000, ...schedule.map(game => game.gid)) + 1;
 
-  for (const spec of specs.filter(s => s.format === 'regular-league' || s.format === 'group-knockout')) {
+  for (const spec of specs.filter(s => (s.format === 'regular-league' || s.format === 'group-knockout') && shouldHandleCompetitionSpec(state, s))) {
     const teamTids = selectCompetitionTeamTids(spec, state);
     const expected = expectedRegularSeasonGames(spec, teamTids.length);
     if (expected === 0) continue;
@@ -249,12 +288,15 @@ export function repairCompetitionSchedules(
     const seasonEnd = dateForCompetitionSeason(season, spec.seasonEnd.month, spec.seasonEnd.day);
     const current = schedule.filter(game => game.competitionId === spec.id);
     const regularCurrent = current.filter(game => game.competitionPhase === 'group' || game.competitionPhase?.startsWith('r'));
+    const otherCurrent = current.filter(game => !(game.competitionPhase === 'group' || game.competitionPhase?.startsWith('r')));
     const inWindow = regularCurrent.filter(game => game.date >= seasonStart && game.date <= seasonEnd);
     const participants = new Set(regularCurrent.flatMap(game => [game.homeTid, game.awayTid]));
     const isSparse = inWindow.length < Math.floor(expected * 0.8) || teamTids.some(tid => !participants.has(tid));
-    if (!isSparse) continue;
+    const unplayedRegular = regularCurrent.filter(game => !game.played);
+    const isOverScheduled = inWindow.length > expected && unplayedRegular.length > 0;
+    if (!isSparse && !isOverScheduled) continue;
 
-    const played = current.filter(game => game.played);
+    const played = regularCurrent.filter(game => game.played);
     const playedKeys = new Set(played.map(gameKey));
     const repairStart = new Date(Math.max(new Date(seasonStart).getTime(), new Date(state.date).getTime()));
     const regenerated = generateForCompetition(spec, teamTids.map(tid => ({ tid })), repairStart, nextGid)
@@ -262,6 +304,7 @@ export function repairCompetitionSchedules(
     nextGid += regenerated.length;
     schedule = [
       ...schedule.filter(game => game.competitionId !== spec.id),
+      ...otherCurrent,
       ...played,
       ...regenerated,
     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.gid - b.gid);

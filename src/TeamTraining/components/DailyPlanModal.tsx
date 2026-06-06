@@ -113,7 +113,7 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -129,16 +129,16 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
             initial={{ opacity: 0, scale: 0.9, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 30 }}
-            className="relative w-full md:max-w-4xl bg-slate-900 md:border border-slate-800 md:rounded-[3rem] rounded-none shadow-[0_0_100px_rgba(0,0,0,1)] overflow-hidden flex flex-col md:max-h-[90vh] h-full"
+            className="relative w-full md:max-w-4xl bg-slate-900 md:border border-slate-800 md:rounded-[3rem] rounded-none shadow-[0_0_100px_rgba(0,0,0,1)] overflow-hidden flex flex-col md:max-h-[calc(100vh-2rem)] h-full"
           >
             {/* Header */}
             <div className="p-6 md:p-10 border-b border-slate-800 bg-slate-900/50">
-               <div className="flex justify-between items-start mb-4 md:mb-6">
-                  <div className="flex items-center gap-4 md:gap-6">
+               <div className="flex justify-between items-start gap-3 mb-4 md:mb-6">
+                  <div className="flex items-center gap-4 md:gap-6 min-w-0">
                      <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-3xl bg-indigo-600/20 flex items-center justify-center border border-indigo-500/30">
                         <Calendar size={24} className="text-indigo-400 md:w-8 md:h-8" />
                      </div>
-                     <div>
+                     <div className="min-w-0">
                         <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tighter leading-none mb-1 md:mb-2 lg:text-3xl">
                           {day === 0 ? 'Team Practice Template' : `Plan Day ${day}`}
                         </h2>
@@ -154,7 +154,7 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                   <button onClick={() => {
                       onSave(localIntensity, { ...localAllocations, systemFocus: resolvedSystems() }, localParadigm);
                       onClose();
-                  }} className="p-2 hover:bg-slate-800 rounded-full text-slate-500 hover:text-white transition-all">
+                  }} className="p-2 hover:bg-slate-800 rounded-full text-slate-500 hover:text-white transition-all flex-shrink-0">
                     <X size={20} className="md:w-6 md:h-6" />
                   </button>
                </div>

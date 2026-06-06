@@ -16,6 +16,19 @@ type StaffActionContext = {
   userTeamId: number;
 };
 
+const closePresentRanges = (career: string, endYear: number) =>
+  String(career ?? '').replace(/(\d{4})\s*-\s*Present/gi, `$1-${endYear}`);
+
+const appendCareerRow = (career: string, startYear: number, teamName: string, role: string) => {
+  const normalizedRole = role.replace(/ \d+$/, '');
+  const roleLabel = normalizedRole === 'Assistant Coach' ? 'Assistant Coach' : normalizedRole;
+  const row = `${startYear}-Present ${teamName} (${roleLabel})`;
+  const base = String(career ?? '').trim();
+  return base ? `${base}\n${row}` : row;
+};
+
+const displayStaffRole = (role: string) => role.replace(/ \d+$/, '');
+
 export const useFrontOfficeStaffActions = ({
   applyTycoonMutation,
   currentYear,
@@ -45,17 +58,34 @@ export const useFrontOfficeStaffActions = ({
         ...(person ?? {}),
         id: person?.id ?? `staff-${toRole.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
         role: toRole,
+        career_history: appendCareerRow(
+          closePresentRanges(person?.career_history ?? person?.coaching_career ?? '', currentYear),
+          currentYear,
+          selectedTeamName,
+          toRole,
+        ),
+        coaching_career: appendCareerRow(
+          closePresentRanges(person?.coaching_career ?? person?.career_history ?? '', currentYear),
+          currentYear,
+          selectedTeamName,
+          toRole,
+        ),
       });
       if (!teamState.tycoon.firedStaffRoles.includes(fromRole)) teamState.tycoon.firedStaffRoles.push(fromRole);
       teamState.tycoon.firedStaffRoles = teamState.tycoon.firedStaffRoles.filter((role: string) => role !== toRole);
     });
-    pushPersonnelHistory(`${selectedTeamName} promoted ${person?.name ?? 'a staff member'} from ${fromRole} to ${toRole}.`);
+    pushPersonnelHistory(`${selectedTeamName} promoted ${person?.name ?? 'a staff member'} from ${displayStaffRole(fromRole)} to ${displayStaffRole(toRole)}.`);
   };
 
   const handleFireStaff = (role: string) => {
     const fired = (selectedTeam?.tycoon?.staffMembers ?? []).find((staff: any) => staff.role === role);
     applyTycoonMutation(userTeamId, (teamState: any) => {
       ensureStaffShell(teamState);
+      const currentMember = teamState.tycoon.staffMembers.find((staff: any) => staff.role === role);
+      if (currentMember) {
+        currentMember.career_history = closePresentRanges(currentMember.career_history ?? currentMember.coaching_career ?? '', currentYear);
+        currentMember.coaching_career = closePresentRanges(currentMember.coaching_career ?? currentMember.career_history ?? '', currentYear);
+      }
       teamState.tycoon.staffMembers = teamState.tycoon.staffMembers.filter((staff: any) => staff.role !== role);
       if (!teamState.tycoon.firedStaffRoles.includes(role)) teamState.tycoon.firedStaffRoles.push(role);
     });
@@ -75,7 +105,7 @@ export const useFrontOfficeStaffActions = ({
         },
       });
     }
-    pushPersonnelHistory(`${selectedTeamName} fired ${fired?.name ?? 'a staff member'} as ${role}.`);
+    pushPersonnelHistory(`${selectedTeamName} fired ${fired?.name ?? 'a staff member'} as ${displayStaffRole(role)}.`);
   };
 
   const handleHireStaff = (hire: any) => {
@@ -99,6 +129,18 @@ export const useFrontOfficeStaffActions = ({
           face: hire.face,
           staffImageId: hire.staffImageId,
           playerPortraitUrl: hire.playerPortraitUrl,
+          career_history: appendCareerRow(
+            closePresentRanges(hire.career_history ?? hire.coaching_career ?? '', currentYear),
+            currentYear,
+            selectedTeamName,
+            hire.role,
+          ),
+          coaching_career: appendCareerRow(
+            closePresentRanges(hire.coaching_career ?? hire.career_history ?? '', currentYear),
+            currentYear,
+            selectedTeamName,
+            hire.role,
+          ),
         },
       ];
       teamState.tycoon.cashOnHand = Math.round((teamState.tycoon.cashOnHand ?? 0) - (hire.bonus ?? 0));
@@ -115,8 +157,8 @@ export const useFrontOfficeStaffActions = ({
           ...(state.history ?? []),
           {
             text: isExtension
-              ? `${hire.name} signed a ${hire.years}-year extension with ${selectedTeamName} as ${hire.role}.`
-              : `${selectedTeamName} hired ${hire.name} as ${hire.role}.`,
+              ? `${hire.name} signed a ${hire.years}-year extension with ${selectedTeamName} as ${displayStaffRole(hire.role)}.`
+              : `${selectedTeamName} hired ${hire.name} as ${displayStaffRole(hire.role)}.`,
             date: state.date,
             type: 'Personnel',
             tid: userTeamId,

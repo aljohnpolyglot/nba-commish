@@ -14,6 +14,9 @@ import { useGame } from '../../store/GameContext';
 import { normalizeDate, getOwnTeamId } from '../../utils/helpers';
 import { LOTTERY_PRESETS, DEFAULT_DRAFT_TYPE, computeTopKOdds } from '../../lib/lotteryPresets';
 import { RigLotteryModal } from '../modals/RigLotteryModal';
+import { isPbaIsolatedMode } from '../../utils/uiMode';
+import { buildPbaDraftRankingRows } from '../../services/pba/draftRules';
+import { getTeamFullName } from '../../utils/teamNames';
 
 // ─── Fanspo CSS (injected once) ──────────────────────────────────────────────
 const FANSPO_CSS = `
@@ -227,9 +230,14 @@ const LotteryBall = ({ number, state: bs, team }: BallProps) => (
 
 export const DraftLotteryView = () => {
   const { state, dispatchAction } = useGame();
+  const pbaMode = isPbaIsolatedMode(state);
   const season = state.leagueStats?.year ?? new Date(state.date).getFullYear();
   const activePreset = LOTTERY_PRESETS[state.leagueStats?.draftType ?? DEFAULT_DRAFT_TYPE] ?? LOTTERY_PRESETS[DEFAULT_DRAFT_TYPE];
   const ownTid = getOwnTeamId(state);
+  const pbaDraftRows = useMemo(
+    () => buildPbaDraftRankingRows((state as any).nonNBATeams ?? [], state.boxScores ?? [], season),
+    [season, state.boxScores, (state as any).nonNBATeams],
+  );
 
   // Resolve the CURRENT owner of a given original team's upcoming R1 pick.
   // Lottery balls are tied to record, so the "winning" team on the ball is the
@@ -382,6 +390,113 @@ export const DraftLotteryView = () => {
       ...revealedPicks.sort((a, b) => getLotteryResultPick(a) - getLotteryResultPick(b)).map(r => ({ currentPick: getLotteryResultPick(r), team: r.team, isRevealed: true, change: r.change })),
     ];
   }, [activeTableMode, revealIndex, results, activeTeams, numTeams]);
+
+  if (pbaMode) {
+    return (
+      <div className="h-full overflow-y-auto custom-scrollbar">
+        <div className="tss-1cq2wla-root">
+          <div className="mui-we3dsy">
+            <div className="px-4">
+              <div className="flex justify-between items-center py-4">
+                <div>
+                  <h4 className="tss-u92z5m-headerTitle text-2xl md:text-3xl">
+                    {season} PBA Draft Order
+                  </h4>
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.22em] text-white/40">
+                    Governors 30% · Commissioner's 30% · Philippine 40%
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <hr className="tss-81m6u9-headerDivider" />
+
+          <div className="px-4 py-6">
+            <article className="bg-[#1A1A1A] rounded-sm overflow-hidden">
+              <div className="p-4 flex items-center justify-between gap-3 border-b border-white/5">
+                <h6 className="text-sm font-bold uppercase tracking-widest">
+                  Draft Order
+                </h6>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">
+                  PBA rankings
+                </span>
+              </div>
+
+              <div className="mui-1auy16m">
+                <table className="tss-p9ljn4-table">
+                  <thead>
+                    <tr>
+                      <th className="text-left">RANK</th>
+                      <th className="text-left">TEAM</th>
+                      <th>GOV</th>
+                      <th>COM</th>
+                      <th>PHI</th>
+                      <th className="text-right">TOTAL</th>
+                    </tr>
+                  </thead>
+                  <motion.tbody layout>
+                    <AnimatePresence>
+                      {pbaDraftRows.map((row, index) => {
+                        const team = row.team as any;
+                        const logoUrl = team?.logoUrl ?? team?.imgURL;
+                        const teamName = getTeamFullName(team) || team?.name || 'PBA Team';
+                        const teamAbbrev = team?.abbrev ?? 'PBA';
+                        const delay = index * 0.05;
+                        return (
+                          <motion.tr
+                            key={row.tid}
+                            layout
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.32, delay }}
+                            className="transition-colors duration-300 hover:bg-white/5"
+                          >
+                            <th className="w-16 text-left font-black text-white/50">{index + 1}</th>
+                            <td>
+                              <div className="flex items-center gap-3">
+                                {logoUrl ? (
+                                  <img
+                                    src={logoUrl}
+                                    alt=""
+                                    className="tss-uqamws-teamLogo"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <div className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] font-black text-white/40">
+                                    {teamAbbrev}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="font-bold text-white truncate">
+                                    {teamName}
+                                  </p>
+                                  {team?.city && (
+                                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/25">
+                                      {team.city}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="text-center font-mono text-white/60">{row.governorsRank}</td>
+                            <td className="text-center font-mono text-white/60">{row.commissionersRank}</td>
+                            <td className="text-center font-mono text-white/60">{row.philippineRank}</td>
+                            <td className="text-right font-mono text-[#f15a22] font-black">{row.totalScore.toFixed(1)}</td>
+                          </motion.tr>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </motion.tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar">

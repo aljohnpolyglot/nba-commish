@@ -4,6 +4,7 @@ import { useGame } from '../../../../../store/GameContext';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { buildFullDraftSlotMap, comparePicks, formatPickLabel } from '../../../../../services/draft/draftClassStrength';
 import { isNoDraftLeague } from '../../../../../services/offseason/offseasonState';
+import { resolveAnyTeam } from '../../../../../utils/teamLookup';
 
 interface DraftPicksProps {
   teamId: number;
@@ -12,7 +13,7 @@ interface DraftPicksProps {
 export function DraftPicks({ teamId }: DraftPicksProps) {
   const { state } = useGame();
   const noDraft = isNoDraftLeague(state.leagueStats as any);
-  const team = state.teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const currentYear = state.leagueStats?.year || 2026;
   const draftComplete = Boolean((state as any).draftComplete);
   const lotterySlotByTid = useMemo(
@@ -98,7 +99,7 @@ export function DraftPicks({ teamId }: DraftPicksProps) {
                 <div className="space-y-2">
                   {seasonPicks.map(pick => {
                     const isOwnPick = pick.originalTid === teamId;
-                    const origTeam = state.teams.find(t => t.id === pick.originalTid);
+                    const origTeam = resolveAnyTeam(pick.originalTid, state.teams, state.nonNBATeams ?? []);
 
                     return (
                       <div
@@ -159,7 +160,7 @@ export function DraftPicks({ teamId }: DraftPicksProps) {
               </h2>
               <div className="space-y-2 opacity-50">
                 {[...tradedAway].sort((a, b) => a.season - b.season || a.round - b.round).map(pick => {
-                  const ownerTeam = state.teams.find(t => t.id === pick.tid);
+                  const ownerTeam = resolveAnyTeam(pick.tid, state.teams, state.nonNBATeams ?? []);
                   return (
                     <div
                       key={pick.dpid}

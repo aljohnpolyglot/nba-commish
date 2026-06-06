@@ -1,0 +1,2871 @@
+[
+    {
+        "teamName": "BARANGAY GINEBRA SAN MIGUEL",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Mr. Tim Cone",
+            "TEAM MANAGER": "Mr. Alfrancis Chua, Mr. Raymond Rodriguez (asst)",
+            "TEAM GOVERNOR": "Mr. Alfrancis Chua",
+            "ASST COACHES": "Richard del Rosario \nOlsen Racela\nPatrick Partosa\nJohnny Abarrientos\nJamil Lipae",
+            "COMPANY ADDRESS": "6th Floor, San Miguel Properties Centre, St. Francis. Street., Ortigas Center, Mandaluyong City"
+        },
+        "coachingStaff": [
+            {
+                "name": "Mr. Tim Cone",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/Coach-Tim.png"
+            }
+        ],
+        "stats": {
+            "GP": "19",
+            "FGM/FGA": "41.60 / 89.90",
+            "FG%": "42.2%",
+            "3PM/3PA": "13.42 / 35.91",
+            "3P%": "29.6%",
+            "4PM/4PA": "0.59 / 2.61",
+            "4P%": "1.4%",
+            "FTM/FTA": "15.58 / 21.02",
+            "FT%": "56.4%",
+            "REB": "49.73",
+            "AST": "24.38",
+            "BLK": "4.39",
+            "STL": "6.61",
+            "PF": "0.00",
+            "TOV": "15.92",
+            "PTS": "113.35"
+        },
+        "roster": [
+            {
+                "name": "Rhon Jay Abarrientos",
+                "number": "4",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/5plxxxqmsg37uxuom63pg4cqkuoo",
+                "averages": {
+                    "ppg": "21.37",
+                    "rpg": "3.68",
+                    "apg": "5.00"
+                }
+            },
+            {
+                "name": "John Cedrick Abis",
+                "number": "22",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/u9qk3lhtedl2ippamkm6ijm8uvh3",
+                "averages": {
+                    "ppg": "2.00",
+                    "rpg": "1.57",
+                    "apg": "0.43"
+                }
+            },
+            {
+                "name": "Raymond John Aguilar",
+                "number": "23",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/cm84dlezg2phdz6rmk6slay9146c",
+                "averages": {
+                    "ppg": "0.50",
+                    "rpg": "0.25",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Japeth Paul Aguilar",
+                "number": "25",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/no20imnn04xt7tl28qd4am10xjbd",
+                "averages": {
+                    "ppg": "7.38",
+                    "rpg": "4.85",
+                    "apg": "0.54"
+                }
+            },
+            {
+                "name": "Justin Brownlee",
+                "number": "32",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/o3mp34rbcnykofhipaqm63q1fln5",
+                "averages": {
+                    "ppg": "29.79",
+                    "rpg": "8.74",
+                    "apg": "5.16"
+                }
+            },
+            {
+                "name": "Kemark Carino",
+                "number": "33",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/eruppk42na32aq84z3jgop3sbv36",
+                "averages": {
+                    "ppg": "1.50",
+                    "rpg": "1.75",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Louis Raphael Cu",
+                "number": "18",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/zsknkz1jpsmlf2bid0dmcq6e8r7y",
+                "averages": {
+                    "ppg": "3.94",
+                    "rpg": "2.89",
+                    "apg": "1.33"
+                }
+            },
+            {
+                "name": "Jayson David",
+                "number": "24",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/exgh5ukq5oupptcuyp5gngfhengm",
+                "averages": {
+                    "ppg": "0.00",
+                    "rpg": "0.00",
+                    "apg": "1.00"
+                }
+            },
+            {
+                "name": "Sonny Estil",
+                "number": "34",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/gn5x101k373w89vjt8sajrvau9ci",
+                "averages": {
+                    "ppg": "1.56",
+                    "rpg": "0.67",
+                    "apg": "0.33"
+                }
+            },
+            {
+                "name": "George Isaac Go",
+                "number": "11",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/hcm567fj5r7z8j3r9ooolziljo1x",
+                "averages": {
+                    "ppg": "3.38",
+                    "rpg": "2.38",
+                    "apg": "0.38"
+                }
+            },
+            {
+                "name": "Jeremiah Gray",
+                "number": "2",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/krijqm2jaiuzi2ra6s9oget4wb39",
+                "averages": {
+                    "ppg": "3.94",
+                    "rpg": "1.89",
+                    "apg": "0.72"
+                }
+            },
+            {
+                "name": "Stephen Jeffrey Holt",
+                "number": "14",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/8lovhfn55b8kc0edfcreeufxmr7a",
+                "averages": {
+                    "ppg": "9.16",
+                    "rpg": "4.74",
+                    "apg": "1.47"
+                }
+            },
+            {
+                "name": "Nard John Pinto",
+                "number": "10",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/9gwycxt6pygjm7wqdzsubh850zt0",
+                "averages": {
+                    "ppg": "3.72",
+                    "rpg": "1.56",
+                    "apg": "1.33"
+                }
+            },
+            {
+                "name": "Jeth Troy Rosario",
+                "number": "1",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/8bf6olvy5xeaedso8vhql11p4hb5",
+                "averages": {
+                    "ppg": "8.47",
+                    "rpg": "7.32",
+                    "apg": "1.42"
+                }
+            },
+            {
+                "name": "Earl Scottie Thompson",
+                "number": "9",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/nas8p6elonvc1vpae3pet8xhpzkc",
+                "averages": {
+                    "ppg": "13.89",
+                    "rpg": "6.44",
+                    "apg": "4.83"
+                }
+            },
+            {
+                "name": "Norberto Brian Torres",
+                "number": "29",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/3h0tdvn02k1l6ga0avugljhcynf1",
+                "averages": {
+                    "ppg": "2.75",
+                    "rpg": "1.00",
+                    "apg": "0.44"
+                }
+            }
+        ]
+    },
+    {
+        "teamName": "BLACKWATER BOSSING",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Mr. Patrick Aquino",
+            "TEAM MANAGER": "Mr. Johnson Martines, Ms. Rhona Tibor (asst)",
+            "TEAM GOVERNOR": "Mr. Silliman Sy",
+            "ASST COACHES": "Joe Silva\nAris Dimaunahan\nJunjie Ablan\nRyan Alba\nDaniel Olan\nMike Cortez\nJohn Ferriols",
+            "COMPANY ADDRESS": "246 Reparo Road, Brgy. Baesa, Caloocan City"
+        },
+        "coachingStaff": [
+            {
+                "name": "Mr. Patrick Aquino",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/pat-aquino.jpeg"
+            }
+        ],
+        "stats": {
+            "GP": "12",
+            "FGM/FGA": "51.34 / 126.37",
+            "FG%": "37.5%",
+            "3PM/3PA": "9.35 / 34.68",
+            "3P%": "23.1%",
+            "4PM/4PA": "2.66 / 10.31",
+            "4P%": "1.3%",
+            "FTM/FTA": "33.93 / 47.88",
+            "FT%": "64.5%",
+            "REB": "73.72",
+            "AST": "28.33",
+            "BLK": "4.19",
+            "STL": "10.82",
+            "PF": "0.00",
+            "TOV": "26.80",
+            "PTS": "151.26"
+        },
+        "roster": [
+            {
+                "name": "Camillus Altamirano",
+                "number": "24",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/xjay1s239cc4k4lyxaq787qcwot6",
+                "averages": {
+                    "ppg": "2.00",
+                    "rpg": "1.25",
+                    "apg": "0.50"
+                }
+            },
+            {
+                "name": "Bryan Jayson Andrade",
+                "number": "10",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/7xl8bto4dd5l367gdoijo90f7p7a",
+                "averages": {
+                    "ppg": "6.09",
+                    "rpg": "1.91",
+                    "apg": "1.27"
+                }
+            },
+            {
+                "name": "Cyrus John Austria",
+                "number": "17",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/wdt1cyb2qfq5vzdg2f7gzj1jebn0",
+                "averages": {
+                    "ppg": "8.20",
+                    "rpg": "3.20",
+                    "apg": "1.80"
+                }
+            },
+            {
+                "name": "Sedrick Barefield",
+                "number": "2",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/nosz9cflg9w1a0vlxc8ahmy9pxcm",
+                "averages": {
+                    "ppg": "21.08",
+                    "rpg": "3.67",
+                    "apg": "3.83"
+                }
+            },
+            {
+                "name": "Jack Cruz-Dumont",
+                "number": "12",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/cyk1dk939l3aczzjvonyntbcqici",
+                "averages": {
+                    "ppg": "1.00",
+                    "rpg": "1.00",
+                    "apg": "0.33"
+                }
+            },
+            {
+                "name": "Christian David",
+                "number": "25",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/9d0ti5lzn93vfwj7y4y6x5tjqagz",
+                "averages": {
+                    "ppg": "8.58",
+                    "rpg": "5.08",
+                    "apg": "2.00"
+                }
+            },
+            {
+                "name": "Michael Vincent DiGregorio",
+                "number": "3",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/e4gx8igmlskde86u9jpwp76lnaaf",
+                "averages": {
+                    "ppg": "5.00",
+                    "rpg": "2.00",
+                    "apg": "2.00"
+                }
+            },
+            {
+                "name": "Richard Escoto",
+                "number": "23",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/r1h05fin29472jrgxj1hwze6e726",
+                "averages": {
+                    "ppg": "3.63",
+                    "rpg": "4.00",
+                    "apg": "0.88"
+                }
+            },
+            {
+                "name": "Bradwyn Guinto",
+                "number": "8",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/nj08nwr6w84hsc3pbk3ug4vdsadr",
+                "averages": {
+                    "ppg": "2.14",
+                    "rpg": "3.14",
+                    "apg": "0.29"
+                }
+            },
+            {
+                "name": "Regile Kent Ilagan",
+                "number": "16",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/lrsfk5o591d3v0smyzcrmwf9rpkr",
+                "averages": {
+                    "ppg": "7.00",
+                    "rpg": "3.40",
+                    "apg": "2.20"
+                }
+            },
+            {
+                "name": "Clifford Jopia",
+                "number": "13",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/6rjmjsi74zvnwlaxshl2u3qrufnx",
+                "averages": {
+                    "ppg": "1.00",
+                    "rpg": "1.57",
+                    "apg": "0.29"
+                }
+            },
+            {
+                "name": "John Troy Mallilin",
+                "number": "14",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/i0s103oes0p2n357mm2eh3k5xoaa",
+                "averages": {
+                    "ppg": "2.67",
+                    "rpg": "2.67",
+                    "apg": "0.33"
+                }
+            },
+            {
+                "name": "Jonathan Jed Mendoza",
+                "number": "26",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/h4xf0iuotbm9u144mmrrzwj72dku",
+                "averages": {
+                    "ppg": "2.00",
+                    "rpg": "1.67",
+                    "apg": "1.50"
+                }
+            },
+            {
+                "name": "David Murrell",
+                "number": "4",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/cm0mtus5rh46qdy3xdxlzpljkbse",
+                "averages": {
+                    "ppg": "6.10",
+                    "rpg": "2.00",
+                    "apg": "1.20"
+                }
+            },
+            {
+                "name": "Dalph Adem Panopio",
+                "number": "9",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/erfc1knzhlwclrqd1zwpbjlg65nz",
+                "averages": {
+                    "ppg": "8.00",
+                    "rpg": "4.00",
+                    "apg": "3.20"
+                }
+            },
+            {
+                "name": "Abu Jahal Tratter",
+                "number": "1",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/mmqvwtcn1ldov54n4p7zde8zxm43",
+                "averages": {
+                    "ppg": "6.58",
+                    "rpg": "4.75",
+                    "apg": "0.75"
+                }
+            },
+            {
+                "name": "James Paul Una",
+                "number": "19",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/hzhiquahkr80i517rbr1ib50x580",
+                "averages": {
+                    "ppg": "3.00",
+                    "rpg": "3.33",
+                    "apg": "0.25"
+                }
+            },
+            {
+                "name": "Robert Upshaw III",
+                "number": "55",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/cowxs9sa29s5wup0ed5q661vyp46",
+                "averages": {
+                    "ppg": "34.44",
+                    "rpg": "12.33",
+                    "apg": "2.33"
+                }
+            },
+            {
+                "name": "Paul Christian Zamar",
+                "number": "5",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/eyr3exsf80q23baol7rf1vbwv2nm",
+                "averages": {
+                    "ppg": "9.25",
+                    "rpg": "1.25",
+                    "apg": "1.88"
+                }
+            }
+        ]
+    },
+    {
+        "teamName": "CONVERGE FIBERXERS",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Mr. Dennis Pineda",
+            "TEAM MANAGER": "Mr. Jacob Lao",
+            "TEAM GOVERNOR": "Mr. Archen Cayabyab",
+            "ASST COACHES": "Franco Atienza\nKarl Santos\nWillie Miller\nDanny Ildefonso\nHumperdink Dimatulac\nDaniel Rose",
+            "COMPANY ADDRESS": "Reliance IT Center, #99 E. Rodriguez Jr. Avenue, Ugong, Pasig City"
+        },
+        "coachingStaff": [
+            {
+                "name": "Mr. Dennis Pineda",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/Coach-Delta.png"
+            }
+        ],
+        "stats": {
+            "GP": "12",
+            "FGM/FGA": "53.21 / 114.50",
+            "FG%": "43.2%",
+            "3PM/3PA": "9.65 / 31.28",
+            "3P%": "18.0%",
+            "4PM/4PA": "1.14 / 7.74",
+            "4P%": "0.8%",
+            "FTM/FTA": "16.44 / 24.50",
+            "FT%": "45.3%",
+            "REB": "65.91",
+            "AST": "28.16",
+            "BLK": "6.08",
+            "STL": "9.89",
+            "PF": "0.00",
+            "TOV": "15.73",
+            "PTS": "134.78"
+        },
+        "roster": [
+            {
+                "name": "Calvin Abueva",
+                "number": "8",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/16wajhsffgfymhnqbyh1k5elvth0",
+                "averages": {
+                    "ppg": "8.71",
+                    "rpg": "3.71",
+                    "apg": "1.29"
+                }
+            },
+            {
+                "name": "Justin Arana",
+                "number": "15",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/yiy6fd5ug75gseega57050d4b5fw",
+                "averages": {
+                    "ppg": "14.55",
+                    "rpg": "6.73",
+                    "apg": "2.36"
+                }
+            },
+            {
+                "name": "Justine Baltazar",
+                "number": "19",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/mybcod0jqnl1vtut48usxxinsqcq",
+                "averages": {
+                    "ppg": "12.17",
+                    "rpg": "9.33",
+                    "apg": "1.67"
+                }
+            },
+            {
+                "name": "John  Lloyd Clemente",
+                "number": "9",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/7veojeygykzhc8jm7w6pul2zb718",
+                "averages": {
+                    "ppg": "2.50",
+                    "rpg": "0.67",
+                    "apg": "0.50"
+                }
+            },
+            {
+                "name": "Archie Concepcion",
+                "number": "2",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/exeafqm378386jmcetlb7fev34h8",
+                "averages": {
+                    "ppg": "8.67",
+                    "rpg": "1.58",
+                    "apg": "1.00"
+                }
+            },
+            {
+                "name": "Jhaymo Eguilos",
+                "number": "21",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/t8avkdob1uosmax0iw6xgm38crbh",
+                "averages": {
+                    "ppg": "4.00",
+                    "rpg": "3.00",
+                    "apg": "1.00"
+                }
+            },
+            {
+                "name": "Michael Jeffrey Garcia",
+                "number": "11",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/357nyvjhhebds4iwo7fqjzmt1psf",
+                "averages": {
+                    "ppg": "7.00",
+                    "rpg": "1.92",
+                    "apg": "1.92"
+                }
+            },
+            {
+                "name": "Juan Gerardo Gomez de Liano",
+                "number": "1",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/vxx7ccz6vbi9earv8isq5aeyokpy",
+                "averages": {
+                    "ppg": "15.44",
+                    "rpg": "5.44",
+                    "apg": "4.67"
+                }
+            },
+            {
+                "name": "Ladis Lepalam",
+                "number": "27",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/zwgw3kimnovhahmfohobqrkqaqsi",
+                "averages": {
+                    "ppg": "2.50",
+                    "rpg": "0.50",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Larry Muyang",
+                "number": "20",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/qc4eg40k6a1zeoqhp38jnv1ywsvy",
+                "averages": {
+                    "ppg": "2.18",
+                    "rpg": "1.00",
+                    "apg": "0.09"
+                }
+            },
+            {
+                "name": "Jonnel Policarpio",
+                "number": "16",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/6cjk11y1whb9s6z5ds1h6f4cusuf",
+                "averages": {
+                    "ppg": "6.25",
+                    "rpg": "3.33",
+                    "apg": "1.33"
+                }
+            },
+            {
+                "name": "Kurt Spencer Reyson",
+                "number": "13",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/29gd5rjkaewt5ocvjlrw3vjgn0qx",
+                "averages": {
+                    "ppg": "1.00",
+                    "rpg": "0.25",
+                    "apg": "0.25"
+                }
+            },
+            {
+                "name": "Ronan Santos",
+                "number": "24",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/jgwhz5d0s2pka1tx1lloj0atbkrn",
+                "averages": {
+                    "ppg": "0.00",
+                    "rpg": "0.00",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Donovan Smith",
+                "number": "17",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/a0z7ochtvq0gr3gpswrw0gz8003b",
+                "averages": {
+                    "ppg": "16.67",
+                    "rpg": "8.67",
+                    "apg": "2.33"
+                }
+            },
+            {
+                "name": "Alec June Stockton",
+                "number": "12",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/o23bdt9qe05qsmwoz2ngiloza0gc",
+                "averages": {
+                    "ppg": "13.50",
+                    "rpg": "2.67",
+                    "apg": "3.17"
+                }
+            },
+            {
+                "name": "Michael Kurtiz Williams",
+                "number": "10",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/0lew2dkouoptk9au4zf34ojmosud",
+                "averages": {
+                    "ppg": "8.08",
+                    "rpg": "2.67",
+                    "apg": "4.58"
+                }
+            }
+        ]
+    },
+    {
+        "teamName": "MACAU BLACK KNIGHTS",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Garrett Kelly",
+            "TEAM MANAGER": "Mark Dandan, Joemari Lacastesantos",
+            "TEAM GOVERNOR": "Jacque Ruby",
+            "ASST COACHES": "Richard Alvarez\nWong Chi Chong\nDenzel Wong\nRam Manalang",
+            "COMPANY ADDRESS": "23/B Finance and IT Center of Macau, 70 Avenida Commercial De Macau, Macau"
+        },
+        "coachingStaff": [
+            {
+                "name": "Garrett Kelly",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/viber_image_2026-03-17_16-08-52-629.jpg"
+            }
+        ],
+        "stats": {
+            "GP": "12",
+            "FGM/FGA": "39.15 / 96.19",
+            "FG%": "27.1%",
+            "3PM/3PA": "11.94 / 36.57",
+            "3P%": "18.4%",
+            "4PM/4PA": "1.99 / 9.12",
+            "4P%": "1.4%",
+            "FTM/FTA": "19.45 / 24.89",
+            "FT%": "59.5%",
+            "REB": "48.89",
+            "AST": "23.62",
+            "BLK": "2.66",
+            "STL": "7.21",
+            "PF": "0.00",
+            "TOV": "15.71",
+            "PTS": "113.71"
+        },
+        "roster": [
+            {
+                "name": "Ramon Cao",
+                "number": "3",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/psq92h73ddvw3ctbkgmrzlx0xxpw",
+                "averages": {
+                    "ppg": "14.92",
+                    "rpg": "7.58",
+                    "apg": "1.92"
+                }
+            },
+            {
+                "name": "Xingzhao Chao",
+                "number": "0",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/y8on9krb3g2dasaqbzbe9od5igdc",
+                "averages": {
+                    "ppg": "2.86",
+                    "rpg": "1.71",
+                    "apg": "0.57"
+                }
+            },
+            {
+                "name": "Li-hsing Chen",
+                "number": "77",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/pgoxgcn5m2uac41oj7cg8cuqg1ok",
+                "averages": {
+                    "ppg": "2.14",
+                    "rpg": "1.14",
+                    "apg": "0.57"
+                }
+            },
+            {
+                "name": "Damian Chongqui",
+                "number": "2",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/2vvm700dfp78oufspg9lg7ivfvow",
+                "averages": {
+                    "ppg": "19.83",
+                    "rpg": "3.33",
+                    "apg": "7.67"
+                }
+            },
+            {
+                "name": "Yufeng Gao",
+                "number": "88",
+                "position": "SG",
+                "image": "https://dashboard.pba.ph/assets/players/noimage.png",
+                "averages": {
+                    "ppg": "0.00",
+                    "rpg": "0.00",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Chon Pong Lao",
+                "number": "48",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/0dnz9uuazts5nex09okpgj9pbltw",
+                "averages": {
+                    "ppg": "10.13",
+                    "rpg": "1.13",
+                    "apg": "0.25"
+                }
+            },
+            {
+                "name": "Jenning Leung",
+                "number": "7",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/c7iqmq6fv6cvnzf1p3go2masmvc9",
+                "averages": {
+                    "ppg": "19.33",
+                    "rpg": "4.83",
+                    "apg": "5.42"
+                }
+            },
+            {
+                "name": "Jiashou Li",
+                "number": "24",
+                "position": "SF",
+                "image": "https://dashboard.pba.ph/assets/players/noimage.png",
+                "averages": {
+                    "ppg": "3.17",
+                    "rpg": "1.50",
+                    "apg": "0.50"
+                }
+            },
+            {
+                "name": "Xiaoxu Li",
+                "number": "26",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/p8nllnm0op504ruahnuw34yxr0mw",
+                "averages": {
+                    "ppg": "1.33",
+                    "rpg": "1.67",
+                    "apg": "0.33"
+                }
+            },
+            {
+                "name": "Wenke Liu",
+                "number": "19",
+                "position": "SF",
+                "image": "https://dashboard.pba.ph/assets/players/noimage.png",
+                "averages": {
+                    "ppg": "0.00",
+                    "rpg": "0.00",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Zijie Lu",
+                "number": "28",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/lrhb7euvcer21o3gz4br5l2z4c6c",
+                "averages": {
+                    "ppg": "1.67",
+                    "rpg": "3.67",
+                    "apg": "0.22"
+                }
+            },
+            {
+                "name": "Tony Mitchell Jr.",
+                "number": "14",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/mly5rewpiha6t9u9cip7nba4oih3",
+                "averages": {
+                    "ppg": "18.83",
+                    "rpg": "13.75",
+                    "apg": "1.00"
+                }
+            },
+            {
+                "name": "Phoenix Cardena Shackelford",
+                "number": "5",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/33l2pmhe40511rru405ydw7hh2ra",
+                "averages": {
+                    "ppg": "17.75",
+                    "rpg": "6.08",
+                    "apg": "3.92"
+                }
+            },
+            {
+                "name": "Meng Sun",
+                "number": "25",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/iellozmmnbsdyndwlfuv0929c39f",
+                "averages": {
+                    "ppg": "1.25",
+                    "rpg": "2.25",
+                    "apg": "1.00"
+                }
+            },
+            {
+                "name": "Yingran Wang",
+                "number": "29",
+                "position": "PF",
+                "image": "https://dashboard.pba.ph/assets/players/noimage.png",
+                "averages": {
+                    "ppg": "0.00",
+                    "rpg": "0.00",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Zhaojing Zhu",
+                "number": "1",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/s4f2rsmcy1b8uwgswpxb4938ypaq",
+                "averages": {
+                    "ppg": "0.50",
+                    "rpg": "0.25",
+                    "apg": "0.25"
+                }
+            }
+        ]
+    },
+    {
+        "teamName": "MAGNOLIA CHICKEN TIMPLADOS HOTSHOTS",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Mr. LA Tenorio",
+            "TEAM MANAGER": "Mr. Alvin Patrimonio",
+            "TEAM GOVERNOR": "Mr. Jason Webb",
+            "ASST COACHES": "Juno Sauler\nKirk Collier\nMonch Gavieres\nTony Boy Espinosa\nMon Jose\nAngelito Esguerra\nPaul Sorongon\nJulian Ramos\nJude Paulite",
+            "COMPANY ADDRESS": "#100 E. Rodriguez Jr. Avenue (C5 Road), Barangay Ugong, Pasig City 1604"
+        },
+        "coachingStaff": [
+            {
+                "name": "Mr. LA Tenorio",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/Coach-Tenorio.png"
+            }
+        ],
+        "stats": {
+            "GP": "14",
+            "FGM/FGA": "45.28 / 92.65",
+            "FG%": "42.6%",
+            "3PM/3PA": "10.87 / 26.56",
+            "3P%": "37.8%",
+            "4PM/4PA": "1.05 / 4.45",
+            "4P%": "1.4%",
+            "FTM/FTA": "23.04 / 29.98",
+            "FT%": "59.7%",
+            "REB": "45.00",
+            "AST": "29.09",
+            "BLK": "2.82",
+            "STL": "5.66",
+            "PF": "0.00",
+            "TOV": "17.54",
+            "PTS": "126.60"
+        },
+        "roster": [
+            {
+                "name": "Pedro Alfaro III",
+                "number": "17",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/owll3a7eu9nt27j4l4t1jewsi777",
+                "averages": {
+                    "ppg": "1.83",
+                    "rpg": "1.00",
+                    "apg": "1.33"
+                }
+            },
+            {
+                "name": "Yukien Andrada",
+                "number": "21",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/izkdiovaejklnemz8mn4rcnvzdg7",
+                "averages": {
+                    "ppg": "2.57",
+                    "rpg": "1.86",
+                    "apg": "0.36"
+                }
+            },
+            {
+                "name": "Andy Mark Barroca",
+                "number": "14",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/9cn6zzdbtsonn1xoq4iq15k58pez",
+                "averages": {
+                    "ppg": "8.36",
+                    "rpg": "3.64",
+                    "apg": "5.64"
+                }
+            },
+            {
+                "name": "Clinton Daniel Chapman",
+                "number": "12",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/k0iod0c1vhlpds4y8ji3r5mo8n39",
+                "averages": {
+                    "ppg": "27.00",
+                    "rpg": "10.18",
+                    "apg": "2.45"
+                }
+            },
+            {
+                "name": "Rome Adler Dela Rosa",
+                "number": "19",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/vr335cmpzz6biwajfiq0k1ly5clk",
+                "averages": {
+                    "ppg": "7.57",
+                    "rpg": "3.21",
+                    "apg": "0.79"
+                }
+            },
+            {
+                "name": "Russel Escoto",
+                "number": "88",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/4qx6x8p47yspognx7g87t8n3u0y4",
+                "averages": {
+                    "ppg": "1.40",
+                    "rpg": "0.20",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Vince John Gabriel Gomez",
+                "number": "13",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/etye898fpplw88xkmfo7eduqkbpn",
+                "averages": {
+                    "ppg": "1.20",
+                    "rpg": "0.40",
+                    "apg": "0.40"
+                }
+            },
+            {
+                "name": "Javier Joaquin Gomez de Liano",
+                "number": "2",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/k4jc4yvw0t5vqy35ttgf69mbzgmt",
+                "averages": {
+                    "ppg": "5.86",
+                    "rpg": "1.93",
+                    "apg": "1.21"
+                }
+            },
+            {
+                "name": "Christopher Tomas Koon",
+                "number": "6",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/p9msadc17b5r8auowm6m3xjjah80",
+                "averages": {
+                    "ppg": "3.67",
+                    "rpg": "2.50",
+                    "apg": "1.67"
+                }
+            },
+            {
+                "name": "James Laput",
+                "number": "42",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/cabu18y454m4gurfubtugfn9pwn6",
+                "averages": {
+                    "ppg": "1.75",
+                    "rpg": "1.00",
+                    "apg": "0.13"
+                }
+            },
+            {
+                "name": "Jerom Lastimosa",
+                "number": "30",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/oiigumhn28ztuxlpb7rgply668oa",
+                "averages": {
+                    "ppg": "14.14",
+                    "rpg": "3.50",
+                    "apg": "4.29"
+                }
+            },
+            {
+                "name": "Paul John Lee",
+                "number": "3",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/d7tlum5xz4zwvwx00ajwaptus8kf",
+                "averages": {
+                    "ppg": "6.79",
+                    "rpg": "2.29",
+                    "apg": "3.21"
+                }
+            },
+            {
+                "name": "Zavier Lucero",
+                "number": "22",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/9gkqjgoeio14qb5ypijczups6ebd",
+                "averages": {
+                    "ppg": "14.43",
+                    "rpg": "8.50",
+                    "apg": "2.21"
+                }
+            },
+            {
+                "name": "Ian Paul Sangalang",
+                "number": "10",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/mys9zwzv59g9wthcgb2cu94lctia",
+                "averages": {
+                    "ppg": "7.50",
+                    "rpg": "3.21",
+                    "apg": "0.86"
+                }
+            },
+            {
+                "name": "Juan Paolo Taha",
+                "number": "0",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/oxwop8ylprxs5dbhl1xyfm15umxv",
+                "averages": {
+                    "ppg": "2.50",
+                    "rpg": "1.00",
+                    "apg": "0.50"
+                }
+            },
+            {
+                "name": "Rafael Lorenzo Verano",
+                "number": "41",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/k64gol6ejuspfa21en20841y6w5x",
+                "averages": {
+                    "ppg": "2.13",
+                    "rpg": "1.75",
+                    "apg": "0.25"
+                }
+            }
+        ]
+    },
+    {
+        "teamName": "MERALCO BOLTS",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Mr. Luigi Trillo",
+            "TEAM MANAGER": "Mr. Paolo Trillo",
+            "TEAM GOVERNOR": "Atty. William Pamintuan",
+            "ASST COACHES": "Nenad Vucinic (active consultant)\nGene Afable\nReynel Hugnatan\nSandro Nicholas Soriano",
+            "COMPANY ADDRESS": "12/F or 6/F Lopez Building, Meralco Center, Ortigas Avenue, Pasig City"
+        },
+        "coachingStaff": [
+            {
+                "name": "Mr. Luigi Trillo",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/Coach-Luigi.png"
+            }
+        ],
+        "stats": {
+            "GP": "20",
+            "FGM/FGA": "48.73 / 107.71",
+            "FG%": "40.7%",
+            "3PM/3PA": "11.78 / 31.88",
+            "3P%": "27.1%",
+            "4PM/4PA": "0.80 / 4.56",
+            "4P%": "0.9%",
+            "FTM/FTA": "24.30 / 33.42",
+            "FT%": "54.2%",
+            "REB": "61.47",
+            "AST": "23.76",
+            "BLK": "4.79",
+            "STL": "8.42",
+            "PF": "0.00",
+            "TOV": "13.95",
+            "PTS": "135.14"
+        },
+        "roster": [
+            {
+                "name": "Raymond Almazan",
+                "number": "20",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/90gnypa2z2px0rgmt84bt4valpxx",
+                "averages": {
+                    "ppg": "3.00",
+                    "rpg": "1.63",
+                    "apg": "0.25"
+                }
+            },
+            {
+                "name": "Christopher Clark Banchero",
+                "number": "6",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/8pvw8v5hoosw44xo9di28vrdeiti",
+                "averages": {
+                    "ppg": "7.10",
+                    "rpg": "1.95",
+                    "apg": "2.45"
+                }
+            },
+            {
+                "name": "Brandon Matthew Bates",
+                "number": "33",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/1wuus61b7bfn19wyw5o37ke2pc4e",
+                "averages": {
+                    "ppg": "2.27",
+                    "rpg": "3.67",
+                    "apg": "0.07"
+                }
+            },
+            {
+                "name": "Norman Aaron Black",
+                "number": "1",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/ihwy86hl1pr0w6w868dn0gfqa8gr",
+                "averages": {
+                    "ppg": "4.65",
+                    "rpg": "2.45",
+                    "apg": "1.80"
+                }
+            },
+            {
+                "name": "Jason Alexander Brickman",
+                "number": "5",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/x64uig8fndvlrjceukq6ccvz3lyz",
+                "averages": {
+                    "ppg": "7.70",
+                    "rpg": "3.15",
+                    "apg": "4.95"
+                }
+            },
+            {
+                "name": "Crispin John Cansino",
+                "number": "71",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/bcm549zcwbr6hvhwjabe4byvfmvs",
+                "averages": {
+                    "ppg": "13.20",
+                    "rpg": "3.75",
+                    "apg": "1.65"
+                }
+            },
+            {
+                "name": "Antonio Jose Caram",
+                "number": "17",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/1780pa1rpd7ej59579jynzlmup9s",
+                "averages": {
+                    "ppg": "2.50",
+                    "rpg": "0.00",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Patrick Yousef Gardner",
+                "number": "15",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/aboaluifjohmudgg383glylqpbfn",
+                "averages": {
+                    "ppg": "25.67",
+                    "rpg": "12.67",
+                    "apg": "2.00"
+                }
+            },
+            {
+                "name": "Clifford Marion Hodge",
+                "number": "7",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/x97c1n6r6fku34vjhfljm6kb89q9",
+                "averages": {
+                    "ppg": "6.45",
+                    "rpg": "5.20",
+                    "apg": "1.60"
+                }
+            },
+            {
+                "name": "Marvin Jones",
+                "number": "3",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/4zgzlon1jknx64qvs74zvyjwdb36",
+                "averages": {
+                    "ppg": "21.94",
+                    "rpg": "11.24",
+                    "apg": "2.18"
+                }
+            },
+            {
+                "name": "Vince Magbuhos",
+                "number": "93",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/iky42es3il68yv7542mpiqhylunq",
+                "averages": {
+                    "ppg": "1.33",
+                    "rpg": "0.89",
+                    "apg": "0.33"
+                }
+            },
+            {
+                "name": "Allein Gail Maliksi",
+                "number": "22",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/fpkv96sgxm4m60biq6n5g6cbz0fr",
+                "averages": {
+                    "ppg": "4.00",
+                    "rpg": "2.00",
+                    "apg": "0.75"
+                }
+            },
+            {
+                "name": "Javee Mocon",
+                "number": "10",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/tqadgh349d1yiqwoyj1fcav1oce1",
+                "averages": {
+                    "ppg": "8.63",
+                    "rpg": "3.63",
+                    "apg": "0.74"
+                }
+            },
+            {
+                "name": "Christopher Elijah Newsome",
+                "number": "11",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/9sn8khyjmau11spzumvaxdocz6eu",
+                "averages": {
+                    "ppg": "14.35",
+                    "rpg": "3.10",
+                    "apg": "2.85"
+                }
+            },
+            {
+                "name": "Kyle Nicholas Pascual",
+                "number": "32",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/8llxq20cv5ekqxu0g60mfggzfwa2",
+                "averages": {
+                    "ppg": "1.00",
+                    "rpg": "1.14",
+                    "apg": "0.14"
+                }
+            },
+            {
+                "name": "Kier John Quinto",
+                "number": "19",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/xau6v56tlinns94x6c090lyoiwcs",
+                "averages": {
+                    "ppg": "8.65",
+                    "rpg": "3.00",
+                    "apg": "1.80"
+                }
+            },
+            {
+                "name": "Jansen Rios",
+                "number": "27",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/2qt5oakmyv2zevu75rn57k10nd9b",
+                "averages": {
+                    "ppg": "2.70",
+                    "rpg": "2.00",
+                    "apg": "0.20"
+                }
+            }
+        ]
+    },
+    {
+        "teamName": "NLEX ROAD WARRIORS",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Mr. Joseph Uichico",
+            "TEAM MANAGER": "Mr. Ronald Dulatre",
+            "TEAM GOVERNOR": "Mr. Ronald Dulatre",
+            "ASST COACHES": "Borgie Hermida\nAdonis Tierra\nEmman Monfort\nMelo Lim\nAnton Escolin\nJorge Sison\nWoody Co",
+            "COMPANY ADDRESS": "KM 12 NLEX Balintawak Toll Plaza, Caloocan, 1400 Metro Manila"
+        },
+        "coachingStaff": [
+            {
+                "name": "Mr. Joseph Uichico",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/Coach-Jong.png"
+            }
+        ],
+        "stats": {
+            "GP": "14",
+            "FGM/FGA": "40.61 / 93.35",
+            "FG%": "41.6%",
+            "3PM/3PA": "11.25 / 32.89",
+            "3P%": "23.0%",
+            "4PM/4PA": "0.93 / 4.19",
+            "4P%": "1.2%",
+            "FTM/FTA": "19.67 / 27.22",
+            "FT%": "38.6%",
+            "REB": "54.31",
+            "AST": "23.16",
+            "BLK": "3.92",
+            "STL": "7.18",
+            "PF": "0.00",
+            "TOV": "13.92",
+            "PTS": "114.03"
+        },
+        "roster": [
+            {
+                "name": "Kevin Louie Alas",
+                "number": "7",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/x26o5q1mtsrulphxavhdwki8h7es",
+                "averages": {
+                    "ppg": "6.33",
+                    "rpg": "2.22",
+                    "apg": "2.00"
+                }
+            },
+            {
+                "name": "John Bryle Bahio",
+                "number": "18",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/m2ps53ublkxcpp6b5gqejhyergr3",
+                "averages": {
+                    "ppg": "7.43",
+                    "rpg": "4.50",
+                    "apg": "1.36"
+                }
+            },
+            {
+                "name": "Robert Lee Bolick",
+                "number": "8",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/d9lx4x9yni0uya5qjfgx1vvaxn5v",
+                "averages": {
+                    "ppg": "19.79",
+                    "rpg": "5.07",
+                    "apg": "8.21"
+                }
+            },
+            {
+                "name": "John Lorenz Capulong",
+                "number": "17",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/pr9vx6vqz4poqwvn1xbdwcgkl4jd",
+                "averages": {
+                    "ppg": "3.00",
+                    "rpg": "1.50",
+                    "apg": "0.50"
+                }
+            },
+            {
+                "name": "Dominic Fajardo",
+                "number": "9",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/2em3kefus708ogljgltj4to3448e",
+                "averages": {
+                    "ppg": "0.82",
+                    "rpg": "0.64",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Arvin Gamboa",
+                "number": "5",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/fcdxqe4qcg59tjkk45tgzp0eyr6f",
+                "averages": {
+                    "ppg": "1.33",
+                    "rpg": "0.67",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Louelljay Gonzales",
+                "number": "13",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/zbgx3glv2p35cyum4p0wbftiqhy7",
+                "averages": {
+                    "ppg": "7.79",
+                    "rpg": "4.50",
+                    "apg": "3.29"
+                }
+            },
+            {
+                "name": "Robert Conrad Herndon",
+                "number": "11",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/5kn422g7jlu6c618l4fq4k9y1s97",
+                "averages": {
+                    "ppg": "0.80",
+                    "rpg": "0.70",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Cady Lalanne",
+                "number": "25",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/07399h8y19nxowka4oahw4fncpwt",
+                "averages": {
+                    "ppg": "26.79",
+                    "rpg": "15.50",
+                    "apg": "1.64"
+                }
+            },
+            {
+                "name": "Joseph Matthew Nieto",
+                "number": "12",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/e1pnc453vjwtkxl4ie9l782unos3",
+                "averages": {
+                    "ppg": "0.67",
+                    "rpg": "0.33",
+                    "apg": "0.33"
+                }
+            },
+            {
+                "name": "Kevin Kent Racal",
+                "number": "16",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/gp29s8pqizybkvrinbadkelhtfxf",
+                "averages": {
+                    "ppg": "2.29",
+                    "rpg": "1.36",
+                    "apg": "0.43"
+                }
+            },
+            {
+                "name": "Brandon Ramirez",
+                "number": "15",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/qxl31kef2k0unz7y3qwx067hr1ol",
+                "averages": {
+                    "ppg": "1.64",
+                    "rpg": "1.27",
+                    "apg": "0.09"
+                }
+            },
+            {
+                "name": "Richie Rodger",
+                "number": "10",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/j9hy9uzrofmp32i6wfawrx0nbc12",
+                "averages": {
+                    "ppg": "3.33",
+                    "rpg": "1.83",
+                    "apg": "0.58"
+                }
+            },
+            {
+                "name": "Anthony Paul Semerad",
+                "number": "33",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/t9vzxph75whqmjlxq948rlaijlu2",
+                "averages": {
+                    "ppg": "9.31",
+                    "rpg": "4.23",
+                    "apg": "0.85"
+                }
+            },
+            {
+                "name": "Xyrus Dane Torres",
+                "number": "77",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/u023vs4j2ftfbmfc3bv8zbd4ufva",
+                "averages": {
+                    "ppg": "4.00",
+                    "rpg": "0.92",
+                    "apg": "0.38"
+                }
+            },
+            {
+                "name": "Enoch Valdez",
+                "number": "6",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/lq6ektef7e26t77bv2ollvozuvno",
+                "averages": {
+                    "ppg": "2.00",
+                    "rpg": "2.00",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Deschon Winston",
+                "number": "14",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/57e4kka3up1smlbaz49ke9wlc1jn",
+                "averages": {
+                    "ppg": "16.71",
+                    "rpg": "4.07",
+                    "apg": "2.50"
+                }
+            }
+        ]
+    },
+    {
+        "teamName": "PHOENIX",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Charles Tiu",
+            "TEAM MANAGER": "Mr. Paolo Bugia",
+            "TEAM GOVERNOR": "Atty Raymond Zorrilla",
+            "ASST COACHES": "Reynaldo Jacinto\nVirgilio Paolo Layug\nTyrone Tang\nPaolo Dizon\nRen Noriega",
+            "COMPANY ADDRESS": "17th Floor, UDENNA Tower Rizal Drive cor. 4th Avenue Bonifacio Global City, Taguig 1634"
+        },
+        "coachingStaff": [
+            {
+                "name": "Charles Tiu",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/viber_image_2026-03-17_16-08-50-457.jpg"
+            }
+        ],
+        "stats": {
+            "GP": "13",
+            "FGM/FGA": "55.04 / 126.12",
+            "FG%": "32.6%",
+            "3PM/3PA": "13.20 / 43.99",
+            "3P%": "20.0%",
+            "4PM/4PA": "0.88 / 2.76",
+            "4P%": "1.4%",
+            "FTM/FTA": "21.75 / 34.42",
+            "FT%": "47.1%",
+            "REB": "74.73",
+            "AST": "31.59",
+            "BLK": "4.40",
+            "STL": "9.10",
+            "PF": "0.00",
+            "TOV": "18.23",
+            "PTS": "146.76"
+        },
+        "roster": [
+            {
+                "name": "Arnold Dave Ando",
+                "number": "24",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/ira3hdxgkjk1oynybx6nu3nakfxy",
+                "averages": {
+                    "ppg": "2.14",
+                    "rpg": "1.71",
+                    "apg": "0.29"
+                }
+            },
+            {
+                "name": "Kainoa Bryson Ballungay",
+                "number": "1",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/3eudowkk96493ratjj97dowj1r69",
+                "averages": {
+                    "ppg": "10.00",
+                    "rpg": "6.00",
+                    "apg": "0.50"
+                }
+            },
+            {
+                "name": "Prince Renmer Caperal",
+                "number": "23",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/i89vmszi6q0iaa2usy3ufcrt0lot",
+                "averages": {
+                    "ppg": "3.00",
+                    "rpg": "0.57",
+                    "apg": "0.43"
+                }
+            },
+            {
+                "name": "Jose Carlos Cullar",
+                "number": "13",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/j9jmt3ut9incngcr0ikeg9bczjbp",
+                "averages": {
+                    "ppg": "2.25",
+                    "rpg": "0.75",
+                    "apg": "1.63"
+                }
+            },
+            {
+                "name": "Matthew Daves",
+                "number": "12",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/fybi9pg07n00jsjud9snkm7ju0jx",
+                "averages": {
+                    "ppg": "2.45",
+                    "rpg": "1.36",
+                    "apg": "0.27"
+                }
+            },
+            {
+                "name": "John Louisse De Los Santos",
+                "number": "27",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/r3flzswgdeobowsb13epqi7eqltq",
+                "averages": {
+                    "ppg": "0.00",
+                    "rpg": "0.00",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Francis Gabriel Escandor",
+                "number": "18",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/jf0e69chqupi1zelwbmgi5jntzv1",
+                "averages": {
+                    "ppg": "5.00",
+                    "rpg": "2.64",
+                    "apg": "1.09"
+                }
+            },
+            {
+                "name": "Will Allen Gozum",
+                "number": "0",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/od483h59ciy0e77yuqrp8vmtj3t9",
+                "averages": {
+                    "ppg": "3.71",
+                    "rpg": "1.86",
+                    "apg": "0.86"
+                }
+            },
+            {
+                "name": "Evan Heinrich Nikolai Nelle",
+                "number": "10",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/1kcu0gw3kiyb1nso0ezl0bhpaksv",
+                "averages": {
+                    "ppg": "8.08",
+                    "rpg": "1.54",
+                    "apg": "4.54"
+                }
+            },
+            {
+                "name": "Jason Perkins",
+                "number": "3",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/6y58b8nh6djtyx7y5y384kgvva2e",
+                "averages": {
+                    "ppg": "15.55",
+                    "rpg": "4.64",
+                    "apg": "1.00"
+                }
+            },
+            {
+                "name": "Ricci Paolo Rivero",
+                "number": "25",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/1s4pgl9sbpsv0tlezic5njw9ii41",
+                "averages": {
+                    "ppg": "19.55",
+                    "rpg": "6.18",
+                    "apg": "3.27"
+                }
+            },
+            {
+                "name": "Bryan Santos",
+                "number": "26",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/bjr3z9fzatg8hr3cvh5k62lbjf5l",
+                "averages": {
+                    "ppg": "5.31",
+                    "rpg": "2.08",
+                    "apg": "0.62"
+                }
+            },
+            {
+                "name": "Christian Tyler Tio",
+                "number": "19",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/d3ba8y6rm1gloqhkw5k29udo09qf",
+                "averages": {
+                    "ppg": "9.91",
+                    "rpg": "1.27",
+                    "apg": "2.91"
+                }
+            },
+            {
+                "name": "Kenneth James Tuffin",
+                "number": "20",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/sek2932hix9wj4l5zh37ahmi2sf5",
+                "averages": {
+                    "ppg": "14.00",
+                    "rpg": "5.62",
+                    "apg": "1.69"
+                }
+            },
+            {
+                "name": "Johnathan Lee Williams III",
+                "number": "2",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/im2vlcerzc6y30pd0ay6dps83xvx",
+                "averages": {
+                    "ppg": "20.25",
+                    "rpg": "15.25",
+                    "apg": "5.25"
+                }
+            },
+            {
+                "name": "Winston Jay Ynot",
+                "number": "39",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/2ki0ceexsmvzjkqlzqahgsai0d85",
+                "averages": {
+                    "ppg": "3.43",
+                    "rpg": "1.71",
+                    "apg": "0.86"
+                }
+            }
+        ]
+    },
+    {
+        "teamName": "RAIN OR SHINE ELASTO PAINTERS",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Yeng Guiao",
+            "TEAM MANAGER": "Mr. Jireh Ibanes",
+            "TEAM GOVERNOR": "Atty. Mamerto Mondragon",
+            "ASST COACHES": "Caloy Garcia \nMike Buendia\nRicky Umayam",
+            "COMPANY ADDRESS": "48 Amang Rodriguez Avenue, Santolan, Pasig City, 1610 Metro Manila"
+        },
+        "coachingStaff": [
+            {
+                "name": "Yeng Guiao",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/Coach_Guiao.png"
+            }
+        ],
+        "stats": {
+            "GP": "19",
+            "FGM/FGA": "46.35 / 109.34",
+            "FG%": "31.1%",
+            "3PM/3PA": "15.47 / 47.33",
+            "3P%": "23.9%",
+            "4PM/4PA": "0.78 / 4.01",
+            "4P%": "0.9%",
+            "FTM/FTA": "20.45 / 28.63",
+            "FT%": "57.1%",
+            "REB": "57.79",
+            "AST": "29.59",
+            "BLK": "3.13",
+            "STL": "9.57",
+            "PF": "0.00",
+            "TOV": "13.28",
+            "PTS": "130.13"
+        },
+        "roster": [
+            {
+                "name": "Anton Rafael Asistio",
+                "number": "8",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/4iqsjhlbvjqp7nedold55kbcp9jg",
+                "averages": {
+                    "ppg": "5.22",
+                    "rpg": "1.00",
+                    "apg": "1.44"
+                }
+            },
+            {
+                "name": "Beau Michael Vincent Belga",
+                "number": "28",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/scbd4sfqvfzci6rbt0w1jh00lm2f",
+                "averages": {
+                    "ppg": "2.13",
+                    "rpg": "2.00",
+                    "apg": "1.00"
+                }
+            },
+            {
+                "name": "Joshua Andrei Caracut",
+                "number": "14",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/iv4i3203k2p56c47b2gvmcgj1335",
+                "averages": {
+                    "ppg": "7.22",
+                    "rpg": "2.00",
+                    "apg": "1.89"
+                }
+            },
+            {
+                "name": "Jhonard Clarito",
+                "number": "22",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/n7ffbvuka7ns8qyet7c1nbu4ikno",
+                "averages": {
+                    "ppg": "10.42",
+                    "rpg": "7.05",
+                    "apg": "2.16"
+                }
+            },
+            {
+                "name": "Vince Petdeo Cuajao",
+                "number": "29",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/cost9ihdc51wcgb6qkyvb7f5kpb2",
+                "averages": {
+                    "ppg": "5.63",
+                    "rpg": "0.38",
+                    "apg": "0.88"
+                }
+            },
+            {
+                "name": "Vincent Joshua David",
+                "number": "9",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/ysehyulir7lxai3bevo6th2jnwtu",
+                "averages": {
+                    "ppg": "3.13",
+                    "rpg": "2.47",
+                    "apg": "1.87"
+                }
+            },
+            {
+                "name": "Jaylen Rashawn Johnson",
+                "number": "7",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/s7qli7b0uk56glfetrh8j7wiuxa9",
+                "averages": {
+                    "ppg": "23.72",
+                    "rpg": "14.50",
+                    "apg": "5.33"
+                }
+            },
+            {
+                "name": "Felix Lemetti",
+                "number": "2",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/idledcacjltp5x0ht0q5vzfgc5kh",
+                "averages": {
+                    "ppg": "11.29",
+                    "rpg": "2.57",
+                    "apg": "3.00"
+                }
+            },
+            {
+                "name": "Michael John Malonzo",
+                "number": "4",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/o5pumo7vd8jffempfkbtfjk79dss",
+                "averages": {
+                    "ppg": "4.68",
+                    "rpg": "3.37",
+                    "apg": "0.42"
+                }
+            },
+            {
+                "name": "Gian Robert Mamuyac",
+                "number": "3",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/duvqmnqjr8wyocet7uzrwvpxzcw8",
+                "averages": {
+                    "ppg": "13.11",
+                    "rpg": "3.44",
+                    "apg": "3.11"
+                }
+            },
+            {
+                "name": "Christian Manaytay",
+                "number": "44",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/kjprovrinju2dtxxvlpn3k4rof90",
+                "averages": {
+                    "ppg": "3.32",
+                    "rpg": "2.11",
+                    "apg": "0.79"
+                }
+            },
+            {
+                "name": "Adrian Clarence Nocum",
+                "number": "1",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/wl6qpvz9i9xzre7p1eti3tnw6cmf",
+                "averages": {
+                    "ppg": "15.79",
+                    "rpg": "3.11",
+                    "apg": "2.74"
+                }
+            },
+            {
+                "name": "Arthur Roque",
+                "number": "12",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/nxhyunknuzabtkne8f43g5471bs3",
+                "averages": {
+                    "ppg": "5.50",
+                    "rpg": "2.63",
+                    "apg": "0.38"
+                }
+            },
+            {
+                "name": "Leonard Santillan",
+                "number": "25",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/2jili7ecpmc9p1d9q5sm4yn8li8u",
+                "averages": {
+                    "ppg": "4.68",
+                    "rpg": "4.32",
+                    "apg": "0.68"
+                }
+            },
+            {
+                "name": "Caelan Todd Tiongson",
+                "number": "0",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/8vhvvoaotj2h5ds8cuo5t4uw9a83",
+                "averages": {
+                    "ppg": "10.50",
+                    "rpg": "3.63",
+                    "apg": "3.19"
+                }
+            },
+            {
+                "name": "Luis Villegas",
+                "number": "24",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/nbj8h6gv7s0cey7y5e603360oluv",
+                "averages": {
+                    "ppg": "3.79",
+                    "rpg": "3.21",
+                    "apg": "0.71"
+                }
+            }
+        ]
+    },
+    {
+        "teamName": "SAN MIGUEL BEERMEN",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Leo Austria",
+            "TEAM MANAGER": "Mr. Gee Abanilla",
+            "TEAM GOVERNOR": "Mr. Robert Non",
+            "ASST COACHES": "Peter Martin\nJorge Gallent\nRenato Agustin\nDayong Mendoza\nBoyzie Zamar\nBiboy Ravanes\nChris Ross",
+            "COMPANY ADDRESS": "40 San Miguel Avenue, Mandaluyong City, 1550 Metro Manila"
+        },
+        "coachingStaff": [
+            {
+                "name": "Leo Austria",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/Coach_Leo.png"
+            }
+        ],
+        "stats": {
+            "GP": "13",
+            "FGM/FGA": "64.44 / 140.35",
+            "FG%": "43.2%",
+            "3PM/3PA": "11.56 / 36.56",
+            "3P%": "24.8%",
+            "4PM/4PA": "1.72 / 7.26",
+            "4P%": "1.3%",
+            "FTM/FTA": "24.39 / 36.76",
+            "FT%": "62.4%",
+            "REB": "84.85",
+            "AST": "31.83",
+            "BLK": "4.87",
+            "STL": "12.96",
+            "PF": "0.00",
+            "TOV": "23.58",
+            "PTS": "168.28"
+        },
+        "roster": [
+            {
+                "name": "Bennie Francois Boatwright III",
+                "number": "25",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/gv0ymlh9qehtfx66ioyajsheu9qe",
+                "averages": {
+                    "ppg": "31.00",
+                    "rpg": "9.83",
+                    "apg": "4.50"
+                }
+            },
+            {
+                "name": "John Rodney Brondial",
+                "number": "91",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/dglk0ax258orr3f4sentb0iciuuo",
+                "averages": {
+                    "ppg": "2.30",
+                    "rpg": "3.30",
+                    "apg": "0.20"
+                }
+            },
+            {
+                "name": "Philip Andreas Cahilig",
+                "number": "11",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/crhyiddiuvnh1i4evca52u4m88w7",
+                "averages": {
+                    "ppg": "0.82",
+                    "rpg": "0.64",
+                    "apg": "0.09"
+                }
+            },
+            {
+                "name": "John Michael Calma",
+                "number": "22",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/3g7b9qonz0yrp288v2yv1izwugts",
+                "averages": {
+                    "ppg": "1.80",
+                    "rpg": "0.60",
+                    "apg": "0.20"
+                }
+            },
+            {
+                "name": "Jericho Xavier Cruz",
+                "number": "39",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/7izskgjf3rzcr0ue1mjjisrhu5cy",
+                "averages": {
+                    "ppg": "10.00",
+                    "rpg": "3.60",
+                    "apg": "2.40"
+                }
+            },
+            {
+                "name": "June Mar Fajardo",
+                "number": "15",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/ub0lgbpkcimglqbypeh0d08apimr",
+                "averages": {
+                    "ppg": "16.46",
+                    "rpg": "14.54",
+                    "apg": "2.46"
+                }
+            },
+            {
+                "name": "Marcio Lassiter",
+                "number": "13",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/fyaq01mey95bcj1ld06gbsh4qkdg",
+                "averages": {
+                    "ppg": "9.08",
+                    "rpg": "2.15",
+                    "apg": "1.62"
+                }
+            },
+            {
+                "name": "Royce Mantua",
+                "number": "23",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/5l5vwz01t4el33b4xm1jmton667u",
+                "averages": {
+                    "ppg": "0.80",
+                    "rpg": "0.20",
+                    "apg": "0.40"
+                }
+            },
+            {
+                "name": "Christopher Miller",
+                "number": "55",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/96w3rybvq05cmwf0qhk8xvemp1gt",
+                "averages": {
+                    "ppg": "4.29",
+                    "rpg": "1.00",
+                    "apg": "0.14"
+                }
+            },
+            {
+                "name": "Jaymar Perez",
+                "number": "77",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/qynrq0mrki7sp3gp12abt1bxhqja",
+                "averages": {
+                    "ppg": "19.00",
+                    "rpg": "4.31",
+                    "apg": "3.92"
+                }
+            },
+            {
+                "name": "Krismoir Rosales",
+                "number": "1",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/huo9d8imwxzgdv9m8kdeip3zykml",
+                "averages": {
+                    "ppg": "3.27",
+                    "rpg": "1.00",
+                    "apg": "1.55"
+                }
+            },
+            {
+                "name": "Christopher Ross",
+                "number": "6",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/8sxujtflh3cvv8h4svhcy7w0xqso",
+                "averages": {
+                    "ppg": "4.00",
+                    "rpg": "2.83",
+                    "apg": "4.17"
+                }
+            },
+            {
+                "name": "Moala Tautuaa",
+                "number": "3",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/7as3mroaltr33nxxcwjqq39hcpi1",
+                "averages": {
+                    "ppg": "6.85",
+                    "rpg": "4.08",
+                    "apg": "1.15"
+                }
+            },
+            {
+                "name": "Jeron Alvin Teng",
+                "number": "21",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/tfcfzo3ix0ek6gscmdentktbxp97",
+                "averages": {
+                    "ppg": "9.00",
+                    "rpg": "4.00",
+                    "apg": "1.00"
+                }
+            },
+            {
+                "name": "Juan Miguel Tiongson",
+                "number": "33",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/vbo13jgwwugmwhjt5zq98tx25fbw",
+                "averages": {
+                    "ppg": "2.25",
+                    "rpg": "1.08",
+                    "apg": "1.25"
+                }
+            },
+            {
+                "name": "Celedonio Trollano",
+                "number": "2",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/0omnyewh60ndyxuhjd2qm8qv88s5",
+                "averages": {
+                    "ppg": "14.36",
+                    "rpg": "4.36",
+                    "apg": "2.45"
+                }
+            }
+        ]
+    },
+    {
+        "teamName": "TERRAFIRMA DYIP",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Mr. Ronald Tubid",
+            "TEAM MANAGER": "Mr. Waiyip Chong",
+            "TEAM GOVERNOR": "Mr. Pido Jarencio",
+            "ASST COACHES": "Jeff Napa\nAlfredo Jarencio Jr."
+        },
+        "coachingStaff": [
+            {
+                "name": "Mr. Ronald Tubid",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/Coach_Tubid.png"
+            }
+        ],
+        "stats": {
+            "GP": "12",
+            "FGM/FGA": "38.18 / 90.90",
+            "FG%": "30.2%",
+            "3PM/3PA": "9.14 / 31.68",
+            "3P%": "16.6%",
+            "4PM/4PA": "1.38 / 5.83",
+            "4P%": "1.2%",
+            "FTM/FTA": "18.68 / 27.72",
+            "FT%": "50.0%",
+            "REB": "53.72",
+            "AST": "22.38",
+            "BLK": "3.50",
+            "STL": "5.65",
+            "PF": "0.00",
+            "TOV": "15.46",
+            "PTS": "106.93"
+        },
+        "roster": [
+            {
+                "name": "Benedict Adamos",
+                "number": "88",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/pn7317dti82nsez8fy6lcgktiawy",
+                "averages": {
+                    "ppg": "0.88",
+                    "rpg": "1.25",
+                    "apg": "0.25"
+                }
+            },
+            {
+                "name": "Jerrick Vincent Ahanmisi",
+                "number": "7",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/ty1a6q5504lj9fec0lqa2zmp3lj9",
+                "averages": {
+                    "ppg": "21.25",
+                    "rpg": "3.00",
+                    "apg": "4.67"
+                }
+            },
+            {
+                "name": "Maverick Ahanmisi",
+                "number": "13",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/qptcsblg38vbm8slkb4hwzwoooli",
+                "averages": {
+                    "ppg": "8.70",
+                    "rpg": "4.30",
+                    "apg": "5.10"
+                }
+            },
+            {
+                "name": "Mubashar Ali",
+                "number": "21",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/dqt2iv5zfj65e20oal6m9ghn9o35",
+                "averages": {
+                    "ppg": "23.91",
+                    "rpg": "15.82",
+                    "apg": "2.36"
+                }
+            },
+            {
+                "name": "John Matthew Bravo",
+                "number": "26",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/gz6pgv5nh6wjq0ntkchw4mp2xlrn",
+                "averages": {
+                    "ppg": "7.50",
+                    "rpg": "4.08",
+                    "apg": "1.00"
+                }
+            },
+            {
+                "name": "Conrad Joey Catapusan",
+                "number": "9",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/djwi4mjjygkcgrbnkn7z3mpo4or7",
+                "averages": {
+                    "ppg": "1.75",
+                    "rpg": "1.13",
+                    "apg": "0.38"
+                }
+            },
+            {
+                "name": "Shaun Geoffrey Chiu",
+                "number": "18",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/1ptiqk8y8034nzpbg0c5wjttyldg",
+                "averages": {
+                    "ppg": "7.25",
+                    "rpg": "10.08",
+                    "apg": "0.83"
+                }
+            },
+            {
+                "name": "Joseph Emmanuel Eriobu",
+                "number": "23",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/jbuh0iu7iqxw8uxd786gu6owlqb1",
+                "averages": {
+                    "ppg": "7.73",
+                    "rpg": "3.55",
+                    "apg": "0.64"
+                }
+            },
+            {
+                "name": "Paul Garcia",
+                "number": "3",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/pno06hoetsd44rsugsdnyrweoe40",
+                "averages": {
+                    "ppg": "1.38",
+                    "rpg": "1.00",
+                    "apg": "0.13"
+                }
+            },
+            {
+                "name": "Ahmad Didat Hanapi",
+                "number": "30",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/kh0pga2t61goitisqbq0ptpvomdy",
+                "averages": {
+                    "ppg": "3.00",
+                    "rpg": "0.80",
+                    "apg": "0.20"
+                }
+            },
+            {
+                "name": "Paolo Jose Hernandez",
+                "number": "19",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/q3b3anzc1cf0hk38hjpzu8yss1g1",
+                "averages": {
+                    "ppg": "9.80",
+                    "rpg": "2.90",
+                    "apg": "3.20"
+                }
+            },
+            {
+                "name": "Aljon Mariano",
+                "number": "10",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/lwrdoe9yhxen0444728yfv1w3w1k",
+                "averages": {
+                    "ppg": "0.00",
+                    "rpg": "0.00",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Brent Paraiso",
+                "number": "38",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/nxwu8cxbr5atlhg2i0lckcsabm27",
+                "averages": {
+                    "ppg": "6.78",
+                    "rpg": "2.56",
+                    "apg": "2.78"
+                }
+            },
+            {
+                "name": "Shawn Michael Umali",
+                "number": "28",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/bkchtxofh3b0tyehv5zsny7aktx7",
+                "averages": {
+                    "ppg": "4.33",
+                    "rpg": "2.00",
+                    "apg": "0.42"
+                }
+            },
+            {
+                "name": "Keith Zaldivar",
+                "number": "5",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/rrgvht57v1eoa4n14p73pqhoogqs",
+                "averages": {
+                    "ppg": "2.67",
+                    "rpg": "1.25",
+                    "apg": "0.42"
+                }
+            }
+        ]
+    },
+    {
+        "teamName": "TITAN ULTRA GIANT RISERS",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Rensy Bajar",
+            "TEAM MANAGER": "Ms. Jessica Arsolon",
+            "TEAM GOVERNOR": "Mr. Emilio Tiu",
+            "ASST COACHES": "Jerson Cabiltes\nMichael Fermin\nRaymond Valenzona\nMaverick Chua",
+            "COMPANY ADDRESS": "#111 6th Street, between 7th and 8th Avenue, East Grace Park, Caloocan City, 1403 Metro Manila, Philippines"
+        },
+        "coachingStaff": [
+            {
+                "name": "Rensy Bajar",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/Rensy.png"
+            }
+        ],
+        "stats": {
+            "GP": "12",
+            "FGM/FGA": "38.02 / 93.22",
+            "FG%": "31.3%",
+            "3PM/3PA": "8.73 / 30.10",
+            "3P%": "20.4%",
+            "4PM/4PA": "1.27 / 6.85",
+            "4P%": "0.9%",
+            "FTM/FTA": "16.52 / 23.41",
+            "FT%": "47.2%",
+            "REB": "47.08",
+            "AST": "19.46",
+            "BLK": "3.15",
+            "STL": "9.28",
+            "PF": "0.00",
+            "TOV": "15.06",
+            "PTS": "103.83"
+        },
+        "roster": [
+            {
+                "name": "Jeo Ambohot",
+                "number": "18",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/z8kc49fti99jyfxpb3wnw1jg6xmq",
+                "averages": {
+                    "ppg": "1.33",
+                    "rpg": "1.67",
+                    "apg": "0.11"
+                }
+            },
+            {
+                "name": "Jerick John Balanza",
+                "number": "7",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/l9rooggr2kf6lo2d3tr148zojk3f",
+                "averages": {
+                    "ppg": "8.50",
+                    "rpg": "2.58",
+                    "apg": "0.67"
+                }
+            },
+            {
+                "name": "King Danielle Caralipio",
+                "number": "27",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/9ouhvxb25yibsdn2f6fl07nygepw",
+                "averages": {
+                    "ppg": "1.73",
+                    "rpg": "1.82",
+                    "apg": "0.18"
+                }
+            },
+            {
+                "name": "Damie Cuntapay",
+                "number": "10",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/e1hov64hvez2vrnuow3l0y3g0ilj",
+                "averages": {
+                    "ppg": "2.10",
+                    "rpg": "0.70",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Aristotle Dionisio",
+                "number": "57",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/1c6yulqjgvpc9p7bz2jgkvnn9p53",
+                "averages": {
+                    "ppg": "5.42",
+                    "rpg": "3.83",
+                    "apg": "0.58"
+                }
+            },
+            {
+                "name": "Cade Flores",
+                "number": "22",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/bzh7dftslu68xcfggjkkj7i2nwde",
+                "averages": {
+                    "ppg": "6.50",
+                    "rpg": "4.50",
+                    "apg": "1.20"
+                }
+            },
+            {
+                "name": "Earl Michael Gilmore",
+                "number": "2",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/t4g16f1jsjck4xj80dhbxzcn3nad",
+                "averages": {
+                    "ppg": "23.67",
+                    "rpg": "14.08",
+                    "apg": "2.25"
+                }
+            },
+            {
+                "name": "Marc Paolo Javillonar",
+                "number": "9",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/x9v26qdzuoytrowaupn1jss568px",
+                "averages": {
+                    "ppg": "4.67",
+                    "rpg": "1.92",
+                    "apg": "0.33"
+                }
+            },
+            {
+                "name": "Aljun Jay Melecio",
+                "number": "11",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/6biizf8cd3wao63vqr6opscuo7kg",
+                "averages": {
+                    "ppg": "2.44",
+                    "rpg": "0.22",
+                    "apg": "0.78"
+                }
+            },
+            {
+                "name": "Joshua Eugene Munzon",
+                "number": "24",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/zze5f2m3trymxey1wfnhg05b8dig",
+                "averages": {
+                    "ppg": "19.67",
+                    "rpg": "4.00",
+                    "apg": "4.17"
+                }
+            },
+            {
+                "name": "Mark Denver Omega",
+                "number": "23",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/1d8u4mnwue34959busg9ct9x47qh",
+                "averages": {
+                    "ppg": "1.17",
+                    "rpg": "2.25",
+                    "apg": "0.25"
+                }
+            },
+            {
+                "name": "Von Rolfe Pessumal",
+                "number": "19",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/czvfyntvxxwcqrmbwwqy5ei2nc05",
+                "averages": {
+                    "ppg": "2.55",
+                    "rpg": "0.64",
+                    "apg": "0.36"
+                }
+            },
+            {
+                "name": "John Bryan Sajonia",
+                "number": "4",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/pav404eon6zhi9yykl3cw67znsqz",
+                "averages": {
+                    "ppg": "9.33",
+                    "rpg": "2.25",
+                    "apg": "2.08"
+                }
+            },
+            {
+                "name": "Mark Daniel Sangco",
+                "number": "28",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/qg7ocx81xe6ahxahx5ppvb1138o6",
+                "averages": {
+                    "ppg": "0.00",
+                    "rpg": "0.20",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Renato Ular",
+                "number": "5",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/w83938zgjwi3rinxkjuyttkysfsd",
+                "averages": {
+                    "ppg": "5.08",
+                    "rpg": "2.92",
+                    "apg": "0.67"
+                }
+            },
+            {
+                "name": "Fran Louie Yu",
+                "number": "3",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/f51b6g2t2al1nrvot8wn2r7pe54p",
+                "averages": {
+                    "ppg": "9.67",
+                    "rpg": "3.50",
+                    "apg": "5.83"
+                }
+            }
+        ]
+    },
+    {
+        "teamName": "TNT TROPANG 5G",
+        "teamLogo": "https://www.pba.ph/assets/img/footer_fb.png",
+        "management": {
+            "HEAD COACH": "Chot Reyes",
+            "TEAM MANAGER": "Isabelo Lastimosa",
+            "TEAM GOVERNOR": "Mr. Victorico P. Varvas",
+            "ASST COACHES": "Josh Reyes\nBong Ravena\nSandy Arespacochaga\nRanidel De Ocampo\nYuri Escueta\nRyan Reyes",
+            "COMPANY ADDRESS": "Smart Tower, 6799 Ayala Avenue, Makati City, Philippines"
+        },
+        "coachingStaff": [
+            {
+                "name": "Chot Reyes",
+                "role": "HEAD COACH",
+                "image": "https://dashboard.pba.ph/assets/coach/Coach_Chot.png"
+            }
+        ],
+        "stats": {
+            "GP": "20",
+            "FGM/FGA": "51.86 / 115.90",
+            "FG%": "40.1%",
+            "3PM/3PA": "10.61 / 34.82",
+            "3P%": "21.7%",
+            "4PM/4PA": "0.54 / 3.81",
+            "4P%": "0.7%",
+            "FTM/FTA": "29.68 / 43.46",
+            "FT%": "49.9%",
+            "REB": "65.48",
+            "AST": "23.71",
+            "BLK": "8.30",
+            "STL": "7.75",
+            "PF": "0.00",
+            "TOV": "16.94",
+            "PTS": "145.06"
+        },
+        "roster": [
+            {
+                "name": "Kim Cyril Aurin",
+                "number": "35",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/7n4xa060aq45856d3qla4952gtj7",
+                "averages": {
+                    "ppg": "1.93",
+                    "rpg": "1.29",
+                    "apg": "0.29"
+                }
+            },
+            {
+                "name": "Bol Manute Bol",
+                "number": "1",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/lss7jhtgxz2tuq893qtopb0mpla0",
+                "averages": {
+                    "ppg": "35.88",
+                    "rpg": "13.75",
+                    "apg": "1.75"
+                }
+            },
+            {
+                "name": "Jayson Castro",
+                "number": "17",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/4cjpxvj2w4w2jwe9k9fpyopahzoe",
+                "averages": {
+                    "ppg": "7.00",
+                    "rpg": "2.17",
+                    "apg": "3.94"
+                }
+            },
+            {
+                "name": "Justin Shaun Chua",
+                "number": "18",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/6lt5tg27h094fwy35upd27fgp1la",
+                "averages": {
+                    "ppg": "2.63",
+                    "rpg": "1.00",
+                    "apg": "0.25"
+                }
+            },
+            {
+                "name": "Simon Nicholas Enciso",
+                "number": "0",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/xux0pb5ggleiw76k4jlhxmq23e7h",
+                "averages": {
+                    "ppg": "0.38",
+                    "rpg": "0.75",
+                    "apg": "1.25"
+                }
+            },
+            {
+                "name": "Kevin Ferrer",
+                "number": "77",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/6ngwo49zpaoj87f6ijeqlcv3n27p",
+                "averages": {
+                    "ppg": "2.86",
+                    "rpg": "1.64",
+                    "apg": "0.29"
+                }
+            },
+            {
+                "name": "Henry Galinato Jr",
+                "number": "32",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/j9xoaj8grquh543g9ivl5e7atbor",
+                "averages": {
+                    "ppg": "3.28",
+                    "rpg": "2.33",
+                    "apg": "0.39"
+                }
+            },
+            {
+                "name": "Brandon Arnell Ganuelas-Rosser",
+                "number": "45",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/n7f4hnxkew0osxq7vnw5bb4lmxf6",
+                "averages": {
+                    "ppg": "7.44",
+                    "rpg": "3.83",
+                    "apg": "0.61"
+                }
+            },
+            {
+                "name": "Jordan Timothy Heading",
+                "number": "15",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/pbchl5sl4rf18n35b1f3fblbys2d",
+                "averages": {
+                    "ppg": "10.56",
+                    "rpg": "3.22",
+                    "apg": "2.44"
+                }
+            },
+            {
+                "name": "Tyrus Hill",
+                "number": "2",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/wy6kx4ykf34er5mif6aaa3ku6tcr",
+                "averages": {
+                    "ppg": "2.00",
+                    "rpg": "1.00",
+                    "apg": "0.00"
+                }
+            },
+            {
+                "name": "Jiovani Jalalon",
+                "number": "28",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/oqq3iu3ry35m1kttjiap5g6mu61o",
+                "averages": {
+                    "ppg": "1.00",
+                    "rpg": "2.50",
+                    "apg": "1.50"
+                }
+            },
+            {
+                "name": "Glenn Khobuntin",
+                "number": "12",
+                "position": "PF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/er6mrk3oryxmh4k09jcp2hqu64x2",
+                "averages": {
+                    "ppg": "2.78",
+                    "rpg": "1.44",
+                    "apg": "0.22"
+                }
+            },
+            {
+                "name": "Christopher Albert McCullough",
+                "number": "5",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/89y12hih5xl3g0zy2rhm62zq7fpw",
+                "averages": {
+                    "ppg": "29.33",
+                    "rpg": "11.00",
+                    "apg": "3.67"
+                }
+            },
+            {
+                "name": "Rey Benedict Nambatac",
+                "number": "6",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/hhk1c19c9ls4xzzyd3x4ydy0yip7",
+                "averages": {
+                    "ppg": "5.25",
+                    "rpg": "2.15",
+                    "apg": "1.80"
+                }
+            },
+            {
+                "name": "Avan Nava",
+                "number": "27",
+                "position": "PG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/cx2q54knytgpumqym0j16118b0r0",
+                "averages": {
+                    "ppg": "2.25",
+                    "rpg": "1.25",
+                    "apg": "0.50"
+                }
+            },
+            {
+                "name": "Michael Joseph Nieto",
+                "number": "14",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/xpv7g86r9i25y4xokc5uozh90gpw",
+                "averages": {
+                    "ppg": "1.00",
+                    "rpg": "1.73",
+                    "apg": "0.18"
+                }
+            },
+            {
+                "name": "Calvin John Oftana",
+                "number": "8",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/iabug1t0fd20yjhc1rnbm2rdnl08",
+                "averages": {
+                    "ppg": "14.60",
+                    "rpg": "6.25",
+                    "apg": "1.65"
+                }
+            },
+            {
+                "name": "Roger Ray Pogoy",
+                "number": "16",
+                "position": "SF",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/ckcovqivg6bcp8sa6so4jle9k7t2",
+                "averages": {
+                    "ppg": "12.13",
+                    "rpg": "4.13",
+                    "apg": "2.19"
+                }
+            },
+            {
+                "name": "Jose Antonio Quitevis Jr.",
+                "number": "30",
+                "position": "SG",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/hcv08icp9jyqgqiysmnae099qxct",
+                "averages": {
+                    "ppg": "1.00",
+                    "rpg": "1.17",
+                    "apg": "0.50"
+                }
+            },
+            {
+                "name": "Kelly Williams",
+                "number": "21",
+                "position": "C",
+                "image": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/wcyuliou489lwemddkf7ffqvja32",
+                "averages": {
+                    "ppg": "1.76",
+                    "rpg": "2.88",
+                    "apg": "0.29"
+                }
+            }
+        ]
+    }
+]

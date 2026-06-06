@@ -31,6 +31,9 @@ export const ForceSignModal: React.FC<ForceSignModalProps> = ({ player, teams, o
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [teams, searchTerm]);
 
+  const formatConference = (conference?: string) =>
+    conference === 'East' || conference === 'West' ? `${conference}ern` : (conference ?? 'League');
+
   const handleConfirm = () => {
     if (selectedTeam) {
       onConfirm({
@@ -54,11 +57,11 @@ export const ForceSignModal: React.FC<ForceSignModalProps> = ({ player, teams, o
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 20 }}
-          className="bg-slate-900 border border-slate-800 w-[95vw] max-w-3xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          className="flex max-h-[calc(100vh-2rem)] w-[95vw] max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl"
         >
           {/* Header */}
-          <div className="p-6 border-b border-slate-800 bg-slate-900/50">
-            <div className="flex items-center justify-between">
+          <div className="border-b border-slate-800 bg-slate-900/50 p-4 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3 text-rose-400">
                 <Shield size={24} />
                 <h3 className="text-xl font-black uppercase tracking-tight text-white">
@@ -74,7 +77,7 @@ export const ForceSignModal: React.FC<ForceSignModalProps> = ({ player, teams, o
             </div>
 
             {/* Player Summary */}
-            <div className="mt-4 flex items-center gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800">
+            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-950/50 p-4 sm:gap-4">
               <img
                 src={getPlayerImage(player)}
                 alt={player.name}
@@ -83,7 +86,7 @@ export const ForceSignModal: React.FC<ForceSignModalProps> = ({ player, teams, o
               />
               <div className="flex-1">
                 <h4 className="text-lg font-bold text-white">{player.name}</h4>
-                <div className="flex items-center gap-3 mt-1 text-sm">
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm sm:gap-3">
                   <span className="text-slate-400">{player.pos}</span>
                   <span className="text-slate-700">•</span>
                   <span className="text-slate-400">OVR: {ovr}</span>
@@ -101,7 +104,7 @@ export const ForceSignModal: React.FC<ForceSignModalProps> = ({ player, teams, o
           </div>
 
           {/* Team Selection */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+          <div className="custom-scrollbar flex-1 overflow-y-auto space-y-4 p-4 sm:p-6">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
               <input
@@ -127,7 +130,7 @@ export const ForceSignModal: React.FC<ForceSignModalProps> = ({ player, teams, o
                 >
                   <div className="w-10 h-10 bg-slate-950 rounded-lg flex items-center justify-center p-1">
                     <img
-                      src={team.logoUrl}
+                      src={(team as any).logoUrl ?? (team as any).imgURL ?? ''}
                       alt={team.abbrev}
                       className="w-full h-full object-contain"
                       referrerPolicy="no-referrer"
@@ -136,7 +139,7 @@ export const ForceSignModal: React.FC<ForceSignModalProps> = ({ player, teams, o
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-bold truncate text-white">{team.name}</div>
                     <div className="text-xs text-slate-500">
-                      {team.wins}-{team.losses} • {team.conference}ern
+                      {team.wins}-{team.losses} • {formatConference(team.conference)}
                     </div>
                   </div>
                   {selectedTeam?.id === team.id && (

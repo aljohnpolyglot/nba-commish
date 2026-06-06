@@ -24,14 +24,14 @@ const ContactModal: React.FC<ContactModalProps> = ({ contact, onClose }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex justify-center items-center z-[150] p-4 md:p-6"
+        className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md md:p-6"
         onClick={onClose}
       >
         <motion.div 
           initial={{ scale: 0.9, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 20 }}
-          className="bg-slate-950 rounded-2xl md:rounded-[2.5rem] shadow-2xl w-full max-w-2xl h-[80vh] md:h-[700px] border border-slate-800 overflow-hidden flex flex-col"
+          className="flex h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl md:h-[700px] md:rounded-[2.5rem]"
           onClick={(e) => e.stopPropagation()}
         >
           <ChatWindow 

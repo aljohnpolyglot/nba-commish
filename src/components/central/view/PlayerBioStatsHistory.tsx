@@ -1,9 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { NBAPlayer, NBAGMStat } from '../../../types';
 import { useGame } from '../../../store/GameContext';
 import { useLeagueLabels } from '../../../utils/leagueLabels';
 import { ADV_COLS, GH_COLS, PG_COLS, Phase, PhaseTabs, SeasonRow, SL_COLS, SL_GROUPS, StatsTable } from './PlayerBioStatsHistoryShared';
 import { buildSeasonRows, useBoxData } from './playerBioStatsHistoryData';
+import { loadPbaStatsForPlayers } from '../../../services/pba/statsArchive';
+import { loadEuroStatsForPlayers } from '../../../services/euro/statsArchive';
 
 interface Props {
   player: NBAPlayer;
@@ -16,6 +18,10 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
   const [slPhase, setSlPhase] = useState<Phase>('rs');
   const [advPhase, setAdvPhase] = useState<Phase>('rs');
   const [ghPhase, setGhPhase] = useState<Phase>('rs');
+  const [pbaArchiveStats, setPbaArchiveStats] = useState<NBAGMStat[]>([]);
+  const [euroArchiveStats, setEuroArchiveStats] = useState<NBAGMStat[]>([]);
+  const isPbaPlayer = player.status === 'PBA' || (player.tid >= 2000 && player.tid < 3000);
+  const isEuroPlayer = player.status === 'Euroleague' || player.status === 'Endesa' || (player.tid >= 1000 && player.tid < 2000) || (player.tid >= 5000 && player.tid < 6000);
 
   const allStarSeasons = useMemo(() => {
     const set = new Set<number>();
@@ -48,7 +54,32 @@ export const PlayerBioStatsHistory: React.FC<Props> = ({ player }) => {
   }, [player.awards]);
 
   const boxData = useBoxData(player.internalId, state.boxScores);
-  const stats = (player.stats ?? []) as NBAGMStat[];
+  useEffect(() => {
+    let cancelled = false;
+    if (!isPbaPlayer) {
+      setPbaArchiveStats([]);
+    } else {
+      loadPbaStatsForPlayers([player]).then(rowsByPlayer => {
+        if (!cancelled) setPbaArchiveStats(rowsByPlayer.get(player.internalId) ?? []);
+      });
+    }
+    if (!isEuroPlayer) {
+      setEuroArchiveStats([]);
+    } else {
+      loadEuroStatsForPlayers([player]).then(rowsByPlayer => {
+        if (!cancelled) setEuroArchiveStats(rowsByPlayer.get(player.internalId) ?? []);
+      });
+    }
+    return () => { cancelled = true; };
+  }, [isEuroPlayer, isPbaPlayer, player]);
+
+  const stats = useMemo(() => {
+    const base = (player.stats ?? []) as NBAGMStat[];
+    const existingSeasons = new Set(base.filter(row => !row.playoffs && (row.gp ?? 0) > 0).map(row => row.season));
+    const archive = [...pbaArchiveStats, ...euroArchiveStats].filter(row => !existingSeasons.has(row.season));
+    if (!archive.length) return base;
+    return [...base, ...archive];
+  }, [euroArchiveStats, pbaArchiveStats, player.stats]);
   const computedAge = player.born?.year ? state.leagueStats.year - player.born.year : (player.age ?? 0);
   const allTeamsForRows = useMemo(() => [
     ...state.teams.map(team => ({ id: team.id, abbrev: team.abbrev })),

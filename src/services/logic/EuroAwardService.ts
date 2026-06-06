@@ -32,6 +32,7 @@
  */
 import type { NBAPlayer, NBATeam, NBAGMStat, StaffData, NonNBATeam } from '../../types';
 import { resolveAnyTeam } from '../../utils/teamLookup';
+import { resolveHeadCoachName } from '../staff/coachNameResolver';
 
 export interface EuroAwardCandidate {
   player: NBAPlayer;
@@ -92,12 +93,14 @@ type CompetitionBoxScore = {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 const getTrb = (s: any) => s.trb || s.reb || (s.orb || 0) + (s.drb || 0);
-
-const bestStat = (stats: NBAGMStat[] | undefined, season: number): NBAGMStat | undefined => {
+const bestStat = (stats: NBAGMStat[] | undefined, season: number, tidHint?: number): NBAGMStat | undefined => {
   if (!stats) return undefined;
   for (const s of [season, season - 1]) {
     const filtered = stats.filter(st => st.season === s && !st.playoffs);
-    if (filtered.length > 0) return filtered.reduce((p, c) => (p.gp >= c.gp ? p : c));
+    if (filtered.length === 0) continue;
+    const currentTeamRows = tidHint != null ? filtered.filter(st => st.tid === tidHint) : [];
+    const pool = currentTeamRows.length > 0 ? currentTeamRows : filtered;
+    return pool.reduce((p, c) => (p.gp >= c.gp ? p : c));
   }
   return undefined;
 };
@@ -230,7 +233,7 @@ export class EuroAwardService {
     return players
       .filter(p => isEuroPlayer(p, euroIds))
       .map(p => {
-        const stat = bestStat(p.stats, season);
+        const stat = bestStat(p.stats, season, p.tid);
         const team = teams.find(t => t.id === p.tid) ?? this.buildStubTeam(p.tid);
         if (!stat || !isEligible(stat, team, this.MIN_GAMES)) return null;
         const gp = stat.gp;
@@ -254,7 +257,7 @@ export class EuroAwardService {
     return players
       .filter(p => isEuroPlayer(p, euroIds))
       .map(p => {
-        const stat = bestStat(p.stats, season);
+        const stat = bestStat(p.stats, season, p.tid);
         const team = teams.find(t => t.id === p.tid) ?? this.buildStubTeam(p.tid);
         if (!stat || !isEligible(stat, team, this.MIN_GAMES)) return null;
         const gp = stat.gp;
@@ -278,9 +281,9 @@ export class EuroAwardService {
     return players
       .filter(p => isEuroPlayer(p, euroIds) && playerAge(p, season) < 23)
       .map(p => {
-        const stat = bestStat(p.stats, season);
+        const stat = bestStat(p.stats, season, p.tid);
         const team = teams.find(t => t.id === p.tid) ?? this.buildStubTeam(p.tid);
-        if (!stat || stat.gp < Math.max(8, this.MIN_GAMES / 2)) return null;
+        if (!stat || !isEligible(stat, team, Math.max(1, Math.ceil(this.MIN_GAMES / 2)))) return null;
         const gp = stat.gp;
         const score = (stat.pts / gp) * 1.0 + (getTrb(stat) / gp) * 0.4 + (stat.ast / gp) * 0.4 + computePIR(stat) * 0.3;
         return { player: p, team, score, odds: '', stats: stat };
@@ -306,7 +309,7 @@ export class EuroAwardService {
     const scored = players
       .filter(p => isEuroPlayer(p, euroIds))
       .map(p => {
-        const stat = bestStat(p.stats, season);
+        const stat = bestStat(p.stats, season, p.tid);
         const team = teams.find(t => t.id === p.tid) ?? this.buildStubTeam(p.tid);
         if (!stat || !isEligible(stat, team, this.MIN_GAMES)) return null;
         const gp = stat.gp;
@@ -330,9 +333,9 @@ export class EuroAwardService {
     return players
       .filter(p => isEuroPlayer(p, endesaIds) && playerAge(p, season) < 22)
       .map(p => {
-        const stat = bestStat(p.stats, season);
+        const stat = bestStat(p.stats, season, p.tid);
         const team = teams.find(t => t.id === p.tid) ?? this.buildStubTeam(p.tid);
-        if (!stat || stat.gp < Math.max(8, this.MIN_GAMES / 2)) return null;
+        if (!stat || !isEligible(stat, team, Math.max(1, Math.ceil(this.MIN_GAMES / 2)))) return null;
         const gp = stat.gp;
         const score = (stat.pts / gp) * 1.0 + (getTrb(stat) / gp) * 0.4 + (stat.ast / gp) * 0.4 + computePIR(stat) * 0.3;
         return { player: p, team, score, odds: '', stats: stat };
@@ -369,7 +372,7 @@ export class EuroAwardService {
     return players
       .filter(p => isEuroPlayer(p, ids))
       .map(p => {
-        const stat = bestStat(p.stats, season);
+        const stat = bestStat(p.stats, season, p.tid);
         const team = teams.find(t => t.id === p.tid) ?? this.buildStubTeam(p.tid);
         if (!stat || !isEligible(stat, team, this.MIN_GAMES)) return null;
         const gp = stat.gp;
@@ -389,9 +392,9 @@ export class EuroAwardService {
     return players
       .filter(p => isEuroPlayer(p, ids))
       .map(p => {
-        const stat = bestStat(p.stats, season);
+        const stat = bestStat(p.stats, season, p.tid);
         const team = teams.find(t => t.id === p.tid) ?? this.buildStubTeam(p.tid);
-        if (!stat || stat.gp < Math.max(8, this.MIN_GAMES / 2)) return null;
+        if (!stat || !isEligible(stat, team, Math.max(1, Math.ceil(this.MIN_GAMES / 2)))) return null;
         return { player: p, team, score: metric(stat), odds: '', stats: stat };
       })
       .filter((x): x is EuroAwardCandidate => x !== null)
@@ -400,7 +403,7 @@ export class EuroAwardService {
       .map((c, i, arr) => ({ ...c, odds: this.assignOdds(c, i, arr) }));
   }
 
-  private static calcCoachRace(teams: NBATeam[], ids: Set<number>, _season: number, staff?: StaffData | null): EuroCoachCandidate[] {
+  private static calcCoachRace(teams: NBATeam[], ids: Set<number>, season: number, staff?: StaffData | null): EuroCoachCandidate[] {
     return teams
       .filter(t => ids.has(t.id))
       .map(t => {
@@ -409,8 +412,7 @@ export class EuroAwardService {
         const winPct = wins / (wins + losses || 1);
         const prevWins = (t.seasons ?? [])[(t.seasons ?? []).length - 2]?.won ?? wins;
         const improvement = wins - prevWins;
-        const coach = staff?.coaches?.find(c => (c.team ?? '').toLowerCase().trim() === t.name.toLowerCase().trim());
-        const coachName = coach?.name ?? `${t.name} Head Coach`;
+        const coachName = resolveHeadCoachName(t, staff, season);
         const score = winPct * 70 + improvement * 1.5;
         return { coachName, team: t, score, odds: '', wins, losses, improvement };
       })

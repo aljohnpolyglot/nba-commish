@@ -63,6 +63,7 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                         setDraftType={rulesState.setDraftType}
                         eligibilityRule={rulesState.eligibilityRule}
                         setEligibilityRule={rulesState.setEligibilityRule}
+                        isPbaMode={rulesState.isPbaMode}
                     />
                 )}
 
@@ -116,6 +117,8 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                         setCurrency={rulesState.setCurrency}
                         tradesAllowed={rulesState.tradesAllowed}
                         setTradesAllowed={rulesState.setTradesAllowed}
+                        pbaLocalEligibilityMode={rulesState.pbaLocalEligibilityMode}
+                        setPbaLocalEligibilityMode={rulesState.setPbaLocalEligibilityMode}
                         salaryCap={rulesState.salaryCap}
                         setSalaryCap={rulesState.setSalaryCap}
                         salaryCapEnabled={rulesState.salaryCapEnabled}

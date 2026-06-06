@@ -1,6 +1,7 @@
 import { NBAPlayer as Player, NBATeam as Team } from '../../types';
 import { Role } from '../../constants/playerRoles';
 import { convertTo2KRating } from '../../utils/helpers';
+import { isOnRoster } from '../../utils/teamLookup';
 
 export interface SlotSpec {
   roles: Role[];
@@ -35,7 +36,7 @@ export class StarterService {
 
   static getProjectedStarters(team: Team, players: Player[], season: number = 2025, overridePlayers?: Player[], modern: boolean = true): Player[] {
     const teamPlayers = overridePlayers || players.filter(
-      p => p.tid === team.id && p.status === 'Active' && (!p.injury || p.injury.gamesRemaining <= 0)
+      p => p.tid === team.id && isOnRoster(p) && (!p.injury || p.injury.gamesRemaining <= 0)
     );
 
     if (teamPlayers.length === 0) return [];
@@ -160,7 +161,7 @@ export class StarterService {
 
   static getRotation(team: Team, players: Player[], lead: number = 0, season: number = 2025, overridePlayers?: Player[], modern: boolean = true, depthOverride?: number): Player[] {
     const teamPlayers = overridePlayers || players.filter(
-      p => p.tid === team.id && p.status === 'Active' && (!p.injury || p.injury.gamesRemaining <= 0)
+      p => p.tid === team.id && isOnRoster(p) && (!p.injury || p.injury.gamesRemaining <= 0)
     );
     if (teamPlayers.length === 0) return [];
 

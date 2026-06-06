@@ -8,6 +8,7 @@ import { computeAge } from '../../../../../utils/helpers';
 import { getDisplayOverall, getDisplayPotential } from '../../../../../utils/playerRatings';
 import { MyFace, isRealFaceConfig } from '../../../../shared/MyFace';
 import { defaultAcademyBudgetForTier } from '../../../../../services/tycoon/economyScale';
+import { getSafeTycoonTier, getTycoonFacilityLevel } from '../../../../../services/tycoon/tierBase';
 
 function potColor(pot: number): string {
   if (pot >= 80) return 'text-emerald-300';
@@ -59,9 +60,9 @@ const ACADEMY_BUDGET_TIERS = [
 export const AcademySection: React.FC<AcademySectionProps> = ({
   tycoon, teamName, players, userTeamId, simYear, seniorRosterSize, maxRosterSize = 15, onAcademyBudgetChange, locked = false,
 }) => {
-  const level = tycoon.facilities.academy.level;
+  const level = getTycoonFacilityLevel(tycoon.facilities?.academy);
   const rating = 54 + level * 9;
-  const budget = (tycoon as any).academyBudget ?? defaultAcademyBudgetForTier(tycoon.tier);
+  const budget = (tycoon as any).academyBudget ?? defaultAcademyBudgetForTier(getSafeTycoonTier(tycoon.tier));
   const budgetTier = ACADEMY_BUDGET_TIERS[Math.max(0, Math.min(5, budget))];
 
   const youthPlayers = useMemo(() => {
@@ -76,7 +77,7 @@ export const AcademySection: React.FC<AcademySectionProps> = ({
           pos: p.pos ?? r?.pos ?? '?',
           age,
           ovr: getDisplayOverall(p, simYear),
-          pot: getDisplayPotential(p, simYear, simYear, { floorAtEstimated: true }),
+          pot: getDisplayPotential(p, simYear, simYear),
           face: p.face,
           imgURL: p.imgURL,
         };

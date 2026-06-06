@@ -11,6 +11,7 @@ import {
   resolveImgURL,
   scaleRatings,
 } from './externalRosterService.shared';
+import { attachPbaStaffToTeam } from './pba/staffSources';
 
 export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
   console.log('RosterService: Fetching Euroleague roster (euroleagueratings + euroleaguebio + teamdata)...');
@@ -77,7 +78,7 @@ export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], t
           abbrev: t.abbrev,
           pop: (t.pop && t.pop !== 1.0 ? t.pop : null) ?? overridePop ?? t.pop ?? 1.0,
           stadiumCapacity: t.stadiumCapacity,
-          imgURL: t.imgURL,
+          imgURL: t.imgURL || t.logoUrl || t.teamLogo,
           colors: t.colors,
           league: 'Euroleague',
         });
@@ -137,7 +138,7 @@ export const fetchPBARoster = async (economy: PBAEconomyConfig): Promise<{ playe
 
     if (data.teams && Array.isArray(data.teams)) {
       data.teams.forEach((t: any) => {
-        teams.push({
+        const team = {
           tid: t.tid + 2000,
           cid: t.cid,
           did: t.did,
@@ -146,10 +147,11 @@ export const fetchPBARoster = async (economy: PBAEconomyConfig): Promise<{ playe
           abbrev: t.abbrev,
           pop: t.pop || 1.0,
           stadiumCapacity: t.stadiumCapacity,
-          imgURL: t.imgURL,
+          imgURL: t.imgURL || t.logoUrl || t.teamLogo,
           colors: t.colors,
           league: 'PBA',
-        });
+        };
+        teams.push(attachPbaStaffToTeam(team, new Date().getFullYear()));
       });
     }
 
@@ -199,7 +201,13 @@ export const fetchPBARoster = async (economy: PBAEconomyConfig): Promise<{ playe
             born: item.born,
             draft: item.draft,
             college: item.college,
-            contract: normalizeImportedPBAContract(item.contract, pbaOvr, economy),
+            contract: normalizeImportedPBAContract(item.contract, pbaOvr, economy, {
+              internalId: `pba-${item.tid}-${playerName.replace(/\s+/g, '')}-${item.born?.year || '0'}`,
+              name: playerName,
+              tid: item.tid !== undefined ? item.tid + 2000 : -1,
+              born: item.born,
+              stats: item.stats || [],
+            }),
             injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
             status: 'PBA',
             hof: false,

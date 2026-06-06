@@ -30,9 +30,9 @@ export const AwardModal: React.FC<AwardModalProps> = ({ onClose, onAdd, isGenera
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 20 }}
-          className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+          className="flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl"
         >
-          <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+          <div className="flex items-start justify-between gap-3 border-b border-slate-800 bg-slate-900/50 p-4 sm:p-6">
             <div className="flex items-center gap-3 text-amber-500">
                 <Trophy size={24} />
                 <h3 className="text-xl font-black uppercase tracking-tight">Create New Honor</h3>
@@ -42,7 +42,7 @@ export const AwardModal: React.FC<AwardModalProps> = ({ onClose, onAdd, isGenera
             </button>
           </div>
           
-          <div className="p-6 space-y-6">
+          <div className="space-y-6 overflow-y-auto p-4 sm:p-6">
             <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Award Name (Optional)</label>
                 <input 
@@ -66,17 +66,17 @@ export const AwardModal: React.FC<AwardModalProps> = ({ onClose, onAdd, isGenera
             </div>
           </div>
 
-          <div className="p-6 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-3">
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-800 bg-slate-900/50 p-4 sm:flex-row sm:justify-end sm:p-6">
               <button 
                   onClick={onClose}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-white hover:bg-slate-800 transition-colors uppercase tracking-wider"
+                  className="w-full rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-800 hover:text-white sm:w-auto"
               >
                   Cancel
               </button>
               <button 
                   onClick={handleSubmit}
                   disabled={isGenerating || !criteria.trim()}
-                  className="px-6 py-2 rounded-xl text-xs font-black text-white bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider shadow-lg shadow-amber-600/20 flex items-center gap-2"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-6 py-2 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-amber-600/20 transition-all hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                   {isGenerating ? (
                       <>

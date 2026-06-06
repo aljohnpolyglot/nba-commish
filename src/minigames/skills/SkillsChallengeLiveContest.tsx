@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ChevronRight, Play, X } from 'lucide-react';
-import { SkillsChallengeResult } from '../../services/allStar/AllStarSkillsChallengeSim';
+import { AllStarSkillsChallengeSim, SkillsChallengeResult } from '../../services/allStar/AllStarSkillsChallengeSim';
 import { LiveContestPlayerCard } from '../shared/LiveContestPlayerCard';
 import { LiveContestTeam, SkillStation, formatContestTime } from '../shared/liveContestTypes';
 import { SkillsChallengeCourt } from './SkillsChallengeCourt';
@@ -17,6 +17,8 @@ const SKILLS_STATIONS: SkillStation[] = [
   { type: 'FINAL_SHOT', x: 250, y: 710, label: 'Final Jumper', stat: 'tp' },
 ];
 
+const STATION_TIME_WEIGHTS = [0.03, 0.23, 0.09, 0.16, 0.23, 0.09, 0.17];
+
 type ModalState = 'TEAM_FINISHED' | 'STANDINGS_UPDATE' | 'ROUND_RECAP' | 'TOURNAMENT_WINNER' | null;
 
 interface SkillsChallengeLiveContestProps {
@@ -25,6 +27,9 @@ interface SkillsChallengeLiveContestProps {
   onClose?: () => void;
   onComplete?: (result: SkillsChallengeResult) => void;
 }
+
+type SkillsRunLog = NonNullable<SkillsChallengeResult['runs']>[number];
+type SkillsStationRunLog = SkillsRunLog['stations'][number];
 
 export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProps> = ({ teams, year = 2026, onClose, onComplete }) => {
   const [tournamentTeams] = useState<LiveContestTeam[]>(() => teams.filter(team => team.players.length > 0).map(team => ({ ...team, players: [team.players[0]] })));
@@ -40,12 +45,15 @@ export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProp
   const [commentary, setCommentary] = useState('GETTING READY...');
   const [toastFeedback, setToastFeedback] = useState<{ text: string; type: 'MAKE' | 'MISS'; id: number } | null>(null);
   const [simSpeed, setSimSpeed] = useState(1);
+  const [competitorPos, setCompetitorPos] = useState<{ x: number; y: number } | undefined>(undefined);
   const stopRef = useRef(false);
   const simSpeedRef = useRef(1);
   const isSimulatingRef = useRef(false);
   const executionIdRef = useRef(0);
   const savedRef = useRef(false);
   const timerRef = useRef(0);
+  const resultRef = useRef<SkillsChallengeResult | null>(null);
+  const competitorPosRef = useRef<{ x: number; y: number }>({ x: SKILLS_STATIONS[0].x, y: SKILLS_STATIONS[0].y });
 
   useEffect(() => { simSpeedRef.current = simSpeed; }, [simSpeed]);
   useEffect(() => { timerRef.current = timer; }, [timer]);
@@ -90,6 +98,54 @@ export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProp
     requestAnimationFrame(check);
   });
 
+  const setRunnerPos = (point: { x: number; y: number }) => {
+    competitorPosRef.current = point;
+    setCompetitorPos(point);
+  };
+
+  const distance = (from: { x: number; y: number }, to: { x: number; y: number }) => Math.hypot(to.x - from.x, to.y - from.y);
+
+  const pathPointAt = (points: { x: number; y: number }[], progress: number) => {
+    if (points.length <= 1) return points[0] ?? competitorPosRef.current;
+    const segments = points.slice(1).map((point, index) => ({ from: points[index], to: point, length: distance(points[index], point) }));
+    const total = segments.reduce((sum, segment) => sum + segment.length, 0);
+    if (total <= 0) return points[points.length - 1];
+    let remaining = Math.min(1, Math.max(0, progress)) * total;
+    for (const segment of segments) {
+      if (remaining <= segment.length || segment === segments[segments.length - 1]) {
+        const local = segment.length <= 0 ? 1 : remaining / segment.length;
+        return {
+          x: segment.from.x + (segment.to.x - segment.from.x) * local,
+          y: segment.from.y + (segment.to.y - segment.from.y) * local,
+        };
+      }
+      remaining -= segment.length;
+    }
+    return points[points.length - 1];
+  };
+
+  const animatePath = async (points: { x: number; y: number }[], durationMs: number, executionId: number) => {
+    const route = points.length > 1 ? points : [competitorPosRef.current, points[0] ?? competitorPosRef.current];
+    let elapsed = 0;
+    let last = performance.now();
+    await new Promise<void>(resolve => {
+      const step = (now: number) => {
+        if (stopRef.current || executionIdRef.current !== executionId) {
+          resolve();
+          return;
+        }
+        const delta = now - last;
+        last = now;
+        if (isSimulatingRef.current && simSpeedRef.current > 0) elapsed += delta * simSpeedRef.current;
+        const progress = durationMs <= 0 ? 1 : Math.min(1, elapsed / durationMs);
+        setRunnerPos(pathPointAt(route, progress));
+        if (progress >= 1) resolve();
+        else requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  };
+
   const getTeamsForRound = (round: number) => {
     if (round === 1) return tournamentTeams;
     const sortedRound1 = [...(results[1] || [])].sort((a, b) => a.time - b.time);
@@ -100,6 +156,25 @@ export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProp
   const activeRoundTeams = getTeamsForRound(currentRound);
   const activeTeamData = activeRoundTeams[currentTeamIndex];
   const activePlayer = activeTeamData?.players[0];
+
+  const officialResult = () => {
+    if (!resultRef.current) {
+      resultRef.current = AllStarSkillsChallengeSim.simulate(tournamentTeams.map(team => team.players[0] as any));
+    }
+    return resultRef.current;
+  };
+
+  const officialRun = (playerId: string, round: number): SkillsRunLog | undefined => {
+    return officialResult().runs?.find(run => run.playerId === playerId && run.round === round);
+  };
+
+  const officialRunTime = (playerId: string, round: number) => {
+    const run = officialRun(playerId, round);
+    if (typeof run?.timeSec === 'number') return run.timeSec;
+    const row = officialResult().contestants.find(entry => entry.playerId === playerId);
+    const time = round === 2 ? row?.finalTime : row?.round1Time;
+    return typeof time === 'number' ? time : undefined;
+  };
 
   const buildResult = (nextResults = results): SkillsChallengeResult => {
     const finalResults = [...(nextResults[2] || [])].sort((a, b) => a.time - b.time);
@@ -128,6 +203,7 @@ export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProp
       winnerId: winner?.playerId ?? '',
       winnerName: winner?.playerName ?? 'TBD',
       log: rows.map(row => `${row.playerName} finished Round 1 in ${formatContestTime(row.round1Time)}${row.finalTime != null ? ` and the final in ${formatContestTime(row.finalTime)}` : ''}.`),
+      runs: officialResult().runs,
     };
   };
 
@@ -138,7 +214,7 @@ export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProp
       const rating = player.ratings[0]?.[station.stat] || 50;
       const speed = player.ratings[0]?.spd || 50;
       const passingOrShot = station.type === 'PASS_TARGET' || station.type === 'LAYUP' || station.type === 'FINAL_SHOT';
-      const attempts = passingOrShot ? Math.max(1, Math.min(6, Math.ceil((100 - rating) / 18 + Math.random() * 2))) : 1;
+      const attempts = passingOrShot ? Math.max(1, Math.min(6, Math.ceil((100 - rating) / 20))) : 1;
       if (station.type === 'START') total += 0.3;
       else if (station.type === 'DRIBBLE_OUT') total += Math.max(1.2, (6000 - speed * 25) / 1000);
       else if (station.type === 'DRIBBLE_BACK') total += Math.max(1.2, (6500 - speed * 25) / 1000);
@@ -151,6 +227,15 @@ export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProp
   };
 
   const completeRemainingResults = (baseResults = results) => {
+    const official = officialResult();
+    const round1 = official.contestants
+      .filter(entry => entry.round1Time != null)
+      .map(entry => ({ pid: entry.playerId, time: entry.round1Time }));
+    const round2 = official.contestants
+      .filter(entry => entry.finalTime != null)
+      .map(entry => ({ pid: entry.playerId, time: entry.finalTime! }));
+    if (round1.length > 0) return { 1: round1, 2: round2 };
+
     const next: Record<number, { pid: string; time: number }[]> = {
       1: [...(baseResults[1] || [])],
       2: [...(baseResults[2] || [])],
@@ -179,7 +264,53 @@ export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProp
   const saveResultOnce = (nextResults = results) => {
     if (savedRef.current) return;
     savedRef.current = true;
-    onComplete?.(buildResult(nextResults));
+    onComplete?.(officialResult());
+  };
+
+  const stationMoveRatio = (station: SkillStation) => {
+    if (station.type === 'DRIBBLE_OUT' || station.type === 'DRIBBLE_BACK') return 0.88;
+    if (station.type === 'START') return 0.05;
+    if (station.type === 'PASS_TARGET') return 0.2;
+    return 0.58;
+  };
+
+  const beginStationAction = async (
+    station: SkillStation,
+    stationIdx: number,
+    playerName: string,
+    executionId: number,
+    stationRun?: SkillsStationRunLog,
+    actionMs = 300,
+  ) => {
+    if (stopRef.current || executionIdRef.current !== executionId) return;
+    setIsCompeting(true);
+    const attempts = stationRun?.attempts?.length ? stationRun.attempts : [{ attempt: 1, made: true, durationSec: Math.max(0.08, actionMs / 1000) }];
+
+    for (const attempt of attempts) {
+      if (stopRef.current || executionIdRef.current !== executionId) return;
+      setCurrentAttempts(attempt.attempt);
+      const durationMs = Math.max(80, (attempt.durationSec || actionMs / attempts.length / 1000) * 1000);
+
+      if (station.type === 'START') {
+        setCommentary(`${playerName} explodes out of the gate.`);
+      } else if (station.type === 'DRIBBLE_OUT') {
+        setCommentary('Slicing through the agility weave, staying tight to the cones.');
+      } else if (station.type === 'DRIBBLE_BACK') {
+        setCommentary('Coming back through the speed weave with control.');
+      } else if (station.type === 'PASS_TARGET') {
+        const isSecondPass = stationIdx > 3;
+        setCommentary(attempt.made ? (isSecondPass ? 'Bounce pass on target.' : 'Chest pass on target.') : (isSecondPass ? 'Bounce pass skips wide.' : 'Chest pass misses the target.'));
+        triggerToast(attempt.made ? 'GOOD!' : 'MISS!', attempt.made ? 'MAKE' : 'MISS');
+      } else if (station.type === 'LAYUP') {
+        setCommentary(attempt.made ? 'Fastbreak layup is clean.' : 'Layup rolls off, chasing the rebound.');
+        triggerToast(attempt.made ? 'GOOD!' : 'MISS!', attempt.made ? 'MAKE' : 'MISS');
+      } else {
+        setCommentary(attempt.made ? 'Final jumper drops and stops the clock.' : 'Final jumper is off, reload from the line.');
+        triggerToast(attempt.made ? 'GOOD!' : 'MISS!', attempt.made ? 'MAKE' : 'MISS');
+      }
+
+      await delay(durationMs);
+    }
   };
 
   const handleClose = () => {
@@ -200,125 +331,46 @@ export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProp
     stationIdx: number,
     roundTeams: LiveContestTeam[],
     executionId: number,
+    targetRunTime?: number,
+    targetRun?: SkillsRunLog,
   ) => {
     if (stopRef.current || executionIdRef.current !== executionId) return;
     const entry = roundTeams[teamIdx];
     const player = entry?.players[0];
     if (!entry || !player) return;
+    const run = targetRun ?? officialRun(player.id, roundNum);
+    const runTime = targetRunTime ?? run?.timeSec ?? officialRunTime(player.id, roundNum) ?? estimatePlayerTime(entry, 0);
 
     if (stationIdx >= SKILLS_STATIONS.length) {
       isSimulatingRef.current = false;
       setIsFinished(true);
       setCommentary('UNBELIEVABLE FINISH!');
-      setTimer(prevTime => {
-        const finalTime = Number(prevTime.toFixed(1));
-        setResults(prev => {
-          const currentRoundResults = prev[roundNum] || [];
-          if (currentRoundResults.some(result => result.pid === player.id)) return prev;
-          return { ...prev, [roundNum]: [...currentRoundResults, { pid: player.id, time: finalTime }] };
-        });
-        return finalTime;
+      const finalTime = Number(runTime.toFixed(1));
+      setTimer(finalTime);
+      setResults(prev => {
+        const currentRoundResults = prev[roundNum] || [];
+        if (currentRoundResults.some(result => result.pid === player.id)) return prev;
+        return { ...prev, [roundNum]: [...currentRoundResults, { pid: player.id, time: finalTime }] };
       });
       setTimeout(() => setActiveModal('TEAM_FINISHED'), 1500 / (simSpeedRef.current || 1));
       return;
     }
 
     const station = SKILLS_STATIONS[stationIdx];
-    const rating = player.ratings[0]?.[station.stat] || 50;
-    const speedRating = player.ratings[0]?.spd || 50;
     setCommentary(`MOVING TO ${station.label.toUpperCase()}...`);
-
-    let moveMs = 1000 - speedRating * 5;
-    if (station.type === 'START') moveMs = 300;
-    else if (station.type === 'DRIBBLE_OUT') {
-      const weaveRating = speedRating * 0.6 + rating * 0.4;
-      setCommentary(weaveRating >= 75 ? 'Sprints forward with lightning-fast low handles!' : weaveRating < 50 ? 'Moving through but looking slightly rigid with the ball...' : 'Navigating the cones smoothly...');
-      moveMs = 6000 - speedRating * 25;
-    } else if (station.type === 'DRIBBLE_BACK') {
-      const weaveRating = speedRating * 0.6 + rating * 0.4;
-      setCommentary(weaveRating >= 75 ? 'Slicing through the return weave, absolute control!' : weaveRating < 50 ? 'Keeping high center of gravity, taking wider turns...' : 'Navigating the cones smoothly...');
-      moveMs = 6500 - speedRating * 25;
-    } else if (station.type === 'PASS_TARGET') moveMs = 200;
-    else if (station.type === 'LAYUP') moveMs = 2400 - speedRating * 10;
-    else if (station.type === 'FINAL_SHOT') moveMs = 2000 - speedRating * 8;
-
-    await delay(Math.max(150, moveMs));
+    const stationRun = run?.stations?.find(item => item.stationIndex === stationIdx) ?? run?.stations?.[stationIdx];
+    const stationMs = stationRun ? stationRun.timeSec * 1000 : Math.max(240, runTime * 1000 * (STATION_TIME_WEIGHTS[stationIdx] ?? 0.1));
+    const moveMs = stationRun ? stationRun.moveTimeSec * 1000 : stationMs * stationMoveRatio(station);
+    const actionMs = stationRun ? stationRun.actionTimeSec * 1000 : stationMs - moveMs;
+    const pathPoints = [competitorPosRef.current, ...(station.path || []), { x: station.x, y: station.y }];
+    await animatePath(pathPoints, Math.max(80, moveMs), executionId);
     if (stopRef.current || executionIdRef.current !== executionId) return;
 
-    let made = false;
-    let localAttempts = 0;
-    setIsCompeting(true);
-
-    while (!made) {
-      if (stopRef.current) return;
-      localAttempts++;
-      setCurrentAttempts(localAttempts);
-
-      if (station.type === 'START') {
-        setCommentary('He explodes out of the gate!');
-        await delay(300);
-        made = true;
-      } else if (station.type === 'DRIBBLE_OUT' || station.type === 'DRIBBLE_BACK') {
-        const weaveRating = speedRating * 0.6 + rating * 0.4;
-        const mistakeProb = Math.max(0.03, 1 - (weaveRating / 100) * 1.5);
-        if (Math.random() < mistakeProb && localAttempts === 1) {
-          setCommentary(speedRating >= 70 ? 'Lost the handle! But retrieves it in the blink of an eye!' : "Fumbles the ball! That's going to cost precious seconds.");
-          await delay(1200 + (100 - speedRating) * 8);
-        } else {
-          setCommentary(weaveRating >= 75 ? 'Clean, snappy weave! Flawless dribble execution.' : 'Safely through the weavers.');
-          await delay(100);
-        }
-        made = true;
-      } else if (station.type === 'PASS_TARGET') {
-        const passType = (station.label || 'Pass Target').toLowerCase();
-        setCommentary(localAttempts === 1 ? `Fires a sharp ${passType} toward the target circle!` : 'Grabs a ball and reloads the pass!');
-        await delay(800 + (100 - rating) * 5);
-        if (Math.random() < rating / 100 || localAttempts > 4) {
-          made = true;
-          setCommentary('Direct hit! The receiver target lights up.');
-          triggerToast('GOOD!', 'MAKE');
-          await delay(300);
-        } else {
-          setCommentary('Missed! Just wide of the cylinder structure.');
-          triggerToast('MISS!', 'MISS');
-          await delay(2500 + (100 - speedRating) * 10);
-        }
-      } else if (station.type === 'LAYUP') {
-        setCommentary(localAttempts === 1 ? 'Sprints for the layup!' : 'Chases his rebound, goes right back up!');
-        await delay(1200 + (100 - speedRating) * 5);
-        if (Math.random() < Math.min(0.95, (rating / 100) * 1.5) || localAttempts > 3) {
-          made = true;
-          setCommentary('Finishes off the backboard nicely!');
-          triggerToast('GOOD!', 'MAKE');
-          await delay(300);
-        } else {
-          setCommentary('Off the front rim! Missed the bunny!');
-          triggerToast('MISS!', 'MISS');
-          await delay(2800 + (100 - speedRating) * 12);
-        }
-      } else if (station.type === 'FINAL_SHOT') {
-        const tpRating = player.ratings[0]?.tp || 50;
-        const oiq = player.ratings[0]?.oiq || 50;
-        const adjustedRating = rating * 0.6 + tpRating * 0.3 + oiq * 0.1;
-        setCommentary(localAttempts === 1 ? 'Rises up for the final jump shot to stop the clock!' : 'Taps the ball back, gathers, and tries again from the line!');
-        await delay(1400 + (100 - speedRating) * 5);
-        if (Math.random() < adjustedRating / 100 || localAttempts > 5) {
-          made = true;
-          setCommentary('Clean swish! Got it to go and stops the clock!');
-          triggerToast('GOOD!', 'MAKE');
-          await delay(400);
-        } else {
-          setCommentary('Clanks off the back iron! Missed long!');
-          triggerToast('MISS!', 'MISS');
-          await delay(4000 + (100 - speedRating) * 15);
-        }
-      }
-    }
-
+    await beginStationAction(station, stationIdx, player.name, executionId, stationRun, Math.max(80, actionMs));
+    if (stopRef.current || executionIdRef.current !== executionId) return;
     setIsCompeting(false);
     setCompletedStations(stationIdx + 1);
-    await delay(Math.max(150, 800 - (speedRating * 2 + (player.ratings[0]?.oiq || 50) * 2)));
-    runSimulationStep(teamIdx, roundNum, stationIdx + 1, roundTeams, executionId);
+    runSimulationStep(teamIdx, roundNum, stationIdx + 1, roundTeams, executionId, runTime, run);
   };
 
   const startTeamSimulation = (teamIdx: number, roundNum: number, roundTeams: LiveContestTeam[]) => {
@@ -330,6 +382,7 @@ export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProp
     setIsCompeting(false);
     setCurrentAttempts(0);
     setCommentary(`${roundTeams[teamIdx].players[0].name} is ready.`);
+    setRunnerPos({ x: SKILLS_STATIONS[0].x, y: SKILLS_STATIONS[0].y });
     setToastFeedback(null);
     setActiveModal(null);
     stopRef.current = false;
@@ -423,8 +476,7 @@ export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProp
 
         <div className="mb-6 flex items-center justify-between border-b border-neutral-800/50 pb-4 pl-2">
           <div className="flex items-center gap-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-xs font-black italic shadow-[0_0_15px_rgba(37,99,235,0.5)]">NBA</div>
-            <div><h2 className="text-2xl font-black italic leading-none tracking-tighter">SKILLS <span className="text-orange-500">CHALLENGE</span></h2><p className="text-[9px] font-mono uppercase tracking-[0.2em] text-neutral-400">Old-school obstacle course</p></div>
+            <div><h2 className="text-2xl font-black italic leading-none tracking-tighter">Skills Challenge</h2><p className="text-[9px] font-mono uppercase tracking-[0.2em] text-neutral-400">Obstacle course</p></div>
           </div>
           <div className="flex items-center gap-6 rounded-lg border border-blue-900/50 bg-[#0c1f3d]/30 px-6 py-2 backdrop-blur-sm">
             <span className="font-black italic tracking-wider text-blue-500">ROUND {currentRound}</span>
@@ -443,14 +495,10 @@ export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProp
 
           <div className="flex min-h-[500px] items-center justify-center lg:col-span-6">
             <SkillsChallengeCourt
-              activeCompetitorPos={completedStations < SKILLS_STATIONS.length ? {
-                x: SKILLS_STATIONS[completedStations].path ? [null, ...SKILLS_STATIONS[completedStations].path!.map(point => point.x), SKILLS_STATIONS[completedStations].x] : SKILLS_STATIONS[completedStations].x,
-                y: SKILLS_STATIONS[completedStations].path ? [null, ...SKILLS_STATIONS[completedStations].path!.map(point => point.y), SKILLS_STATIONS[completedStations].y] : SKILLS_STATIONS[completedStations].y,
-              } : undefined}
+              activeCompetitorPos={isFinished ? undefined : competitorPos}
               completedStations={completedStations}
               locations={SKILLS_STATIONS}
               isCompeting={isCompeting}
-              activeCompetitorSpeed={activePlayer?.ratings[0]?.spd || 50}
               toastFeedback={toastFeedback}
               className="w-full max-w-2xl"
             />
@@ -506,8 +554,8 @@ export const SkillsChallengeLiveContest: React.FC<SkillsChallengeLiveContestProp
               <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-neutral-800 bg-[#111116] p-12 shadow-2xl">
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-400 to-orange-600" />
                 <h2 className="mb-2 text-3xl font-black italic tracking-tighter">{activePlayer?.name.toUpperCase()} RUN COMPLETE!</h2>
-                <p className="mb-8 font-mono text-sm uppercase tracking-widest text-neutral-400">Official Time Recorded</p>
-                <div className="mb-10 text-center text-8xl font-black tracking-tighter text-transparent bg-gradient-to-br from-white to-neutral-400 bg-clip-text tabular-nums">{formatContestTime(results[currentRound]?.[results[currentRound].length - 1]?.time)}</div>
+                <p className="mb-8 font-mono text-sm uppercase tracking-widest text-neutral-400">Run Complete</p>
+                <div className="mb-10 text-center text-8xl font-black tracking-tighter text-transparent bg-gradient-to-br from-white to-neutral-400 bg-clip-text tabular-nums">{formatContestTime(timer)}</div>
                 <button onClick={advanceSimulation} className="w-full rounded-xl bg-white py-4 text-sm font-black uppercase tracking-widest text-black transition-all hover:bg-neutral-200">View Standings</button>
               </motion.div>
             )}

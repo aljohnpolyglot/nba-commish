@@ -174,10 +174,13 @@ export function getMLEAvailability(
     mleUsage?: Record<number, { type: 'room' | 'non_taxpayer' | 'taxpayer'; usedUSD: number }>;
     apronsEnabled?: boolean;
     numberOfAprons?: number;
+    salaryCapEnabled?: boolean;
+    salaryCapType?: string;
   },
 ): MleAvailability {
   const NONE: MleAvailability = { type: null, limit: 0, used: 0, available: 0, blocked: true };
   if (leagueStats.mleEnabled === false) return NONE;
+  if (leagueStats.salaryCapEnabled === false || leagueStats.salaryCapType === 'none') return NONE;
 
   const cap = thresholds.salaryCap;
   const ls = leagueStats as any;

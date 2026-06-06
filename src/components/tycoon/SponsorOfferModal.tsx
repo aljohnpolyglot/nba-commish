@@ -80,9 +80,9 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[60] flex items-center justify-center p-4">
-      <div className="bg-slate-950 border border-slate-800 rounded-2xl max-w-[1280px] w-full max-h-[94vh] overflow-y-auto shadow-2xl">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[1280px] flex-col overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
         {/* Header */}
-        <div className="flex items-start gap-6 px-7 py-6 border-b border-slate-800">
+        <div className="flex flex-col gap-4 border-b border-slate-800 px-4 py-5 sm:px-7 sm:py-6 lg:flex-row lg:items-start lg:gap-6">
           <div className="shrink-0">
             <SponsorLogo
               name={data.brand}
@@ -102,14 +102,14 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
             </div>
             <p className="text-sm text-slate-400 mt-3 max-w-[640px]">{data.pitch ?? describeBrand(data.industry)}</p>
           </div>
-          <div className="shrink-0 flex items-start gap-4">
+          <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start lg:gap-4">
             <InterestLevelCard label={data.interestLabel} sub={data.interestSub} />
             <button onClick={onClose} aria-label="Close" className="mt-1"><X size={22} className="text-slate-400 hover:text-white" /></button>
           </div>
         </div>
 
         {/* KPI strip */}
-        <div className="grid grid-cols-6 gap-3 px-7 py-4 border-b border-slate-800">
+        <div className="grid grid-cols-1 gap-3 border-b border-slate-800 px-4 py-4 sm:grid-cols-2 sm:px-7 xl:grid-cols-6">
           <KpiCell label={isOneTime ? 'Payout' : 'Value per Year'} value={fmt(data.valuePerYear)} sub={isOneTime ? 'Immediate' : 'Fixed Fee'} tint="text-white" />
           <KpiCell label={isOneTime ? 'Duration' : 'Contract Length'} value={isOneTime ? 'One-Time' : yearsLabel} sub={isOneTime ? 'Paid on signing' : `${data.contractStartSeason} – ${data.contractEndSeason}`} tint="text-white" />
           <KpiCell label="Total Contract Value" value={fmt(totalValue)} sub={isOneTime ? 'One-Time Payout' : 'Guaranteed'} tint="text-emerald-300" />
@@ -124,13 +124,13 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
         </div>
 
         {/* Overview content */}
-        <div className="px-7 py-6 space-y-5">
+        <div className="space-y-5 px-4 py-5 sm:px-7 sm:py-6">
           {/* Row 1: Sponsorship Details / Deal Breakdown / What X Gets */}
-          <div className="grid lg:grid-cols-3 gap-5">
+          <div className="grid gap-5 lg:grid-cols-3">
                 {/* Sponsorship / Endorsement Details */}
                 <Panel title={detailsPanelTitle}>
-                  <div className="grid grid-cols-[140px_1fr] gap-4 items-start">
-                    <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 flex items-center justify-center">
+                  <div className="grid items-start gap-4 sm:grid-cols-[140px_1fr]">
+                    <div className="flex items-center justify-center rounded-xl border border-slate-800 bg-slate-950/70 p-3">
                       {isEndorsement ? (
                         <div className="w-full aspect-[3/4] rounded-lg border border-slate-700 bg-gradient-to-b from-violet-500/15 to-slate-900/40 flex flex-col items-center justify-center gap-2 p-2">
                           <SponsorLogo name={data.brand} meta={getBrandMeta('spain', data.brand)} industry={data.industry} size={56} />
@@ -216,7 +216,7 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
               </div>
 
               {/* Row 2: Club Benefits / Financial Impact / Recent Partnerships */}
-              <div className="grid lg:grid-cols-3 gap-5">
+              <div className="grid gap-5 lg:grid-cols-3">
                 <Panel title="Club Benefits">
                   <ul className="space-y-2.5">
                     {clubBenefits.map((benefit) => (
@@ -264,7 +264,7 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
                 </Panel>
 
                 <Panel title="Recent Partnerships">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {(data.recentPartnerships ?? []).slice(0, 4).map((p) => (
                       <div key={p.name} className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 flex flex-col items-center gap-2">
                         <div className="w-10 h-10 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center overflow-hidden">
@@ -287,23 +287,23 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-800 px-7 py-4 flex items-center gap-3">
+        <div className="flex flex-col gap-3 border-t border-slate-800 px-4 py-4 sm:px-7 lg:flex-row lg:items-center">
           <button
             onClick={onDismiss}
-            className="px-5 py-2.5 rounded-lg border border-slate-700 bg-slate-900 hover:border-slate-500 text-sm font-bold text-slate-300"
+            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-5 py-2.5 text-sm font-bold text-slate-300 hover:border-slate-500 lg:w-auto"
           >
             Dismiss Offer
           </button>
-          <div className="flex-1 flex items-center justify-end gap-3">
+          <div className="flex flex-1 items-center justify-end gap-3">
             <button
               onClick={onStartNegotiation}
-              className="px-5 py-2.5 rounded-lg bg-violet-500 hover:bg-violet-400 text-white text-sm font-bold flex items-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-violet-400 lg:w-auto"
             >
               Start Negotiation <ArrowRight size={14} />
             </button>
           </div>
         </div>
-        <div className="px-7 pb-5 text-[11px] text-slate-500">
+        <div className="px-4 pb-5 text-[11px] text-slate-500 sm:px-7">
           ⓘ You can add this offer to negotiations or start negotiating directly. Offer window: {NEGOTIATION_WINDOW_DAYS} days.
         </div>
       </div>
@@ -322,7 +322,7 @@ const InterestPill: React.FC<{ label: string }> = ({ label }) => (
 );
 
 const InterestLevelCard: React.FC<{ label: string; sub: string }> = ({ label, sub }) => (
-  <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 min-w-[200px]">
+  <div className="min-w-0 rounded-xl border border-slate-800 bg-slate-900/60 p-3 sm:min-w-[200px]">
     <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Interest Level</div>
     <div className="mt-1 flex items-center gap-2">
       <span className="w-2 h-2 rounded-full bg-emerald-400" />
@@ -341,16 +341,16 @@ const KpiCell: React.FC<{ label: string; value: string; sub: string; tint: strin
 );
 
 const Panel: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+  <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 sm:p-5">
     <div className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4">{title}</div>
     {children}
   </div>
 );
 
 const DetailRow: React.FC<{ k: string; v: string }> = ({ k, v }) => (
-  <div className="flex items-center justify-between py-1.5 border-b border-slate-800 last:border-0">
+  <div className="flex flex-col gap-1 border-b border-slate-800 py-1.5 last:border-0 sm:flex-row sm:items-center sm:justify-between">
     <dt className="text-slate-500">{k}</dt>
-    <dd className="text-slate-200 font-bold">{v}</dd>
+    <dd className="font-bold text-slate-200 sm:text-right">{v}</dd>
   </div>
 );
 

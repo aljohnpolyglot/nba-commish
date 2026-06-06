@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, XCircle, TrendingDown, Bandage, AlertTriangle, Zap, Star, Heart, Trophy, Award, FileSignature } from 'lucide-react';
+import { CheckCircle, XCircle, TrendingDown, Bandage, AlertTriangle, Zap, Star, Heart, Trophy, Award, FileSignature, ShieldAlert, Siren } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
 
 type ToastItem =
   | { type: 'fa-accepted'; playerName: string; annualM: number; years: number }
@@ -9,12 +10,15 @@ type ToastItem =
   | { type: 'fa-bid-submitted'; playerName: string; teamName: string; annualM: number; years: number; resolvesInDays: number }
   | { type: 'eliminated'; teamName: string }
   | { type: 'injury'; playerName: string; injuryType: string; gamesRemaining: number; pos?: string; teamName?: string }
+  | { type: 'fight'; playerName: string; opponentName: string; teamName: string; severity: 'scuffle' | 'ejection' | 'brawl' }
   | { type: 'recovery'; playerName: string; teamName: string; pos: string }
+  | { type: 'suspension'; playerName: string; teamName: string; pos?: string; gamesRemaining: number; reason: string }
   | { type: 'feat-own'; playerName: string; teamName: string; oppName: string; homeScore: number; awayScore: number; isHome: boolean; won: boolean; pts: number; reb: number; ast: number }
   | { type: 'feat-league'; playerName: string; teamName: string; oppName: string; homeScore: number; awayScore: number; isHome: boolean; won: boolean; pts: number; reb: number; ast: number }
   | { type: 'award'; playerName: string; teamName: string; teamAbbrev: string; awardLabel: string }
   | { type: 'playoffs'; teamName: string; body: string }
   | { type: 'option'; playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number }
+  | { type: 'death'; entityType: 'player' | 'staff'; playerName: string; teamName: string; roleLabel?: string; cause: string; deathType: 'natural' | 'tragic' }
   | { type: 'rotation-budget'; delta: number }
   // ── RFA matching offer-sheet ───────────────────────────────────────────
   // 'rfa-offer-received' shown to the user when their RFA has a winning offer
@@ -24,6 +28,7 @@ type ToastItem =
   | { type: 'rfa-not-matched'; playerName: string; signingTeamName: string }
   | { type: 'transfer-accepted'; playerName: string; sellerTeamName: string; feeEUR: number }
   | { type: 'transfer-rejected'; playerName: string; sellerTeamName: string; feeEUR: number; reason?: string }
+  | { type: 'draft-combine'; year: number }
   | { type: 'gameplan-copied' };
 
 // ── Imperative push API (usable outside React tree) ─────────────────────────
@@ -36,12 +41,15 @@ const TOAST_DURATION: Record<ToastItem['type'], number> = {
   'fa-bid-submitted': 4500,
   'eliminated': 7000,
   'injury': 6000,
+  'fight': 6500,
   'recovery': 5000,
+  'suspension': 7000,
   'feat-own': 6000,
   'feat-league': 6000,
   'award': 7000,
   'playoffs': 7000,
   'option': 6000,
+  'death': 9000,
   'rotation-budget': 5000,
   // RFA decision toast persists 12s — user needs time to choose Match/Decline
   'rfa-offer-received': 12000,
@@ -49,6 +57,7 @@ const TOAST_DURATION: Record<ToastItem['type'], number> = {
   'rfa-not-matched': 6000,
   'transfer-accepted': 6000,
   'transfer-rejected': 5500,
+  'draft-combine': 5500,
   'gameplan-copied': 3500,
 };
 
@@ -60,18 +69,22 @@ const ACCENT: Record<ToastItem['type'], Accent> = {
   'fa-bid-submitted': { bg: 'bg-indigo-950/90', border: 'border-indigo-500/50', label: 'text-indigo-300', icon: 'text-indigo-400' },
   'eliminated':   { bg: 'bg-zinc-950/90',    border: 'border-zinc-500/50',    label: 'text-zinc-300',    icon: 'text-zinc-400'    },
   'injury':       { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
+  'fight':        { bg: 'bg-orange-950/90',  border: 'border-orange-500/50',  label: 'text-orange-300',  icon: 'text-orange-400'  },
   'recovery':     { bg: 'bg-emerald-950/90', border: 'border-emerald-500/50', label: 'text-emerald-300', icon: 'text-emerald-400' },
+  'suspension':   { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
   'feat-own':     { bg: 'bg-indigo-950/90',  border: 'border-indigo-500/50',  label: 'text-indigo-300',  icon: 'text-indigo-400'  },
   'feat-league':  { bg: 'bg-amber-950/90',   border: 'border-amber-500/50',   label: 'text-amber-300',   icon: 'text-amber-400'   },
   'award':        { bg: 'bg-[#3a2a05]/90',   border: 'border-[#FDB927]/50',   label: 'text-[#FDB927]',   icon: 'text-[#FDB927]'   },
   'playoffs':        { bg: 'bg-violet-950/90',  border: 'border-violet-500/50',  label: 'text-violet-300',  icon: 'text-violet-400'  },
   'option':          { bg: 'bg-sky-950/90',     border: 'border-sky-500/50',     label: 'text-sky-300',     icon: 'text-sky-400'     },
+  'death':           { bg: 'bg-zinc-950/95',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
   'rotation-budget': { bg: 'bg-amber-950/90',   border: 'border-amber-500/50',   label: 'text-amber-300',   icon: 'text-amber-400'   },
   'rfa-offer-received': { bg: 'bg-fuchsia-950/95', border: 'border-fuchsia-500/60', label: 'text-fuchsia-300', icon: 'text-fuchsia-400' },
   'rfa-matched':     { bg: 'bg-emerald-950/90', border: 'border-emerald-500/50', label: 'text-emerald-300', icon: 'text-emerald-400' },
   'rfa-not-matched': { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
   'transfer-accepted': { bg: 'bg-emerald-950/90', border: 'border-emerald-500/50', label: 'text-emerald-300', icon: 'text-emerald-400' },
   'transfer-rejected': { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
+  'draft-combine': { bg: 'bg-violet-950/90', border: 'border-violet-500/50', label: 'text-violet-300', icon: 'text-violet-400' },
   'gameplan-copied': { bg: 'bg-sky-950/90',     border: 'border-sky-500/50',     label: 'text-sky-300',     icon: 'text-sky-400'     },
 };
 
@@ -79,6 +92,7 @@ export const ToastNotifier: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const [queue, setQueue] = useState<ToastItem[]>([]);
   const [visible, setVisible] = useState<ToastItem | null>(null);
+  const isolatedLeagueMode = isEuroIsolatedMode(state) || isPbaIsolatedMode(state);
 
   // Register the imperative push API so callers outside the React tree can enqueue toasts.
   useEffect(() => {
@@ -145,6 +159,20 @@ export const ToastNotifier: React.FC = () => {
     dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingInjuryToasts: [] } });
   }, [state.pendingInjuryToasts]);
 
+  useEffect(() => {
+    const pending = (state as any).pendingFightToasts as { playerName: string; opponentName: string; teamName: string; severity: 'scuffle' | 'ejection' | 'brawl' }[] | undefined;
+    if (!pending || pending.length === 0) return;
+    const items: ToastItem[] = pending.map(p => ({
+      type: 'fight',
+      playerName: p.playerName,
+      opponentName: p.opponentName,
+      teamName: p.teamName,
+      severity: p.severity,
+    }));
+    setQueue(q => [...q, ...items]);
+    dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingFightToasts: [] } });
+  }, [(state as any).pendingFightToasts]);
+
   // Drain pendingRecoveryToasts
   useEffect(() => {
     const pending = (state as any).pendingRecoveryToasts as { playerName: string; teamName: string; pos: string }[] | undefined;
@@ -156,39 +184,63 @@ export const ToastNotifier: React.FC = () => {
     dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingRecoveryToasts: [] } });
   }, [(state as any).pendingRecoveryToasts]);
 
+  useEffect(() => {
+    const pending = (state as any).pendingSuspensionToasts as { playerName: string; teamName: string; pos?: string; gamesRemaining: number; reason: string }[] | undefined;
+    if (!pending || pending.length === 0) return;
+    const items: ToastItem[] = pending.map(p => ({
+      type: 'suspension',
+      playerName: p.playerName,
+      teamName: p.teamName,
+      pos: p.pos,
+      gamesRemaining: p.gamesRemaining,
+      reason: p.reason,
+    }));
+    setQueue(q => [...q, ...items]);
+    dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingSuspensionToasts: [] } });
+  }, [(state as any).pendingSuspensionToasts]);
+
   // Drain pendingFeatToasts
   useEffect(() => {
     const pending = (state as any).pendingFeatToasts as { playerName: string; teamName: string; oppName: string; homeScore: number; awayScore: number; isHome: boolean; won: boolean; pts: number; reb: number; ast: number; isOwnTeam: boolean }[] | undefined;
     if (!pending || pending.length === 0) return;
-    const items: ToastItem[] = pending.map(p => ({
+    const filtered = isolatedLeagueMode ? pending.filter(p => p.isOwnTeam) : pending;
+    const items: ToastItem[] = filtered.map(p => ({
       type: p.isOwnTeam ? 'feat-own' : 'feat-league',
       playerName: p.playerName, teamName: p.teamName, oppName: p.oppName,
       homeScore: p.homeScore, awayScore: p.awayScore, isHome: p.isHome, won: p.won,
       pts: p.pts, reb: p.reb, ast: p.ast,
     }));
-    setQueue(q => [...q, ...items]);
+    if (items.length > 0) setQueue(q => [...q, ...items]);
     dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingFeatToasts: [] } });
-  }, [(state as any).pendingFeatToasts]);
+  }, [(state as any).pendingFeatToasts, isolatedLeagueMode]);
 
   // Drain pendingAwardToasts (render path ready — dispatch from award-assignment code when wired)
   useEffect(() => {
     const pending = (state as any).pendingAwardToasts as { playerName: string; teamName: string; teamAbbrev: string; awardLabel: string }[] | undefined;
     if (!pending || pending.length === 0) return;
+    if (isolatedLeagueMode) {
+      dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingAwardToasts: [] } });
+      return;
+    }
     const items: ToastItem[] = pending.map(p => ({
       type: 'award', playerName: p.playerName, teamName: p.teamName, teamAbbrev: p.teamAbbrev, awardLabel: p.awardLabel,
     }));
     setQueue(q => [...q, ...items]);
     dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingAwardToasts: [] } });
-  }, [(state as any).pendingAwardToasts]);
+  }, [(state as any).pendingAwardToasts, isolatedLeagueMode]);
 
   // Drain pendingPlayoffsToasts (render path ready — dispatch from playoff advance code when wired)
   useEffect(() => {
     const pending = (state as any).pendingPlayoffsToasts as { teamName: string; body: string }[] | undefined;
     if (!pending || pending.length === 0) return;
+    if (isolatedLeagueMode) {
+      dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingPlayoffsToasts: [] } });
+      return;
+    }
     const items: ToastItem[] = pending.map(p => ({ type: 'playoffs', teamName: p.teamName, body: p.body }));
     setQueue(q => [...q, ...items]);
     dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingPlayoffsToasts: [] } });
-  }, [(state as any).pendingPlayoffsToasts]);
+  }, [(state as any).pendingPlayoffsToasts, isolatedLeagueMode]);
 
   // Drain pendingOptionToasts (GM-mode player/team option decisions at season rollover)
   useEffect(() => {
@@ -200,6 +252,33 @@ export const ToastNotifier: React.FC = () => {
     setQueue(q => [...q, ...items]);
     dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingOptionToasts: [] } });
   }, [(state as any).pendingOptionToasts]);
+
+  useEffect(() => {
+    const pending = state.pendingDeathToasts;
+    if (!pending || pending.length === 0) return;
+    const items: ToastItem[] = pending.map(p => ({
+      type: 'death',
+      entityType: p.entityType,
+      playerName: p.playerName,
+      teamName: p.teamName,
+      roleLabel: p.roleLabel,
+      cause: p.cause,
+      deathType: p.deathType,
+    }));
+    setQueue(q => [...q, ...items]);
+    dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingDeathToasts: [] } });
+  }, [state.pendingDeathToasts]);
+
+  useEffect(() => {
+    const pending = state.pendingDraftCombineToast;
+    if (!pending) return;
+    if (isolatedLeagueMode) {
+      dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingDraftCombineToast: null } });
+      return;
+    }
+    setQueue(q => [...q, { type: 'draft-combine', year: pending.year }]);
+    dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingDraftCombineToast: null } });
+  }, [state.pendingDraftCombineToast, isolatedLeagueMode]);
 
   // Dequeue one at a time
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -348,11 +427,35 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
     );
   }
 
+  if (item.type === 'fight') {
+    const label = item.severity === 'brawl' ? 'Brawl' : item.severity === 'ejection' ? 'Altercation' : 'Scuffle';
+    const body = item.severity === 'brawl'
+      ? <><span className="text-white font-bold">{item.playerName}</span> got pulled into a bench-clearing fight with <span className="text-white font-bold">{item.opponentName}</span>.</>
+      : item.severity === 'ejection'
+        ? <><span className="text-white font-bold">{item.playerName}</span> was ejected after an altercation with <span className="text-white font-bold">{item.opponentName}</span>.</>
+        : <><span className="text-white font-bold">{item.playerName}</span> got into a scuffle with <span className="text-white font-bold">{item.opponentName}</span>.</>;
+    return (
+      <Card type={item.type} icon={Siren} header={item.teamName} label={label}>
+        {body}
+      </Card>
+    );
+  }
+
   if (item.type === 'recovery') {
     const posPrefix = item.pos ? `${item.pos} ` : '';
     return (
       <Card type={item.type} icon={Heart} header={item.teamName} label="Recovery">
         <span className="text-white font-bold">{posPrefix}{item.playerName}</span> has recovered from their injury.
+      </Card>
+    );
+  }
+
+  if (item.type === 'suspension') {
+    const posPrefix = item.pos ? `${item.pos} ` : '';
+    return (
+      <Card type={item.type} icon={ShieldAlert} header={item.teamName} label="Suspension">
+        <span className="text-white font-bold">{posPrefix}{item.playerName}</span> was suspended for <span className="text-rose-300 font-bold">{item.gamesRemaining} game{item.gamesRemaining === 1 ? '' : 's'}</span>.
+        {' '}Reason: <span className="text-white font-bold">{item.reason}</span>.
       </Card>
     );
   }
@@ -402,6 +505,24 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
     );
   }
 
+  if (item.type === 'death') {
+    const roleLead = item.roleLabel ? `${item.roleLabel} ` : '';
+    const label = item.deathType === 'tragic' ? 'Tragic Death' : 'Death';
+    const fullSentence = item.cause.startsWith(item.playerName);
+    return (
+      <Card type={item.type} icon={AlertTriangle} header={item.teamName} label={label}>
+        {fullSentence ? (
+          <span className="text-rose-300 font-bold">{item.cause}</span>
+        ) : (
+          <>
+            <span className="text-white font-bold">{roleLead}{item.playerName}</span> passed away.
+            {' '}Cause of death: <span className="text-rose-300 font-bold">{item.cause}</span>.
+          </>
+        )}
+      </Card>
+    );
+  }
+
   if (item.type === 'rotation-budget') {
     const over = item.delta < 0;
     return (
@@ -441,9 +562,17 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
     );
   }
 
+  if (item.type === 'draft-combine') {
+    return (
+      <Card type={item.type} icon={Zap} header={`Draft Class ${item.year}`} label="Combine Results">
+        Draft combine results are out. Open <span className="text-violet-300 font-bold">Draft Scouting</span> to review measurements and drill numbers.
+      </Card>
+    );
+  }
+
   // playoffs
   return (
-    <Card type={item.type} icon={Trophy} header={item.teamName} label="Playoffs">
+    <Card type="playoffs" icon={Trophy} header={item.teamName} label="Playoffs">
       {item.body}
     </Card>
   );

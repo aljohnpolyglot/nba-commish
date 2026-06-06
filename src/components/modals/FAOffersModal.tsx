@@ -95,14 +95,14 @@ export const FAOffersModal: React.FC<Props> = ({ player, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div
-        className="relative w-full max-w-sm bg-zinc-950 border border-white/10 rounded-xl overflow-hidden shadow-2xl"
+        className="relative w-full max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto bg-zinc-950 border border-white/10 rounded-xl shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
-          <div>
+        <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-4 border-b border-white/5">
+          <div className="min-w-0">
             <div className="text-[10px] font-black uppercase tracking-[0.3em] text-white/50 italic">Active Market Bids</div>
-            <div className="text-sm font-bold text-white mt-0.5">{player.name}</div>
+            <div className="text-sm font-bold text-white mt-0.5 break-words">{player.name}</div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
             <X className="w-4 h-4 text-white/60" />
@@ -110,7 +110,7 @@ export const FAOffersModal: React.FC<Props> = ({ player, onClose }) => {
         </div>
 
         {/* Body */}
-        <div className="p-5 space-y-3 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <div className="p-4 sm:p-5 space-y-3 custom-scrollbar">
           {!activeMarket && !userBid ? (
             <p className="text-[11px] text-white/40 italic text-center py-4">No competing bids on record.</p>
           ) : (

@@ -117,9 +117,9 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative bg-slate-950 border border-indigo-500/30 rounded-2xl w-full max-w-6xl shadow-2xl overflow-hidden"
+          className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-indigo-500/30 bg-slate-950 shadow-2xl"
         >
-          <div className="flex flex-col gap-4 px-6 py-5 border-b border-white/10 bg-slate-900/70 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 border-b border-white/10 bg-slate-900/70 px-4 py-4 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-2xl border border-indigo-400/40 bg-indigo-500/15 flex items-center justify-center">
                 <CheckCircle className="w-6 h-6 text-indigo-300" />
@@ -131,7 +131,7 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <Kpi label="Expiring" value={String(rows.length)} />
               <Kpi label="Can Sign" value={String(willingRows.length)} tone="text-emerald-300" />
               <Kpi label="Test FA" value={String(rows.length - willingRows.length)} tone="text-amber-300" />
@@ -142,7 +142,7 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
             </button>
           </div>
 
-          <div className="p-4 md:p-6">
+          <div className="overflow-y-auto p-4 md:p-6">
             <div className="mb-4 hidden lg:grid grid-cols-[minmax(260px,1.35fr)_120px_150px_180px_190px] gap-4 px-4 text-[10px] font-black uppercase tracking-widest text-slate-500">
               <span>Player</span>
               <span>OVR / POT</span>
@@ -150,7 +150,7 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
               <span>Interest Teams</span>
               <span>Status</span>
             </div>
-            <div className="mb-5 rounded-xl border border-white/10 bg-white/[0.03] divide-y divide-white/10 max-h-[56vh] overflow-y-auto">
+            <div className="mb-5 max-h-[52vh] divide-y divide-white/10 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.03] sm:max-h-[56vh]">
               {!hasRows ? (
                 <div className="px-5 py-10 text-center">
                   <div className="text-lg font-black uppercase tracking-tight text-white">No contract talks to handle</div>
@@ -171,7 +171,7 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
                 const visibleInterest = interestTeams.slice(0, 3);
                 const age = computeAge(player, currentYear);
                 return (
-                  <div key={player.internalId} className={`border-l-4 ${badge.row ?? 'border-l-slate-700'} px-4 py-3 grid gap-3 lg:grid-cols-[minmax(260px,1.35fr)_120px_150px_180px_190px] lg:items-center`}>
+                  <div key={player.internalId} className={`grid gap-3 border-l-4 px-4 py-3 ${badge.row ?? 'border-l-slate-700'} lg:grid-cols-[minmax(260px,1.35fr)_120px_150px_180px_190px] lg:items-center`}>
                     <div className="flex items-center gap-3 min-w-0">
                       <PlayerPortrait
                         imgUrl={player.imgURL}
@@ -188,7 +188,7 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 w-full max-w-[160px]">
+                    <div className="grid w-full max-w-[160px] grid-cols-2 gap-2">
                       <RatingBox label="OVR" value={ovr} tone={ratingTone(ovr)} />
                       <RatingBox label="POT" value={pot} tone={ratingTone(pot)} />
                     </div>
@@ -197,7 +197,7 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
                       <div className="text-sm font-black text-white tabular-nums">{formatCurrencyWithCode(offerSalaryUSD, currency, false)}</div>
                       <div className="text-[10px] text-slate-500">{offerYears} year{offerYears === 1 ? '' : 's'}</div>
                     </div>
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex min-w-0 items-center gap-1.5">
                       {visibleInterest.map((team: any) => (
                         team.logoUrl ? (
                           <img key={team.id} src={team.logoUrl} alt={team.abbrev ?? team.name} title={team.name} className="w-7 h-7 rounded-full bg-slate-900 border border-white/10 object-contain p-0.5" />
@@ -227,16 +227,16 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
                         </span>
                       </div>
                     ) : willingToSign ? (
-                      <div className="shrink-0 flex items-center gap-2">
+                      <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                         <button
                           onClick={() => onMakeOffer(player.internalId)}
-                          className="px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-md text-[10px] font-black uppercase tracking-widest transition-colors border border-emerald-500/30"
+                          className="rounded-md border border-emerald-500/30 bg-emerald-500/20 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-300 transition-colors hover:bg-emerald-500/30"
                         >
                           Make Offer
                         </button>
                         <button
                           onClick={() => onReject(player.internalId)}
-                          className="px-3 py-2 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 rounded-md text-[10px] font-black uppercase tracking-widest transition-colors border border-rose-500/30"
+                          className="rounded-md border border-rose-500/30 bg-rose-500/15 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-rose-300 transition-colors hover:bg-rose-500/25"
                         >
                           Reject
                         </button>
@@ -303,15 +303,15 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 z-10 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4"
+                className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/90 p-4 backdrop-blur-sm"
               >
                 <motion.div
                   initial={{ scale: 0.96, y: 12 }}
                   animate={{ scale: 1, y: 0 }}
                   exit={{ scale: 0.96, y: 12 }}
-                  className="w-full max-w-2xl rounded-2xl border border-indigo-400/30 bg-slate-950 shadow-2xl overflow-hidden"
+                  className="flex max-h-[calc(100vh-3rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-indigo-400/30 bg-slate-950 shadow-2xl"
                 >
-                  <div className="p-5 border-b border-white/10 flex items-center justify-between">
+                  <div className="flex items-start justify-between gap-3 border-b border-white/10 p-4 sm:p-5">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center">
                         <Bot size={20} className="text-indigo-300" />

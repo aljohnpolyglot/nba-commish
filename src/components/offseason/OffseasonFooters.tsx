@@ -179,7 +179,7 @@ export const OffseasonTransferMarketFooter: React.FC = () => {
   const status = state.offseasonChecklist.transferMarket;
   if (status !== 'pending' && status !== 'in-progress') return null;
   if (!state.date) return null;
-  const transferMarketCanComplete = (['sponsorRenewals', 'facilityUpgrades', 'staffSignings'] as OffseasonChecklistRow[])
+  const transferMarketCanComplete = (['sponsorRenewals', 'facilityUpgrades', 'staffRetirements', 'staffSignings'] as OffseasonChecklistRow[])
     .every(row => state.offseasonChecklist?.[row] === 'done' || state.offseasonChecklist?.[row] === 'skipped');
 
   const progress = getTransferWindowProgress(state.date, state.leagueStats);
@@ -276,6 +276,7 @@ export const OffseasonTrainingCampFooter: React.FC = () => {
   const { state, dispatchAction } = useGame();
   if (!state.offseasonChecklist) return null;
   if (state.leagueStats?.uiMode === 'euro_isolated') return null;
+  if (state.leagueStats?.uiMode === 'pba_isolated') return null;
   const status = state.offseasonChecklist.trainingCamp;
   if (status !== 'pending' && status !== 'in-progress') return null;
 

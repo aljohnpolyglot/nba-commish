@@ -28,7 +28,7 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "vite.config.ts"
-  ],
+, "skillsChallenge.tsx"  ],
   "exclude": [
     "test",
     "src/**/__tests__/**"

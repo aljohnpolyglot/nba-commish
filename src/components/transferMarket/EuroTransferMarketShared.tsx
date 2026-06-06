@@ -4,6 +4,7 @@ import type { BidStatus, ClauseStatus, MockClub, MockPlayer } from './mockData';
 import { useTransferMarketContext } from './state';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
 import type { NBAPlayer } from '../../types';
+import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 
 export type TabKey = 'listings' | 'inbox' | 'browse' | 'clauses';
 
@@ -59,12 +60,11 @@ export function resolveMarketPlayer(players: NBAPlayer[], player: MockPlayer): N
   ) ?? null;
 }
 
-export const PlayerCell: React.FC<{ p: MockPlayer; small?: boolean; onOpen?: OpenMarketPlayer }> = ({ p, small, onOpen }) => (
+export const PlayerCell: React.FC<{ p: MockPlayer; small?: boolean; onOpen?: OpenMarketPlayer; hoverPlayer?: NBAPlayer | null }> = ({ p, small, onOpen, hoverPlayer = null }) => (
   <div
     className={`flex items-center gap-3 ${onOpen ? 'cursor-pointer hover:text-amber-200' : ''}`}
     role={onOpen ? 'button' : undefined}
     tabIndex={onOpen ? 0 : undefined}
-    title={onOpen ? `Open ${p.name}` : undefined}
     onClick={(e) => {
       if (!onOpen) return;
       e.stopPropagation();
@@ -84,7 +84,13 @@ export const PlayerCell: React.FC<{ p: MockPlayer; small?: boolean; onOpen?: Ope
       size={small ? 32 : 44}
     />
     <div className="min-w-0">
-      <div className={`${small ? 'text-[11px]' : 'text-xs'} font-bold text-white truncate`}>{p.name}</div>
+      {hoverPlayer ? (
+        <PlayerNameWithHover player={hoverPlayer} className={`${small ? 'text-[11px]' : 'text-xs'} font-bold text-white truncate block`}>
+          {p.name}
+        </PlayerNameWithHover>
+      ) : (
+        <div className={`${small ? 'text-[11px]' : 'text-xs'} font-bold text-white truncate`}>{p.name}</div>
+      )}
       <div className="text-[9px] text-slate-500 truncate">
         {p.flag} {p.position} · {p.age}y · {p.contractYearsLeft}y left
       </div>
@@ -92,12 +98,21 @@ export const PlayerCell: React.FC<{ p: MockPlayer; small?: boolean; onOpen?: Ope
   </div>
 );
 
-export const RatingBadge: React.FC<{ label: 'OVR' | 'POT'; value: number; small?: boolean }> = ({ label, value, small }) => (
-  <div className={`inline-flex items-center gap-1 px-2 ${small ? 'py-0.5 text-[10px]' : 'py-1 text-[11px]'} rounded-md border font-black tabular-nums ${ratingColor(value)}`}>
-    <span className="text-[8px] font-bold opacity-60 tracking-widest">{label}</span>
-    {value}
-  </div>
-);
+export const RatingBadge: React.FC<{ label: 'OVR' | 'POT'; value: number; small?: boolean }> = ({ label, value, small }) => {
+  const tooltip = label === 'OVR'
+    ? 'Overall rating'
+    : 'Potential rating';
+  return (
+    <div
+      title={`${tooltip}: ${value}`}
+      aria-label={`${tooltip}: ${value}`}
+      className={`inline-flex items-center gap-1 px-2 ${small ? 'py-0.5 text-[10px]' : 'py-1 text-[11px]'} rounded-md border font-black tabular-nums ${ratingColor(value)}`}
+    >
+      <span className="text-[8px] font-bold opacity-60 tracking-widest">{label}</span>
+      {value}
+    </div>
+  );
+};
 
 export const OvrPotPair: React.FC<{ ovr: number; pot: number; small?: boolean }> = ({ ovr, pot, small }) => (
   <div className="inline-flex items-center gap-1">
@@ -145,8 +160,8 @@ export const StatusPill: React.FC<{ children: React.ReactNode; tone: string }> =
 export const HeaderStrip: React.FC = () => {
   const { club, budget, window: w } = useTransferMarketContext();
   return (
-    <div className="bg-slate-900/60 border-b border-slate-800/60 px-6 py-3 flex items-center justify-between">
-      <div className="flex items-center gap-3">
+    <div className="bg-slate-900/60 border-b border-slate-800/60 px-4 sm:px-6 py-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex items-start gap-3 min-w-0">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white border-2 border-white/20" style={{ background: club.colorHex }}>
           {club.logoUrl ? (
             <img src={club.logoUrl} alt={club.name} className="w-full h-full object-contain p-1" />
@@ -154,25 +169,25 @@ export const HeaderStrip: React.FC = () => {
             club.shortName
           )}
         </div>
-        <div>
+        <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{club.name} · Front Office</div>
-          <h1 className="text-lg font-black text-white flex items-center gap-2">
+          <h1 className="text-lg font-black text-white flex flex-wrap items-center gap-2">
             <ArrowLeftRight size={18} className="text-amber-400" />
             Transfer Market
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Auction hub for player transfers</span>
           </h1>
         </div>
       </div>
-      <div className="flex items-center gap-4 text-[11px]">
-        <div className="flex flex-col items-end">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4 text-[11px] w-full lg:w-auto">
+        <div className="flex flex-col items-start lg:items-end">
           <span className="text-[9px] uppercase tracking-wider text-slate-500">Cash</span>
           <span className="font-black text-emerald-300">{fmtEUR(budget.cashEUR)}</span>
         </div>
-        <div className="flex flex-col items-end">
+        <div className="flex flex-col items-start lg:items-end">
           <span className="text-[9px] uppercase tracking-wider text-slate-500">Payroll Space</span>
           <span className="font-black text-blue-300">{fmtEUR(budget.payrollSpaceEUR)}</span>
         </div>
-        <div className="flex flex-col items-end">
+        <div className="flex flex-col items-start lg:items-end">
           <span className="text-[9px] uppercase tracking-wider text-slate-500">Window</span>
           <span className={`font-black ${w.open ? 'text-amber-300' : 'text-slate-500'}`}>
             {w.windowLabel}{w.open ? ` · ${w.daysLeft}d left` : ` · ${w.spanLabel}`}
@@ -190,7 +205,7 @@ export const TabsRow: React.FC<{ active: TabKey; onChange: (k: TabKey) => void; 
     { key: 'browse', label: 'Browse Market', icon: Search },
   ];
   return (
-    <div className="px-6 pt-4 border-b border-slate-800/60 flex items-center gap-1 bg-slate-900/40">
+    <div className="px-4 sm:px-6 pt-4 border-b border-slate-800/60 flex items-center gap-1 bg-slate-900/40 overflow-x-auto scrollbar-hide">
       {tabs.map(t => {
         const isActive = active === t.key;
         const Icon = t.icon;
@@ -198,7 +213,7 @@ export const TabsRow: React.FC<{ active: TabKey; onChange: (k: TabKey) => void; 
           <button
             key={t.key}
             onClick={() => onChange(t.key)}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2 border-b-2 ${
+            className={`shrink-0 px-3 sm:px-4 py-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2 border-b-2 ${
               isActive ? 'text-amber-300 border-amber-400' : 'text-slate-500 border-transparent hover:text-slate-300'
             }`}
           >

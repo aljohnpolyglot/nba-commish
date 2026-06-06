@@ -19,6 +19,7 @@ npm run dev
 
 `npm run lint` führt `tsc --noEmit` aus, `npm run build` produziert das Vite-Bundle.
 
+
 ## Game Modes
 
 | Modus | Kontrolle | Doku |
@@ -36,6 +37,15 @@ npm run dev
 **Wichtiger Unterschied:** Fictional-Setup erzeugt seine Liga vollständig lokal. Modded-Setup lädt Roster, Historie und Zusatzdaten aus externen Quellen.
 
 **Euro-Isolated worktree recovery (May 15–20, 2026):** Euro mode is being repaired directly in the main worktree. Current in-flight wiring seeds setup tier/budget, owner, six-role staff, sponsor slots, `INIT_EURO_CAREER` save state, LOAD_GAME healing for older Euro GM saves, generated staff free-agent pools for Front Office hiring, year-end owner patience/cash-injection mechanics, Euro Tasks transfer-market gating, sponsor/endorsement duplicate protection, direct Euro FA signings without NBA cap/MLE blocks, generated coach bio display, FIBA 200-minute gameplan budgets, Endesa/EuroLeague postseason completion gates before offseason, EuroLeague PlayButton eligibility filtering, and a player-facing cleanup pass on Euro offseason copy/row ordering. See `TODO.md` and `docs/superpowers/plans/2026-05-14-euro-setup-hybrid.md` before continuing Euro setup work.
+
+**Retirement review status (May 30, 2026):** Euro offseason now has a custom retired-player summary without HOF or jersey-retirement ceremony columns, and staff retirements are reviewed before Staff Signings using the saved `staffRetirementAnnouncements` records.
+
+**Spanish EuroLeague qualification (May 30, 2026):** In Spain Euro GM mode, Real Madrid, FC Barcelona, and Baskonia hold the permanent Spanish EuroLeague places. Valencia is seeded as the current open Spanish wildcard on fresh saves; after that, the highest Liga Endesa finisher outside the permanent trio receives the next season's EuroLeague invitation and gets a GM welcome modal.
+
+**All-Star H-O-R-S-E status (June 1, 2026):** H-O-R-S-E is now an opt-in All-Star Weekend event with Commissioner controls for 3-10 contestants and shot-repeat rules. It supports announcement, Saturday live view, LazySim resolution, and a resolved champion/table view alongside the existing contest tabs.
+
+**UI copy rule (June 5, 2026):** visible in-game text should describe the basketball meaning of a screen, not the app's data plumbing. Avoid provenance/process wording like "loaded from gist", "blended with your save", "synced", or "written into history" on player-facing surfaces.
+
 
 ## Architektur in einer Minute
 
@@ -93,47 +103,6 @@ Zwei Skalen existieren parallel. Verwechseln zerschießt alles.
 Konvertierung: `K2 = 0.88 * BBGM + 31` (`convertTo2KRating(ovr, hgt, tp)`).
 
 **Faustregel:** Jede Schwelle `>= 85` BBGM ist toter Code. Nutze 65–72 für Star, 55–64 für Starter. Skala dokumentieren.
-
-## Häufige Stolperfallen
-
-### Players & Teams
-- `state.players` ist die einzige Spielerquelle. `team.players` existiert nicht.
-- `tid === -1` = Free Agent · `tid === -2` = Draft Prospect · `tid >= 100` = Auslandsliga.
-- Rebounds: immer `s.trb ?? s.reb ?? ((s.orb ?? 0) + (s.drb ?? 0))`.
-- Aktuelle Saison-Stats: `s.season === year && !s.playoffs`, dann reduce auf höchstes `gp` (handhabt Mid-Season-Trades).
-- `NBATeam.name` enthält bereits die Stadt ("Oklahoma City Thunder"). Nicht `region + name` konkatenieren.
-
-### Contracts & Cap
-- `contract.amount` in **BBGM-Tausendern** (3200 = $3.2M). Salary-Utils nutzen USD.
-- `minContractStaticAmount` in **Millionen** (1.273 = $1.273M).
-- `EXTERNAL_SALARY_SCALE` in `constants.ts` cappt NBA-Offers auf ~3× Auslandspeak.
-- `getCapThresholds()` und `getMLEAvailability()` in `salaryUtils.ts` / `AIFreeAgentHandler.ts`.
-
-### Saisonfluss
-- Rollover feuert Jun 30 (`shouldFireRollover`) — läuft sowohl in `simulationHandler` als auch `lazySimRunner`. Seit Session 5 routen beide durch `getOffseasonDayPlan` statt parallel zu rechnen.
-- Rollover MUSS `schedule: []` zurückgeben.
-- `allStar` und `playoffs` werden bei Rollover gecleared. Exhibition-Box-Scores (negative Team-IDs) gepruned.
-- Optionen Jun 29 → FA-Signings Jul 1+ → External Routing Oct 1.
-- `draftComplete` boolean — wird bei Rollover gecleared, von `DraftSimulatorView` gesetzt.
-
-### Auslandsligen
-- TID-Offsets: Euroleague +1000 · PBA +2000 · WNBA +3000 · B-League +4000 · Endesa +5000 · G-League +6000 · CBA +7000 · NBL +8000.
-- Voller Integrationspfad in [`EXTERNAL_ROSTERS.md`](./EXTERNAL_ROSTERS.md).
-- **Fictional-League-Ausnahme:** Fictional-Saves sind derzeit NBA-only. `state.nonNBATeams[]` bleibt dort leer.
-
-### UI
-- All-Star-Teams nutzen negative IDs (-1/-2 East/West, -3/-4 Rising Stars, -5/-6 Celebrity).
-- `resolveTeam(tid)` handhabt NBA + nonNBA + negative IDs.
-- Portrait-Kette: `player.imgURL` → NBA-CDN → Initialen. Externe Spieler überspringen das CDN.
-- Bild-Cache: IndexedDB-Blob-Cache, in Settings → Performance toggle-bar.
-
-### Persistenz — Save-Scoped Storage (KRITISCH)
-
-Alles, was in `localStorage` oder `IndexedDB` außerhalb von `GameState` geschrieben wird, MUSS mit `state.saveId` skopt sein, sonst leakt es zwischen Saves.
-
-- `state.saveId` wird in `initialization.ts` als `nba_commish_<ts>_<rand>` gemintet, swap bei `LOAD_GAME` / `UPDATE_SAVE_ID`.
-- `GameContext` beobachtet `state.saveId` und ruft `setActiveSaveId()` auf dem Gameplan-Store. Dieses Muster für jeden neuen Per-Save-Side-Store nachahmen.
-- Reference: `src/store/gameplanStore.ts` keyt localStorage als `nba-commish-gameplans::<saveId>`. Niemals einen einzelnen globalen Key für editier­bare Per-Save-Settings — so leakten die Gameplan-Minutes vor dem Fix.
 
 ## Save-Format (für Debugging)
 

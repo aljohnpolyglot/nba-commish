@@ -10,8 +10,8 @@ export const PBA_COMPETITIONS: CompetitionSpec[] = [
     seasonEnd: { month: 2, day: 1 },
     teamSelector: 'allPBA',
     teamCount: 12,
-    gamesPerTeam: 22,
-    daysOfWeek: ['Wed', 'Fri', 'Sun'],
+    gamesPerTeam: 11,
+    daysOfWeek: ['Wed', 'Fri', 'Sat', 'Sun'],
     playoffFormat: {
       qfFormat: 'twice-to-beat',
       sfBest: 7,
@@ -37,8 +37,8 @@ export const PBA_COMPETITIONS: CompetitionSpec[] = [
     seasonEnd: { month: 8, day: 31 },
     teamSelector: 'allPBA',
     teamCount: 12,
-    gamesPerTeam: 22,
-    daysOfWeek: ['Wed', 'Fri', 'Sun'],
+    gamesPerTeam: 11,
+    daysOfWeek: ['Wed', 'Fri', 'Sat', 'Sun'],
     playoffFormat: {
       qfFormat: 'twice-to-beat',
       sfBest: 7,
@@ -64,8 +64,8 @@ export const PBA_COMPETITIONS: CompetitionSpec[] = [
     seasonEnd: { month: 12, day: 20 },
     teamSelector: 'allPBA',
     teamCount: 12,
-    gamesPerTeam: 22,
-    daysOfWeek: ['Wed', 'Fri', 'Sun'],
+    gamesPerTeam: 10,
+    daysOfWeek: ['Wed', 'Fri', 'Sat', 'Sun'],
     playoffFormat: {
       qfFormat: 'twice-to-beat',
       sfBest: 7,

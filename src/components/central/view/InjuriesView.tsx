@@ -12,6 +12,7 @@ import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { format, addDays } from 'date-fns';
 import { getOwnTeamId, normalizeDate } from '../../../utils/helpers';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { getTeamFullName } from '../../../utils/teamNames';
 
 interface InjuriesViewProps {
   filteredTeamId?: number;  // pre-filter to a single team (used in TeamDetailView)
@@ -73,12 +74,12 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
   };
 
   const getContactFromPlayer = (player: NBAPlayer): Contact => {
-    const playerTeam = state.teams.find(t => t.id === player.tid);
+    const playerTeam = resolveAnyTeam(player.tid, state.teams, state.nonNBATeams ?? []);
     return {
       id: player.internalId,
       name: player.name,
       title: 'Player',
-      organization: playerTeam?.name || 'Free Agent',
+      organization: playerTeam ? getTeamFullName(playerTeam) : 'Free Agent',
       type: 'player',
       playerPortraitUrl: player.imgURL,
     };
@@ -194,6 +195,22 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
     return injury.origin ? `${dateStr} ${injury.origin}` : dateStr;
   };
 
+  const formatOccurredForPlayer = (player: NBAPlayer, game?: Game | null) => {
+    const injury = player.injury;
+    if (!injury?.startDate) return '—';
+    if (!isParseableInjuryDate(injury.startDate)) return injury.startDate;
+    const d = new Date(injury.startDate);
+    if (isNaN(d.getTime())) return injury.startDate;
+    const dateStr = format(d, 'd MMM');
+    if (!game) return formatOccurred(injury);
+
+    const isHome = game.homeTid === player.tid;
+    const oppTid = isHome ? game.awayTid : game.homeTid;
+    const oppTeam = resolveAnyTeam(oppTid, state.teams, state.nonNBATeams ?? []);
+    const oppAbbrev = oppTeam?.abbrev ?? oppTeam?.name ?? '?';
+    return `${dateStr} ${isHome ? 'vs' : '@'} ${oppAbbrev}`;
+  };
+
   const injuryComments = useMemo(() => {
     const comments = new Map<string, string>();
     const reporters = ['Shams Charania of ESPN', 'Adrian Wojnarowski of ESPN', 'Chris Haynes of NBA TV', 'Marc Stein', 'local beat writers'];
@@ -219,7 +236,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
         let day = 'the next';
         try { day = `${format(new Date(nextGame.date), 'EEEE')}'s`; } catch {}
         nextGameClause = oppTeam
-          ? `${day} game against the ${oppTeam.name}`
+          ? `${day} game against ${getTeamFullName(oppTeam)}`
           : `${day} game`;
       }
 
@@ -239,7 +256,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
         const templates = [
           `${dateStr}: ${lastName} (${injuryType}) will be re-evaluated in ${weeks} weeks, ${reporter} reports.`,
           `${dateStr}: An MRI confirmed a ${injuryType} for ${lastName} and he will be re-evaluated in ${weeks} weeks.`,
-          `${dateStr}: ${lastName} (${injuryType}) will miss the ${team.name}'s next ${gamesOut} games.`
+          `${dateStr}: ${lastName} (${injuryType}) will miss ${getTeamFullName(team)}'s next ${gamesOut} games.`
         ];
         comment = templates[seed % templates.length];
       } else {
@@ -333,7 +350,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
               >
                 <option value="all">{allTeamsLabel}</option>
                 {[...scopedTeams].sort((a, b) => a.name.localeCompare(b.name)).map(team => (
-                  <option key={team.id} value={team.id}>{team.name}</option>
+                  <option key={team.id} value={team.id}>{getTeamFullName(team)}</option>
                 ))}
               </select>
             </div>
@@ -356,13 +373,13 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
                     onClick={() => navigateToTeam(team.id)}
                   >
                     {team.logoUrl ? (
-                      <img src={team.logoUrl} alt={team.name} className="w-8 h-8 object-contain" />
+                      <img src={team.logoUrl} alt={getTeamFullName(team)} className="w-8 h-8 object-contain" />
                     ) : (
                       <div className="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-slate-400 font-bold text-xs">
                         {team.abbrev}
                       </div>
                     )}
-                    <h3 className="text-lg font-bold text-white">{team.name}</h3>
+                    <h3 className="text-lg font-bold text-white">{getTeamFullName(team)}</h3>
                     {isOwn && <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">Your Team</span>}
                   </div>
                   
@@ -397,7 +414,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
                               <td className="px-6 py-4 text-slate-300 whitespace-nowrap font-mono text-xs">
                                 {(() => {
                                   const g = findInjuryGame(player);
-                                  const text = formatOccurred(player.injury);
+                                  const text = formatOccurredForPlayer(player, g);
                                   if (!g) return text;
                                   return (
                                     <span

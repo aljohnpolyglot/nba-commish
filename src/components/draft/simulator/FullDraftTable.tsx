@@ -3,9 +3,11 @@ import { useGame } from '../../../store/GameContext';
 import { getLsYear } from '../../../utils/leagueYear';
 import { getPlayerImage } from '../../central/view/bioCache';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
+import { getTeamFullName } from '../../../utils/teamNames';
 
 interface FullDraftTableProps {
   drafted: Record<number, any>;
+  passedPicks: Set<number>;
   draftOrder: any[];
   onReview: (player: any) => void;
   currentPick: number;
@@ -13,18 +15,21 @@ interface FullDraftTableProps {
   isGM: boolean;
 }
 
-export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOrder, onReview, currentPick, userTeamId, isGM }) => {
+export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, passedPicks, draftOrder, onReview, currentPick, userTeamId, isGM }) => {
   const { state: _ftState } = useGame();
   const leagueYear = getLsYear(_ftState);
   const [teamFilter, setTeamFilter] = useState<string>('ALL');
+  const teamIdOf = (team: any) => Number(team?.id ?? team?.tid);
+  const teamNameOf = (team: any) => getTeamFullName(team) || team?.name || 'Team';
 
   // Build sorted alphabetical team list from draft order (deduplicated)
   const teamOptions = useMemo(() => {
     const seen = new Map<string, any>();
     draftOrder.forEach(t => {
-      if (t && t.name && !seen.has(t.name)) seen.set(t.name, t);
+      const key = String(teamIdOf(t));
+      if (t && Number.isFinite(teamIdOf(t)) && !seen.has(key)) seen.set(key, t);
     });
-    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(seen.values()).sort((a, b) => teamNameOf(a).localeCompare(teamNameOf(b)));
   }, [draftOrder]);
 
   // Build every slot (1..draftOrder.length) so empty boxes pre-render like a real draft board.
@@ -33,12 +38,13 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOr
       pick: i + 1,
       team,
       player: drafted[i + 1] ?? null,
+      passed: passedPicks.has(i + 1),
     }));
-  }, [draftOrder, drafted]);
+  }, [draftOrder, drafted, passedPicks]);
 
   const filteredSlots = useMemo(() => {
     if (teamFilter === 'ALL') return allSlots;
-    return allSlots.filter(s => s.team?.name === teamFilter);
+    return allSlots.filter(s => String(teamIdOf(s.team)) === teamFilter);
   }, [allSlots, teamFilter]);
 
   return (
@@ -52,7 +58,7 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOr
         >
           <option value="ALL">All Teams</option>
           {teamOptions.map(t => (
-            <option key={t.id ?? t.name} value={t.name}>{t.name}</option>
+            <option key={teamIdOf(t)} value={String(teamIdOf(t))}>{teamNameOf(t)}</option>
           ))}
         </select>
       </div>
@@ -63,10 +69,10 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOr
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {filteredSlots.map(({ pick, team, player }) => {
-            const isUserTeam = isGM && userTeamId != null && team?.id === userTeamId;
-            const isCurrent = pick === currentPick && !player;
-            const isEmpty = !player;
+          {filteredSlots.map(({ pick, team, player, passed }) => {
+            const isUserTeam = isGM && userTeamId != null && teamIdOf(team) === Number(userTeamId);
+            const isCurrent = pick === currentPick && !player && !passed;
+            const isEmpty = !player && !passed;
 
             return (
               <div
@@ -99,6 +105,10 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOr
                       if (isRealFaceConfig(face)) return <div className="relative w-full h-full"><div className="absolute left-1/2 top-1/2" style={{ width: '85%', height: '127.5%', transform: 'translate(-50%, -50%)' }}><MyFace face={face} style={{ width: '100%', height: '100%' }} /></div></div>;
                       return <div className="w-full h-full flex items-center justify-center text-2xl font-black text-indigo-900">{player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</div>;
                     })()
+                  ) : passed ? (
+                    <div className="w-full h-full flex items-center justify-center bg-zinc-950">
+                      <span className="text-white/25 text-[10px] font-black uppercase tracking-widest">Pass</span>
+                    </div>
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       {isCurrent ? (
@@ -120,12 +130,19 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, draftOr
                         {player.college && ` · ${player.college}`}
                       </div>
                     </>
+                  ) : passed ? (
+                    <>
+                      <p className="font-black text-zinc-400 text-base truncate uppercase tracking-tight">Pick Passed</p>
+                      <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
+                        {teamNameOf(team)} declined this selection
+                      </div>
+                    </>
                   ) : (
                     <>
                       <p className={`font-black text-base truncate uppercase tracking-tight ${
                         isUserTeam ? 'text-amber-200' : isCurrent ? 'text-white' : 'text-white/50'
                       }`}>
-                        {team?.name ?? '—'}
+                        {team ? teamNameOf(team) : '—'}
                       </p>
                       <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 flex-wrap">
                         {isCurrent ? (

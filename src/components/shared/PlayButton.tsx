@@ -13,9 +13,21 @@ import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 import { useTeamOptionGate } from '../../hooks/useTeamOptionGate';
 import { useExpiringResignGate } from '../../hooks/useExpiringResignGate';
 import { useTycoonYearEndGate } from '../../hooks/useTycoonYearEndGate';
-import { isNoDraftLeague } from '../../services/offseason/offseasonState';
-import { isEuroIsolatedMode } from '../../utils/uiMode';
+import {
+  computeUpcomingSeasonYear,
+  isNoDraftLeague,
+} from '../../services/offseason/offseasonState';
+import {
+  firstUnfinishedRow,
+  getVisibleOffseasonRows,
+  OFFSEASON_ROW_LABELS,
+  OFFSEASON_ROW_TAB,
+} from '../../services/offseason/offseasonChecklistState';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
 import { userQualifiesForContinental } from '../../utils/euroLeagueDefaults';
+import { isInTransferWindow } from '../../utils/transferWindow';
+import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
+import { autoRunDraft } from '../../services/logic/autoResolversParts/draftResolvers';
 import {
   addDays,
   addDaysToDate,
@@ -55,12 +67,40 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
   const norm = normalizeDate(state.date);
   const ls = state.leagueStats;
   const seasonYear: number = ls?.year ?? new Date(state.date).getUTCFullYear();
-  const calYear = new Date(`${norm}T00:00:00Z`).getUTCFullYear();
+  const calDate = new Date(`${norm}T00:00:00Z`);
+  const calYear = calDate.getUTCFullYear();
+  const calMonth = calDate.getUTCMonth() + 1;
   const isEuro = isEuroIsolatedMode(state);
+  const isPba = isPbaIsolatedMode(state);
+  const preseasonSeasonYear = isPba ? computeUpcomingSeasonYear(calMonth, calYear, ls?.year ?? calYear) : seasonYear;
   const noDraft = isNoDraftLeague(ls);
+  const transferWindowStatus = useMemo(
+    () => (isEuro ? isInTransferWindow(state.date ?? new Date(), state.leagueStats as any) : null),
+    [isEuro, state.date, state.leagueStats],
+  );
+  const unresolvedEuroTransferMarket = isEuro && state.offseasonChecklist?.transferMarket !== 'done' && state.offseasonChecklist?.transferMarket !== 'skipped';
 
   const phase = getSimPhase(state);
-  const phaseLabel = isEuro ? getEuroPhaseLabel(state, seasonYear) : getPhaseLabel(phase, seasonYear, calYear);
+  const phaseLabel = useMemo(() => {
+    if (isPba) {
+      const currentConference = (state.leagueStats as any)?.pbaConference ?? 'philippine';
+      const currentSpec = currentConference === 'commissioners'
+        ? PBA_COMPETITIONS[1]
+        : currentConference === 'governors'
+          ? PBA_COMPETITIONS[2]
+          : PBA_COMPETITIONS[0];
+      const upcomingGames = (state.schedule ?? [])
+        .filter((game: any) => game.competitionId === currentSpec.id && !game.played)
+        .sort((a: any, b: any) => normalizeDate(a.date).localeCompare(normalizeDate(b.date)));
+      const nextPhase = upcomingGames[0]?.competitionPhase;
+      if (nextPhase === 'play-in' || nextPhase === 'qf' || nextPhase === 'sf' || nextPhase === 'final') return `${currentSpec.shortName} playoffs`;
+      if (nextPhase === 'group' || nextPhase?.startsWith('r')) return `${currentSpec.shortName} regular season`;
+      if (competitionRegularComplete(state, currentSpec.id) && !state.offseasonChecklist) return `${currentSpec.shortName} playoffs`;
+      if (state.offseasonChecklist) return `${currentSpec.shortName} offseason`;
+      return `${currentSpec.shortName} season`;
+    }
+    return isEuro ? getEuroPhaseLabel(state, seasonYear) : getPhaseLabel(phase, seasonYear, calYear);
+  }, [isEuro, isPba, state, seasonYear, phase, calYear]);
   const isCommissioner = state.gameMode !== 'gm';
   const euroCompetitionState = useMemo(() => ({
     activeCompetitions: state.activeCompetitions,
@@ -142,12 +182,159 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
     );
   }, [dispatchAction, guardedSim, norm]);
 
+  const simPbaDraftToEnd = useCallback(() => {
+    setOpen(false);
+    const patch = autoRunDraft(state as any);
+    if ((patch as any)?.draftComplete) {
+      dispatchAction({ type: 'UPDATE_STATE', payload: patch } as any);
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'pbaDraft' } } as any);
+    } else {
+      setCurrentView('Draft Board' as Tab);
+    }
+  }, [dispatchAction, setCurrentView, state]);
+
   const navigate = useCallback((view: Tab) => {
     setOpen(false);
     setCurrentView(view);
   }, [setCurrentView]);
 
   const options: PlayOption[] = useMemo(() => {
+    if (isPba) {
+      const currentConference = (state.leagueStats as any)?.pbaConference ?? 'philippine';
+      const currentSpec = currentConference === 'commissioners'
+        ? PBA_COMPETITIONS[1]
+        : currentConference === 'governors'
+          ? PBA_COMPETITIONS[2]
+          : PBA_COMPETITIONS[0];
+      const conferenceGames = (state.schedule ?? [])
+        .filter((game: any) => game.competitionId === currentSpec.id && !game.played)
+        .sort((a: any, b: any) => normalizeDate(a.date).localeCompare(normalizeDate(b.date)));
+      const playoffPhases = ['play-in', 'qf', 'sf', 'final'];
+      const playoffGames = conferenceGames.filter((game: any) => playoffPhases.includes(String(game.competitionPhase)));
+      const nextGame = conferenceGames[0];
+      const nextDate = nextGame ? normalizeDate(nextGame.date) : null;
+      const nextPhase = nextGame?.competitionPhase;
+      const samePhaseGames = nextPhase
+        ? conferenceGames.filter((game: any) => game.competitionPhase === nextPhase)
+        : [];
+      const phaseEnd = samePhaseGames.length > 0 ? normalizeDate(samePhaseGames[samePhaseGames.length - 1].date) : null;
+      const conferenceEnd = conferenceGames.length > 0 ? normalizeDate(conferenceGames[conferenceGames.length - 1].date) : null;
+      const regularComplete = competitionRegularComplete(state, currentSpec.id);
+      const regularSeasonEnd = findLastCompetitionRegularDate(state, currentSpec.id);
+      const firstPlayoffDate = findFirstCompetitionDate(state, currentSpec.id, playoffPhases)
+        ?? (regularComplete ? competitionRoundDate(state, seasonYear, currentSpec.id, ['qf', 'quarterfinals'], 'start') : null);
+      const firstPlayoffPhase = playoffGames[0]?.competitionPhase;
+      const playoffRoundEnd = firstPlayoffPhase
+        ? normalizeDate(playoffGames.filter((game: any) => game.competitionPhase === firstPlayoffPhase).at(-1)?.date ?? playoffGames[0].date)
+        : regularComplete
+          ? competitionRoundDate(state, seasonYear, currentSpec.id, ['qf', 'quarterfinals'], 'end')
+          : null;
+      const playoffEnd = findLastCompetitionDate(state, currentSpec.id, playoffPhases)
+        ?? (regularComplete ? competitionRoundDate(state, seasonYear, currentSpec.id, ['final', 'final-four'], 'end') : null);
+      const hasNextPlayoff = !!nextPhase && playoffPhases.includes(String(nextPhase));
+      const opts: PlayOption[] = [
+        { label: 'One day', action: simDay },
+        { label: 'One week', action: () => simToDate(addDays(norm, 7)) },
+        { label: 'One month', action: () => simToDate(addDays(norm, 30)) },
+      ];
+      if (phaseEnd && phaseEnd >= norm) {
+        if (hasNextPlayoff) {
+          opts.push({ label: 'Sim playoff round', action: () => simThrough(phaseEnd) });
+        }
+      }
+      if (!hasNextPlayoff && regularComplete && firstPlayoffDate && firstPlayoffDate >= norm) {
+        opts.push({ label: `To ${currentSpec.shortName} playoffs`, action: () => simToDate(firstPlayoffDate) });
+      }
+      if (!hasNextPlayoff && regularComplete && playoffRoundEnd && playoffRoundEnd >= norm) {
+        opts.push({ label: 'Sim playoff round', action: () => simThrough(playoffRoundEnd) });
+      }
+      if (regularComplete && playoffEnd && playoffEnd >= norm) {
+        opts.push({
+          label: currentConference === 'governors' ? 'Sim to next season' : 'Sim to next conference',
+          action: () => simThrough(playoffEnd),
+        });
+      } else if (!regularComplete && regularSeasonEnd && regularSeasonEnd >= norm) {
+        opts.push({ label: `To ${currentSpec.shortName} playoffs`, action: () => simThrough(regularSeasonEnd) });
+      } else if (conferenceEnd && conferenceEnd >= norm) {
+        opts.push({ label: `Through ${currentSpec.shortName} playoffs`, action: () => simThrough(conferenceEnd) });
+      }
+      if (state.offseasonChecklist) {
+        const visibleRows = getVisibleOffseasonRows(
+          state.leagueStats as any,
+          null,
+          state.date,
+          (state as any).expansionSchedule,
+          state.offseasonChecklist,
+          {
+            lotteryResolved: !!(state.draftLotteryResult && state.draftLotteryResult.length > 0),
+            draftComplete: !!state.draftComplete,
+          },
+        );
+        if (visibleRows.length === 0) return opts;
+        const nextRow = firstUnfinishedRow(state.offseasonChecklist as any, undefined, visibleRows);
+        const openTask = (row: any) => {
+          const tab = OFFSEASON_ROW_TAB[row as keyof typeof OFFSEASON_ROW_TAB];
+          if (tab) {
+            if (row === 'pbaLocalFreeAgency') {
+              dispatchAction({
+                type: 'UPDATE_STATE',
+                payload: { pendingTeamOfficeNav: { tab: 'intel', intelTab: 'fa' } },
+              } as any);
+            }
+            dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
+            navigate(tab as Tab);
+            return;
+          }
+          dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any);
+        };
+        opts.length = 0;
+        if (nextRow) {
+          const rowStatus = state.offseasonChecklist[nextRow];
+          const canFinishReviewRow =
+            rowStatus === 'in-progress' &&
+            (nextRow === 'pbaLocalFreeAgency' || nextRow === 'pbaImportSearch');
+          if (nextRow === 'pbaConferenceAwards') {
+            const targetRow = currentConference === 'governors' ? 'pbaDraft' : 'pbaImportSearch';
+            opts.push({
+              label: currentConference === 'governors' ? 'Sim to next season' : 'Sim to next conference',
+              action: () => {
+                dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: nextRow } } as any);
+                openTask(targetRow);
+              },
+            });
+          } else if (nextRow === 'pbaDraft') {
+            opts.push(
+              { label: 'Watch PBA Draft', action: () => openTask(nextRow) },
+              { label: 'Sim to end of PBA Draft', action: simPbaDraftToEnd },
+            );
+          } else {
+            opts.push({
+              label: canFinishReviewRow
+                ? `Finish ${OFFSEASON_ROW_LABELS[nextRow] ?? 'task'}`
+                : `Open ${OFFSEASON_ROW_LABELS[nextRow] ?? 'next task'}`,
+              action: () => {
+                if (canFinishReviewRow) {
+                  dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: nextRow } } as any);
+                  return;
+                }
+                openTask(nextRow);
+              },
+            });
+          }
+        } else {
+          opts.push({
+            label: currentConference === 'governors' ? 'Enter New Season' : 'Enter Next Conference',
+            action: () => {
+              setOpen(false);
+              dispatchAction({ type: 'OFFSEASON_EXIT' } as any);
+              setCurrentView('Schedule' as Tab);
+            },
+          });
+        }
+      }
+      return opts;
+    }
+
     if (isEuro) {
       const userCanSeeEuroleague = userQualifiesForContinental(euroCompetitionState as any);
       const competitionState = userCanSeeEuroleague
@@ -193,7 +380,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         .filter((date): date is string => !!date)
         .sort()
         .at(-1) ?? null;
-      const trainingCampStr = toISODateString(getTrainingCampDate(seasonYear, ls));
+      const trainingCampStr = toISODateString(getTrainingCampDate(preseasonSeasonYear, ls));
       const activeCompetition = getEuroCompetitionTarget(competitionState, seasonYear, norm, currentView);
 
       const opts: PlayOption[] = [
@@ -201,6 +388,20 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         { label: 'One week', action: () => simToDate(addDays(norm, 7)) },
         { label: 'One month', action: () => simToDate(addDays(norm, 30)) },
       ];
+      if (
+        unresolvedEuroTransferMarket &&
+        transferWindowStatus?.open &&
+        transferWindowStatus.window === 'winter' &&
+        transferWindowStatus.currentClose
+      ) {
+        const winterClose = normalizeDate(transferWindowStatus.currentClose.toISOString());
+        if (winterClose > norm) {
+          opts.push({
+            label: 'Through winter transfer window',
+            action: () => simThrough(winterClose),
+          });
+        }
+      }
 
       pushFutureOption(opts, norm, 'Until next fixture', nextFixture ?? firstFixture, simToDate);
       if (currentOrNextFixture && currentOrNextFixture >= norm) {
@@ -249,15 +450,19 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
     const faMoratoriumEndStr = toISODateString(getCurrentOffseasonFAMoratoriumEnd(`${norm}T00:00:00Z`, ls, state.schedule));
     const openingNightStr = findFirstRegularSeasonDate(state) ?? toISODateString(getOpeningNightDate(seasonYear, ls, state.schedule as any));
     const allStarStr = toISODateString(addDaysToDate(getAllStarWeekendStartDate(seasonYear, ls), -1));
-    const preseasonStr = toISODateString(getTrainingCampDate(seasonYear, ls));
+    const preseasonStr = toISODateString(getTrainingCampDate(preseasonSeasonYear, ls));
     const lastPlayoffStr = findLastTruePlayoffDate(state) ?? addDays(draftStr, -1);
 
     switch (phase) {
       case 'preseason': {
-        const opts: PlayOption[] = [{ label: 'One day', action: simDay }];
+        const opts: PlayOption[] = [
+          { label: 'One day', action: simDay },
+          { label: 'One week', action: () => simToDate(addDays(norm, 7)) },
+          { label: 'One month', action: () => simToDate(addDays(norm, 30)) },
+        ];
         const firstPreseason = findFirstPreseasonDate(state);
         const lastPreseason = findLastPreseasonDate(state);
-        const trainingCampStr = toISODateString(getTrainingCampDate(seasonYear, ls));
+        const trainingCampStr = toISODateString(getTrainingCampDate(preseasonSeasonYear, ls));
         if (norm < trainingCampStr) {
           opts.push({ label: 'Until training camp', action: () => simToDate(trainingCampStr) });
         }
@@ -427,7 +632,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
           { label: 'One month', action: () => simToDate(addDays(norm, 30)) },
           { label: 'Until training camp', action: () => simToDate(preseasonStr) },
         );
-        const nextSeasonOpening = toISODateString(getOpeningNightDate(seasonYear, ls, state.schedule as any));
+        const nextSeasonOpening = toISODateString(getOpeningNightDate(preseasonSeasonYear, ls, state.schedule as any));
         if (nextSeasonOpening > norm) {
           opts.push({ label: 'Through preseason', action: () => simToDate(nextSeasonOpening) });
         }
@@ -441,6 +646,7 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
     currentView,
     isCommissioner,
     isEuro,
+    isPba,
     ls,
     navigate,
     noDraft,
@@ -449,16 +655,23 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
     seasonYear,
     simDay,
     simDraftToEnd,
+    simPbaDraftToEnd,
     simThrough,
     simToDate,
     calYear,
     euroCompetitionState,
+    transferWindowStatus?.currentClose,
+    transferWindowStatus?.open,
+    transferWindowStatus?.window,
     state.schedule,
     state.players,
     state.faBidding?.markets,
+    state.offseasonChecklist?.transferMarket,
+    state.offseasonChecklist,
     state.day,
     state.playoffs,
     state.draftComplete,
+    dispatchAction,
   ]);
 
   useEffect(() => {

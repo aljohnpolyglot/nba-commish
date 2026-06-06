@@ -20,6 +20,9 @@ interface AllStarDayViewProps {
   onWatchGame: (game: Game) => void;
   onWatchDunkContest: () => void;
   onWatchThreePoint: () => void;
+  onWatchShootingStars: () => void;
+  onWatchSkillsChallenge: () => void;
+  onWatchHorse: () => void;
   onViewContestDetails: (type: 'dunk' | 'three') => void;
   onViewBoxScore: (game: Game) => void;
   state: any;
@@ -37,6 +40,9 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
   onWatchGame,
   onWatchDunkContest,
   onWatchThreePoint,
+  onWatchShootingStars,
+  onWatchSkillsChallenge,
+  onWatchHorse,
   onViewContestDetails,
   onViewBoxScore,
   state
@@ -324,6 +330,12 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
             onViewContestDetails={onViewContestDetails}
             onWatchDunkContest={onWatchDunkContest}
             onWatchThreePoint={onWatchThreePoint}
+            onWatchShootingStars={onWatchShootingStars}
+            onWatchSkillsChallenge={onWatchSkillsChallenge}
+            onWatchHorse={onWatchHorse}
+            shootingStarsEnabled={state?.leagueStats?.allStarShootingStars !== false}
+            skillsChallengeEnabled={state?.leagueStats?.allStarSkillsChallenge === true}
+            horseEnabled={state?.leagueStats?.allStarHorse === true}
             throneEnabled={state?.leagueStats?.allStarThroneEnabled === true}
           />
         )}

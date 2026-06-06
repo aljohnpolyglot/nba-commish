@@ -2,7 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ShieldAlert, Heart, Zap, Target } from 'lucide-react';
 import type { NBAPlayer } from '../../types';
+import { useGame } from '../../store/GameContext';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
+import { generateCombineStats } from '../../services/draftCombineCalculator';
 import {
   generateStructuredScoutingReport,
   getTendencies,
@@ -20,6 +22,8 @@ import {
 import type { GistProspect } from '../../services/draftScoutingGist';
 import { findCollegeTeamProfile, type CollegeTeamProfile } from '../../services/collegeTeamCatalog';
 import { HybridRadarChart, letterColor, ordinal, tierColor } from './DraftScoutingModalShared';
+import { DraftScoutingCombineTab } from './DraftScoutingCombineTab';
+import { fuzzRatingValue } from '../../utils/scoutingFuzz';
 
 export interface DraftScoutingModalProps {
   player: NBAPlayer | null;
@@ -43,15 +47,31 @@ export interface DraftScoutingModalProps {
   onConfirmPick?: () => void;
   /** Label shown in the confirm button, e.g. "Pick #3". */
   pickLabel?: string;
+  showCombineTab?: boolean;
 }
 
-type Tab = 'overview' | 'scouting' | 'skill';
+type Tab = 'overview' | 'scouting' | 'skill' | 'combine';
+
+function skillLetterFor(score: number): string {
+  if (score >= 88) return 'A+';
+  if (score >= 82) return 'A';
+  if (score >= 76) return 'A-';
+  if (score >= 70) return 'B+';
+  if (score >= 64) return 'B';
+  if (score >= 58) return 'B-';
+  if (score >= 52) return 'C+';
+  if (score >= 46) return 'C';
+  if (score >= 40) return 'C-';
+  if (score >= 34) return 'D';
+  return 'F';
+}
 
 export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
   player, onClose, classProspects, activePlayers, percentilesByPos,
   classAverages, draftYear, gistData, ranks, teamLogoUrl, onViewPlayerBio,
-  onConfirmPick, pickLabel, preComputedComps,
+  onConfirmPick, pickLabel, preComputedComps, showCombineTab = false,
 }) => {
+  const { state } = useGame();
   const [tab, setTab] = useState<Tab>('overview');
   React.useEffect(() => { setTab('overview'); }, [player?.internalId]);
 
@@ -77,6 +97,7 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
   const cohortMaps = percentilesByPos.get(cohort);
   const collegeName = player ? (gistData?.college || (player as any).college) : undefined;
   const collegeProfile = useMemo(() => findCollegeTeamProfile(collegeName), [collegeName]);
+  const combine = useMemo(() => (player && showCombineTab ? generateCombineStats(player) : null), [player, showCombineTab]);
 
   return (
     <AnimatePresence>
@@ -89,7 +110,7 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
       >
         <motion.div
           initial={{ scale: 0.96, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.96, y: 20 }}
-          className="bg-slate-900 border border-slate-800 w-full h-full md:h-auto md:max-h-[92vh] md:max-w-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+          className="bg-slate-900 border border-slate-800 w-full h-full md:h-auto md:max-h-[calc(100vh-2rem)] md:max-w-3xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col"
         >
           <div className="flex-shrink-0 p-4 md:p-6 border-b border-slate-800 bg-slate-900/80">
             <div className="flex items-start justify-between gap-3">
@@ -162,7 +183,7 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
 
           <div className="flex-shrink-0 px-4 md:px-6 pt-3 border-b border-slate-800 bg-slate-900/40">
             <div className="flex rounded-xl overflow-hidden border border-slate-700 mb-3">
-              {(['overview', 'scouting', 'skill'] as Tab[]).map(t => (
+              {(['overview', 'scouting', 'skill', ...(showCombineTab ? ['combine'] : [])] as Tab[]).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
@@ -170,11 +191,18 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
                     tab === t
                       ? t === 'overview' ? 'bg-violet-600 text-white'
                         : t === 'scouting' ? 'bg-sky-600 text-white'
-                        : 'bg-emerald-600 text-white'
+                        : t === 'skill' ? 'bg-emerald-600 text-white'
+                        : 'bg-fuchsia-600 text-white'
                       : 'bg-slate-800 text-slate-400 hover:text-white'
                   }`}
                 >
-                  {t === 'overview' ? 'Overview' : t === 'scouting' ? 'Scouting Report' : 'Skill Profile'}
+                  {t === 'overview'
+                    ? 'Overview'
+                    : t === 'scouting'
+                      ? 'Scouting Report'
+                      : t === 'skill'
+                        ? 'Skill Profile'
+                        : 'Combine Results'}
                 </button>
               ))}
             </div>
@@ -204,7 +232,11 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
                 cohortMaps={cohortMaps}
                 classAverages={classAverages}
                 playerId={player.internalId}
+                fuzzValue={(value, salt) => fuzzRatingValue(value, state, player, salt)}
               />
+            )}
+            {tab === 'combine' && combine && (
+              <DraftScoutingCombineTab playerName={player.name} combine={combine} />
             )}
           </div>
 
@@ -441,8 +473,15 @@ const SkillProfileTab: React.FC<{
   cohortMaps: ClassPercentileMaps | undefined;
   classAverages: Record<SkillAxis, number>;
   playerId: string | number;
-}> = ({ grades, cohortMaps, classAverages, playerId }) => {
-  const values = SKILL_AXES.map(a => grades[a].score);
+  fuzzValue: (value: number, salt: string) => number;
+}> = ({ grades, cohortMaps, classAverages, playerId, fuzzValue }) => {
+  const fuzzedScores = Object.fromEntries(
+    SKILL_AXES.map(axis => {
+      const score = fuzzValue(grades[axis].score, `skill-${axis}`);
+      return [axis, { score, letter: skillLetterFor(score) }];
+    }),
+  ) as Record<SkillAxis, { score: number; letter: string }>;
+  const values = SKILL_AXES.map(a => fuzzedScores[a].score);
   const baseline = SKILL_AXES.map(a => classAverages[a] ?? 50);
 
   return (
@@ -458,10 +497,9 @@ const SkillProfileTab: React.FC<{
           </span>
         </div>
       </div>
-
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {SKILL_AXES.map(axis => {
-          const g = grades[axis];
+          const g = fuzzedScores[axis];
           const pct = cohortMaps?.byAxis[axis].get(playerId);
           return (
             <div key={axis} className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">

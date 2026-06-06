@@ -6,6 +6,7 @@ import { getTransferWindowProgress, getUpcomingTrainingCampISO, getOffseasonCale
 import { isInTransferWindow } from '../../utils/transferWindow';
 import { getDraftDate, getDraftLotteryDate, getTrainingCampDate, parseGameDate, toISODateString } from '../../utils/dateUtils';
 import { normalizeDate } from '../../utils/helpers';
+import { getEffectivePbaConference } from '../../services/pba/importManager';
 
 type Args = {
   state: any;
@@ -14,6 +15,7 @@ type Args = {
   visibleRows: readonly OffseasonChecklistRow[];
   sponsorCoverage: { complete: boolean };
   openStaffCount: number;
+  staffRetirementCount?: number;
   isEuroMode: boolean;
 };
 
@@ -24,6 +26,7 @@ export function useOffseasonSidebarSync({
   visibleRows,
   sponsorCoverage,
   openStaffCount,
+  staffRetirementCount = 0,
   isEuroMode,
 }: Args) {
   const tmWindowCounter = React.useMemo(() => {
@@ -67,6 +70,7 @@ export function useOffseasonSidebarSync({
       !p.contract.hasTeamOption
     ).length;
   }, [state.players, state.userTeamId, state.leagueStats?.year]);
+  const actionableExpiringCount = expiringGate.actionableCount ?? 0;
 
   const myFAsModalShown = useRef(false);
   const myFAsModalOpened = useRef(false);
@@ -78,6 +82,9 @@ export function useOffseasonSidebarSync({
     const next: any = {};
     if ((currentChecklist.staffSignings === 'skipped' || currentChecklist.staffSignings === 'done') && visibleRows.includes('staffSignings')) {
       next.staffSignings = 'pending';
+    }
+    if ((currentChecklist.staffRetirements === 'skipped' || currentChecklist.staffRetirements === 'done') && visibleRows.includes('staffRetirements') && staffRetirementCount > 0) {
+      next.staffRetirements = 'pending';
     }
     if (currentChecklist.coachingSignings !== 'skipped') {
       next.coachingSignings = 'skipped';
@@ -99,13 +106,16 @@ export function useOffseasonSidebarSync({
     if (unresolved(currentChecklist.coachingSignings)) {
       dispatchAction({ type: 'OFFSEASON_SKIP_PHASE', payload: { row: 'coachingSignings' } } as any);
     }
+    if (unresolved(currentChecklist.staffRetirements) && staffRetirementCount === 0) {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'staffRetirements' } } as any);
+    }
     if (unresolved(currentChecklist.staffSignings) && openStaffCount === 0) {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'staffSignings' } } as any);
     }
     if (unresolved(currentChecklist.sponsorRenewals) && sponsorCoverage.complete) {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'sponsorRenewals' } } as any);
     }
-  }, [openStaffCount, sponsorCoverage.complete, state.offseasonChecklist?.coachingSignings, state.offseasonChecklist?.staffSignings, state.offseasonChecklist?.sponsorRenewals, state.teams, state.nonNBATeams, dispatchAction]);
+  }, [openStaffCount, staffRetirementCount, sponsorCoverage.complete, state.offseasonChecklist?.coachingSignings, state.offseasonChecklist?.staffRetirements, state.offseasonChecklist?.staffSignings, state.offseasonChecklist?.sponsorRenewals, state.teams, state.nonNBATeams, dispatchAction]);
 
   useEffect(() => {
     if (expiringGate.isOpen) {
@@ -115,11 +125,11 @@ export function useOffseasonSidebarSync({
     if (myFAsModalShown.current && myFAsModalOpened.current && !expiringGate.isOpen) {
       myFAsModalShown.current = false;
       myFAsModalOpened.current = false;
-      if (unresolvedExpiringCount === 0) {
+      if (actionableExpiringCount === 0) {
         dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'myFAs' } } as any);
       }
     }
-  }, [expiringGate.isOpen, unresolvedExpiringCount, dispatchAction]);
+  }, [expiringGate.isOpen, actionableExpiringCount, dispatchAction]);
 
   useEffect(() => {
     if (!checklist) return;
@@ -127,9 +137,9 @@ export function useOffseasonSidebarSync({
     if (!state.date) return;
     const phase = getOffseasonState(state.date, state.leagueStats as any, state.schedule as any).phase;
     if (phase !== 'moratorium' && phase !== 'birdRights' && phase !== 'openFA' && phase !== 'preCamp') return;
-    if (expiringGate.hasRows || unresolvedExpiringCount > 0) return;
+    if (actionableExpiringCount > 0 && !expiringGate.allResolved) return;
     dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'myFAs' } } as any);
-  }, [checklist, state.date, state.leagueStats, state.schedule, expiringGate.hasRows, unresolvedExpiringCount, dispatchAction]);
+  }, [checklist, state.date, state.leagueStats, state.schedule, actionableExpiringCount, expiringGate.allResolved, dispatchAction]);
 
   useEffect(() => {
     if (!checklist || checklist.myFAs !== 'done') return;
@@ -138,12 +148,12 @@ export function useOffseasonSidebarSync({
       const phase = getOffseasonState(state.date, state.leagueStats as any, state.schedule as any).phase;
       if (phase === 'moratorium' || phase === 'birdRights' || phase === 'openFA' || phase === 'preCamp') return;
     }
-    if (unresolvedExpiringCount <= 0) return;
+    if (actionableExpiringCount <= 0) return;
     dispatchAction({
       type: 'UPDATE_STATE',
       payload: { offseasonChecklist: { ...checklist, myFAs: 'pending' } },
     } as any);
-  }, [checklist, state.date, state.leagueStats, state.schedule, unresolvedExpiringCount, dispatchAction]);
+  }, [checklist, state.date, state.leagueStats, state.schedule, actionableExpiringCount, dispatchAction]);
 
   useEffect(() => {
     if (!checklist || (state.faTagCounter ?? 0) === 0) return;
@@ -229,6 +239,36 @@ export function useOffseasonSidebarSync({
     if (noQOCandidates && isUnresolved(checklist.qualifyingOffers)) dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'qualifyingOffers' } } as any);
     if (draftDone && isUnresolved(checklist.pbaDraft)) dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'pbaDraft' } } as any);
   }, [lotteryDone, draftDone, rookieContractsDone, noPendingTeamOptions, trainingCampDone, noQOCandidates, checklist?.draftLottery, checklist?.draft, checklist?.rookieContracts, checklist?.options, checklist?.trainingCamp, checklist?.qualifyingOffers, checklist?.pbaDraft, dispatchAction]);
+
+  useEffect(() => {
+    if (!checklist || state.leagueStats?.uiMode !== 'pba_isolated') return;
+    const conf = getEffectivePbaConference(state.leagueStats as any);
+    if (!conf || conf === 'philippine') return;
+    const userTid = Number(state.userTeamId);
+    if (!Number.isFinite(userTid)) return;
+    const hasCurrentImport = (state.players ?? []).some((player: any) =>
+      Number(player.tid) === userTid &&
+      !!player.isImport &&
+      player.importConference === conf
+    );
+    if (!hasCurrentImport) return;
+    const isUnresolved = (s: OffseasonRowStatus) => s === 'pending' || s === 'in-progress';
+    if (isUnresolved(checklist.pbaImportSearch)) {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'pbaImportSearch' } } as any);
+    }
+    if (isUnresolved(checklist.pbaImportDecision)) {
+      dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'pbaImportDecision' } } as any);
+    }
+  }, [
+    checklist?.pbaImportSearch,
+    checklist?.pbaImportDecision,
+    state.leagueStats?.uiMode,
+    (state.leagueStats as any)?.pbaConference,
+    (state.leagueStats as any)?.pbaConferencePhase,
+    state.userTeamId,
+    state.players,
+    dispatchAction,
+  ]);
 
   useEffect(() => {
     if (!checklist) return;

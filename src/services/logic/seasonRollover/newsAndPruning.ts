@@ -161,13 +161,14 @@ export function buildSeasonRolloverNewsAndPruning({
     playerIds: [farewell.playerId],
   } as HistoryEntry));
 
-  const hofNewsItems = newInductees.map((inductee, idx): NewsItem => {
+  const hofNewsItems = newInductees.flatMap((inductee, idx): NewsItem[] => {
     const ceremonyDate = getHOFCeremonyDate(inductee.inductionYear).toLocaleDateString('en-US', {
       timeZone: 'UTC',
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     });
+    if (state.date !== ceremonyDate) return [];
     const accolades: string[] = [];
     if (inductee.mvps > 0) accolades.push(`${inductee.mvps}× MVP`);
     if (inductee.allStarAppearances > 0) accolades.push(`${inductee.allStarAppearances}× All-Star`);
@@ -175,7 +176,7 @@ export function buildSeasonRolloverNewsAndPruning({
     const accoladeStr = accolades.length > 0 ? ` — ${accolades.join(', ')}` : '';
     const ballotStr = inductee.firstBallot ? ' (First-Ballot)' : '';
     const tierStr = inductee.firstBallot ? '' : ` (${inductee.tier === 'borderline' ? 'Borderline' : 'Multi-Ballot'})`;
-    return {
+    return [{
       id: `hof-${inductee.playerId}-${Date.now()}-${idx}`,
       headline: `${inductee.name} Inducted Into Hall of Fame${ballotStr || tierStr}`,
       content: `${inductee.name} has been inducted into the Naismith Memorial Basketball Hall of Fame${ballotStr || tierStr}. Career: ${inductee.careerWS.toFixed(1)} Win Shares${accoladeStr}.`,
@@ -183,22 +184,23 @@ export function buildSeasonRolloverNewsAndPruning({
       type: 'player',
       isNew: true,
       read: false,
-    } as unknown as NewsItem;
+    } as unknown as NewsItem];
   });
 
-  const hofHistoryEntries = newInductees.map((inductee): HistoryEntry => {
+  const hofHistoryEntries = newInductees.flatMap((inductee): HistoryEntry[] => {
     const ceremonyDate = getHOFCeremonyDate(inductee.inductionYear).toLocaleDateString('en-US', {
       timeZone: 'UTC',
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     });
-    return {
+    if (state.date !== ceremonyDate) return [];
+    return [{
       text: `${inductee.name} inducted into the Hall of Fame (Class of ${inductee.inductionYear})${inductee.firstBallot ? ' — First-Ballot' : inductee.tier === 'borderline' ? ' — Borderline' : ' — Multi-Ballot'}.`,
       date: ceremonyDate,
       type: 'Retirement',
       playerIds: [inductee.playerId],
-    } as HistoryEntry;
+    } as HistoryEntry];
   });
 
   const jerseyRetirementNewsItems = newJerseyRetirements.map((retirement, idx): NewsItem => {

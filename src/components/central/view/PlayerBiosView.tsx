@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { isEuroIsolatedMode } from '../../../utils/uiMode';
+import { isNonNbaIsolatedMode } from '../../../utils/uiMode';
 import { NBAPlayer } from '../../../types';
 import { ChevronDown, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { formatHeight, getCountryFromLoc, convertTo2KRating } from '../../../utils/helpers';
@@ -9,6 +9,10 @@ import { ensureNonNBAFetched, getNonNBAGistData } from './nonNBACache';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { useHubScope } from '../../../hooks/useHubScope';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { isPbaIsolatedMode } from '../../../utils/uiMode';
 
 const US_LOCATION_NAMES = new Set([
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
@@ -35,10 +39,12 @@ const displayCountry = (player: NBAPlayer, gistCountry?: string | null): string 
 export const PlayerBiosView: React.FC = () => {
   const { state } = useGame();
   const { players, teams, nonNBATeams = [] } = state;
+  const { players: scopedPlayers, teams: scopedTeams, tids: scopedTids, isScoped, euroIsolated } = useHubScope();
+  const nonNbaIsolated = isNonNbaIsolatedMode(state);
+  const pbaIsolated = isPbaIsolatedMode(state);
   const quick = usePlayerQuickActions();
-  const euroIsolated = isEuroIsolatedMode(state);
   const [searchTerm, setSearchTerm] = useState('');
-  const [league, setLeague] = useState(euroIsolated ? 'Endesa' : 'NBA');
+  const [league, setLeague] = useState(pbaIsolated ? 'PBA' : euroIsolated ? 'All' : 'NBA');
   const [teamFilter, setTeamFilter] = useState('');
   const [position, setPosition] = useState('');
   const [college, setCollege] = useState('');
@@ -52,6 +58,19 @@ export const PlayerBiosView: React.FC = () => {
   const [hideDeceased, setHideDeceased] = useState(true);
   // Bump this when gist data finishes loading so enriched re-runs
   const [gistVersion, setGistVersion] = useState(0);
+
+  const sourcePlayers = useMemo(() => {
+    if (nonNbaIsolated) return players;
+    if (!isScoped) return players;
+    return players.filter(p =>
+      scopedTids.has(p.tid) ||
+      p.tid < 0 ||
+      p.status === 'Retired' ||
+      p.status === 'Free Agent' ||
+      p.status === 'Draft Prospect' ||
+      p.status === 'Prospect',
+    );
+  }, [isScoped, nonNbaIsolated, players, scopedTids]);
 
   useEffect(() => {
     (['B-League', 'PBA', 'Euroleague', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA'] as any[]).forEach(async (l) => {
@@ -79,7 +98,7 @@ export const PlayerBiosView: React.FC = () => {
   const enriched = useMemo(() => {
     const seen = new Set<string>();
     const simYear = state.leagueStats?.year || new Date().getFullYear();
-    return players
+    return sourcePlayers
       .filter(p => {
         const id = p.internalId || p.name;
         if (seen.has(id)) return false;
@@ -124,9 +143,28 @@ export const PlayerBiosView: React.FC = () => {
             ? new Set(p.stats.filter((s: any) => !s.playoffs).map((s: any) => s.season)).size
             : null);
 
-        const playerLeague = p.status === 'Retired' ? 'Retired' : p.status === 'WNBA' ? 'WNBA' : p.status === 'PBA' ? 'PBA' : p.status === 'Euroleague' ? 'Euroleague' : p.status === 'B-League' ? 'B-League' : p.status === 'G-League' ? 'G-League' : p.status === 'Endesa' ? 'Endesa' : p.status === 'China CBA' ? 'China CBA' : p.status === 'NBL Australia' ? 'NBL Australia' : 'NBA';
         const isProspect = p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect';
-        const teamObj = isProspect ? null : (teams.find(t => t.id === p.tid) || nonNBATeams.find(t => t.tid === p.tid));
+        const teamObj = isProspect ? null : resolveAnyTeam(p.tid, teams, nonNBATeams);
+        const teamLeague = typeof (teamObj as any)?.conference === 'string' ? String((teamObj as any).conference) : '';
+        const playerLeague = p.status === 'Retired'
+          ? 'Retired'
+          : p.status === 'WNBA'
+            ? 'WNBA'
+            : p.status === 'PBA'
+              ? 'PBA'
+              : p.status === 'Euroleague'
+                ? 'Euroleague'
+                : p.status === 'B-League'
+                  ? 'B-League'
+                  : p.status === 'G-League'
+                    ? 'G-League'
+                    : p.status === 'Endesa'
+                      ? 'Endesa'
+                      : p.status === 'China CBA'
+                        ? 'China CBA'
+                        : p.status === 'NBL Australia'
+                          ? 'NBL Australia'
+                          : teamLeague || 'NBA';
         const prospectCollege = isProspect
           ? (college || ((p as any).pre_draft ? (p as any).pre_draft.replace(/\s*\(.*\)\s*$/, '') : null) || 'DRAFT')
           : null;
@@ -140,6 +178,7 @@ export const PlayerBiosView: React.FC = () => {
           displayPot,
           experience,
           playerLeague,
+          teamName: isProspect ? (prospectCollege || 'Draft Prospects') : (teamObj ? getTeamFullName(teamObj) : (p.tid === -1 ? 'Free Agents' : 'Retired')),
           teamAbbrev: isProspect ? (prospectCollege || 'DRAFT') : (teamObj?.abbrev || (p.tid === -1 ? 'FA' : 'RET')),
           formattedHeight: p.hgt ? formatHeight(p.hgt) : '—',
           draftStr: draftYear ? `${draftYear}` : '—',
@@ -151,7 +190,21 @@ export const PlayerBiosView: React.FC = () => {
         };
       });
   // gistVersion in deps triggers re-run when gist data arrives
-  }, [players, teams, nonNBATeams, gistVersion]); // eslint-disable-line
+  }, [sourcePlayers, teams, nonNBATeams, gistVersion]); // eslint-disable-line
+
+  const leagueOptions = useMemo(() => {
+    const ordered = ['NBA', 'Retired', 'WNBA', 'PBA', 'Euroleague', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'];
+    const available = new Set(enriched.map(p => p.playerLeague).filter(Boolean));
+    return [['All', 'All Leagues'] as [string, string], ...ordered.filter(code => available.has(code)).map(code => [code, code] as [string, string])];
+  }, [enriched]);
+
+  useEffect(() => {
+    if (!leagueOptions.some(([value]) => value === league)) {
+      setLeague((pbaIsolated && leagueOptions.some(([value]) => value === 'PBA')) ? 'PBA' : (euroIsolated ? 'All' : (leagueOptions[0]?.[0] ?? 'All')));
+      setTeamFilter('');
+      setPage(1);
+    }
+  }, [euroIsolated, league, leagueOptions, pbaIsolated]);
 
   // Base filtered set — applies league/team/pos/search but NOT college/country, so dropdowns update dynamically
   const filteredBase = useMemo(() => {
@@ -230,14 +283,17 @@ export const PlayerBiosView: React.FC = () => {
   );
   const STICKY_BG = '#161a20';
 
-  const visibleTeams = useMemo(() => {
-    const base = (league === 'NBA' || league === 'All') ? teams : [];
-    return [...base].sort((a, b) => a.name.localeCompare(b.name));
-  }, [league, teams]);
-  const visibleNonNBA = useMemo(() => {
-    const base = nonNBATeams.filter(t => league === 'All' || t.league === league);
-    return [...base].sort((a, b) => a.name.localeCompare(b.name));
-  }, [league, nonNBATeams]);
+  const visibleTeamOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    filteredBase.forEach(player => {
+      const isProspect = player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect';
+      if (isProspect) return;
+      options.set(String(player.tid), player.teamName || player.teamAbbrev || String(player.tid));
+    });
+    return Array.from(options.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [filteredBase]);
 
   // PlayerBioView takeover handled by the unified hook.
   if (quick.fullPageView) return quick.fullPageView;
@@ -273,7 +329,7 @@ export const PlayerBiosView: React.FC = () => {
       {/* Filters row */}
       <div className="px-4 md:px-6 py-2.5 border-b border-slate-800/60 bg-[#1a1e26] flex flex-wrap items-center gap-2 shrink-0">
         {[
-          { val: league, set: (v: string) => { setLeague(v); setTeamFilter(''); setPage(1); }, opts: [['All','All Leagues'],['NBA','NBA'],['Retired','Retired'],['WNBA','WNBA'],['PBA','PBA'],['Euroleague','Euroleague'],['B-League','B-League'],['G-League','G-League'],['Endesa','Endesa'],['China CBA','China CBA'],['NBL Australia','NBL Australia']] },
+          { val: league, set: (v: string) => { setLeague(v); setTeamFilter(''); setPage(1); }, opts: leagueOptions },
         ].map((f, i) => (
           <div key={i} className="relative">
             <select value={f.val} onChange={e => f.set(e.target.value)} className="appearance-none bg-slate-800 border border-slate-700/60 rounded-lg py-1.5 pl-3 pr-7 text-xs font-medium text-white focus:outline-none">
@@ -287,8 +343,7 @@ export const PlayerBiosView: React.FC = () => {
             <option value="">All</option>
             <option value="-1">Free Agents</option>
             <option value="-2">Draft Prospects</option>
-            {visibleTeams.map(t => <option key={t.id} value={String(t.id)}>{t.name}</option>)}
-            {visibleNonNBA.map(t => <option key={t.tid} value={String(t.tid)}>{t.region ? `${t.region} ${t.name}` : t.name}</option>)}
+            {visibleTeamOptions.map(team => <option key={team.value} value={team.value}>{team.label}</option>)}
           </select>
           <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 pointer-events-none" />
         </div>

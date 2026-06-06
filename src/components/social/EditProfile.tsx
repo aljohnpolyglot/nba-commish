@@ -35,14 +35,14 @@ export const EditProfile: React.FC<EditProfileProps> = ({ initialData, onClose, 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#5b7083]/40 backdrop-blur-sm p-4">
-      <div className="bg-black w-full max-w-[600px] rounded-2xl overflow-hidden flex flex-col max-h-[90vh] relative z-[101]">
-        <div className="px-4 py-3 flex items-center justify-between sticky top-0 bg-black/80 backdrop-blur-md z-[110]">
-          <div className="flex items-center space-x-8">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#5b7083]/40 backdrop-blur-sm p-3 md:p-4">
+      <div className="bg-black w-full max-w-[600px] rounded-2xl overflow-hidden flex flex-col max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] relative z-[101]">
+        <div className="px-4 py-3 flex items-center justify-between gap-3 sticky top-0 bg-black/80 backdrop-blur-md z-[110]">
+          <div className="flex items-center space-x-4 sm:space-x-8 min-w-0">
             <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors">
               <X size={20} />
             </button>
-            <h2 className="text-xl font-bold">Edit profile</h2>
+            <h2 className="text-lg sm:text-xl font-bold truncate">Edit profile</h2>
           </div>
           <button
             onClick={handleSubmit}

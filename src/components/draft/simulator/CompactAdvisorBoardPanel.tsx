@@ -8,6 +8,8 @@ import { useGame } from '../../../store/GameContext';
 import { calcOvr2K, calcPot2K, type TeamMode } from '../../../services/trade/tradeValueEngine';
 import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2, resolveManualOutlook } from '../../../utils/salaryUtils';
 import { getLsYear } from '../../../utils/leagueYear';
+import { fuzzRatingValue } from '../../../utils/scoutingFuzz';
+import { isOnRoster } from '../../../utils/teamLookup';
 
 interface CompactAdvisorBoardProps {
   teamId: number;
@@ -49,7 +51,7 @@ export const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ t
   }, [team, state.players, state.teams, teamId, currentYear, thresholds, state.gameMode, state.userTeamId]);
 
   const weakPositions = useMemo(() => {
-    const roster = state.players.filter(p => p.tid === teamId && p.status === 'Active');
+    const roster = state.players.filter(p => p.tid === teamId && isOnRoster(p));
     const posGroups: Record<string, number[]> = { G: [], F: [], C: [] };
     for (const p of roster) {
       const pos = p.pos ?? 'F';
@@ -76,8 +78,10 @@ export const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ t
         return draftYear == null || Number(draftYear) === currentYear;
       })
       .map(p => {
-        const ovr = calcOvr2K(p);
-        const pot = calcPot2K(p, currentYear);
+        const baseOvr = calcOvr2K(p);
+        const basePot = calcPot2K(p, currentYear);
+        const ovr = fuzzRatingValue(baseOvr, state, p, 'compact-board-ovr');
+        const pot = fuzzRatingValue(basePot, state, p, 'compact-board-pot');
         const pos = p.pos ?? 'F';
         const posGroup = pos.includes('G') || pos === 'PG' || pos === 'SG' ? 'Guard'
           : pos.includes('C') || pos === 'FC' ? 'Center' : 'Forward';

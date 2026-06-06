@@ -14,6 +14,12 @@ const formatCompetitionFormat = (format: string) =>
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
 
+const quarterfinalFormatLabel = (spec: NonNullable<ReturnType<typeof useGame>['state']['activeCompetitions']>[number]) => {
+  if (spec.playoffFormat?.qfFormat === 'twice-to-beat') return 'Twice to beat';
+  const round = spec.playoffFormat?.qfBest ?? spec.playoffFormat?.finalBest ?? 1;
+  return `Best of ${round}`;
+};
+
 const qualificationLabel = (specId: string, seed: number) => {
   if (specId === 'euroleague') {
     if (seed <= 6) return { text: 'Playoffs', tone: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30' };
@@ -206,10 +212,9 @@ export const CompetitionView: React.FC<{ specId: string }> = ({ specId }) => {
                 {qfPairings.map((pair, index) => {
                   const high = resolveAnyTeam(pair.high.tid, state.teams, state.nonNBATeams ?? []);
                   const low = resolveAnyTeam(pair.low.tid, state.teams, state.nonNBATeams ?? []);
-                  const round = spec.playoffFormat?.qfBest ?? spec.playoffFormat?.finalBest ?? 1;
                   return (
                     <div key={`${pair.high.tid}-${pair.low.tid}`} className="rounded-xl border border-slate-800 bg-black/30 p-3">
-                      <div className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-1">Series {index + 1} - Best of {round}</div>
+                      <div className="text-[9px] font-black uppercase tracking-widest text-slate-600 mb-1">Series {index + 1} - {quarterfinalFormatLabel(spec)}</div>
                       <div className="flex items-center justify-between gap-3 text-sm font-bold text-white">
                         <span>{getTeamFullName(high)}</span>
                         <span className="text-slate-600 text-xs">vs</span>

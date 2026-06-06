@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { NBAPlayer } from '../../../../../types';
-import { getActiveLeagueTeams, isOnRoster } from '../../../../../utils/teamLookup';
+import { isOnRoster } from '../../../../../utils/teamLookup';
 
 interface TeamNeedsProps {
   teamId: number;
@@ -33,9 +33,45 @@ const getPlayerCategoryScores = (p: NBAPlayer) => {
 
 export function TeamNeeds({ teamId }: TeamNeedsProps) {
   const { state } = useGame();
-  const allActive = (state.players || []).filter(p => p.tid >= 0 && isOnRoster(p));
-  const teamPlayers = allActive.filter(p => p.tid === teamId);
   const currentYear = state.leagueStats?.year;
+  const nonNbaTeamByTid = useMemo(
+    () => new Map((state.nonNBATeams ?? []).map(team => [team.tid, team] as const)),
+    [state.nonNBATeams],
+  );
+  const selectedLeagueKey = useMemo(() => {
+    if (teamId >= 0 && teamId < 100) return 'nba';
+    return nonNbaTeamByTid.get(teamId)?.league ?? `tid:${teamId}`;
+  }, [nonNbaTeamByTid, teamId]);
+
+  const isPlayerInSelectedLeague = (player: NBAPlayer) => {
+    if (player.tid < 0 || !isOnRoster(player)) return false;
+    if (selectedLeagueKey === 'nba') return player.tid >= 0 && player.tid < 100;
+    if (player.tid >= 100) {
+      return nonNbaTeamByTid.get(player.tid)?.league === selectedLeagueKey;
+    }
+    return false;
+  };
+
+  const isGameInSelectedLeague = (game: any) => {
+    const homeTid = Number(game?.homeTeamId ?? game?.homeTid);
+    const awayTid = Number(game?.awayTeamId ?? game?.awayTid);
+    if (selectedLeagueKey === 'nba') {
+      return homeTid >= 0 && homeTid < 100 && awayTid >= 0 && awayTid < 100;
+    }
+    if (homeTid < 100 || awayTid < 100) return false;
+    const homeLeague = nonNbaTeamByTid.get(homeTid)?.league;
+    const awayLeague = nonNbaTeamByTid.get(awayTid)?.league;
+    return homeLeague === selectedLeagueKey && awayLeague === selectedLeagueKey;
+  };
+
+  const allActive = useMemo(
+    () => (state.players || []).filter(isPlayerInSelectedLeague),
+    [state.players, selectedLeagueKey, nonNbaTeamByTid],
+  );
+  const teamPlayers = useMemo(
+    () => allActive.filter(p => p.tid === teamId),
+    [allActive, teamId],
+  );
 
   // ── Actual box-score stats (current season) ───────────────────────────────
   // For each team: aggregate per-game shooting, defense, rebounding, playmaking.
@@ -66,10 +102,11 @@ export function TeamNeeds({ teamId }: TeamNeedsProps) {
     (state.boxScores as any[]).forEach(game => {
       if (game.isAllStar || game.isRisingStars || game.isCelebrityGame || game.isPreseason) return;
       if (currentYear && game.date && seasonYearFromDate(game.date) !== currentYear) return;
+      if (!isGameInSelectedLeague(game)) return;
 
       const sides: Array<{ stats: any[]; tid: number; oppStats: any[] }> = [
-        { stats: game.homeStats || [], tid: game.homeTeamId, oppStats: game.awayStats || [] },
-        { stats: game.awayStats || [], tid: game.awayTeamId, oppStats: game.homeStats || [] },
+        { stats: game.homeStats || [], tid: Number(game.homeTeamId ?? game.homeTid), oppStats: game.awayStats || [] },
+        { stats: game.awayStats || [], tid: Number(game.awayTeamId ?? game.awayTid), oppStats: game.homeStats || [] },
       ];
 
       for (const { stats, tid, oppStats } of sides) {
@@ -145,7 +182,7 @@ export function TeamNeeds({ teamId }: TeamNeedsProps) {
         oppLpFgp: avgOf(t => t.oppLpFgp),
       },
     };
-  }, [state.boxScores, teamId, currentYear]);
+  }, [state.boxScores, teamId, currentYear, selectedLeagueKey, nonNbaTeamByTid]);
 
   // Weight scales 0→0.5 as games go from 10→82. Under 10 games: pure ratings.
   const statWeight = teamPerf.g >= 10 ? Math.min(0.5, (teamPerf.g - 10) / 72 * 0.5) : 0;

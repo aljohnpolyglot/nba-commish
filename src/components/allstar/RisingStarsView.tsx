@@ -5,6 +5,7 @@ import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { useGame } from '../../store/GameContext';
 import { normalizeDate, extractTeamId } from '../../utils/helpers';
 import { getPlayerImage } from '../central/view/bioCache';
+import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
 
 interface RisingStarsViewProps {
   allStar: any;
@@ -15,6 +16,7 @@ interface RisingStarsViewProps {
 
 export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTid, onWatchGame, onViewBoxScore }) => {
   const { state } = useGame();
+  const dates = getAllStarWeekendDates(state.leagueStats.year);
   const bracket = allStar?.risingStarsBracket;
   const rsFormat = state.leagueStats?.risingStarsFormat ?? '4team_tournament';
   const isTournament = rsFormat === '4team_tournament' || rsFormat === 'random_4team' || !!bracket?.teams?.length;
@@ -173,6 +175,11 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
           <div className="bg-slate-900 rounded-2xl border border-slate-800 p-8 text-center">
             <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">Rising Stars Tournament</h3>
             <p className="text-slate-400 text-sm mb-4">4-team bracket · Semifinals + Championship · Feb 13</p>
+            {roster.length > 0 && (
+              <p className="text-slate-500 text-xs max-w-lg mx-auto mb-4">
+                The player pool is already announced. The 4 tournament teams are finalized on event night, so this screen shows the rookie and sophomore pool until the bracket is built.
+              </p>
+            )}
             {todayRsGames.length > 0 && (
               <button
                 onClick={() => onWatchGame?.(todayRsGames[0])}
@@ -227,9 +234,31 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
             })}
           </div>
         ) : (
-          <div className="text-center py-8 text-xs text-slate-600 italic">
-            Teams and rosters announced Jan 29.
-          </div>
+          roster.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                { label: 'Sophomores', players: sophomores },
+                { label: 'Rookies', players: rookies },
+              ].map(({ label, players }) => (
+                <div key={label} className="space-y-3">
+                  <div className="flex items-center gap-3 px-2">
+                    <h4 className="text-sm font-black text-white uppercase tracking-widest whitespace-nowrap">{label}</h4>
+                    <div className="h-px bg-slate-800 flex-1" />
+                    <span className="text-[10px] text-slate-500 font-bold tracking-widest">
+                      Announced {dates.risingStarsAnnounced.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    {players.map((p: any) => <PlayerCard key={p.playerId} p={p} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-xs text-slate-600 italic">
+              The player pool will be announced Jan 29.
+            </div>
+          )
         )}
       </div>
     );

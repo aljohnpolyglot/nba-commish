@@ -137,9 +137,9 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[70] flex items-center justify-center p-4">
-      <div className="bg-slate-950 border border-slate-800 rounded-2xl max-w-[1100px] w-full max-h-[94vh] overflow-y-auto shadow-2xl">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[1100px] flex-col overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
         {/* Header */}
-        <div className="px-7 pt-6 pb-5 border-b border-slate-800 flex items-start gap-5">
+        <div className="flex flex-col gap-4 border-b border-slate-800 px-4 pb-5 pt-5 sm:px-7 sm:pt-6 lg:flex-row lg:items-start lg:gap-5">
           <SponsorLogo
             name={data.brand}
             meta={getBrandMeta('spain', data.brand)}
@@ -154,7 +154,7 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
             </div>
             <div className="text-sm text-slate-400 mt-1">{INDUSTRY_PROFILE_LABEL[data.industry]} • <span className="text-violet-300">{SLOT_PLACEMENT_LABEL[slot]}</span></div>
           </div>
-          <div className="shrink-0 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 min-w-[240px]">
+          <div className="min-w-0 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 sm:min-w-[240px]">
             <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Offer Strength</div>
             <div className={`mt-1 text-lg font-black ${STRENGTH_TINT[strength.level]}`}>{strength.level}</div>
             <div className="mt-3 flex gap-1">
@@ -171,9 +171,9 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
 
         {/* Placement picker — kit family only */}
         {isKitFamily && (
-          <div className="px-7 py-4 border-b border-slate-800">
+          <div className="border-b border-slate-800 px-4 py-4 sm:px-7">
             <div className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">Placement</div>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
               {KIT_FAMILY_SLOTS.map((s) => {
                 const active = slot === s;
                 const occupied = data.occupiedSlots?.has(s) ?? false;
@@ -204,7 +204,7 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
         )}
 
         {/* Body */}
-        <div className="grid lg:grid-cols-2 gap-5 px-7 py-6">
+        <div className="grid gap-5 px-4 py-5 sm:px-7 sm:py-6 lg:grid-cols-2">
           {/* Left column */}
           <div className="space-y-4">
             <Panel title="Offer Amount">
@@ -299,10 +299,10 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-800 px-7 py-4 flex items-center gap-3">
+        <div className="flex flex-col gap-3 border-t border-slate-800 px-4 py-4 sm:px-7 lg:flex-row lg:items-center">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 rounded-lg border border-slate-700 bg-slate-900 hover:border-slate-500 text-sm font-bold text-slate-300"
+            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-5 py-2.5 text-sm font-bold text-slate-300 hover:border-slate-500 lg:w-auto"
           >
             Cancel
           </button>
@@ -311,7 +311,7 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
           </div>
           <button
             onClick={handleSubmit}
-            className="px-7 py-2.5 rounded-lg bg-violet-500 hover:bg-violet-400 text-white text-sm font-bold"
+            className="w-full rounded-lg bg-violet-500 px-7 py-2.5 text-sm font-bold text-white hover:bg-violet-400 lg:w-auto"
           >
             {data.oneTime ? 'Sign Deal' : 'Submit Offer'}
           </button>
@@ -320,7 +320,7 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
 
       {confirmation && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[80] flex items-center justify-center p-4">
-          <div className="bg-slate-950 border border-emerald-500/40 rounded-2xl max-w-md w-full p-7 shadow-2xl shadow-emerald-950/30 text-center">
+          <div className="w-full max-w-md rounded-2xl border border-emerald-500/40 bg-slate-950 p-5 text-center shadow-2xl shadow-emerald-950/30 sm:p-7">
             <div className="mx-auto w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
               <PartyPopper size={28} className="text-emerald-300" />
             </div>
@@ -358,7 +358,7 @@ export const StartNegotiationModal: React.FC<Props> = ({ open, onClose, data, on
 };
 
 const Panel: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
+  <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 sm:p-5">
     <div className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">{title}</div>
     {children}
   </div>

@@ -15,10 +15,12 @@ import { DunkContestView } from './DunkContestView';
 import { ThreePointView } from './ThreePointView';
 import { ShootingStarsView } from './ShootingStarsView';
 import { SkillsChallengeView } from './SkillsChallengeView';
+import { HorseView } from './HorseView';
 import { ThroneContestView } from './ThroneContestView';
 import { ThroneWatchOverlay } from './ThroneWatchOverlay';
 import { ShootingStarsLiveContest } from '../../minigames/shootingstars/ShootingStarsLiveContest';
 import { SkillsChallengeLiveContest } from '../../minigames/skills/SkillsChallengeLiveContest';
+import { HorseLiveContest } from '../../minigames/horse/HorseLiveContest';
 import { buildShootingStarsLiveTeams, buildSkillsLiveTeams } from '../../minigames/shared/liveContestBuilders';
 import { AllStarGameView } from './AllStarGameView';
 import { GameSimulatorScreen } from '../shared/GameSimulatorScreen';
@@ -33,11 +35,21 @@ import { fetchAllStarHistory, getCachedAllStarHistory } from '../../data/allStar
 import { parseGameDate } from '../../utils/dateUtils';
 import { useAllStarThroneLifecycle } from './useAllStarThroneLifecycle';
 import { buildAllStarTabs, type AllStarTab } from './allStarTabs';
+import { isPbaIsolatedMode } from '../../utils/uiMode';
 
 export const AllStarView: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const ownTid = getOwnTeamId(state);
   const allStar = state.allStar;
+  const isPba = isPbaIsolatedMode(state);
+  const pbaTeams = useMemo(
+    () => ((state as any).nonNBATeams ?? [])
+      .filter((team: any) => team?.league === 'PBA')
+      .map((team: any) => ({ ...team, id: team.tid ?? team.id })),
+    [(state as any).nonNBATeams],
+  );
+  const contestTeams = isPba ? pbaTeams : state.teams;
+  const allTeamsForLookup = isPba ? [...state.teams, ...pbaTeams] : state.teams;
   const [activeTab, setActiveTab] = useState<AllStarTab>('overview');
   const [watchingGame, setWatchingGame] = useState<any | null>(null);
   const [pendingWatchGame, setPendingWatchGame] = useState<any | null>(null);
@@ -50,13 +62,17 @@ export const AllStarView: React.FC = () => {
   const simulatingSkillsChallenge = false;
   const [watchingShootingStars, setWatchingShootingStars] = useState(false);
   const [watchingSkillsChallenge, setWatchingSkillsChallenge] = useState(false);
+  const [watchingHorse, setWatchingHorse] = useState(false);
   const [watchingThrone, setWatchingThrone] = useState(false);
   const [showingHistory, setShowingHistory] = useState(false);
   const [viewingPlayer, setViewingPlayer] = useState<any | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
-  useEffect(() => { fetchAllStarHistory().then(() => setHistoryVersion(v => v + 1)); }, []);
+  useEffect(() => {
+    if (isPba) return;
+    fetchAllStarHistory().then(() => setHistoryVersion(v => v + 1));
+  }, [isPba]);
   
-  const dates = getAllStarWeekendDates(state.leagueStats.year);
+  const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
   const dateStr = dates.allStarGame.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   useAllStarThroneLifecycle(state, dispatchAction, dates);
 
@@ -201,11 +217,15 @@ export const AllStarView: React.FC = () => {
   const skillsChallengePlayers = useMemo(() => ((allStar as any)?.skillsChallengeContestants ?? [])
     .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
     .filter(Boolean), [allStar, state.players]);
-  const shootingStarsLiveTeams = useMemo(() => buildShootingStarsLiveTeams(shootingStarsPlayers, state.teams), [shootingStarsPlayers, state.teams]);
-  const skillsLiveTeams = useMemo(() => buildSkillsLiveTeams(skillsChallengePlayers, state.teams), [skillsChallengePlayers, state.teams]);
+  const horsePlayers = useMemo(() => ((allStar as any)?.horseContestants ?? [])
+    .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
+    .filter(Boolean), [allStar, state.players]);
+  const shootingStarsLiveTeams = useMemo(() => buildShootingStarsLiveTeams(shootingStarsPlayers, contestTeams), [shootingStarsPlayers, contestTeams]);
+  const skillsLiveTeams = useMemo(() => buildSkillsLiveTeams(skillsChallengePlayers, contestTeams), [skillsChallengePlayers, contestTeams]);
 
   const handleRunShootingStars = () => setWatchingShootingStars(true);
   const handleRunSkillsChallenge = () => setWatchingSkillsChallenge(true);
+  const handleRunHorse = () => setWatchingHorse(true);
 
   if (showingHistory) {
     return (
@@ -226,10 +246,10 @@ export const AllStarView: React.FC = () => {
   // Host for current season — prefer leagueStats.allStarHosts, fall back to the
   // history gist (covers real seasons that haven't been seeded into leagueStats).
   const currentHost = (state.leagueStats?.allStarHosts ?? []).find((h: any) => h.year === state.leagueStats.year);
-  const gistHistory = getCachedAllStarHistory();
+  const gistHistory = isPba ? [] : getCachedAllStarHistory();
   const gistEntry = gistHistory?.find(h => h.year === state.leagueStats.year);
   void historyVersion; // re-read gist after fetch
-  const hostCity = currentHost?.city ?? gistEntry?.host_city ?? 'TBD';
+  const hostCity = isPba ? 'PBA All-Star Weekend' : (currentHost?.city ?? gistEntry?.host_city ?? 'TBD');
 
   return (
     <div className="h-full flex flex-col bg-slate-950 text-slate-200">
@@ -238,20 +258,22 @@ export const AllStarView: React.FC = () => {
       <div className="p-6 border-b border-slate-800 shrink-0">
         <div className="flex items-center justify-between gap-3 mb-1">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <img
-                src="https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748"
-                className="w-6 h-6 object-contain"
-                alt="East"
-              />
-              <img
-                src="https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726"
-                className="w-6 h-6 object-contain"
-                alt="West"
-              />
-            </div>
+            {!isPba && (
+              <div className="flex items-center gap-2">
+                <img
+                  src="https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748"
+                  className="w-6 h-6 object-contain"
+                  alt="East"
+                />
+                <img
+                  src="https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726"
+                  className="w-6 h-6 object-contain"
+                  alt="West"
+                />
+              </div>
+            )}
             <h2 className="text-2xl font-black text-white uppercase tracking-tight">
-              All-Star Weekend
+              {isPba ? 'PBA All-Star Weekend' : 'All-Star Weekend'}
             </h2>
             {phase === 'voting' && (
               <span className="text-xs font-bold bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">
@@ -264,13 +286,15 @@ export const AllStarView: React.FC = () => {
               </span>
             )}
           </div>
-          <button
-            onClick={() => setShowingHistory(true)}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
-          >
-            <History size={14} />
-            History
-          </button>
+          {!isPba && (
+            <button
+              onClick={() => setShowingHistory(true)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+            >
+              <History size={14} />
+              History
+            </button>
+          )}
         </div>
         <p className="text-slate-400 text-sm">
           {dateStr} · {hostCity}
@@ -324,6 +348,7 @@ export const AllStarView: React.FC = () => {
           <AllStarRoster
             allStar={allStar}
             state={state}
+            teams={contestTeams}
             ownTid={ownTid}
             onWatchGame={handleWatchGame}
             onViewBoxScore={setSelectedBoxScoreGame}
@@ -351,17 +376,18 @@ export const AllStarView: React.FC = () => {
           <DunkContestView
             allStar={allStar}
             players={state.players}
+            teams={contestTeams}
             ownTid={ownTid}
           />
         )}
         {activeTab === 'three-point' && (
-          <ThreePointView allStar={allStar} players={state.players} ownTid={ownTid} />
+          <ThreePointView allStar={allStar} players={state.players} teams={contestTeams} ownTid={ownTid} />
         )}
         {activeTab === 'shooting-stars' && (
           <ShootingStarsView
             allStar={allStar}
             players={state.players}
-            teams={state.teams}
+            teams={contestTeams}
             ownTid={ownTid}
             onRun={handleRunShootingStars}
             isSimulating={simulatingShootingStars}
@@ -371,10 +397,20 @@ export const AllStarView: React.FC = () => {
           <SkillsChallengeView
             allStar={allStar}
             players={state.players}
-            teams={state.teams}
+            teams={contestTeams}
             ownTid={ownTid}
             onRun={handleRunSkillsChallenge}
             isSimulating={simulatingSkillsChallenge}
+          />
+        )}
+        {activeTab === 'horse' && (
+          <HorseView
+            allStar={allStar}
+            players={state.players}
+            teams={contestTeams}
+            ownTid={ownTid}
+            onRun={handleRunHorse}
+            isSimulating={false}
           />
         )}
         {activeTab === 'throne' && (
@@ -412,7 +448,7 @@ export const AllStarView: React.FC = () => {
             game={selectedBoxScoreGame}
             result={state.boxScores.find((b: any) => b.gameId === selectedBoxScoreGame.gid || (b.homeTeamId === selectedBoxScoreGame.homeTid && b.awayTeamId === selectedBoxScoreGame.awayTid))}
             homeTeam={(() => {
-              const baseTeam = getTeamForGame(selectedBoxScoreGame.homeTid) || state.teams.find(t => t.id === selectedBoxScoreGame.homeTid)!;
+              const baseTeam = getTeamForGame(selectedBoxScoreGame.homeTid) || allTeamsForLookup.find(t => t.id === selectedBoxScoreGame.homeTid)!;
               const result = state.boxScores.find((b: any) => b.gameId === selectedBoxScoreGame.gid || (b.homeTeamId === selectedBoxScoreGame.homeTid && b.awayTeamId === selectedBoxScoreGame.awayTid));
               
               // Handle All-Star Game Logos
@@ -428,7 +464,7 @@ export const AllStarView: React.FC = () => {
               return { ...baseTeam, logoUrl };
             })()}
             awayTeam={(() => {
-              const baseTeam = getTeamForGame(selectedBoxScoreGame.awayTid) || state.teams.find(t => t.id === selectedBoxScoreGame.awayTid)!;
+              const baseTeam = getTeamForGame(selectedBoxScoreGame.awayTid) || allTeamsForLookup.find(t => t.id === selectedBoxScoreGame.awayTid)!;
               const result = state.boxScores.find((b: any) => b.gameId === selectedBoxScoreGame.gid || (b.homeTeamId === selectedBoxScoreGame.homeTid && b.awayTeamId === selectedBoxScoreGame.awayTid));
               
               // Handle All-Star Game Logos
@@ -480,8 +516,8 @@ export const AllStarView: React.FC = () => {
         {watchingThreePoint && !allStar?.threePointContest?.complete && (() => {
           const threeContestants = (allStar?.threePointContestants ?? []).map((c: any) => {
             const player = state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c;
-            const team = state.teams.find((t: any) => t.id === player.tid);
-            return mapPlayerToContestant(player, team?.abbrev ?? 'NBA');
+            const team = contestTeams.find((t: any) => t.id === player.tid);
+            return mapPlayerToContestant(player, team?.abbrev ?? (isPba ? 'PBA' : 'NBA'));
           });
           return (
             <div className="fixed inset-0 z-[100] bg-black overflow-y-auto">
@@ -532,11 +568,32 @@ export const AllStarView: React.FC = () => {
       </AnimatePresence>
 
       <AnimatePresence>
+        {watchingHorse && !(allStar as any)?.horseTournament?.complete && (
+          <div className="fixed inset-0 z-[100] bg-black overflow-y-auto">
+            <HorseLiveContest
+              contestants={horsePlayers}
+              rules={{
+                noPlayerRepeat: state.leagueStats.allStarHorseNoPlayerRepeat === true,
+                noGlobalRepeat: state.leagueStats.allStarHorseNoGlobalRepeat === true,
+              }}
+              onClose={() => setWatchingHorse(false)}
+              onComplete={(result) => {
+                dispatchAction({
+                  type: 'SAVE_CONTEST_RESULT',
+                  payload: { contest: 'horse', result: { ...result, complete: true }, contestants: horsePlayers },
+                });
+              }}
+            />
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {watchingGame && (
           <div className="fixed inset-0 z-[100] bg-black">
             <GameSimulatorScreen
               game={watchingGame}
-              teams={state.teams}
+              teams={allTeamsForLookup}
               players={state.players}
               allStar={state.allStar}
               isProcessing={state.isProcessing}

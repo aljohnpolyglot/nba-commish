@@ -25,6 +25,9 @@ export function ensureEuroUserAcademyProspects(
   if (state.leagueStats?.uiMode !== 'euro_isolated' || state.gameMode !== 'gm' || state.userTeamId == null) {
     return { players: state.players ?? [], additions: [] };
   }
+  if ((state.seasonHistory?.length ?? 0) === 0) {
+    return { players: state.players ?? [], additions: [] };
+  }
 
   const players = state.players ?? [];
   const team = (state.nonNBATeams ?? []).find((t: any) => (t.tid ?? t.id) === state.userTeamId);

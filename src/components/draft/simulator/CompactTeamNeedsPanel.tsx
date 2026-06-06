@@ -4,6 +4,7 @@
 // Mathematik ist identisch zur Vollseiten-Version.
 
 import React, { useMemo } from 'react';
+import { isOnRoster } from '../../../utils/teamLookup';
 
 const getCategoryScores = (p: any) => {
   const r = p.ratings?.[p.ratings.length - 1];
@@ -38,7 +39,7 @@ interface CompactNeedsProps {
 
 export const CompactTeamNeedsPanel: React.FC<CompactNeedsProps> = ({ teamId, players }) => {
   const { posNeeds, topGaps } = useMemo(() => {
-    const allActive = players.filter(p => p.tid >= 0 && p.status === 'Active');
+    const allActive = players.filter(p => p.tid >= 0 && isOnRoster(p));
     const teamPlayers = allActive.filter(p => p.tid === teamId);
     if (teamPlayers.length === 0) return { posNeeds: [], topGaps: [] };
 

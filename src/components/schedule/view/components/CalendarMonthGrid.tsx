@@ -64,6 +64,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
 }) => {
   const ownTid = getOwnTeamId(state);
   const gmTid = focusTeamId !== undefined ? focusTeamId : ownTid;
+  const pbaIsolated = state.leagueStats?.uiMode === 'pba_isolated';
   const resolveTeam = (tid: number): NBATeam | null => resolveAnyTeam(tid, state.teams ?? [], state.nonNBATeams ?? []);
   const allStarDateSet = new Set<string>();
   const addWeekend = (targetYear: number) => {
@@ -98,7 +99,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         const dateObj = new Date(dateStr);
         const highlighted = getHighlightedEvent(dateObj);
         const isAllStarGame = (g: Game) => g.isAllStar || g.isRisingStars || g.isCelebrityGame || g.isDunkContest || g.isThreePointContest;
-        const isAllStarWeekend = !euroIsolated && (games.some(isAllStarGame) || allStarDateSet.has(dateNorm));
+        const isAllStarWeekend = !euroIsolated && !pbaIsolated && (games.some(isAllStarGame) || allStarDateSet.has(dateNorm));
         const hasPlayoff = games.some((g: Game) => g.isPlayoff);
         const hasPlayIn = games.some((g: Game) => g.isPlayIn);
         const hasFinals = games.some((g: Game) => g.isPlayoff && finalsGameIds.has(g.gid));
@@ -111,8 +112,8 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         const calMonth1 = month + 1;
         const inPlayInWindow = calMonth1 === 4 && day >= 15 && day <= 18;
         const inPlayoffWindow = (calMonth1 === 4 && day >= 19) || calMonth1 === 5 || (calMonth1 === 6 && day <= 22);
-        const showPlayIn = !euroIsolated && state.leagueStats?.playIn !== false && (hasPlayIn || inPlayInWindow);
-        const showPlayoff = !euroIsolated && (hasPlayoff || inPlayoffWindow);
+        const showPlayIn = !euroIsolated && state.leagueStats?.playIn !== false && (hasPlayIn || (!pbaIsolated && inPlayInWindow));
+        const showPlayoff = !euroIsolated && (hasPlayoff || (!pbaIsolated && inPlayoffWindow));
         const showNbaCalendarEvents = state.leagueStats?.uiMode !== 'euro_isolated' && state.leagueStats?.uiMode !== 'pba_isolated';
         const isTradeDeadline = !euroIsolated && dateNorm === tradeDeadlineStr;
         const isDraftLottery = showNbaCalendarEvents && !noDraft && dateNorm === draftLotteryStr;
@@ -120,7 +121,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         const isDraft = showNbaCalendarEvents && !noDraft && dateNorm === draftDayStr && !draftBlockedByPlayoffs;
         const isFAMoratorium = showNbaCalendarEvents && dateNorm === faStartStr;
         const isFAOpen = showNbaCalendarEvents && dateNorm === faMoratoriumEndStr;
-        const isTrainingCamp = dateNorm === trainingCampStr;
+        const isTrainingCamp = !pbaIsolated && dateNorm === trainingCampStr;
         const userGame: Game | undefined = gmTid !== null
           ? games.find((g: Game) => !isAllStarGame(g) && !(g as any).isCupTBD && (g.homeTid === gmTid || g.awayTid === gmTid))
           : undefined;
@@ -180,7 +181,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
               ? 'bg-gradient-to-br from-emerald-700/40 to-emerald-950/35 border-emerald-400/55 hover:from-emerald-600/50'
             : isTrainingCamp
               ? 'bg-gradient-to-br from-orange-600/35 to-orange-950/30 border-orange-400/45 hover:from-orange-500/45'
-            : hasPreseason
+            : hasPreseason && !pbaIsolated
               ? 'bg-gradient-to-br from-slate-600/30 to-slate-900/25 border-slate-400/35 hover:from-slate-500/40'
             : hasExhibition
               ? 'bg-gradient-to-br from-purple-800/30 to-purple-950/25 border-purple-400/35 hover:from-purple-700/40'
@@ -194,8 +195,8 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
           : isSelected ? 'text-white'
           : isAllStarWeekend ? 'text-amber-300'
           : hasFinals && !hasRichGM ? 'text-yellow-200'
-          : (hasPlayoff || inPlayoffWindow) && !hasRichGM ? 'text-amber-200'
-          : (hasPlayIn || inPlayInWindow) && !hasRichGM ? 'text-violet-200'
+          : (hasPlayoff || (!pbaIsolated && inPlayoffWindow)) && !hasRichGM ? 'text-amber-200'
+          : (hasPlayIn || (!pbaIsolated && inPlayInWindow)) && !hasRichGM ? 'text-violet-200'
           : isTradeDeadline && !hasRichGM ? 'text-orange-300'
           : isDraftLottery && !hasRichGM ? 'text-purple-300'
           : (inCombineWindow || isDraft) && !hasRichGM ? 'text-blue-300'
@@ -254,28 +255,28 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
               </div>
             )}
 
-            {!isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && !showPlayIn && hasCupFinal && (
+            {!pbaIsolated && !isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && !showPlayIn && hasCupFinal && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
                 <Trophy size={22} className="md:w-7 md:h-7 text-amber-300/80" strokeWidth={1.5} fill="currentColor" />
                 <span className="hidden md:block text-[7px] font-black uppercase tracking-widest text-amber-300/80">Cup Final</span>
               </div>
             )}
 
-            {!isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && !showPlayIn && !hasCupFinal && hasCupKO && (
+            {!pbaIsolated && !isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && !showPlayIn && !hasCupFinal && hasCupKO && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
                 <Trophy size={20} className="md:w-6 md:h-6 text-orange-300/70" strokeWidth={1.5} />
                 <span className="hidden md:block text-[7px] font-black uppercase tracking-widest text-orange-300/70">Cup KO</span>
               </div>
             )}
 
-            {!isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && !showPlayIn && !hasCupFinal && !hasCupKO && hasCupGroup && (
+            {!pbaIsolated && !isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && !showPlayIn && !hasCupFinal && !hasCupKO && hasCupGroup && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
                 <span className="text-[16px] md:text-[20px] opacity-50">🏆</span>
                 <span className="hidden md:block text-[7px] font-black uppercase tracking-widest text-orange-300/70">Cup Night</span>
               </div>
             )}
 
-            {!isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && !showPlayIn && !hasCupFinal && !hasCupKO && !hasCupGroup && hasCupTBD && (
+            {!pbaIsolated && !isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && !showPlayIn && !hasCupFinal && !hasCupKO && !hasCupGroup && hasCupTBD && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
                 <Trophy size={20} className="md:w-6 md:h-6 text-amber-300/40" strokeWidth={1.5} />
                 <span className="hidden md:block text-[7px] font-black uppercase tracking-widest text-amber-300/50">Cup TBD</span>
@@ -331,7 +332,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
               </div>
             )}
 
-            {!isAllStarWeekend && !hasRichGM && !showPlayoff && !showPlayIn && !isTradeDeadline && !isDraftLottery && !inCombineWindow && !isDraft && !isFAMoratorium && !isFAOpen && !isTrainingCamp && hasPreseason && (
+            {!pbaIsolated && !isAllStarWeekend && !hasRichGM && !showPlayoff && !showPlayIn && !isTradeDeadline && !isDraftLottery && !inCombineWindow && !isDraft && !isFAMoratorium && !isFAOpen && !isTrainingCamp && hasPreseason && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
                 <span className="text-[16px] md:text-[20px] opacity-50">🏀</span>
                 <span className="hidden md:block text-[7px] font-black uppercase tracking-widest text-slate-400/70">Preseason</span>
@@ -404,7 +405,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
                       : 'CUP'}
                   </span>
                 )}
-                {isUserPreseason && (
+                {!pbaIsolated && isUserPreseason && (
                   <span className="absolute top-1 right-1 md:right-auto md:left-1 text-[7px] font-black uppercase tracking-widest text-slate-400">PRE</span>
                 )}
                 {userPlayed && (

@@ -5,14 +5,15 @@ import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
 import { K2_CATS, K2Data } from '../../../services/simulation/convert2kAttributes';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
-import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
+import { useHubScope } from '../../../hooks/useHubScope';
 import { isEuroIsolatedMode } from '../../../utils/uiMode';
-import { fuzzRatingValue } from '../../../utils/scoutingFuzz';
+import { fuzzRatingValue, getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../../utils/scoutingFuzz';
 import {
   ensurePlayerRatingData,
   resolvePlayerRatingBundle,
   usePlayerRatingStore,
 } from '../../../store/playerRatingStore';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
 const CAT_CONFIG = [
   { key: 'OS' as const, label: 'SCR', full: 'Outside Scoring' },
   { key: 'AT' as const, label: 'ATH', full: 'Athleticism' },
@@ -72,10 +73,11 @@ function getRatingColor(val: number): string {
 }
 
 function RatingCell({ value }: { value: number }) {
-  const color = getRatingColor(value);
+  const safeValue = Number.isFinite(value) ? Math.round(value) : 50;
+  const color = getRatingColor(safeValue);
   return (
     <span className="font-black tabular-nums text-sm" style={{ color }}>
-      {value}
+      {safeValue}
     </span>
   );
 }
@@ -83,17 +85,25 @@ function RatingCell({ value }: { value: number }) {
 function getSubVal(row: RowData, key: string): number {
   const [cat, idxStr] = key.split('.');
   const idx = Number(idxStr);
-  return (row.k2 as any)[cat]?.sub[idx] ?? 50;
+  const value = (row.k2 as any)[cat]?.sub[idx];
+  return Number.isFinite(value) ? value : 50;
 }
 
 export const PlayerRatingsView: React.FC = () => {
   const { state } = useGame();
   const quick = usePlayerQuickActions();
+  const { teams: scopedTeams, pbaIsolated } = useHubScope();
   const ratingVersion = usePlayerRatingStore(s => s.version);
+  const euroIsolated = isEuroIsolatedMode(state);
 
   React.useEffect(() => {
     ensurePlayerRatingData();
   }, []);
+
+  React.useEffect(() => {
+    setTeamFilter('all');
+    setPage(0);
+  }, [pbaIsolated]);
 
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
@@ -109,32 +119,48 @@ export const PlayerRatingsView: React.FC = () => {
   const season = state.leagueStats?.year ?? new Date().getFullYear();
 
   const currentYear = season;
+  const sourcePlayers = useMemo(() => {
+    if (!pbaIsolated) {
+      return state.players.filter(p =>
+        euroIsolated
+          ? p.status === 'Euroleague' || p.status === 'Endesa'
+          : p.status === 'Active' || p.status === 'Free Agent' || p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect',
+      );
+    }
+
+    return state.players.filter(p =>
+      p.status === 'PBA'
+      || (p.tid >= 2000 && p.tid < 2100)
+      || p.status === 'Free Agent'
+      || p.tid === -1
+      || p.tid === -2
+      || p.status === 'Prospect'
+      || p.status === 'Draft Prospect',
+    );
+  }, [pbaIsolated, euroIsolated, state.players]);
+
   const rows: RowData[] = useMemo(() => {
-    return state.players
-      .filter(p => isEuroIsolatedMode(state)
-        ? p.status === 'Euroleague' || p.status === 'Endesa'
-        : p.status === 'Active' || p.status === 'Free Agent' || p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect')
-      .map(player => {
-        const bundle = resolvePlayerRatingBundle(player, currentYear, season);
-        const k2 = bundle.displayK2;
-        const ovr = fuzzRatingValue(bundle.overall2k, state, player);
-        const pot = fuzzRatingValue(bundle.potential2k, state, player, 'pot');
-        return {
-          player,
-          age: bundle.age,
-          ovr,
-          pot,
-          k2,
-          OS: fuzzRatingValue(k2.OS.ovr, state, player, 'OS'),
-          AT: fuzzRatingValue(k2.AT.ovr, state, player, 'AT'),
-          IS: fuzzRatingValue(k2.IS.ovr, state, player, 'IS'),
-          PL: fuzzRatingValue(k2.PL.ovr, state, player, 'PL'),
-          DF: fuzzRatingValue(k2.DF.ovr, state, player, 'DF'),
-          RB: fuzzRatingValue(k2.RB.ovr, state, player, 'RB'),
-          MI: fuzzRatingValue(k2.MI.ovr, state, player, 'MI'),
-        };
-      });
-  }, [state, state.players, season, currentYear, ratingVersion]);
+    return sourcePlayers.map(player => {
+      const bundle = resolvePlayerRatingBundle(player, currentYear, season);
+      const k2 = bundle.displayK2;
+      const ovr = getScoutedDisplayOverall(state, player, season);
+      const pot = getScoutedDisplayPotential(state, player, currentYear, season);
+      return {
+        player,
+        age: bundle.age,
+        ovr,
+        pot,
+        k2,
+        OS: fuzzRatingValue(k2.OS.ovr, state, player, 'OS'),
+        AT: fuzzRatingValue(k2.AT.ovr, state, player, 'AT'),
+        IS: fuzzRatingValue(k2.IS.ovr, state, player, 'IS'),
+        PL: fuzzRatingValue(k2.PL.ovr, state, player, 'PL'),
+        DF: fuzzRatingValue(k2.DF.ovr, state, player, 'DF'),
+        RB: fuzzRatingValue(k2.RB.ovr, state, player, 'RB'),
+        MI: fuzzRatingValue(k2.MI.ovr, state, player, 'MI'),
+      };
+    });
+  }, [sourcePlayers, state, season, currentYear, ratingVersion]);
   const filtered = useMemo(() => {
     let r = rows;
     if (teamFilter !== 'all') {
@@ -195,7 +221,9 @@ export const PlayerRatingsView: React.FC = () => {
       : <ChevronDown size={10} className="text-indigo-400" />;
   };
 
-  const nbaTeams = state.teams.filter(t => t.id >= 0).sort((a, b) => a.name.localeCompare(b.name));
+  const displayTeams = (pbaIsolated ? scopedTeams : state.teams)
+    .filter(t => t.id >= 0)
+    .sort((a, b) => a.name.localeCompare(b.name));
   const summaryColumns: { key: SortField; label: string; title?: string; sticky?: boolean }[] = [
     { key: 'name', label: 'Name', sticky: true },
     { key: 'age',  label: 'AGE' },
@@ -246,7 +274,7 @@ export const PlayerRatingsView: React.FC = () => {
           <option value="all">All Teams</option>
           <option value="-1">Free Agents</option>
           <option value="-2">Draft Prospects</option>
-          {nbaTeams.map(t => (
+          {displayTeams.map(t => (
             <option key={t.id} value={t.id}>{t.name}</option>
           ))}
         </select>
@@ -380,7 +408,8 @@ export const PlayerRatingsView: React.FC = () => {
           </thead>
           <tbody>
             {paginated.map((row, idx) => {
-              const teamAbbr = state.teams.find(t => t.id === row.player.tid)?.abbrev ?? 'FA';
+              const team = resolveAnyTeam(row.player.tid, state.teams, state.nonNBATeams ?? []);
+              const teamAbbr = team?.abbrev ?? (row.player.tid === -1 ? 'FA' : row.player.tid === -2 ? 'DRAFT' : 'FA');
               return (
                 <tr
                   key={row.player.internalId}
@@ -403,9 +432,9 @@ export const PlayerRatingsView: React.FC = () => {
                               />
                             )}
                             <div className="min-w-0">
-                              <PlayerNameWithHover player={row.player} className="text-sm font-bold text-white truncate block max-w-[120px] md:max-w-none">
+                              <span className="text-sm font-bold text-white truncate block max-w-[120px] md:max-w-none">
                                 {row.player.name}
-                              </PlayerNameWithHover>
+                              </span>
                               <span className="text-[10px] text-slate-500">
                                 {teamAbbr}{row.player.pos ? ` | ${row.player.pos}` : ''}{row.age ? ` | ${row.age}` : ''}
                               </span>

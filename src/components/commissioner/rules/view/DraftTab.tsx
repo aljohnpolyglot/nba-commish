@@ -9,6 +9,7 @@ interface DraftTabProps {
     setDraftType: (val: string) => void;
     eligibilityRule: string;
     setEligibilityRule: (val: string) => void;
+    isPbaMode?: boolean;
 }
 
 export const DraftTab: React.FC<DraftTabProps> = ({
@@ -16,6 +17,7 @@ export const DraftTab: React.FC<DraftTabProps> = ({
     setDraftType,
     eligibilityRule,
     setEligibilityRule,
+    isPbaMode = false,
 }) => {
     return (
         <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-sm space-y-8">
@@ -27,7 +29,7 @@ export const DraftTab: React.FC<DraftTabProps> = ({
             </div>
 
             <div className="space-y-6">
-                <DraftLotterySettings draftType={draftType} setDraftType={setDraftType} />
+                <DraftLotterySettings draftType={draftType} setDraftType={setDraftType} isPbaMode={isPbaMode} />
                 <DraftEligibilitySettings eligibilityRule={eligibilityRule} setEligibilityRule={setEligibilityRule} />
             </div>
         </div>

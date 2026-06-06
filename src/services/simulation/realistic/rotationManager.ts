@@ -1,5 +1,5 @@
 import { NBAPlayer as Player } from '../../../types';
-import { OnCourt, PlayerComposite } from './types';
+import { OnCourt, PlayerComposite, TeamGameplayModifiers } from './types';
 
 /**
  * Manages who's on the court for one team, possession by possession.
@@ -22,6 +22,7 @@ export class RotationManager {
     public readonly composites: PlayerComposite[],
     minuteTargets: number[],
     private readonly isEuroClubGame: boolean = false,
+    private readonly gameplayModifiers?: TeamGameplayModifiers,
   ) {
     const n = rotation.length;
     this.onCourt = [0, 1, 2, 3, 4].slice(0, Math.min(5, n));
@@ -42,6 +43,7 @@ export class RotationManager {
       players: this.onCourt.map(i => this.rotation[i]),
       composites: this.onCourt.map(i => this.composites[i]),
       isEuroClubGame: this.isEuroClubGame,
+      gameplayModifiers: this.gameplayModifiers,
     };
   }
 

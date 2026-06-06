@@ -113,8 +113,13 @@ class RuleChangeService {
         checkChange('allStarDunkContest', '[All-Star] Dunk Contest', v => v ? 'Enabled' : 'Disabled');
         checkChange('allStarThreePointContest', '[All-Star] 3PT Contest', v => v ? 'Enabled' : 'Disabled');
         checkChange('allStarShootingStars', '[All-Star] Shooting Stars', v => v ? 'Enabled' : 'Disabled');
+        checkChange('allStarShootingStarsTeams', '[All-Star] Shooting Stars Teams', v => `${v}`);
         checkChange('allStarSkillsChallenge', '[All-Star] Skills Challenge', v => v ? 'Enabled' : 'Disabled');
+        checkChange('allStarSkillsChallengeTeams', '[All-Star] Skills Challenge Competitors', v => `${v}`);
         checkChange('allStarHorse', '[All-Star] HORSE', v => v ? 'Enabled' : 'Disabled');
+        checkChange('allStarHorseParticipants', '[All-Star] H-O-R-S-E Participants', v => `${v}`);
+        checkChange('allStarHorseNoPlayerRepeat', '[All-Star] H-O-R-S-E Player Repeats', v => v ? 'Disabled' : 'Allowed');
+        checkChange('allStarHorseNoGlobalRepeat', '[All-Star] H-O-R-S-E Global Repeats', v => v ? 'Disabled' : 'Allowed');
         checkChange('allStarOneOnOneEnabled', '[All-Star] 1v1 Tournament', v => v ? 'Enabled' : 'Disabled');
         
         // Rising Stars & Celebrity

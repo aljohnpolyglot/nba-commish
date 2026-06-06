@@ -89,6 +89,8 @@ export const AllStarTab: React.FC<AllStarTabProps> = ({ rules, setRule }) => {
                         allStarSkillsChallengeTotalPlayers={b('allStarSkillsChallengeTotalPlayers').value as number} setAllStarSkillsChallengeTotalPlayers={b('allStarSkillsChallengeTotalPlayers').set as any}
                         allStarHorse={b('allStarHorse').value as boolean}                          setAllStarHorse={b('allStarHorse').set as any}
                         allStarHorseParticipants={b('allStarHorseParticipants').value as number}    setAllStarHorseParticipants={b('allStarHorseParticipants').set as any}
+                        allStarHorseNoPlayerRepeat={b('allStarHorseNoPlayerRepeat').value as boolean} setAllStarHorseNoPlayerRepeat={b('allStarHorseNoPlayerRepeat').set as any}
+                        allStarHorseNoGlobalRepeat={b('allStarHorseNoGlobalRepeat').value as boolean} setAllStarHorseNoGlobalRepeat={b('allStarHorseNoGlobalRepeat').set as any}
                     />
                     <ThroneSection
                         enabled={b('allStarThroneEnabled').value as boolean}                       setEnabled={b('allStarThroneEnabled').set as any}

@@ -24,6 +24,13 @@ export function getOffseasonStepConfirmSpec({
 }: StepSpecArgs): OffseasonConfirmSpec {
   const resume = status === 'in-progress';
   switch (row) {
+    case 'seasonSummary':
+      return {
+        eyebrow: 'Season Review',
+        title: 'Open League History',
+        body: 'Take a quick look back at the completed season and jump straight to the league history page before draft night.',
+        confirmLabel: 'View History',
+      };
     case 'retiredPlayersReview':
       return {
         eyebrow: 'Summer Checklist',
@@ -222,6 +229,13 @@ export function getOffseasonStepConfirmSpec({
         body: 'Staff hiring now runs through the single Staff Signings task.',
         confirmLabel: 'Continue',
       };
+    case 'staffRetirements':
+      return {
+        eyebrow: 'Staff',
+        title: resume ? 'Resume Staff Retirements' : 'Review Staff Retirements',
+        body: 'Review the staff members who stepped away before you fill the open roles for next season.',
+        confirmLabel: resume ? 'Resume Review' : 'Open Review',
+      };
     case 'staffSignings':
       if (openStaffCount === 0) {
         return {
@@ -237,5 +251,15 @@ export function getOffseasonStepConfirmSpec({
         body: `${openStaffCount} staff role${openStaffCount === 1 ? '' : 's'} open or expiring across coaching and support staff. Finish them before training camp.`,
         confirmLabel: resume ? 'Resume' : 'Review Staff',
       };
+    default: {
+      const unreachableRow: never = row;
+      return {
+        eyebrow: 'Offseason',
+        title: 'Open Task',
+        body: `Open ${unreachableRow}.`,
+        confirmLabel: 'Continue',
+      };
+    }
   }
 }
+

@@ -103,7 +103,7 @@ export const RealSternActionModal: React.FC<RealSternActionModalProps> = ({
           initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }}
           animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
           exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }}
-          className="fixed top-1/2 left-1/2 bg-white rounded-3xl overflow-hidden w-[95%] max-w-md z-[101] shadow-2xl flex flex-col"
+          className="fixed top-1/2 left-1/2 bg-white rounded-3xl overflow-hidden w-[95%] max-w-md z-[101] shadow-2xl flex max-h-[calc(100vh-1.5rem)] flex-col"
           onClick={e => e.stopPropagation()}
         >
           {/* Asset Header */}
@@ -144,7 +144,7 @@ export const RealSternActionModal: React.FC<RealSternActionModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="p-5 space-y-2.5">
+          <div className="flex-1 overflow-y-auto p-5 space-y-2.5">
             {innerView === 'menu' && (
               <>
                 {/* Invite */}
@@ -202,7 +202,7 @@ export const RealSternActionModal: React.FC<RealSternActionModalProps> = ({
                     <p className="text-xs text-red-500">This is permanent. You will lose the asset and receive no funds in return.</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <button
                     onClick={() => setInnerView('menu')}
                     className="py-3 rounded-xl bg-gray-100 text-gray-700 text-sm font-black hover:bg-gray-200 transition-all"

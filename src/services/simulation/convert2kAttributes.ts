@@ -41,8 +41,27 @@ interface PlayerPhysicals {
 }
 
 export function calculateK2(ratings: BBGMRatings, physicals: PlayerPhysicals = {}): K2Data {
-  const { hgt, stre, spd, jmp, endu, ins, dnk, ft, fg, tp, oiq, diq, drb, pss, reb } = ratings;
-  const { pos = 'F', heightIn = 78, weightLbs = 220, age = 26 } = physicals;
+  const safe = (value: unknown, fallback: number) =>
+    typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  const hgt = safe(ratings.hgt, 50);
+  const stre = safe(ratings.stre, 50);
+  const spd = safe(ratings.spd, 50);
+  const jmp = safe(ratings.jmp, 50);
+  const endu = safe(ratings.endu, 50);
+  const ins = safe(ratings.ins, 50);
+  const dnk = safe(ratings.dnk, 50);
+  const ft = safe(ratings.ft, 50);
+  const fg = safe(ratings.fg, 50);
+  const tp = safe(ratings.tp, 50);
+  const oiq = safe(ratings.oiq, 50);
+  const diq = safe(ratings.diq, 50);
+  const drb = safe(ratings.drb, 50);
+  const pss = safe(ratings.pss, 50);
+  const reb = safe(ratings.reb, 50);
+  const pos = physicals.pos ?? 'F';
+  const heightIn = safe(physicals.heightIn, 78);
+  const weightLbs = safe(physicals.weightLbs, 220);
+  const age = safe(physicals.age, 26);
 
   const isBig = /C|F\/C|PF/.test(pos);
   const isGuard = /PG|SG|G$/.test(pos);
@@ -76,8 +95,11 @@ export function calculateK2(ratings: BBGMRatings, physicals: PlayerPhysicals = {
 
   // Scaling: BBGM 0-100 → 2K 25-99
   const s = (v: number, boost = 0): number => {
+    v = safe(v, 50);
+    boost = safe(boost, 0);
     let base = 25 + v * 0.6 + boost;
     if (v > 75) base += Math.pow((v - 75) / 5, 1.8); // elite curve
+    if (!Number.isFinite(base)) return 50;
     return Math.max(25, Math.min(99, Math.round(base)));
   };
 

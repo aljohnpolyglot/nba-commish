@@ -23,6 +23,18 @@ export class AwardService {
   // Configurable minimum-games threshold (default: NBA 65-game rule)
   private static minGamesTarget = 65;
 
+  private static getTradeMVPStat(stats: NBAGMStat[] | undefined, season: number): NBAGMStat | undefined {
+    if (!stats?.length) return undefined;
+    const regular = stats.filter(stat => !stat.playoffs);
+    if (regular.length === 0) return undefined;
+    const atOrBefore = regular.filter(stat => stat.season <= season);
+    const pool = atOrBefore.length > 0 ? atOrBefore : regular;
+    return pool.sort((a, b) => {
+      if (b.season !== a.season) return b.season - a.season;
+      return (b.gp ?? 0) - (a.gp ?? 0);
+    })[0];
+  }
+
   static calculateAwardRaces(
     players: NBAPlayer[],
     teams: NBATeam[],
@@ -99,7 +111,7 @@ export class AwardService {
 
     return players
       .map(p => {
-        const stat = getBestStat(p.stats, maxSeason);
+        const stat = this.getTradeMVPStat(p.stats, maxSeason);
         const team = teams.find(t => t.id === p.tid);
         if (!stat || !team || (stat.gp ?? 0) < 1) return null;
         const gp = stat.gp;
@@ -108,9 +120,20 @@ export class AwardService {
         const apg = stat.ast / gp;
         if (ppg < 14) return null; // bench warmers can't be in the MVP top-30
 
-        const winPct = team.wins / (team.wins + team.losses || 1);
-        const winFloor = 0.7;
-        let score = (ppg * 1.2 + rpg * 0.5 + apg * 0.6) * (winFloor + winPct * 0.8);
+        const liveGames = team.wins + team.losses;
+        const winPct = liveGames > 0 ? team.wins / liveGames : 0.5;
+        const teamMultiplier = liveGames > 0 ? (0.7 + winPct * 0.8) : 1.0;
+        const ewa = Number(stat.ewa ?? 0);
+        const ws = Number(stat.ws ?? ((stat.ows ?? 0) + (stat.dws ?? 0)));
+        const per = Number(stat.per ?? 15);
+        let score =
+          (ewa * 5.0) +
+          (ws * 4.0) +
+          (per * 0.8) +
+          (ppg * 1.1) +
+          (rpg * 0.35) +
+          (apg * 0.45);
+        score *= teamMultiplier;
 
         const pastMVPs = p.awards?.filter(a => a.type === 'Most Valuable Player').length || 0;
         score *= Math.max(0.925, 1 - (pastMVPs * 0.025));

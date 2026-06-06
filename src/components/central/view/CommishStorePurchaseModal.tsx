@@ -25,7 +25,7 @@ export function CommishStorePurchaseModal({
       {selectedItem && (
         <>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100]" onClick={() => setSelectedItem(null)} />
-          <motion.div initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }} className="fixed top-1/2 left-1/2 bg-white rounded-3xl overflow-hidden w-[95%] max-w-2xl max-h-[90vh] overflow-y-auto z-[101] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)] flex flex-col md:flex-row">
+          <motion.div initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }} className="fixed top-1/2 left-1/2 bg-white rounded-3xl overflow-hidden w-[95%] max-w-2xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] overflow-y-auto z-[101] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)] flex flex-col md:flex-row">
             <div className="w-full md:w-1/2 bg-gray-50 p-6 md:p-8 flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 relative min-h-[160px] md:min-h-0">
               {selectedItem.isStatic && <div className="absolute top-4 left-4 bg-nba-dark text-white text-[10px] font-black px-3 py-1.5 rounded-full z-10 flex items-center gap-1.5 shadow-xl"><Trophy size={10} /> OFFICIAL</div>}
               <img src={selectedItem.image} alt={selectedItem.title} className="max-w-full max-h-[180px] md:max-h-[400px] object-contain drop-shadow-2xl" referrerPolicy="no-referrer" />

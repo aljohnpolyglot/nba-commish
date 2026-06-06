@@ -8,6 +8,62 @@ interface GroupEntry {
   gp: number;
 }
 
+function cupGroupPairKey(a: number, b: number): string {
+  return `${Math.min(a, b)}-${Math.max(a, b)}`;
+}
+
+export function rebuildCupGroupStandingsFromSchedule(cup: NBACupState, schedule: Game[]): NBACupState {
+  const groups = cup.groups.map(group => {
+    const standingsByTid = new Map<number, GroupEntry>(
+      group.teamIds.map(tid => [tid, { tid, w: 0, l: 0, pf: 0, pa: 0, pd: 0, gp: 0 }]),
+    );
+
+    for (const game of schedule) {
+      if (!game.played || !game.isNBACup || game.nbaCupRound !== 'group' || game.nbaCupGroupId !== group.id) continue;
+      const home = standingsByTid.get(game.homeTid);
+      const away = standingsByTid.get(game.awayTid);
+      if (!home || !away) continue;
+
+      const homeScore = game.homeScore ?? 0;
+      const awayScore = game.awayScore ?? 0;
+      const homeWon = homeScore > awayScore;
+      home.gp += 1;
+      home.w += homeWon ? 1 : 0;
+      home.l += homeWon ? 0 : 1;
+      home.pf += homeScore;
+      home.pa += awayScore;
+      home.pd += homeScore - awayScore;
+
+      away.gp += 1;
+      away.w += homeWon ? 0 : 1;
+      away.l += homeWon ? 1 : 0;
+      away.pf += awayScore;
+      away.pa += homeScore;
+      away.pd += awayScore - homeScore;
+    }
+
+    return {
+      ...group,
+      standings: group.teamIds.map(tid => standingsByTid.get(tid)!),
+    };
+  });
+
+  return { ...cup, groups };
+}
+
+export function isCupGroupStageScheduleComplete(cup: NBACupState, schedule: Game[]): boolean {
+  return cup.groups.every(group => {
+    const validTids = new Set(group.teamIds);
+    const playedPairs = new Set<string>();
+    for (const game of schedule) {
+      if (!game.played || !game.isNBACup || game.nbaCupRound !== 'group' || game.nbaCupGroupId !== group.id) continue;
+      if (!validTids.has(game.homeTid) || !validTids.has(game.awayTid)) continue;
+      playedPairs.add(cupGroupPairKey(game.homeTid, game.awayTid));
+    }
+    return playedPairs.size >= 10;
+  });
+}
+
 // Real-NBA tiebreaker order:
 //   1. W   2. H2H   3. PD (regulation only)   4. PF (regulation only)
 //   5. Prior regular-season W   6. Random coin
@@ -124,18 +180,21 @@ export function resolveCupGroupStage(
   const eastWildcard = bestNonWinner(eastGroups, eastWinnerSet, schedule, cup.year, 'East', saveId, prevSeasonWins);
   const westWildcard = bestNonWinner(westGroups, westWinnerSet, schedule, cup.year, 'West', saveId, prevSeasonWins);
 
-  // Seed 1-4: group winners ranked by group-stage record, wildcard is seed 4
-  const rankConf = (winners: number[], groups: NBACupGroup[]): number[] => {
-    const winnerRecords = winners.map(tid => {
+  // Seed 1-4: rank all conference qualifiers (3 group winners + wildcard)
+  // by group-stage record and tie-breakers.
+  const rankConf = (qualifiers: number[], groups: NBACupGroup[]): number[] => {
+    const qualifierRecords = qualifiers.map(tid => {
       const entry = groups.flatMap(g => g.standings).find(s => s.tid === tid)!;
       return { tid, w: entry.w, pd: entry.pd, pf: entry.pf };
     });
-    winnerRecords.sort((a, b) => b.w - a.w || b.pd - a.pd || b.pf - a.pf);
-    return winnerRecords.map(r => r.tid);
+    qualifierRecords.sort((a, b) => b.w - a.w || b.pd - a.pd || b.pf - a.pf);
+    return qualifierRecords.map(r => r.tid);
   };
 
-  const eastSeeded = [...rankConf(eastWinners, eastGroups), ...(eastWildcard ? [eastWildcard] : [])];
-  const westSeeded = [...rankConf(westWinners, westGroups), ...(westWildcard ? [westWildcard] : [])];
+  const eastQualifiers = [...eastWinners, ...(eastWildcard != null ? [eastWildcard] : [])];
+  const westQualifiers = [...westWinners, ...(westWildcard != null ? [westWildcard] : [])];
+  const eastSeeded = rankConf(eastQualifiers, eastGroups);
+  const westSeeded = rankConf(westQualifiers, westGroups);
 
   // QF: E1 vs E4, E2 vs E3, W1 vs W4, W2 vs W3
   const knockout: NBACupKnockoutGame[] = [

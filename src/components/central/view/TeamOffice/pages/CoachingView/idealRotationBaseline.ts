@@ -1,5 +1,6 @@
 import { StarterService } from '../../../../../../services/simulation/StarterService';
 import { MinutesPlayedService } from '../../../../../../services/simulation/MinutesPlayedService';
+import { getTeamRotationManagementEffects } from '../../../../../../services/staff/staffGameplayEffects';
 import { getDisplayOverall } from '../../../../../../utils/playerRatings';
 import type { NBAPlayer } from '../../../../../../types';
 
@@ -39,6 +40,7 @@ export function computeStrengthOptimalBaseline(
   maxPlayerMinutes: number,
 ): RotationPreview {
   if (!roster.length || !team) return { starterIds: [], minutes: {} };
+  const management = getTeamRotationManagementEffects(team);
 
   const leaguePERSamples = roster.flatMap(player =>
     (player.stats ?? []).filter((stat: any) => stat.season === season && !stat.playoffs && (stat.gp ?? 0) > 0),
@@ -62,7 +64,7 @@ export function computeStrengthOptimalBaseline(
             minSum > 0
               ? stats.reduce((sum: number, stat: any) => sum + ((stat.per as number) ?? 0) * ((stat.min as number) ?? 0), 0) / minSum
               : leaguePERAvg;
-          adjustment += Math.max(-12, Math.min(12, (per - leaguePERAvg) / 1.2)) * ((strengthBias - 0.5) / 0.5);
+          adjustment += Math.max(-12, Math.min(12, (per - leaguePERAvg) / 1.2)) * ((strengthBias - 0.5) / 0.5) * management.perTrust;
         }
       }
     }
@@ -79,6 +81,16 @@ export function computeStrengthOptimalBaseline(
         age <= 31 ? -2 : -4;
       adjustment += ageBonus * developFactor;
     }
+
+    const salaryM = Math.max(0, Number(player.contract?.amount ?? 0) / 1000);
+    const salaryScore = Math.min(1, salaryM / 35);
+    const veteranScore = Math.max(0, Math.min(1, (((player as any).age ?? 26) - 28) / 8));
+    const draftScore = player.draft?.round === 1
+      ? Math.max(0, Math.min(1, (31 - (player.draft.pick ?? 30)) / 30))
+      : 0;
+    const homegrown = player.draft?.tid === team.id || player.draft?.originalTid === team.id ? 0.35 : 0;
+    const politics = (salaryScore * 0.45 + veteranScore * 0.25 + draftScore * 0.20 + homegrown) * management.politicsBias;
+    adjustment += politics;
 
     return base + adjustment;
   };

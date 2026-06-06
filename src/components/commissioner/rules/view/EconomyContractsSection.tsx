@@ -8,11 +8,13 @@ export const EconomyContractsSection = ({
     setIsMinContractModalOpen,
     setIsMaxContractModalOpen,
     euroMode = false,
+    pbaMode = false,
 }: {
     props: any,
     setIsMinContractModalOpen: (val: boolean) => void,
     setIsMaxContractModalOpen: (val: boolean) => void,
     euroMode?: boolean,
+    pbaMode?: boolean,
 }) => {
     const euro = (usd: number) => `€${((usd * 0.92) / 1_000_000).toFixed(2)}M`;
     const euroK = (usd: number) => `€${Math.round((usd * 0.92) / 1000)}K`;
@@ -23,6 +25,28 @@ export const EconomyContractsSection = ({
                 <FileText size={16} className="text-purple-400" />
                 <h2 className="text-lg font-black text-white uppercase tracking-tight">Contracts</h2>
             </div>
+
+            {pbaMode && (
+                <div className="bg-slate-900/60 rounded-2xl p-4 border border-amber-500/20 space-y-3">
+                    <div>
+                        <h3 className="text-xs font-bold text-amber-400 uppercase tracking-widest">PBA Local Eligibility</h3>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                            Controls whether established PBA roster players keep local status regardless of nationality.
+                        </p>
+                    </div>
+                    <select
+                        value={props.pbaLocalEligibilityMode}
+                        onChange={(e) => props.setPbaLocalEligibilityMode(e.target.value as 'registered_roster' | 'filipino_only')}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-[10px] py-2 px-3 focus:outline-none focus:border-amber-500 appearance-none uppercase font-bold"
+                    >
+                        <option value="registered_roster">Registered PBA roster locals</option>
+                        <option value="filipino_only">Filipino nationality only</option>
+                    </select>
+                    <p className="text-[9px] text-slate-500">
+                        Registered mode lets real roster players remain local in future signings even if their birthplace/nationality is not Philippines. Outside free agents still count as imports unless registered local.
+                    </p>
+                </div>
+            )}
 
             {/* Regular Contracts */}
             <div className="space-y-4">

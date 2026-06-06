@@ -9,6 +9,7 @@ import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { getOwnTeamId } from '../../../utils/helpers';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 import { FEAT_CATEGORIES, type FeatEntry } from './StatisticalFeatsViewShared';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
 interface StatisticalFeatsViewProps {
   onGameClick?: (game: Game) => void;
 }
@@ -204,7 +205,10 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
   const totalPages = Math.ceil(filteredAndSorted.length / itemsPerPage);
   const paginatedData = filteredAndSorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const sortedTeams = useMemo(() => [...state.teams].sort((a, b) => (a.region ?? '').localeCompare(b.region ?? '')), [state.teams]);
+  const sortedTeams = useMemo(
+    () => [...scopedTeams].sort((a, b) => (a.abbrev ?? a.name).localeCompare(b.abbrev ?? b.name)),
+    [scopedTeams],
+  );
   const toggleFilter = (feat: string) => {
     setActiveFilters(prev => {
       if (prev.length === FEAT_CATEGORIES.length) return [feat];
@@ -484,8 +488,8 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
         <BoxScoreModal
           game={selectedBoxScoreGame}
           result={state.boxScores.find(b => b.gameId === selectedBoxScoreGame.gid)}
-          homeTeam={state.teams.find(t => t.id === selectedBoxScoreGame.homeTid)!}
-          awayTeam={state.teams.find(t => t.id === selectedBoxScoreGame.awayTid)!}
+          homeTeam={resolveAnyTeam(selectedBoxScoreGame.homeTid, state.teams, state.nonNBATeams ?? [])!}
+          awayTeam={resolveAnyTeam(selectedBoxScoreGame.awayTid, state.teams, state.nonNBATeams ?? [])!}
           players={state.players}
           onClose={() => setSelectedBoxScoreGame(null)}
           onPlayerClick={(player) => {

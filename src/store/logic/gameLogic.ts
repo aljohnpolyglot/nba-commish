@@ -31,6 +31,9 @@ import { isNbaCupEnabled } from '../../utils/ruleFlags';
 import { applyTradeToPlayer } from '../../utils/playerBirdRights';
 import { applyEuroTycoonDailyOps } from '../../services/tycoon/euroTycoonOps';
 import { inferEuroStaffLeagueId, ensureStaffPoolDepth } from '../../services/euro/staffPool';
+import { processNBAStaffHiringVacancies } from '../../services/staff/nbaRealStaffSeed';
+import { isPbaIsolatedMode } from '../../utils/uiMode';
+import { applyPbaConferenceLifecycle } from '../../services/pba/conferenceTransition';
 
 export { handleStartGame, handleAnnounceChange };
 
@@ -53,12 +56,20 @@ export const processTurn = async (
     // are in state before the sim loop runs — same preflight as runLazySim.
     if (action.type === 'SIMULATE_TO_DATE') {
         const targetNorm = normalizeDate(action.payload.targetDate);
+        const seasonYear = stateForSim.leagueStats.year;
+        const backgroundSeasonStart = `${seasonYear - 1}-10-01`;
+        const backgroundSeasonEnd = `${seasonYear}-06-30`;
         const hasRegularSeason = stateForSim.schedule.some(
-            (g: any) => !g.isPreseason && !g.isPlayoff && !g.isPlayIn
+            (g: any) =>
+                !g.competitionId &&
+                !g.isPreseason &&
+                !g.isPlayoff &&
+                !g.isPlayIn &&
+                normalizeDate(g.date) >= backgroundSeasonStart &&
+                normalizeDate(g.date) <= backgroundSeasonEnd
         );
         if (!hasRegularSeason) {
             const eagerKeys = ['broadcasting_default', 'global_games', 'intl_preseason', 'schedule_generation'];
-            const seasonYear = stateForSim.leagueStats.year;
             const firedEager = new Set<string>();
             for (const event of buildAutoResolveEvents(seasonYear, stateForSim.leagueStats)) {
                 if (!eagerKeys.includes(event.key)) continue;
@@ -153,6 +164,45 @@ export const processTurn = async (
             stateWithSim = {
                 ...stateWithSim,
                 pendingRecoveryToasts: [...(stateWithSim.pendingRecoveryToasts ?? []), ...userRecoveries],
+            };
+        }
+    }
+
+    if (stateWithSim.gameMode === 'gm' && stateWithSim.userTeamId !== undefined) {
+        const previousUserPlayers = new Map(
+            state.players
+                .filter(p => p.tid === stateWithSim.userTeamId)
+                .map(p => [p.internalId, p] as const)
+        );
+        const fightPlayerIds = new Set<string>();
+        for (const simResult of allSimResults) {
+            const fight = simResult.fight;
+            if (!fight) continue;
+            fightPlayerIds.add(fight.player1Id);
+            fightPlayerIds.add(fight.player2Id);
+        }
+        const suspensionToasts = updatedPlayers
+            .filter(p => p.tid === stateWithSim.userTeamId && p.suspension && p.suspension.gamesRemaining > 0)
+            .flatMap(p => {
+                const previous = previousUserPlayers.get(p.internalId);
+                const wasSuspended = previous?.suspension?.gamesRemaining ?? 0;
+                const isNewOrLonger = p.suspension!.gamesRemaining > wasSuspended;
+                const reason = p.suspension!.reason ?? '';
+                const isFightRelated = fightPlayerIds.has(p.internalId) || /fight|fighting|altercation|brawl|bench-clearing/i.test(reason);
+                if (!isNewOrLonger || !isFightRelated) return [];
+                const team = stateWithSim.teams.find(t => t.id === p.tid);
+                return [{
+                    playerName: p.name,
+                    teamName: team?.name ?? '',
+                    pos: p.pos ?? '',
+                    gamesRemaining: p.suspension!.gamesRemaining,
+                    reason,
+                }];
+            });
+        if (suspensionToasts.length > 0) {
+            stateWithSim = {
+                ...stateWithSim,
+                pendingSuspensionToasts: [...(stateWithSim.pendingSuspensionToasts ?? []), ...suspensionToasts],
             };
         }
     }
@@ -316,11 +366,60 @@ export const processTurn = async (
     // and consumed here. No mid-season regenerations.
     let finalSchedule = stateWithSim.schedule;
     const normalizedFinalDate = normalizeDate(dateString);
+    const pbaIsolatedForSchedule = isPbaIsolatedMode(state);
     // Exclude isNBACup so a Cup-only schedule (e.g. self-heal injected groups
     // after rollover before Aug 14) doesn't masquerade as a generated season.
-    const hasRegularSeasonGames = finalSchedule.some(g => !(g as any).isPreseason && !(g as any).isPlayoff && !(g as any).isPlayIn && !(g as any).isNBACup && !(g as any).isCupTBD);
+    const hasRegularSeasonGames = finalSchedule.some(g =>
+      !(g as any).competitionId &&
+      !(g as any).isPreseason &&
+      !(g as any).isPlayoff &&
+      !(g as any).isPlayIn &&
+      !(g as any).isNBACup &&
+      !(g as any).isCupTBD
+    );
     const scheduleYear = state.leagueStats?.year ?? new Date().getFullYear();
-    if (!hasRegularSeasonGames && normalizedFinalDate >= `${scheduleYear - 1}-08-14`) {
+    const hasCurrentBackgroundNbaSeasonGames = finalSchedule.some(g =>
+      !(g as any).competitionId &&
+      !(g as any).isPreseason &&
+      !(g as any).isPlayoff &&
+      !(g as any).isPlayIn &&
+      !(g as any).isNBACup &&
+      !(g as any).isCupTBD &&
+      normalizeDate(g.date) >= `${scheduleYear - 1}-10-01` &&
+      normalizeDate(g.date) <= `${scheduleYear}-06-30`
+    );
+    if (pbaIsolatedForSchedule && !hasCurrentBackgroundNbaSeasonGames && normalizedFinalDate >= `${scheduleYear - 1}-08-14`) {
+        console.log(`[Schedule] Generating background NBA schedule for PBA save on Aug14`);
+        let _cupGroups = isNbaCupEnabled(state.leagueStats) ? (state.nbaCup?.groups ?? []) : [];
+        let _inlineCupPatch: NBACupState | undefined;
+        if (isNbaCupEnabled(state.leagueStats) && _cupGroups.length === 0) {
+            const prevStandings = state.teams.map(t => ({ tid: t.id, wins: t.wins, losses: t.losses }));
+            _cupGroups = drawCupGroups(state.teams, prevStandings, state.saveId ?? 'default', scheduleYear);
+            _inlineCupPatch = { year: scheduleYear, status: 'group', groups: _cupGroups, wildcards: { East: null, West: null }, knockout: [] };
+        }
+        const backgroundNbaSchedule = generateSchedule(
+            state.teams,
+            result.christmasGames || state.christmasGames,
+            result.globalGames || state.globalGames,
+            state.leagueStats.numGamesDiv ?? null,
+            state.leagueStats.numGamesConf ?? null,
+            state.leagueStats.mediaRights,
+            scheduleYear,
+            _cupGroups.length > 0 ? _cupGroups : undefined,
+            state.saveId,
+        );
+        const maxExistingGid = Math.max(0, ...finalSchedule.map(g => g.gid));
+        const renumberedBackgroundGames = backgroundNbaSchedule.map((game, index) => ({
+            ...game,
+            gid: maxExistingGid + 1 + index,
+        }));
+        finalSchedule = [...finalSchedule, ...renumberedBackgroundGames].sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.gid - b.gid
+        );
+        if (_inlineCupPatch) { stateWithSim = { ...stateWithSim, nbaCup: _inlineCupPatch }; }
+        console.log(`[Schedule] Added ${renumberedBackgroundGames.length} hidden NBA games for background simulation`);
+    }
+    if (!pbaIsolatedForSchedule && !hasRegularSeasonGames && normalizedFinalDate >= `${scheduleYear - 1}-08-14`) {
         console.log(`[Schedule] GENERATING on Aug14 — christmas=${(result.christmasGames || state.christmasGames)?.length ?? 0} global=${(result.globalGames || state.globalGames)?.length ?? 0}`);
         // Preserve any intl preseason games added before Aug 14
         const intlPreseasonGames = finalSchedule.filter(g => (g as any).isPreseason && (g.homeTid >= 100 || g.awayTid >= 100));
@@ -417,7 +516,7 @@ export const processTurn = async (
     }
 
     const boxScoresWithDate = allSimResults.map(r => ({ ...r, date: r.date || state.date, season: state.leagueStats.year }));
-    const allowNBASeasonEvents = true;
+    const allowNBASeasonEvents = state.leagueStats?.uiMode !== 'euro_isolated' && !isPbaIsolatedMode(state);
 
     // All-Star Logic
     let allStarPatch = state.allStar;
@@ -427,7 +526,7 @@ export const processTurn = async (
     const asTeams = state.leagueStats.allStarTeams;
     const startDate = parseGameDate(state.date);
     const endDate = parseGameDate(dateString);
-    const dates = getAllStarWeekendDates(state.leagueStats.year);
+    const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
 
     // Helper to check if a specific date was hit or passed during this turn.
     // Uses YYYY-MM-DD string comparison (lexicographic = correct for ISO dates)
@@ -754,6 +853,67 @@ export const processTurn = async (
         } as any);
     }
 
+    if (allowNBASeasonEvents && state.leagueStats.allStarShootingStars !== false && wasDateReached((dates as any).threePointAnnounced) && !(allStarPatch as any)?.shootingStarsAnnounced) {
+        const { AllStarShootingStarsSim } = await import('../../services/allStar/AllStarShootingStarsSim');
+        const hostCity = state.leagueStats.allStarHosts?.find((host: any) => host.year === state.leagueStats.year)?.city;
+        const shootingStarsTeams = Math.min(30, Math.max(2, Math.round(state.leagueStats.allStarShootingStarsTeams ?? Math.round((state.leagueStats.allStarShootingStarsTotalPlayers ?? 12) / 3))));
+        const contestants = AllStarShootingStarsSim.selectContestants(updatedPlayers, state.leagueStats.year, shootingStarsTeams * 3, state.teams, state.nonNBATeams ?? [], hostCity);
+        allStarPatch = {
+            ...(allStarPatch || {}),
+            shootingStarsContestants: contestants,
+            shootingStarsAnnounced: true,
+        } as any;
+
+        uniqueNewNews.push({
+            id: `allstar-shooting-stars-${Date.now()}`,
+            headline: 'Shooting Stars Field Revealed',
+            content: `The Shooting Stars lineup is set for All-Star Saturday: ${contestants.map(p => p.name).join(', ')}.`,
+            date: dateString,
+            type: 'league',
+            read: false
+        } as any);
+    }
+
+    if (allowNBASeasonEvents && state.leagueStats.allStarSkillsChallenge === true && wasDateReached((dates as any).threePointAnnounced) && !(allStarPatch as any)?.skillsChallengeAnnounced) {
+        const { AllStarSkillsChallengeSim } = await import('../../services/allStar/AllStarSkillsChallengeSim');
+        const skillsCompetitors = Math.min(30, Math.max(3, Math.round(state.leagueStats.allStarSkillsChallengeTeams ?? state.leagueStats.allStarSkillsChallengeTotalPlayers ?? 4)));
+        const contestants = AllStarSkillsChallengeSim.selectContestants(updatedPlayers, state.leagueStats.year, skillsCompetitors);
+        allStarPatch = {
+            ...(allStarPatch || {}),
+            skillsChallengeContestants: contestants,
+            skillsChallengeAnnounced: true,
+        } as any;
+
+        uniqueNewNews.push({
+            id: `allstar-skills-${Date.now()}`,
+            headline: 'Skills Challenge Field Revealed',
+            content: `The Skills Challenge field is set for All-Star Saturday: ${contestants.map(p => p.name).join(', ')}.`,
+            date: dateString,
+            type: 'league',
+            read: false
+        } as any);
+    }
+
+    if (allowNBASeasonEvents && state.leagueStats.allStarHorse === true && wasDateReached((dates as any).threePointAnnounced) && !(allStarPatch as any)?.horseAnnounced) {
+        const { AllStarHorseSim } = await import('../../services/allStar/AllStarHorseSim');
+        const horseParticipants = Math.min(10, Math.max(3, Math.round(state.leagueStats.allStarHorseParticipants ?? 3)));
+        const contestants = AllStarHorseSim.selectContestants(updatedPlayers, state.leagueStats.year, horseParticipants, state.teams);
+        allStarPatch = {
+            ...(allStarPatch || {}),
+            horseContestants: contestants,
+            horseAnnounced: true,
+        } as any;
+
+        uniqueNewNews.push({
+            id: `allstar-horse-${Date.now()}`,
+            headline: 'H-O-R-S-E Field Revealed',
+            content: `The H-O-R-S-E lineup is set for All-Star Saturday: ${contestants.map(p => p.name).join(', ')}.`,
+            date: dateString,
+            type: 'league',
+            read: false
+        } as any);
+    }
+
     // 4. Inject Games
     if (allowNBASeasonEvents && wasDateReached(dates.breakStart) && !allStarPatch?.gamesInjected) {
         finalSchedule = AllStarWeekendOrchestrator.injectAllStarGames(
@@ -763,7 +923,7 @@ export const processTurn = async (
             allStarPatch?.roster ?? [],
             state.leagueStats
         );
-        const win = AllStarWeekendOrchestrator.getBreakWindowStrings(state.leagueStats.year);
+        const win = AllStarWeekendOrchestrator.getBreakWindowStrings(state.leagueStats.year, state.leagueStats);
         stateWithSim = {
             ...stateWithSim,
             leagueStats: {
@@ -794,7 +954,11 @@ export const processTurn = async (
     // 2. That day's events haven't already been simulated (state-based guard)
     const simFriday = endDateNormStr > risingStarsNorm && !allStarPatch?.risingStarsGameId;
     const simSaturday = endDateNormStr > saturdayNorm &&
-      (!allStarPatch?.dunkContest?.complete || !allStarPatch?.threePointContest?.complete);
+      (!allStarPatch?.dunkContest?.complete ||
+       !allStarPatch?.threePointContest?.complete ||
+       (state.leagueStats.allStarShootingStars !== false && !allStarPatch?.shootingStars?.complete) ||
+       (state.leagueStats.allStarSkillsChallenge === true && !allStarPatch?.skillsChallenge?.complete) ||
+       (state.leagueStats.allStarHorse === true && !allStarPatch?.horseTournament?.complete));
     // Bracket-aware: complete only when state.allStar.bracket.complete (multi-game
     // formats), or when the legacy allStarGameId is set (2-team fallback).
     const sundayDone = !!(allStarPatch?.bracket?.complete) || !!allStarPatch?.allStarGameId;
@@ -821,16 +985,120 @@ export const processTurn = async (
         }
     }
 
+    if (isPbaIsolatedMode(state)) {
+        const {
+            backfillPbaAllStarAwards,
+            buildPbaAllStarLeagueStats,
+            buildPbaAllStarPatch,
+            buildPbaContestPatch,
+        } = await import('../../services/pba/allStar');
+        const pbaAllStarLeagueStats = buildPbaAllStarLeagueStats(newLeagueStats);
+        newLeagueStats = pbaAllStarLeagueStats;
+        const pbaStateForAllStar = {
+            ...state,
+            players: updatedPlayers,
+            schedule: finalSchedule,
+            leagueStats: pbaAllStarLeagueStats,
+            teams: stateWithSim.teams,
+            nonNBATeams: (stateWithSim as any).nonNBATeams ?? state.nonNBATeams,
+            boxScores: [...(state.boxScores || []), ...boxScoresWithDate],
+        } as GameState;
+
+        if (endDate >= dates.reservesAnnounced && !allStarPatch?.reservesAnnounced) {
+            const pbaPatch = buildPbaAllStarPatch(pbaStateForAllStar, updatedPlayers as any);
+            if (pbaPatch) {
+                updatedPlayers = pbaPatch.players as any;
+                allStarPatch = pbaPatch.allStar;
+                const captains = (allStarPatch?.roster ?? []).filter((entry: any) => entry.isCaptain).map((entry: any) => entry.playerName);
+                uniqueNewNews.push({
+                    id: `pba-allstar-rosters-${Date.now()}`,
+                    headline: 'PBA All-Star Rosters Set',
+                    content: captains.length >= 2
+                        ? `${captains[0]} and ${captains[1]} will captain the ${state.leagueStats.year} PBA All-Star Game.`
+                        : `The ${state.leagueStats.year} PBA All-Star roster is set for All-Star Weekend.`,
+                    date: dateString,
+                    type: 'league',
+                    read: false,
+                } as any);
+            }
+        }
+
+        if (endDate >= (dates as any).threePointAnnounced && allStarPatch?.reservesAnnounced) {
+            allStarPatch = buildPbaContestPatch(
+                { ...pbaStateForAllStar, players: updatedPlayers, allStar: allStarPatch } as GameState,
+                updatedPlayers as any,
+                allStarPatch,
+            );
+        }
+
+        if (endDate >= dates.breakStart && allStarPatch?.reservesAnnounced && !allStarPatch?.gamesInjected) {
+            finalSchedule = AllStarWeekendOrchestrator.injectAllStarGames(
+                finalSchedule,
+                ((stateWithSim as any).nonNBATeams ?? state.nonNBATeams ?? []).filter((team: any) => team?.league === 'PBA'),
+                state.leagueStats.year,
+                allStarPatch?.roster ?? [],
+                pbaAllStarLeagueStats,
+            );
+            const win = AllStarWeekendOrchestrator.getBreakWindowStrings(state.leagueStats.year, pbaAllStarLeagueStats);
+            newLeagueStats = {
+                ...pbaAllStarLeagueStats,
+                allStarBreakStart: win.breakStart,
+                allStarBreakEnd: win.breakEnd,
+            };
+            allStarPatch = {
+                ...(allStarPatch || {}),
+                gamesInjected: true,
+            } as any;
+        }
+
+        const pbaSundayDone = !!(allStarPatch?.bracket?.complete) || !!allStarPatch?.allStarGameId;
+        const pbaSimSaturday = endDateNormStr > saturdayNorm &&
+            allStarPatch?.reservesAnnounced &&
+            (!allStarPatch?.dunkContest?.complete ||
+             !allStarPatch?.threePointContest?.complete ||
+             !allStarPatch?.skillsChallenge?.complete);
+        const pbaSimSunday = endDateNormStr > allStarGameNorm && allStarPatch?.reservesAnnounced && !pbaSundayDone;
+
+        if ((pbaSimSaturday || pbaSimSunday) && !allStarPatch?.weekendComplete) {
+            const weekendUpdate = await AllStarWeekendOrchestrator.simulateWeekend({
+                ...state,
+                players: updatedPlayers,
+                teams: stateWithSim.teams,
+                nonNBATeams: (stateWithSim as any).nonNBATeams ?? state.nonNBATeams,
+                schedule: finalSchedule,
+                leagueStats: newLeagueStats,
+                allStar: allStarPatch,
+                boxScores: [...(state.boxScores || []), ...boxScoresWithDate],
+            } as GameState, { friday: false, saturday: !!pbaSimSaturday, sunday: !!pbaSimSunday });
+
+            if (weekendUpdate.allStar) allStarPatch = weekendUpdate.allStar;
+            if (weekendUpdate.schedule) finalSchedule = weekendUpdate.schedule;
+            if (weekendUpdate.boxScores) {
+                const existingKeys = new Set(
+                    [...(state.boxScores || []), ...boxScoresWithDate].map(bs => `${bs.season ?? 0}-${bs.gameId}`)
+                );
+                const newBoxScores = weekendUpdate.boxScores.filter(bs => !existingKeys.has(`${bs.season ?? 0}-${bs.gameId}`));
+                boxScoresWithDate.push(...newBoxScores.map(bs => ({ ...bs, season: bs.season ?? state.leagueStats.year })));
+            }
+            updatedPlayers = backfillPbaAllStarAwards(
+                { ...pbaStateForAllStar, players: updatedPlayers, allStar: allStarPatch, leagueStats: newLeagueStats } as GameState,
+                updatedPlayers as any,
+                allStarPatch,
+            ) as any;
+        }
+    }
+
     // ── PLAYOFFS LOGIC ────────────────────────────────────────────────────────
     // Prefer stateWithSim.playoffs — runSimulation may have already generated/advanced
     // the bracket inside its day loop (handles multi-day sims that cross April 13).
     const euroIsolatedMode = state.leagueStats?.uiMode === 'euro_isolated';
-    let playoffsPatch: PlayoffBracket | undefined = euroIsolatedMode ? undefined : (stateWithSim.playoffs ?? state.playoffs);
+    const pbaIsolatedMode = isPbaIsolatedMode(state);
+    let playoffsPatch: PlayoffBracket | undefined = (euroIsolatedMode || pbaIsolatedMode) ? undefined : (stateWithSim.playoffs ?? state.playoffs);
     const currentDateNorm2 = normalizeDate(dateString);
 
     // 1. Generate bracket when regular season ends (around Apr 14)
     const playoffSeasonYear = state.leagueStats?.year ?? new Date().getFullYear();
-    if (!euroIsolatedMode && !playoffsPatch && currentDateNorm2 >= `${playoffSeasonYear}-04-13`) {
+    if (!euroIsolatedMode && !pbaIsolatedMode && !playoffsPatch && currentDateNorm2 >= `${playoffSeasonYear}-04-13`) {
         const numGamesPerRound = state.leagueStats.numGamesPlayoffSeries ?? [7, 7, 7, 7];
         playoffsPatch = PlayoffGenerator.generateBracket(
             stateWithSim.teams,
@@ -924,6 +1192,55 @@ export const processTurn = async (
         stateWithSim.activeCompetitions ?? state.activeCompetitions ?? [],
         stateWithSim.leagueStats?.year ?? state.leagueStats?.year ?? new Date().getFullYear(),
     );
+    const pbaLifecyclePatch = applyPbaConferenceLifecycle(
+        { ...stateWithSim, schedule: finalSchedule, boxScores: state.boxScores ?? [] } as GameState,
+        boxScoresWithDate,
+    );
+    if (pbaLifecyclePatch.schedule) {
+        finalSchedule = pbaLifecyclePatch.schedule as Game[];
+    }
+    if (pbaLifecyclePatch.leagueStats) {
+        newLeagueStats = {
+            ...newLeagueStats,
+            ...(pbaLifecyclePatch.leagueStats as any),
+        } as any;
+        stateWithSim = {
+            ...stateWithSim,
+            leagueStats: {
+                ...stateWithSim.leagueStats,
+                ...(pbaLifecyclePatch.leagueStats as any),
+            } as any,
+        };
+    }
+    if ((pbaLifecyclePatch as any).players) {
+        updatedPlayers = (pbaLifecyclePatch as any).players;
+        stateWithSim = { ...stateWithSim, players: updatedPlayers };
+    }
+    if ((pbaLifecyclePatch as any).teams) {
+        stateWithSim = { ...stateWithSim, teams: (pbaLifecyclePatch as any).teams };
+    }
+    if ((pbaLifecyclePatch as any).nonNBATeams) {
+        stateWithSim = { ...stateWithSim, nonNBATeams: (pbaLifecyclePatch as any).nonNBATeams };
+    }
+    if ((pbaLifecyclePatch as any).draftPicks) {
+        updatedDraftPicks = (pbaLifecyclePatch as any).draftPicks;
+        stateWithSim = { ...stateWithSim, draftPicks: updatedDraftPicks };
+    }
+    if ((pbaLifecyclePatch as any).staffFreeAgents) {
+        stateWithSim = { ...stateWithSim, staffFreeAgents: (pbaLifecyclePatch as any).staffFreeAgents };
+    }
+    if ((pbaLifecyclePatch as any).retirementAnnouncements) {
+        stateWithSim = { ...stateWithSim, retirementAnnouncements: (pbaLifecyclePatch as any).retirementAnnouncements };
+    }
+    if ((pbaLifecyclePatch as any).staffRetirementAnnouncements) {
+        stateWithSim = { ...stateWithSim, staffRetirementAnnouncements: (pbaLifecyclePatch as any).staffRetirementAnnouncements };
+    }
+    if (pbaLifecyclePatch.offseasonChecklist !== undefined) {
+        stateWithSim = { ...stateWithSim, offseasonChecklist: pbaLifecyclePatch.offseasonChecklist as any };
+    }
+    if (pbaLifecyclePatch.history) {
+        stateWithSim = { ...stateWithSim, history: pbaLifecyclePatch.history as any };
+    }
 
     // Remove club debuffs for players who played in today's games
     const playedPlayerIds = new Set(
@@ -1070,10 +1387,17 @@ export const processTurn = async (
             (tid) => getCoachSystem(tid)?.selectedSystem
         )
         : teamsAfterSim;
+    const simCalendarDays = Math.max(
+        0,
+        Math.round(
+            (new Date(`${normalizedFinalDate}T00:00:00Z`).getTime() - new Date(`${normalizeDate(state.date)}T00:00:00Z`).getTime()) /
+            86400000,
+        ),
+    );
     const teamsAfterFamiliarity = trainingMod.applyDailyFamiliarityTick(
         teamsAfterRosterMoves,
         state.date,
-        daysToAdvance,
+        simCalendarDays,
         {
             schedule: state.schedule,
             currentYear: state.leagueStats?.year ?? new Date().getFullYear(),
@@ -1082,16 +1406,69 @@ export const processTurn = async (
         },
     );
     // Player fatigue tick runs alongside familiarity — both share the daily-walk loop.
+    const isTrainingCampChecklistOpen =
+        !!state.offseasonChecklist &&
+        state.offseasonChecklist.trainingCamp !== 'done' &&
+        state.offseasonChecklist.trainingCamp !== 'skipped';
+    const teamsForFatigueTick = isTrainingCampChecklistOpen
+        ? teamsAfterFamiliarity.map(team => ({ ...team, trainingCalendar: {} as any }))
+        : teamsAfterFamiliarity;
     updatedPlayers = trainingMod.applyDailyFatigueTick(
         updatedPlayers,
-        teamsAfterFamiliarity,
+        teamsForFatigueTick,
         state.date,
-        daysToAdvance
+        simCalendarDays,
+        state.schedule,
     );
+
+    let teamsAfterStaffHiring = teamsAfterFamiliarity;
+    let finalStaffFreeAgents = staffPoolAfterMonthlyRefill;
+    const staffHiringSeason = stateWithSim.leagueStats?.year ?? newLeagueStats.year;
+    const staffHiringYear = new Date(`${normalizedFinalDate}T00:00:00Z`).getUTCFullYear();
+    const staffHiringNorm = `${staffHiringYear}-09-05`;
+    const staffHiringAlreadyResolved = (newLeagueStats as any).staffHiringResolvedYear === staffHiringSeason;
+    if (
+        allowNBASeasonEvents
+        && state.leagueType !== 'fictional'
+        && !staffHiringAlreadyResolved
+        && startNormStr <= staffHiringNorm
+        && normalizedFinalDate >= staffHiringNorm
+    ) {
+        const staffHiring = processNBAStaffHiringVacancies(
+            teamsAfterStaffHiring,
+            staffHiringSeason,
+            dateString,
+            state.gameMode === 'gm' ? state.userTeamId : null,
+            finalStaffFreeAgents ?? [],
+        );
+        teamsAfterStaffHiring = staffHiring.teams;
+        const consumedIds = new Set(staffHiring.consumedFreeAgentIds);
+        const employedNames = new Set<string>();
+        for (const team of teamsAfterStaffHiring as any[]) {
+            for (const member of (team?.tycoon?.staffMembers ?? []) as any[]) {
+                const key = String(member?.name ?? '').trim().toLowerCase();
+                if (key) employedNames.add(key);
+            }
+        }
+        finalStaffFreeAgents = (finalStaffFreeAgents ?? []).filter((member: any) => {
+            const key = String(member?.name ?? '').trim().toLowerCase();
+            return (!member?.id || !consumedIds.has(member.id)) && (!key || !employedNames.has(key));
+        });
+        if (staffHiring.historyEntries.length > 0) {
+            stateWithSim = {
+                ...stateWithSim,
+                history: [...(stateWithSim.history ?? []), ...staffHiring.historyEntries],
+            };
+            newLeagueStats = {
+                ...newLeagueStats,
+                staffHiringResolvedYear: staffHiringSeason,
+            } as any;
+        }
+    }
 
     const tycoonOps = applyEuroTycoonDailyOps(
         { ...stateWithSim, schedule: finalSchedule, players: updatedPlayers } as GameState,
-        teamsAfterFamiliarity,
+        teamsAfterStaffHiring,
         state.date,
         dateString,
         daysToAdvance,
@@ -1219,7 +1596,11 @@ export const processTurn = async (
               const yr = state.leagueStats.year;
               const champTeam = stateWithSim.teams.find(t => t.id === champTid);
               const loserTeam = loserTid != null ? stateWithSim.teams.find(t => t.id === loserTid) : undefined;
-              const awards = state.historicalAwards ?? [];
+              const awards =
+                (result as any).historicalAwards
+                ?? stateWithSim.historicalAwards
+                ?? state.historicalAwards
+                ?? [];
               const seasonAward = (type: string) => awards.find((a: any) => a.season === yr && a.type === type);
               const entry: SeasonHistoryEntry = {
                 year: yr,
@@ -1251,6 +1632,10 @@ export const processTurn = async (
                 'All-NBA First Team':  'First Team All-League',
                 'All-NBA Second Team': 'Second Team All-League',
                 'All-NBA Third Team':  'Third Team All-League',
+                'All-Defensive First Team': 'First Team All-Defensive',
+                'All-Defensive Second Team': 'Second Team All-Defensive',
+                'All-Rookie First Team': 'First Team All-Rookie',
+                'All-Rookie Second Team': 'Second Team All-Rookie',
               };
               const pendingAwardToasts = awards
                 .filter((a: any) => a.season === yr && AWARD_LABELS[a.type])
@@ -1298,12 +1683,15 @@ export const processTurn = async (
         draftComplete: autoDraftComplete ?? state.draftComplete,
         pendingElimToast: stateWithSim.pendingElimToast,
         pendingInjuryToasts: stateWithSim.pendingInjuryToasts,
+        pendingFightToasts: (stateWithSim as any).pendingFightToasts,
         pendingFeatToasts: stateWithSim.pendingFeatToasts,
         pendingRecoveryToasts: stateWithSim.pendingRecoveryToasts,
+        pendingSuspensionToasts: (stateWithSim as any).pendingSuspensionToasts,
         pendingOptionToasts: stateWithSim.pendingOptionToasts,
+        pendingDeathToasts: (stateWithSim as any).pendingDeathToasts,
         faBidding: stateWithSim.faBidding,
         staff: (result as any).staff ?? stateWithSim.staff ?? state.staff,
-        staffFreeAgents: staffPoolAfterMonthlyRefill,
+        staffFreeAgents: finalStaffFreeAgents,
         pendingFAToasts: stateWithSim.pendingFAToasts,
         pendingRFAOfferSheets: (stateWithSim as any).pendingRFAOfferSheets,
         pendingRFAMatchResolutions: (stateWithSim as any).pendingRFAMatchResolutions,
@@ -1316,5 +1704,6 @@ export const processTurn = async (
         transferActivity: stateWithSim.transferActivity,
         pendingTransferToasts: (stateWithSim as any).pendingTransferToasts,
         simCurrentDate: undefined,
+        offseasonChecklist: stateWithSim.offseasonChecklist,
     };
 };

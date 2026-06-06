@@ -49,15 +49,23 @@ export const CompetitionDetailPanel: React.FC<CompetitionDetailPanelProps> = ({
   const playedCount = (state.boxScores ?? []).filter((b: any) => b.competitionId === competitionId && (b.season === undefined || b.season === seasonYear)).length;
   const ownTid = getOwnTeamId(state);
   const ownRow = ownTid !== null ? standings.find(r => r.tid === ownTid) : undefined;
+  const ownTeamInCompetition = ownTid !== null && ownTid !== undefined && standings.some(r => r.tid === ownTid);
   const resolveTeam = (tid: number): NBATeam | null => resolveAnyTeam(tid, state.teams ?? [], state.nonNBATeams ?? []);
   const formatShortDate = (dateStr: string) => {
     const norm = normalizeDate(dateStr);
     const d = norm ? new Date(`${norm}T00:00:00Z`) : new Date(dateStr);
     return d.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' });
   };
-  const topPerformers = (state.players ?? [])
-    .filter((p: any) => teamIds.includes(p.tid))
-    .sort((a: any, b: any) => (b.ratings?.at(-1)?.ovr ?? b.ovr ?? 0) - (a.ratings?.at(-1)?.ovr ?? a.ovr ?? 0))
+  const ppgLeaders = (state.players ?? [])
+    .map((p: any) => {
+      const regularRows = (p.stats ?? []).filter((s: any) => !s.playoffs && s.season === seasonYear && teamIds.includes(s.tid));
+      const gp = regularRows.reduce((sum: number, s: any) => sum + (s.gp ?? 0), 0);
+      const pts = regularRows.reduce((sum: number, s: any) => sum + (s.pts ?? 0), 0);
+      if (gp <= 0) return null;
+      return { ...p, ppg: pts / gp };
+    })
+    .filter((p: any) => p && teamIds.includes(p.tid))
+    .sort((a: any, b: any) => (b.ppg ?? 0) - (a.ppg ?? 0))
     .slice(0, 4);
   const accent = spec?.accentColor ?? '#f59e0b';
   const nextHome = next ? resolveTeam(next.homeTid) : null;
@@ -69,7 +77,6 @@ export const CompetitionDetailPanel: React.FC<CompetitionDetailPanelProps> = ({
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.35em]" style={{ color: accent }}>{spec?.shortName ?? competitionId}</div>
           <h2 className="text-3xl font-black text-white mt-1">{spec?.displayName ?? competitionId}</h2>
-          <p className="text-sm text-slate-400 mt-1">Competition dashboard with fixtures, standings, team form, and player storylines.</p>
         </div>
         <div className="grid grid-cols-3 gap-3 min-w-[420px]">
           <CompetitionKpi label="Your Record" value={ownRow ? `${ownRow.wins}-${ownRow.losses}` : '0-0'} sub="Current competition" />
@@ -107,8 +114,18 @@ export const CompetitionDetailPanel: React.FC<CompetitionDetailPanelProps> = ({
                   <button key={g.gid} onClick={() => onJumpToDate(g.date)} className="w-full grid grid-cols-[110px_1fr_90px] items-center gap-3 p-4 text-left hover:bg-white/[0.03]">
                     <div className="text-xs font-black text-slate-400">{formatShortDate(g.date)}</div>
                     <div className="flex items-center gap-3 min-w-0">
+                      {away?.logoUrl ? (
+                        <img src={away.logoUrl} className="w-6 h-6 object-contain shrink-0" alt={away.abbrev} referrerPolicy="no-referrer" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full border border-slate-700 bg-slate-800 shrink-0" />
+                      )}
                       <span className="font-bold text-slate-300 truncate">{away?.name ?? `Team ${g.awayTid}`}</span>
                       <span className="text-slate-600">at</span>
+                      {home?.logoUrl ? (
+                        <img src={home.logoUrl} className="w-6 h-6 object-contain shrink-0" alt={home.abbrev} referrerPolicy="no-referrer" />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full border border-slate-700 bg-slate-800 shrink-0" />
+                      )}
                       <span className="font-bold text-white truncate">{home?.name ?? `Team ${g.homeTid}`}</span>
                     </div>
                     <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-500">{g.competitionPhase ?? 'League'}</div>
@@ -119,11 +136,13 @@ export const CompetitionDetailPanel: React.FC<CompetitionDetailPanelProps> = ({
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
-            <CompetitionGauge label="Team Form" value={ownRow ? Math.min(100, ownRow.wins * 12 + 45) : 50} />
-            <CompetitionGauge label="Qualification Outlook" value={ownRow && standings.indexOf(ownRow) < 8 ? 78 : 46} />
-            <CompetitionGauge label="Schedule Pressure" value={Math.min(100, upcoming.filter(g => ownTid !== null && (g.homeTid === ownTid || g.awayTid === ownTid)).length * 12)} />
-          </div>
+          {ownTeamInCompetition && (
+            <div className="grid md:grid-cols-3 gap-4">
+              <CompetitionGauge label="Team Form" value={ownRow ? Math.min(100, ownRow.wins * 12 + 45) : 50} />
+              <CompetitionGauge label="Qualification Outlook" value={ownRow && standings.indexOf(ownRow) < 8 ? 78 : 46} />
+              <CompetitionGauge label="Schedule Pressure" value={Math.min(100, upcoming.filter(g => ownTid !== null && (g.homeTid === ownTid || g.awayTid === ownTid)).length * 12)} />
+            </div>
+          )}
         </div>
 
         <aside className="space-y-5">
@@ -133,8 +152,13 @@ export const CompetitionDetailPanel: React.FC<CompetitionDetailPanelProps> = ({
               {standings.slice(0, 10).map((row, index) => {
                 const team = resolveTeam(row.tid);
                 return (
-                  <div key={row.tid} className={`grid grid-cols-[24px_1fr_52px_42px] items-center gap-2 rounded-lg px-2 py-2 text-xs ${row.tid === ownTid ? 'bg-amber-400/10 text-amber-200' : 'text-slate-300'}`}>
+                  <div key={row.tid} className={`grid grid-cols-[24px_24px_1fr_52px_42px] items-center gap-2 rounded-lg px-2 py-2 text-xs ${row.tid === ownTid ? 'bg-amber-400/10 text-amber-200' : 'text-slate-300'}`}>
                     <span className="font-black text-slate-500">{index + 1}</span>
+                    {team?.logoUrl ? (
+                      <img src={team.logoUrl} className="w-5 h-5 object-contain shrink-0" alt={team.abbrev} referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-5 h-5 rounded-full border border-slate-700 bg-slate-800 shrink-0" />
+                    )}
                     <span className="font-bold truncate">{team?.name ?? `Team ${row.tid}`}</span>
                     <span className="font-black tabular-nums text-right">{row.wins}-{row.losses}</span>
                     <span className="text-slate-500 tabular-nums text-right">{row.pf - row.pa > 0 ? '+' : ''}{row.pf - row.pa}</span>
@@ -144,21 +168,29 @@ export const CompetitionDetailPanel: React.FC<CompetitionDetailPanelProps> = ({
             </div>
           </div>
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Top Performers</div>
+            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">PPG League Leaders</div>
             <div className="space-y-3">
-              {topPerformers.map((p: any) => {
+              {ppgLeaders.map((p: any) => {
                 const team = resolveTeam(p.tid);
-                const ovr = p.ratings?.at(-1)?.ovr ?? p.ovr ?? 0;
+                const ppg = p.ppg ?? 0;
                 return (
                   <div key={p.internalId ?? p.pid ?? p.name} className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-sm font-black text-white truncate">{p.name}</div>
-                      <div className="text-xs text-slate-500 truncate">{team?.name ?? 'Club'} · {p.pos ?? 'G/F'}</div>
+                    <div className="min-w-0 flex items-center gap-2.5">
+                      {p.imgURL ? (
+                        <img src={p.imgURL} alt={p.name} className="w-9 h-9 rounded-full object-cover border border-slate-700 shrink-0" referrerPolicy="no-referrer" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full border border-slate-700 bg-slate-800 shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-sm font-black text-white truncate">{p.name}</div>
+                        <div className="text-xs text-slate-500 truncate">{team?.name ?? 'Club'} · {p.pos ?? 'G/F'}</div>
+                      </div>
                     </div>
-                    <div className="w-11 h-11 rounded-full border border-emerald-400/40 bg-emerald-400/10 flex items-center justify-center text-sm font-black text-emerald-300">{ovr}</div>
+                    <div className="px-2.5 py-1 rounded-md border border-slate-700 bg-slate-800/70 text-sm font-black text-slate-200 tabular-nums">{ppg.toFixed(1)}</div>
                   </div>
                 );
               })}
+              {ppgLeaders.length === 0 && <div className="text-xs text-slate-500">No scoring data yet.</div>}
             </div>
           </div>
         </aside>

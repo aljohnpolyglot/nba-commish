@@ -27,7 +27,11 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
     const player = contacts[0];
     const playerRecord = stateWithSim.players.find((p: any) => p.internalId === (player.id || player.internalId)) as any;
     const team = playerRecord ? stateWithSim.teams.find(t => t.id === playerRecord.tid) : undefined;
-    const teamName = team?.name || player.organization || 'their team';
+    const rawTeamName = team ? getTeamFullName(team) : (player.organization || '');
+    const hasConcreteTeamName = rawTeamName.trim().length > 0 && rawTeamName.trim().toLowerCase() !== 'their team';
+    const releaseLead = hasConcreteTeamName
+        ? `${rawTeamName} has ${releaseVerbPlaceholder()}`
+        : `A team has ${releaseVerbPlaceholder()}`;
     console.log('[handleWaivePlayer] resolved', {
         lookupId: player.id || player.internalId,
         playerFound: !!playerRecord,
@@ -37,7 +41,7 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
         ng: !!playerRecord?.nonGuaranteed,
         tw: !!playerRecord?.twoWay,
         teamFound: !!team,
-        teamName,
+        teamName: rawTeamName,
     });
 
     // ─── Dead money calculation ───────────────────────────────────────────
@@ -166,7 +170,7 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
     const waiveNewsItem = {
         id: `waive-news-${Date.now()}`,
         headline: `${player.name} ${releaseVerb === 'waived' ? 'Waived' : 'Released'}`,
-        content: `${teamName} have ${releaseVerb} ${player.name}${releaseSuffix}.${newsDeadTag} ${player.name} is now a free agent.`,
+        content: `${releaseLead.replace(releaseVerbPlaceholder(), releaseVerb)} ${player.name}${releaseSuffix}.${newsDeadTag} ${player.name} is now a free agent.`,
         date: stateWithSim.date,
         isNew: true,
         image: team?.logoUrl,
@@ -176,7 +180,9 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
     // History entry text — gameLogic.ts:876 picks this up and stamps type 'Waive'.
     // NBA.com style: short and clean. No salary numbers in the transactions feed —
     // those belong on the team finances page.
-    const outcomeText = `${player.name} ${releaseVerb} by the ${teamName}${releaseSuffix}.`;
+    const outcomeText = hasConcreteTeamName
+        ? `${player.name} ${releaseVerb} by ${rawTeamName}${releaseSuffix}.`
+        : `${player.name} ${releaseVerb} by a team${releaseSuffix}.`;
 
     const updatedPlayer = players.find((p: any) => p.internalId === (player.id || player.internalId));
     console.log('[handleWaivePlayer] returning', {
@@ -196,6 +202,10 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
         isProcessing: false,
     };
 };
+
+function releaseVerbPlaceholder(): string {
+    return '__RELEASE_VERB__';
+}
 
 export const handleExerciseTeamOption = async (stateWithSim: GameState, action: UserAction) => {
     const { playerId } = action.payload;

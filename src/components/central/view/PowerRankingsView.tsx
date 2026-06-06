@@ -1,24 +1,50 @@
-import React, { useContext, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { NBATeam, Game } from '../../../types';
 import { getOwnTeamId, getSeasonPhase } from '../../../utils/helpers';
-import { CompetitionHubLeagueTabContext } from '../../competition/hubContext';
-import { getTeamsForLeagueTab } from '../../../utils/euroLeagueDefaults';
+import { useHubScope } from '../../../hooks/useHubScope';
+import { getConferenceSpec, type PbaConference } from '../../../services/pba/conferenceTransition';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { getResolvedTeamLogoUrl, getTeamPrimaryColor } from '../../../utils/teamAssets';
+
+const TeamMark: React.FC<{ team: any }> = ({ team }) => {
+  const [failed, setFailed] = useState(false);
+  const logoUrl = getResolvedTeamLogoUrl(team);
+  if (logoUrl && !failed) {
+    return (
+      <img
+        src={logoUrl}
+        alt={team.name}
+        className="w-6 h-6 md:w-10 md:h-10 object-contain drop-shadow-md group-hover:scale-110 transition-transform"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return (
+    <div
+      className="w-6 h-6 md:w-10 md:h-10 rounded-full flex items-center justify-center text-[8px] md:text-xs font-black text-white border border-white/10 shadow-inner"
+      style={{ backgroundColor: getTeamPrimaryColor(team) }}
+    >
+      {team.abbrev}
+    </div>
+  );
+};
 
 export const PowerRankingsView: React.FC = () => {
   const { state, navigateToTeam } = useGame();
   const ownTid = getOwnTeamId(state);
-  const hubTab = useContext(CompetitionHubLeagueTabContext);
-  const scopedTeams = useMemo(
-    () => hubTab ? getTeamsForLeagueTab(state as any, hubTab) : state.teams,
-    [hubTab, state.teams, (state as any).nonNBATeams, (state as any).activeCompetitions],
-  );
+  const { teams: scopedTeams, pbaIsolated } = useHubScope();
+  const pbaCompetitionId = pbaIsolated
+    ? getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id
+    : null;
 
   const rankings = useMemo(() => {
     const teamGames = new Map<number, Game[]>();
     scopedTeams.forEach(t => teamGames.set(t.id, []));
 
     state.schedule.forEach(game => {
+      if (pbaCompetitionId && game.competitionId !== pbaCompetitionId) return;
       if (game.played && !game.isPreseason && !game.isAllStar && !game.isExhibition && !(game as any).excludeFromRecord) {
         if (teamGames.has(game.homeTid)) teamGames.get(game.homeTid)!.push(game);
         if (teamGames.has(game.awayTid)) teamGames.get(game.awayTid)!.push(game);
@@ -37,6 +63,7 @@ export const PowerRankingsView: React.FC = () => {
         return isHome ? g.homeScore > g.awayScore : g.awayScore > g.homeScore;
       }).length;
       const totalGames = games.length;
+      const losses = Math.max(0, totalGames - wins);
       const winPct = totalGames > 0 ? wins / totalGames : 0;
 
       const l10Games = games.slice(0, 10);
@@ -67,6 +94,11 @@ export const PowerRankingsView: React.FC = () => {
     const currentRankings = scopedTeams.map(team => {
       const games = teamGames.get(team.id) || [];
       const score = calculateScore(team, games);
+      const wins = games.filter(g => {
+        const isHome = g.homeTid === team.id;
+        return isHome ? g.homeScore > g.awayScore : g.awayScore > g.homeScore;
+      }).length;
+      const losses = Math.max(0, games.length - wins);
       
       const l10Games = games.slice(0, 10);
       const l10Sequence = l10Games.map(g => {
@@ -116,7 +148,7 @@ export const PowerRankingsView: React.FC = () => {
           }, 0) / top10Players.length).toFixed(1)
         : '-';
 
-      return { team, score, l10Sequence, differential, streakStr, avgAge };
+      return { team, score, l10Sequence, differential, streakStr, avgAge, wins, losses };
     }).sort((a, b) => b.score - a.score);
 
     // Preseason rankings — always calculated with 0 games (pure strength/last-season formula)
@@ -158,17 +190,18 @@ export const PowerRankingsView: React.FC = () => {
         jumpVsPreseason,
       };
     });
-  }, [scopedTeams, state.players, state.schedule, state.leagueStats.year, state.date]);
+  }, [scopedTeams, state.players, state.schedule, state.leagueStats.year, state.date, pbaCompetitionId]);
 
   const seasonPhase = getSeasonPhase(state);
-  const seasonNotStarted = seasonPhase === 'preseason';
+  const seasonNotStarted = !pbaIsolated && seasonPhase === 'preseason';
 
   return (
     <div className="h-full flex flex-col bg-[#0f172a] text-slate-200 overflow-hidden">
       <div className="p-4 md:p-6 border-b border-slate-800 shrink-0">
-        <h2 className="text-xl md:text-3xl font-black text-white uppercase tracking-tight">Power Rankings</h2>
+        <h2 className="text-xl md:text-3xl font-black text-white uppercase tracking-tight">{pbaIsolated ? 'PBA Power Rankings' : 'Power Rankings'}</h2>
         <p className="text-slate-400 text-xs md:text-sm font-medium mt-1">
-          {seasonPhase === 'preseason' ? 'Preseason projections based on roster strength'
+          {pbaIsolated ? 'Current conference rankings based on performance, strength, and momentum'
+            : seasonPhase === 'preseason' ? 'Preseason projections based on roster strength'
             : seasonPhase === 'offseason' ? `${state.leagueStats.year - 1}–${String(state.leagueStats.year).slice(-2)} final standings — new season starts Oct 24`
             : seasonPhase === 'playoffs' ? 'Final regular-season standings — playoffs in progress'
             : 'Updated weekly based on performance, strength, and momentum'}
@@ -210,24 +243,15 @@ export const PowerRankingsView: React.FC = () => {
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4">
                       <div className="flex items-center gap-2 md:gap-4">
-                        {row.team.logoUrl ? (
-                          <img
-                            src={row.team.logoUrl}
-                            alt={row.team.name}
-                            className="w-6 h-6 md:w-10 md:h-10 object-contain drop-shadow-md group-hover:scale-110 transition-transform"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <div className="w-6 h-6 md:w-10 md:h-10 rounded-full bg-slate-800 flex items-center justify-center text-[8px] md:text-xs font-bold">
-                            {row.team.abbrev}
-                          </div>
-                        )}
+                        <TeamMark team={row.team} />
                         <div className="min-w-0">
                           <div className="font-bold text-white text-xs md:text-base leading-tight truncate flex items-center gap-1.5">
-                            <span className="truncate"><span className="hidden md:inline">{row.team.region} </span>{row.team.name}</span>
+                            <span className="truncate">{getTeamFullName(row.team)}</span>
                             {isOwn && <span className="text-[8px] md:text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40 shrink-0">You</span>}
                           </div>
-                          <div className="text-[9px] md:text-xs font-medium text-slate-500 uppercase tracking-wider">{row.team.wins}-{row.team.losses}</div>
+                          <div className="text-[9px] md:text-xs font-medium text-slate-500 uppercase tracking-wider">
+                            {pbaIsolated ? `${row.wins}-${row.losses}` : `${row.team.wins}-${row.team.losses}`}
+                          </div>
                         </div>
                       </div>
                     </td>

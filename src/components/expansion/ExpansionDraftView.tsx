@@ -299,6 +299,7 @@ export const ExpansionDraftView: React.FC<Props> = ({ onClose }) => {
 
             <FullDraftTable
               drafted={picked}
+              passedPicks={new Set()}
               draftOrder={draftOrderTeams}
               onReview={() => { /* no-op for expansion */ }}
               currentPick={currentPick}

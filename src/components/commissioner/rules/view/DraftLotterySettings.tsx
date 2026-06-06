@@ -4,6 +4,7 @@ import { LOTTERY_PRESETS } from '../../../../lib/lotteryPresets';
 interface DraftLotterySettingsProps {
     draftType: string;
     setDraftType: (val: string) => void;
+    isPbaMode?: boolean;
 }
 
 // Build grouped options from the single source of truth in lotteryPresets.ts.
@@ -21,7 +22,7 @@ const SPECIAL_OPTIONS = [
     { key: 'no_draft', label: 'No Draft - transfer/signing league' },
 ] as const;
 
-export const DraftLotterySettings: React.FC<DraftLotterySettingsProps> = ({ draftType, setDraftType }) => {
+export const DraftLotterySettings: React.FC<DraftLotterySettingsProps> = ({ draftType, setDraftType, isPbaMode = false }) => {
     return (
         <div className="flex flex-col gap-3 p-6 bg-slate-800/40 rounded-2xl border border-slate-800/50">
             <span className="text-xs font-bold text-slate-200 uppercase tracking-widest">Lottery System</span>
@@ -30,13 +31,22 @@ export const DraftLotterySettings: React.FC<DraftLotterySettingsProps> = ({ draf
                 onChange={(e) => setDraftType(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-sm py-4 px-4 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 appearance-none cursor-pointer"
             >
-                {Object.entries(GROUPED).map(([group, options]) => (
-                    <optgroup key={group} label={group}>
-                        {options.map(({ key, label }) => (
-                            <option key={key} value={key}>{label}</option>
-                        ))}
+                {Object.entries(GROUPED).map(([group, options]) => {
+                    const visibleOptions = options.filter(({ key }) => isPbaMode || key !== 'pba_draft');
+                    if (visibleOptions.length === 0) return null;
+                    return (
+                        <optgroup key={group} label={group}>
+                            {visibleOptions.map(({ key, label }) => (
+                                <option key={key} value={key}>{label}</option>
+                            ))}
+                        </optgroup>
+                    );
+                })}
+                {(isPbaMode || draftType === 'pba_draft') && (
+                    <optgroup label="PBA">
+                        <option value="pba_draft">PBA Draft Order</option>
                     </optgroup>
-                ))}
+                )}
                 <optgroup label="Special">
                     {SPECIAL_OPTIONS.map(({ key, label }) => (
                         <option key={key} value={key}>{label}</option>

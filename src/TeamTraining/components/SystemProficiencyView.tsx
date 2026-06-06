@@ -78,29 +78,6 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
     };
   }, [systemFamiliarity, k2Roster]);
 
-  const defenseOverview = useMemo(() => {
-    if (side !== 'defense') return null;
-    const fitMap = computeDefensiveSystemFit(k2Roster);
-    const famMap = systemFamiliarity?.byDefense ?? {};
-    const systems = Object.keys(defensiveSystemDescriptions).map(name => {
-      const fit = Math.round(fitMap[name] ?? 50);
-      const familiarity = Math.round(famMap[name] ?? 0);
-      const score = Math.round(blendDefensiveProficiency(fit, familiarity));
-      return {
-        name,
-        fit,
-        familiarity,
-        score,
-        details: defensiveSystemDescriptions[name],
-      };
-    }).sort((a, b) => b.score - a.score);
-    return {
-      top: systems[0] ?? null,
-      compare: systems.slice(1, 5),
-      rest: systems,
-    };
-  }, [side, k2Roster, systemFamiliarity]);
-
   const activeTiers = side === 'offense' ? tiers : defenseTiers;
   const activeMap = side === 'offense' ? systemDescriptions : defensiveSystemDescriptions;
 
@@ -146,113 +123,6 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
             Roster is empty. Defensive scheme fit is computed from active rotation attributes.
           </p>
         </div>
-      )}
-
-      {side === 'defense' && defenseOverview?.top && (
-        <section className="space-y-5">
-          <div className="flex items-center gap-4">
-            <h3 className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2 text-cyan-400">
-              <Shield size={16} />
-              Defensive Identity
-            </h3>
-            <div className="h-px flex-1 bg-gradient-to-r from-cyan-400/20 to-transparent" />
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-4">
-            <div className="rounded-[2rem] border border-cyan-500/20 bg-slate-950/70 p-6 space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-400">Best Fit Right Now</div>
-                  <h4 className="text-2xl font-black text-white uppercase tracking-tight mt-2">{defenseOverview.top.name}</h4>
-                  <p className="text-sm text-slate-400 mt-2 max-w-2xl">{defenseOverview.top.details.desc}</p>
-                </div>
-                <div className={`px-3 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-[0.2em] ${getDefenseTierTone(defenseOverview.top.familiarity).pill}`}>
-                  {getDefenseTierTone(defenseOverview.top.familiarity).label}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Roster Fit</div>
-                  <div className="text-2xl font-black text-white mt-2 tabular-nums">{defenseOverview.top.fit}</div>
-                  <p className="text-[11px] text-slate-500 mt-1">How naturally this roster fits the scheme.</p>
-                </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Practice Reps</div>
-                  <div className="text-2xl font-black text-white mt-2 tabular-nums">{defenseOverview.top.familiarity}</div>
-                  <p className="text-[11px] text-slate-500 mt-1">Built from time spent drilling it.</p>
-                </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Overall Readiness</div>
-                  <div className="text-2xl font-black text-cyan-300 mt-2 tabular-nums">{defenseOverview.top.score}</div>
-                  <p className="text-[11px] text-slate-500 mt-1">How comfortable the team looks in it today.</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-4">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400 mb-2">Why It Fits</div>
-                  <div className="space-y-1.5">
-                    {defenseOverview.top.details.pos.slice(0, 3).map(item => (
-                      <div key={item} className="text-[11px] text-slate-300">• {item}</div>
-                    ))}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-rose-500/15 bg-rose-500/5 p-4">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-400 mb-2">What You Give Up</div>
-                  <div className="space-y-1.5">
-                    {defenseOverview.top.details.neg.slice(0, 3).map(item => (
-                      <div key={item} className="text-[11px] text-slate-300">• {item}</div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[2rem] border border-slate-800 bg-slate-950/60 p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Other Options</div>
-                <div className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Useful changeups</div>
-              </div>
-              <div className="space-y-3">
-                {defenseOverview.compare.map(system => {
-                  const tone = getDefenseTierTone(system.familiarity);
-                  return (
-                    <div
-                      key={system.name}
-                      className="w-full text-left rounded-2xl border border-slate-800 bg-slate-900/60 p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-black text-white uppercase tracking-tight">{system.name}</div>
-                          <div className="text-[11px] text-slate-500 mt-1 line-clamp-2">{system.details.desc}</div>
-                        </div>
-                        <div className={`px-2 py-1 rounded-full border text-[9px] font-black uppercase tracking-[0.2em] ${tone.pill}`}>{tone.label}</div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 mt-3">
-                        <div>
-                          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">Fit</div>
-                          <div className="text-xs font-bold text-slate-300 mt-1 tabular-nums">{system.fit}</div>
-                        </div>
-                        <div>
-                          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">Reps</div>
-                          <div className="text-xs font-bold text-slate-300 mt-1 tabular-nums">{system.familiarity}</div>
-                        </div>
-                        <div>
-                          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">Ready</div>
-                          <div className="text-xs font-bold mt-1 tabular-nums text-cyan-300">{system.score}</div>
-                        </div>
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-3">
-                        Strength: {system.details.pos[0]} • Watch: {system.details.neg[0]}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
       )}
 
       {/* Tier 1: Mastery */}
@@ -412,19 +282,6 @@ function SystemCard({ name, score, tier, accent = 'blue', systemMap, onClick }: 
   );
 }
 
-function getDefenseTierTone(value: number) {
-  if (value >= 75) {
-    return { label: 'Elite', pill: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' };
-  }
-  if (value >= 50) {
-    return { label: 'Sharp', pill: 'bg-amber-500/15 text-amber-200 border-amber-500/30' };
-  }
-  if (value >= 25) {
-    return { label: 'Learning', pill: 'bg-orange-500/15 text-orange-200 border-orange-500/30' };
-  }
-  return { label: 'Cold', pill: 'bg-rose-500/15 text-rose-200 border-rose-500/30' };
-}
-
 function SystemModal({ name, roster, onClose }: { name: string, roster: PlayerK2[], onClose: () => void }) {
   const details = systemDescriptions[name];
   const [selectedArchetype, setSelectedArchetype] = useState<string | null>(null);
@@ -471,7 +328,7 @@ function SystemModal({ name, roster, onClose }: { name: string, roster: PlayerK2
   }, [roster, name]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-8">
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -484,19 +341,19 @@ function SystemModal({ name, roster, onClose }: { name: string, roster: PlayerK2
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full md:max-w-2xl bg-slate-900 md:border border-slate-800 md:rounded-[2.5rem] rounded-none overflow-hidden shadow-2xl flex flex-col md:max-h-[85vh] h-full"
+        className="relative w-full md:max-w-2xl bg-slate-900 md:border border-slate-800 md:rounded-[2.5rem] rounded-none overflow-hidden shadow-2xl flex flex-col md:max-h-[calc(100vh-2rem)] h-full"
       >
-        <div className="p-6 md:p-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
-           <div className="flex items-center gap-3 md:gap-4">
+        <div className="p-6 md:p-8 border-b border-slate-800 flex justify-between items-start gap-3 bg-slate-900/50">
+           <div className="flex items-center gap-3 md:gap-4 min-w-0">
               <div className="bg-blue-600 p-2.5 md:p-3 rounded-xl md:rounded-2xl shadow-lg shadow-blue-500/20">
                  <Target size={20} className="text-white md:w-6 md:h-6" />
               </div>
-              <div>
+              <div className="min-w-0">
                  <h3 className="text-lg md:text-xl font-black text-white uppercase tracking-tight">{name}</h3>
                  <p className="text-[9px] md:text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5 md:mt-1">Scheme & Personnel Fit</p>
               </div>
            </div>
-           <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition-colors">
+           <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition-colors flex-shrink-0">
               <X size={20} className="text-slate-500" />
            </button>
         </div>

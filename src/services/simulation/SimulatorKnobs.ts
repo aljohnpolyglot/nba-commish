@@ -380,6 +380,9 @@ export const KNOBS_PBA: SimulatorKnobs = {
   paceMultiplier:        0.82,  // slow, methodical — not a high-pace league
   efficiencyMultiplier:  0.83,  // FG% ~37-44% vs strong opposition
   threePointRateMult:    0.72,  // inside-heavy but not allergic — real PBA team avg 15-22 3PA/game
+  fourPointAvailable:    true,
+  fourPointRateMult:     0.95,
+  fourPointEfficiencyMult: 0.92,
   ftRateMult:            1.25,  // very physical → high FTA
   ftEfficiencyMult:      0.92,  // FT% ~66-72% — below NBA average
   tovMult:               1.10,  // more turnovers under pressure vs superior athletes

@@ -8,7 +8,7 @@
  *   - Pre-game:        Recovery low intensity
  *   - Post-game:       Recovery low intensity
  *   - Training Camp:   Balanced 85 (heavy install reps)
- *   - Preseason:       Balanced 60
+ *   - Preseason:       Balanced 40
  *   - Playoffs:        Recovery 30 day-after-game / Offensive 70 between
  *   - Offseason:       no plan (calendar is empty in those windows)
  *   - Regular season:
@@ -124,7 +124,7 @@ export function getAICoachPlanForDay(
   if (wasPostGame) return planFor('Recovery', 25);
 
   if (phase === 'training_camp') return planFor('Balanced', 85);
-  if (phase === 'preseason') return planFor('Balanced', 60);
+  if (phase === 'preseason') return planFor('Balanced', 40);
 
   if (phase === 'playoffs') {
     // Eliminated AI teams don't get a phase plan — calendar will be empty,

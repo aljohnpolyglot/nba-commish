@@ -15,8 +15,13 @@ import { convertTo2KRating } from '../../utils/helpers';
 import { loadNameData } from '../../data/nameDataFetcher';
 import { enforceExternalMinRoster } from '../../services/externalLeagueSustainer';
 import { SPAIN_COMPETITIONS } from '../../data/templates/spain/competitions';
+import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
 import { calculateSocialEngagement } from '../../utils/helpers';
-import { generateFuturePicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../../services/draft/DraftPickGenerator';
+import { generateFuturePicks, generateFuturePicksForTeamIds, DEFAULT_TRADABLE_PICK_SEASONS } from '../../services/draft/DraftPickGenerator';
+import { applyPbaAwardsToPlayers, buildPbaHistoricalAwards } from '../../services/pba/awards';
+import { ensureDraftClasses } from '../../services/draftClassFiller';
+import { buildPbaCollegePoolFromSource } from '../../services/pba/collegeSources';
+import { tunePbaDraftProspects } from '../../services/pba/draftRules';
 interface StartGamePayload {
     name: string;
     startScenario?: string;
@@ -40,6 +45,66 @@ const normalizeClubKey = (region?: string | null, name?: string | null) =>
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, ' ')
         .trim();
+const hasRealDisplayName = (value?: string | null): boolean => {
+    const trimmed = String(value ?? '').trim();
+    return trimmed.length > 0 && !/^\d+$/.test(trimmed);
+};
+const resolveCommissionerDisplayName = (value?: string | null): string =>
+    hasRealDisplayName(value) ? String(value).trim() : 'the new front-office lead';
+const resolveTeamNewsSubject = (teamName?: string | null, leagueName?: string): string =>
+    hasRealDisplayName(teamName) ? String(teamName).trim() : `${leagueName ?? 'League'} Team`;
+const resolveTeamNewsObject = (teamName?: string | null): string =>
+    hasRealDisplayName(teamName) ? String(teamName).trim() : 'the club';
+const mergePlayerStats = (primaryStats: any[] | undefined, historyStats: any[] | undefined) => {
+    const merged = [...(primaryStats ?? []), ...(historyStats ?? [])];
+    const byKey = new Map<string, any>();
+    for (const row of merged) {
+        if (!row) continue;
+        const key = `${row.season ?? 0}|${row.tid ?? -999}|${row.playoffs ? 1 : 0}`;
+        const existing = byKey.get(key);
+        if (!existing || (row.gp ?? 0) > (existing.gp ?? 0)) {
+            byKey.set(key, row);
+        }
+    }
+    return Array.from(byKey.values()).sort((a, b) =>
+        (a.season - b.season) ||
+        ((a.playoffs ? 1 : 0) - (b.playoffs ? 1 : 0)) ||
+        ((a.tid ?? 0) - (b.tid ?? 0))
+    );
+};
+const mergeSeasonAwards = (primaryAwards: any[] | undefined, historyAwards: any[] | undefined) => {
+    const merged = [...(primaryAwards ?? []), ...(historyAwards ?? [])];
+    const seen = new Set<string>();
+    return merged.filter(award => {
+        const key = `${award?.season ?? 0}|${award?.type ?? ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+};
+const mergeTransactions = (primaryTransactions: any[] | undefined, historyTransactions: any[] | undefined) => {
+    const merged = [...(primaryTransactions ?? []), ...(historyTransactions ?? [])];
+    const seen = new Set<string>();
+    return merged.filter(tx => {
+        const key = `${tx?.season ?? 0}|${tx?.tid ?? -999}|${tx?.type ?? ''}|${tx?.phase ?? ''}|${tx?.pickNum ?? ''}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+};
+const mergeMainRosterCareer = (player: any, legacyMainRosterPlayer?: any) => {
+    if (!legacyMainRosterPlayer) return player;
+    return {
+        ...legacyMainRosterPlayer,
+        ...player,
+        born: player.born ?? legacyMainRosterPlayer.born,
+        college: player.college ?? legacyMainRosterPlayer.college,
+        draft: player.draft ?? legacyMainRosterPlayer.draft,
+        awards: mergeSeasonAwards(player.awards, legacyMainRosterPlayer.awards),
+        transactions: mergeTransactions(player.transactions, legacyMainRosterPlayer.transactions),
+        stats: mergePlayerStats(player.stats, legacyMainRosterPlayer.stats),
+    };
+};
 export const handleStartGame = async (payload: StartGamePayload): Promise<Partial<GameState>> => {
     const { name: commissionerName } = payload;
     const isFictional = payload.leagueType === 'fictional';
@@ -71,7 +136,11 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         rawNbaPlayers = data.players;
         draftPicks = data.draftPicks;
     }
-    const historicalAwardsData = isFictional ? fictionalHistoricalAwards : await getHistoricalAwards();
+    const historicalAwardsData = isFictional
+        ? fictionalHistoricalAwards
+        : isPbaModded
+          ? buildPbaHistoricalAwards(initialLeagueStats.year)
+          : await getHistoricalAwards();
     const [
         { players: euroPlayers,    teams: euroTeams },
         { players: wnbaPlayers,    teams: wnbaTeams },
@@ -112,9 +181,20 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
             .replace(/\b(jr|sr|ii|iii|iv)\b/gi, '')
             .replace(/\s+/g, ' ')
             .trim();
+    const rawNbaByName = new Map<string, any>();
+    rawNbaPlayers.forEach(player => {
+        const key = normName(player.name);
+        const existing = rawNbaByName.get(key);
+        const existingScore = (existing?.stats?.length ?? 0) + (existing?.awards?.length ?? 0);
+        const incomingScore = (player?.stats?.length ?? 0) + (player?.awards?.length ?? 0);
+        if (!existing || incomingScore > existingScore) rawNbaByName.set(key, player);
+    });
     const euroNames = new Set(euroPlayers.map(p => normName(p.name)));
     const uniqueEuroPlayers = euroPlayers
-        .map(p => ({ ...p, status: p.status || 'Euroleague' as const }));
+        .map(p => mergeMainRosterCareer(
+            { ...p, status: p.status || 'Euroleague' as const },
+            rawNbaByName.get(normName(p.name)),
+        ));
     const externalNames = new Set([
         ...uniqueEuroPlayers.map(p => normName(p.name)),
         ...wnbaPlayers.map(p => normName(p.name)),
@@ -142,7 +222,10 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     }
     const uniqueGLeaguePlayers = gleaguePlayers
         .filter(p => !existingNbaNames.has(normName(p.name)))
-        .map(p => ({ ...p, status: 'G-League' as const }));
+        .map(p => mergeMainRosterCareer(
+            { ...p, status: 'G-League' as const },
+            rawNbaByName.get(normName(p.name)),
+        ));
     const filteredEuroTeams = isSpainEurope
         ? euroTeams.filter(team => !mergedEuroTeamTids.has(team.tid))
         : euroTeams;
@@ -153,19 +236,34 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
             !existingNbaNames.has(normName(p.name)) &&
             (!isSpainEurope || !euroNames.has(normName(p.name)))
         )
-        .map(p => ({ ...p, status: 'Endesa' as const }));
+        .map(p => mergeMainRosterCareer(
+            { ...p, status: 'Endesa' as const },
+            rawNbaByName.get(normName(p.name)),
+        ));
     const uniquePBAPlayers = pbaPlayers
         .filter(p => !existingNbaNames.has(normName(p.name)))
-        .map(p => ({ ...p, status: p.status || 'PBA' as const }));
+        .map(p => mergeMainRosterCareer(
+            { ...p, status: p.status || 'PBA' as const },
+            rawNbaByName.get(normName(p.name)),
+        ));
     const uniqueBLeaguePlayers = bleaguePlayers
         .filter(p => !existingNbaNames.has(normName(p.name)))
-        .map(p => ({ ...p, status: p.status || 'B-League' as const }));
+        .map(p => mergeMainRosterCareer(
+            { ...p, status: p.status || 'B-League' as const },
+            rawNbaByName.get(normName(p.name)),
+        ));
     const uniqueChinaPlayers = chinaPlayers
         .filter(p => !existingNbaNames.has(normName(p.name)))
-        .map(p => ({ ...p, status: 'China CBA' as const }));
+        .map(p => mergeMainRosterCareer(
+            { ...p, status: 'China CBA' as const },
+            rawNbaByName.get(normName(p.name)),
+        ));
     const uniqueNBLAusPlayers = nblAusPlayers
         .filter(p => !existingNbaNames.has(normName(p.name)))
-        .map(p => ({ ...p, status: 'NBL Australia' as const }));
+        .map(p => mergeMainRosterCareer(
+            { ...p, status: 'NBL Australia' as const },
+            rawNbaByName.get(normName(p.name)),
+        ));
     const players = [
         ...nbaPlayers,
         ...uniqueEuroPlayers.map(p => ({
@@ -239,12 +337,34 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
             mediaRights: DEFAULT_MEDIA_RIGHTS,
         } as any,
     } as any, startYear);
-    const allPlayers = initialExternalFillers.length > 0
+    const allPlayersBase = initialExternalFillers.length > 0
         ? [...players, ...initialExternalFillers]
         : players;
-    import('../../services/draftScoutingGist')
-      .then(m => m.prefetchDraftScouting(INITIAL_LEAGUE_STATS.year))
-      .catch(() => {});
+    const pbaDraftFill = isPbaModded
+        ? ensureDraftClasses(
+            allPlayersBase as any,
+            startYear,
+            initialLeagueStats.draftEligibilityRule,
+            'regen_pack',
+            {
+                collegePool: buildPbaCollegePoolFromSource(allPlayersBase as any),
+                nationalityOverride: 'Philippines',
+                forceCollegePath: true,
+            },
+          )
+        : { additions: [], generatedByYear: {} };
+    const playersWithPbaDraftProspects = pbaDraftFill.additions.length > 0
+        ? [...allPlayersBase, ...pbaDraftFill.additions]
+        : allPlayersBase;
+    const tunedPlayersWithPbaDraftProspects = isPbaModded
+        ? tunePbaDraftProspects(playersWithPbaDraftProspects as any, startYear, initialLeagueStats)
+        : playersWithPbaDraftProspects;
+    const allPlayers = isPbaModded ? applyPbaAwardsToPlayers(tunedPlayersWithPbaDraftProspects, historicalAwardsData) : tunedPlayersWithPbaDraftProspects;
+    if (!isPbaModded) {
+      import('../../services/draftScoutingGist')
+        .then(m => m.prefetchDraftScouting(INITIAL_LEAGUE_STATS.year))
+        .catch(() => {});
+    }
     nameDataPromise.catch(() => {}); // fire-and-forget; errors tolerable
     if (allPlayers.some(p => p.name.toLowerCase() === 'devin booker')) {
         console.log("🏀 DEV1N B00K3R 1S L0AD3D! 🏀");
@@ -262,8 +382,10 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         const userTeam = isGM && typeof payload.userTeamId === 'number'
             ? teams.find(t => t.id === payload.userTeamId)
             : undefined;
-        const teamLabel = userTeam ? userTeam.name : 'the league';
+        const commissionerDisplayName = resolveCommissionerDisplayName(commissionerName);
         const leagueName = isFictional ? 'The League' : 'NBA';
+        const teamLabel = resolveTeamNewsObject(userTeam?.name);
+        const teamHeadlineLabel = resolveTeamNewsSubject(userTeam?.name, leagueName);
         const officialHandle = isFictional ? 'TheLeagueOfficial' : 'nba';
         const officialAuthor = isFictional ? 'The League' : 'NBA';
         initialContent = {
@@ -272,25 +394,25 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
                 senderRole: isGM ? 'Owner' : 'Operations',
                 subject: isGM ? 'Welcome Aboard' : 'Schedule Generation Approaching',
                 body: isGM
-                    ? `${commissionerName}, welcome to the ${teamLabel}. We're signing you to a five-year contract as General Manager. Build us something special.`
-                    : `Commissioner ${commissionerName}, the league schedule will be generated on August 14. You have until then to set Christmas Day matchups, Global Games, and International Preseason games.`,
+                    ? `${commissionerDisplayName}, welcome to ${teamLabel}. We're signing you to a five-year contract as General Manager. Build us something special.`
+                    : `Commissioner ${commissionerDisplayName}, the league schedule will be generated on August 14. You have until then to set Christmas Day matchups, Global Games, and International Preseason games.`,
                 playerPortraitUrl: userTeam?.logoUrl ?? 'https://cdn.nba.com/headshots/nba/latest/1040x760/logoman.png',
             }],
             newNews: [{
                 headline: isGM
-                    ? `${userTeam?.name ?? `${leagueName} Team`} Hires ${commissionerName} as General Manager`
+                    ? `${teamHeadlineLabel} Hires ${commissionerDisplayName} as General Manager`
                     : 'League Awaits Schedule Release',
                 content: isGM
-                    ? `The ${teamLabel} have named ${commissionerName} their new General Manager on a five-year contract. The front office cited his vision for roster construction and player development.`
-                    : `With the schedule release set for August 14, fans and teams are eagerly anticipating the announcement of Christmas Day and Global Games. Commissioner ${commissionerName} has officially taken office.`,
+                    ? `${teamHeadlineLabel} has named ${commissionerDisplayName} its new General Manager on a five-year contract. The front office cited ${commissionerDisplayName === 'the new front-office lead' ? 'the hire’s' : 'their'} vision for roster construction and player development.`
+                    : `With the schedule release set for August 14, fans and teams are eagerly anticipating the announcement of Christmas Day and Global Games. Commissioner ${commissionerDisplayName} has officially taken office.`,
                 type: 'league',
             }],
             newSocialPosts: [{
                 author: officialAuthor,
                 handle: officialHandle,
                 content: isGM
-                    ? `BREAKING: The ${teamLabel} have hired ${commissionerName} as their new General Manager. Five-year contract. 📝`
-                    : `Welcome to the new era of ${leagueName}. Commissioner ${commissionerName} is officially on the job! 🏀`,
+                    ? `BREAKING: ${teamHeadlineLabel} has hired ${commissionerDisplayName} as its new General Manager. Five-year contract. 📝`
+                    : `Welcome to the new era of ${leagueName}. Commissioner ${commissionerDisplayName} is officially on the job! 🏀`,
                 source: 'TwitterX',
             }],
         };
@@ -358,7 +480,12 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
     const initWindowSize = INITIAL_LEAGUE_STATS.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
     const initialDraftPicks = isEuropeModded
         ? []
-        : generateFuturePicks(draftPicks, nbaNBATeams as any, initYear, initWindowSize);
+        : (() => {
+            const withNba = generateFuturePicks(draftPicks, nbaNBATeams as any, initYear, initWindowSize);
+            if (!isPbaModded) return withNba;
+            const pbaTeamIds = (initialNonNBATeams ?? []).filter((team: any) => team.league === 'PBA').map((team: any) => team.tid);
+            return generateFuturePicksForTeamIds(withNba, pbaTeamIds, initYear, initWindowSize, 2);
+          })();
     let initialStaff: any = null;
     if (isFictional) {
         const nameDataResolved = await nameDataPromise;
@@ -371,7 +498,7 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         teams,
         nonNBATeams: initialNonNBATeams,
         clubAliasMap,
-        activeCompetitions: isSpainEurope ? SPAIN_COMPETITIONS : [],
+        activeCompetitions: isSpainEurope ? SPAIN_COMPETITIONS : isPbaModded ? PBA_COMPETITIONS : [],
         players: allPlayers,
         draftPicks: initialDraftPicks,
         staff: initialStaff,
@@ -380,7 +507,17 @@ export const handleStartGame = async (payload: StartGamePayload): Promise<Partia
         news: initialNews,
         socialFeed: initialSocial,
         historicalStats: [initialHistoricalPoint],
-         historicalAwards: (() => {
+        historicalAwards: (() => {
+            if (isPbaModded) {
+                const key = (a: any) => `${a.season}-${a.type}-${String(a.name ?? '')}-${String(a.team ?? '')}-${String(a.conference ?? '')}`;
+                const seen = new Set<string>();
+                return historicalAwardsData.filter((a: any) => {
+                    const k = key(a);
+                    if (seen.has(k)) return false;
+                    seen.add(k);
+                    return true;
+                });
+            }
             const fromSeasons: any[] = [];
             for (const team of teams as any[]) {
                 for (const s of team.seasons ?? []) {

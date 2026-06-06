@@ -32,6 +32,7 @@ export function autoTrimOversizedRostersPass(
   const maxBuyoutPctOfCap = 0.10;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const isRecentlySigned = (player: NBAPlayer): boolean => isRecentlySignedWithinGrace(player, state.date);
+  const hasActiveInjury = (player: NBAPlayer): boolean => Number((player as any).injury?.gamesRemaining ?? 0) > 0;
   const hasRegularSeasonAppearance = (player: NBAPlayer): boolean =>
     (player.stats ?? []).some((entry: any) => entry.season === currentYear && !entry.playoffs && (entry.gp ?? 0) > 0);
 
@@ -42,6 +43,7 @@ export function autoTrimOversizedRostersPass(
     includeAppearanceGuard: boolean,
   ): NBAPlayer[] => {
     const isProtectedTier1 = (player: NBAPlayer) => {
+      if (hasActiveInjury(player) && !(player as any).nonGuaranteed && !(player as any).twoWay) return true;
       if (includeAppearanceGuard && hasRegularSeasonAppearance(player)) return true;
       if ((player as any).birdRightsResignedThisYear === currentYear) return true;
       if (isRecentlySigned(player) && !(player as any).nonGuaranteed) return true;
@@ -50,6 +52,7 @@ export function autoTrimOversizedRostersPass(
       return false;
     };
     const isProtectedTier2 = (player: NBAPlayer) => {
+      if (hasActiveInjury(player) && !(player as any).nonGuaranteed && !(player as any).twoWay) return true;
       if (includeAppearanceGuard && hasRegularSeasonAppearance(player)) return true;
       if ((player as any).birdRightsResignedThisYear === currentYear) return true;
       if (isRecentlySigned(player) && !(player as any).nonGuaranteed) return true;
@@ -109,10 +112,11 @@ export function autoTrimOversizedRostersPass(
           return (baseLeft - salaryPenaltyLeft) - (baseRight - salaryPenaltyRight);
         };
 
-        const canCut = (player: NBAPlayer) => {
-          if (hasFamilyOnRoster(player, allPlayers)) return false;
-          if (isRecentlySigned(player) && !(player as any).nonGuaranteed && !(player as any).twoWay) return false;
-          if ((player as any).nonGuaranteed || (player as any).twoWay) return true;
+      const canCut = (player: NBAPlayer) => {
+        if (hasFamilyOnRoster(player, allPlayers)) return false;
+        if (hasActiveInjury(player) && !(player as any).nonGuaranteed && !(player as any).twoWay) return false;
+        if (isRecentlySigned(player) && !(player as any).nonGuaranteed && !(player as any).twoWay) return false;
+        if ((player as any).nonGuaranteed || (player as any).twoWay) return true;
           const draftYear = (player as any).draft?.year;
           if (typeof draftYear === 'number' && currentYear - draftYear <= 2) return false;
           const preCampOvr = (player as any).preCampOverallRating as number | undefined;
@@ -193,6 +197,7 @@ export function autoTrimOversizedRostersPass(
 
       const canCut = (player: NBAPlayer) => {
         if (hasFamilyOnRoster(player, roster)) return false;
+        if (hasActiveInjury(player) && !(player as any).nonGuaranteed && !(player as any).twoWay) return false;
         if (isRecentlySigned(player) && !(player as any).nonGuaranteed) return false;
         if (hasRegularSeasonAppearance(player)) return false;
         if ((player as any).nonGuaranteed) return true;

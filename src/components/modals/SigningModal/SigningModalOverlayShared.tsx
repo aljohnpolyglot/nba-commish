@@ -27,7 +27,7 @@ export function OverlayShell({
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className={`relative w-full ${maxWidth} bg-[#0a0a0a] border ${borderClass} shadow-2xl rounded flex flex-col items-center text-center overflow-hidden`}
+        className={`relative w-full ${maxWidth} max-h-[calc(100vh-2rem)] overflow-y-auto bg-[#0a0a0a] border ${borderClass} shadow-2xl rounded flex flex-col items-center text-center`}
       >
         {children}
       </motion.div>
@@ -64,4 +64,3 @@ export function PlayerThumb({
     </div>
   );
 }
-

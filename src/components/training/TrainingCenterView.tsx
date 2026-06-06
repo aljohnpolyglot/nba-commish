@@ -21,10 +21,13 @@ import { nbaPlayerToTrainingPlayer, nbaTeamToTrainingTeam } from '../../TeamTrai
 import { TRAINING_CALENDAR_VERSION } from '../../services/training/trainingScheduler';
 import { resolveEffectiveTrainingCalendar, resolveEffectiveTrainingPlan } from '../../services/training/trainingPlanResolver';
 import type { Allocations, TrainingParadigm, Staffing } from '../../TeamTraining/types';
+import { TrainingCenterWelcomeModal } from './TrainingCenterWelcomeModal';
+import { useTrainingCenterWelcome } from './useTrainingCenterWelcome';
 
 export const TrainingCenterView: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const isGM = state.gameMode === 'gm';
+  const trainingCenterWelcome = useTrainingCenterWelcome(state.saveId);
 
   // GM mode default: user's team. GM can still navigate to other teams,
   // but those views are read-only (per TeamTraining.tsx:279 design doc).
@@ -152,6 +155,22 @@ export const TrainingCenterView: React.FC = () => {
   // settings.
   const dormantState = useMemo(() => {
     if (!team || !state.date) return null;
+    const unresolved = (status?: string) => status === 'pending' || status === 'in-progress' || status == null;
+    const checklist = state.offseasonChecklist;
+    if (checklist && unresolved(checklist.staffSignings)) {
+      return {
+        reason: 'offseason' as const,
+        label: 'Staff hires in progress',
+        subtext: 'Finish staff signings before team training opens.',
+      };
+    }
+    if (checklist && unresolved(checklist.trainingCamp)) {
+      return {
+        reason: 'offseason' as const,
+        label: 'Training camp not opened yet',
+        subtext: 'Open training camp from the offseason tasks to unlock the calendar.',
+      };
+    }
     const d = new Date(state.date);
     const m = d.getUTCMonth() + 1;
     const day = d.getUTCDate();
@@ -177,7 +196,7 @@ export const TrainingCenterView: React.FC = () => {
       }
     }
     return null;
-  }, [team, state.date, state.playoffs]);
+  }, [team, state.date, state.playoffs, state.offseasonChecklist]);
   const selectedDayData = selectedPlanDateISO ? schedule.find(d => d.isoDate === selectedPlanDateISO) : null;
   const selectedDayISO = selectedPlanDateISO;
 
@@ -494,6 +513,11 @@ export const TrainingCenterView: React.FC = () => {
           />
         </div>
       </div>
+      <TrainingCenterWelcomeModal
+        open={trainingCenterWelcome.open}
+        onClose={trainingCenterWelcome.close}
+        onDontShowAgain={trainingCenterWelcome.dontShowAgain}
+      />
     </div>
   );
 };

@@ -100,6 +100,14 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
     )
   ), [rows, offeredIds, rejectedIds]);
 
+  const actionableCount = useMemo(
+    () => rows.filter(r =>
+      (r.intent === 'ready_to_extend' || r.intent === 'open') &&
+      !r.resignBlockReason
+    ).length,
+    [rows],
+  );
+
   const wouldCrossFAOpenDeadline = (targetDate?: string) => {
     if (!state.date || rows.length === 0) return false;
     const today = normalizeDate(state.date);
@@ -261,5 +269,6 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
     isOpen: open,
     hasRows: rows.length > 0,
     allResolved,
+    actionableCount,
   };
 }

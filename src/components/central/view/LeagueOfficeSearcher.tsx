@@ -214,17 +214,43 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
           teamLogoUrl: m.teamLogoUrl || state.teams.find(t => t.name === m.team)?.logoUrl,
         }))
       : state.teams.flatMap((team, i) => {
+          const teamFullName = getTeamFullName(team);
+          const teamPattern = teamFullName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const hireRe = new RegExp(`${teamPattern}\\s+hired\\s+(.+?)\\s+as\\s+Head Coach\\.?$`, 'i');
+          const exitRes = [
+            new RegExp(`(.+?)'s contract with the ${teamPattern} expired after serving as Head Coach\\.?$`, 'i'),
+            new RegExp(`${teamPattern}\\s+fired\\s+(.+?)\\s+as\\s+Head Coach\\.?$`, 'i'),
+            new RegExp(`(.+?) retired from the ${teamPattern} staff as Head Coach\\.?$`, 'i'),
+          ];
+          const unavailable = new Set<string>();
+          let historyHireName: string | null = null;
+          const historyNewestFirst = [...(state.history ?? [])]
+            .map((entry: any) => typeof entry === 'string' ? { text: entry } : entry)
+            .reverse();
+          for (const entry of historyNewestFirst) {
+            const text = String(entry?.text ?? '');
+            const exitName = exitRes.map(re => text.match(re)?.[1]).find(Boolean);
+            if (exitName) unavailable.add(String(exitName).trim().toLowerCase());
+            const hireName = text.match(hireRe)?.[1];
+            if (hireName && !unavailable.has(String(hireName).trim().toLowerCase())) {
+              historyHireName = hireName.trim();
+              break;
+            }
+          }
           const liveHeadCoach = ((team as any).tycoon?.staffMembers ?? []).find((member: any) => isHeadCoachRole(member));
-          if (liveHeadCoach) {
+          const effectiveHeadCoach = historyHireName && historyHireName !== liveHeadCoach?.name
+            ? { ...(liveHeadCoach ?? {}), name: historyHireName }
+            : liveHeadCoach;
+          if (effectiveHeadCoach) {
             return [{
               id: `coach-live-${team.id ?? i}`,
-              name: liveHeadCoach.name,
+              name: effectiveHeadCoach.name,
               type: 'coach' as const,
               jobTitle: 'Head Coach',
-              team: getTeamFullName(team),
+              team: teamFullName,
               conf: team.conference,
               div: (team as any).division,
-              playerPortraitUrl: liveHeadCoach.playerPortraitUrl,
+              playerPortraitUrl: effectiveHeadCoach.playerPortraitUrl,
               teamLogoUrl: team.logoUrl,
             }];
           }

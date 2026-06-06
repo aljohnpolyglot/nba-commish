@@ -32,8 +32,10 @@ export const ViewBidsModal: React.FC<{
     const player = (state.players ?? []).find((entry: any) => entry.internalId === listing.player.id);
     if (!player) return null;
     const estimated = estimatePlayerValueEUR(player as any, state as any);
+    if (!Number.isFinite(estimated) || estimated <= 0) return null;
     if (listing.askingEUR <= estimated * 1.3) return null;
     const gap = Math.round(((listing.askingEUR - estimated) / estimated) * 100);
+    if (!Number.isFinite(gap)) return null;
     return `Asking price is ~${gap}% above estimated market value. Most clubs won't bid — but top-tier sides with deep pockets sometimes overpay for the right profile.`;
   }, [filteredBids, listing, state]);
 

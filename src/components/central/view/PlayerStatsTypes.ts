@@ -21,6 +21,7 @@ export type SortField =
 export interface ComputedRow {
   player: NBAPlayer;
   season: number | 'career';
+  seasonLabel?: string;
   teamAbbrev: string;
   age: number;
   gp: number;

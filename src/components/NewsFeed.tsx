@@ -189,6 +189,7 @@ export const NewsFeed: React.FC = () => {
     // Sort by date descending so newest articles always appear first regardless of insertion order.
     return (state.news || [])
       .filter((n: any) => !n.teamOnly)
+      .filter((n: any) => !(String(n.id || '').startsWith('seasonal-')))
       .slice()
       .sort((a: any, b: any) => {
         const ta = a.date ? new Date(a.date).getTime() : 0;

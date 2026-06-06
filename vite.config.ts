@@ -20,6 +20,12 @@ export default defineConfig(({mode: _mode}) => {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
+      fs: {
+        allow: [
+          __dirname,
+          path.resolve(__dirname, '../nba-store-data'),
+        ],
+      },
     },
   };
 });

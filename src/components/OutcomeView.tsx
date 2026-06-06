@@ -22,15 +22,15 @@ export const OutcomeView: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[100] flex items-center justify-center p-6"
+        className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[100] flex items-center justify-center p-3 md:p-6"
       >
         <motion.div 
           initial={{ scale: 0.9, y: 20 }}
           animate={{ scale: 1, y: 0 }}
-          className="bg-slate-900 border border-indigo-500/20 w-full max-w-3xl rounded-[3rem] shadow-2xl shadow-indigo-500/10 overflow-hidden flex flex-col max-h-[90vh]"
+          className="bg-slate-900 border border-indigo-500/20 w-full max-w-3xl rounded-[3rem] shadow-2xl shadow-indigo-500/10 overflow-hidden flex flex-col max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)]"
         >
-          <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-800">
-            <div className="flex items-center gap-3">
+          <div className="p-4 sm:p-8 border-b border-slate-800 flex items-start justify-between gap-3 bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-800">
+            <div className="flex items-center gap-3 min-w-0">
               <div className="p-2 bg-white/20 rounded-xl">
                 <Sparkles className="text-white" size={24} />
               </div>
@@ -38,13 +38,13 @@ export const OutcomeView: React.FC = () => {
             </div>
             <button 
               onClick={handleClose}
-              className="p-2 hover:bg-white/10 rounded-full text-white transition-colors"
+              className="p-2 hover:bg-white/10 rounded-full text-white transition-colors flex-shrink-0"
             >
               <X size={24} />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-10 custom-scrollbar">
             <div className="prose prose-invert max-w-none">
               <div className="relative mb-8">
                 <div className="absolute -left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 to-violet-500 rounded-full" />
@@ -151,10 +151,10 @@ export const OutcomeView: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-8 bg-slate-950/50 border-t border-slate-800 flex justify-center">
+          <div className="p-4 sm:p-8 bg-slate-950/50 border-t border-slate-800 flex justify-center">
             <button 
               onClick={handleClose}
-              className="px-12 py-4 bg-white text-slate-950 font-black rounded-2xl hover:bg-slate-200 transition-all duration-200 uppercase tracking-widest text-sm shadow-xl"
+              className="w-full sm:w-auto px-12 py-4 bg-white text-slate-950 font-black rounded-2xl hover:bg-slate-200 transition-all duration-200 uppercase tracking-widest text-sm shadow-xl"
             >
               Understood
             </button>
@@ -164,5 +164,4 @@ export const OutcomeView: React.FC = () => {
     </AnimatePresence>
   );
 };
-
 

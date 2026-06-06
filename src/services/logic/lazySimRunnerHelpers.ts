@@ -165,6 +165,7 @@ const autoBroadcastingDefault = (state: GameState): Partial<GameState> => {
 export const buildAutoResolveEvents = (y: number, leagueStats?: any): AutoResolveEvent[] => {
   const y1 = y - 1;
   const euroIsolated = leagueStats?.uiMode === 'euro_isolated';
+  const pbaIsolated = leagueStats?.uiMode === 'pba_isolated';
   const draftLotteryDateStr = toISODateString(getDraftLotteryDate(y, leagueStats));
   const draftDateStr = toISODateString(getDraftDate(y, leagueStats));
   const hofCeremony = getHOFCeremonyDateString(y1);
@@ -179,6 +180,19 @@ export const buildAutoResolveEvents = (y: number, leagueStats?: any): AutoResolv
     resolver: (state: GameState) => announceAwardViaEngine(state, ev.awardId),
     phase: ev.phase,
   }));
+
+  if (pbaIsolated) {
+    return [
+      { date: `${y1}-08-14`, key: 'schedule_generation', resolver: autoGenerateSchedule, phase: 'Generating background schedule...' },
+      { date: `${y}-03-01`, key: 'allstar_votes', resolver: autoSimVotes, phase: 'Selecting PBA All-Star captains...' },
+      { date: `${y}-03-01`, key: 'allstar_reserves', resolver: autoAnnounceReserves, phase: 'Setting PBA All-Star rosters...' },
+      { date: `${y}-03-03`, key: 'dunk_contestants', resolver: autoSelectDunkContestants, phase: 'Selecting PBA Dunk Contest field...' },
+      { date: `${y}-03-03`, key: 'threepoint_contestants', resolver: autoSelectThreePointContestants, phase: 'Selecting PBA 3-Point Contest field...' },
+      { date: `${y}-03-03`, key: 'skills_challenge_contestants', resolver: autoSelectSkillsChallengeContestants, phase: 'Selecting PBA Skills Challenge field...' },
+      { date: `${y}-03-06`, key: 'allstar_weekend', resolver: autoSimAllStarWeekend, phase: 'Simulating PBA All-Star Weekend...' },
+      ...awardEvents,
+    ];
+  }
 
   if (euroIsolated) {
     return [
@@ -220,8 +234,22 @@ export function buildAutoNews(eventKey: string, state: GameState) {
     throne_signups_close: { id: `auto-throne-close-${Date.now()}`, headline: 'THE THRONE — Sign-Ups Closed', content: 'Sign-ups have closed. Composite vote opens January 16.', date },
     throne_field_reveal: { id: `auto-throne-reveal-${Date.now()}`, headline: 'THE THRONE — Field of 16 Revealed', content: 'The composite vote has spoken. The 16 players who will fight for the crown have been chosen.', date },
     allstar_starters: { id: `auto-starters-${Date.now()}`, headline: 'All-Star Starters Announced', content: 'Fan voting has concluded. The All-Star starters have been revealed.', date },
-    allstar_reserves: { id: `auto-reserves-${Date.now()}`, headline: 'Full All-Star Rosters Set', content: 'Coaches have made their picks. The complete All-Star rosters are finalized.', date },
-    allstar_weekend: { id: `auto-asw-${Date.now()}`, headline: 'All-Star Weekend Complete', content: 'The NBA All-Star Weekend has concluded. Check the All-Star tab for results.', date },
+    allstar_reserves: {
+      id: `auto-reserves-${Date.now()}`,
+      headline: state.leagueStats?.uiMode === 'pba_isolated' ? 'PBA All-Star Rosters Set' : 'Full All-Star Rosters Set',
+      content: state.leagueStats?.uiMode === 'pba_isolated'
+        ? 'The captain-draft rosters are set for PBA All-Star Weekend.'
+        : 'Coaches have made their picks. The complete All-Star rosters are finalized.',
+      date,
+    },
+    allstar_weekend: {
+      id: `auto-asw-${Date.now()}`,
+      headline: state.leagueStats?.uiMode === 'pba_isolated' ? 'PBA All-Star Weekend Complete' : 'All-Star Weekend Complete',
+      content: state.leagueStats?.uiMode === 'pba_isolated'
+        ? 'The PBA All-Star Game and weekend contests have concluded. Check the All-Star tab for results.'
+        : 'The NBA All-Star Weekend has concluded. Check the All-Star tab for results.',
+      date,
+    },
     award_coy: null, award_smoy: null, award_mip: null,
     award_dpoy: null, award_roy: null, award_allnba: null, award_mvp: null,
     draft_lottery: { id: `auto-lottery-${Date.now()}`, headline: 'Draft Lottery Complete', content: 'The NBA Draft Lottery has concluded. View the Draft Lottery tab for full results.', date },
@@ -406,7 +434,22 @@ export function generatePlayoffSeriesNews(
   return news;
 }
 
-export const getPhaseLabel = (dateStr: string, year: number): string => {
+export const getPhaseLabel = (dateStr: string, year: number, leagueStats?: { uiMode?: string | null }): string => {
+  if (leagueStats?.uiMode === 'pba_isolated') {
+    const y1 = year - 1;
+    if (dateStr < `${y1}-10-05`) return 'PBA Season Setup...';
+    if (dateStr < `${y1}-12-15`) return 'Philippine Cup...';
+    if (dateStr < `${year}-01-28`) return 'Philippine Cup Playoffs...';
+    if (dateStr < `${year}-03-06`) return 'PBA All-Star Build-Up...';
+    if (dateStr < `${year}-03-11`) return 'PBA All-Star Weekend...';
+    if (dateStr < `${year}-07-01`) return "Commissioner's Cup...";
+    if (dateStr < `${year}-08-08`) return "Commissioner's Cup Playoffs...";
+    if (dateStr < `${year}-09-10`) return "Governors' Cup Setup...";
+    if (dateStr < `${year}-11-10`) return "Governors' Cup...";
+    if (dateStr < `${year}-12-14`) return "Governors' Cup Playoffs...";
+    if (dateStr < `${year}-12-28`) return 'PBA Season Awards...';
+    return 'PBA Offseason...';
+  }
   const y1 = year - 1;
   if (dateStr < `${y1}-10-24`) return 'Preseason...';
   if (dateStr < `${y1}-12-01`) return 'Early Season...';

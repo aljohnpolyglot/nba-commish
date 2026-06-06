@@ -10,6 +10,12 @@ type OffseasonConfirmSpec = {
   confirmLabel: string;
 };
 
+type OffseasonBriefingSpec = {
+  eyebrow: string;
+  title: string;
+  body: string;
+};
+
 type YouthPromotionPlayer = {
   id: string | number;
   name: string;
@@ -43,7 +49,7 @@ export const OffseasonStepConfirmModal: React.FC<{
   return createPortal(
     <div className="fixed inset-0 z-[121] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative w-full max-w-lg rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl">
         <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
           <p className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-300 mb-2">{spec.eyebrow}</p>
           <h2 className="text-xl font-black uppercase tracking-tight text-white">{spec.title}</h2>
@@ -52,7 +58,7 @@ export const OffseasonStepConfirmModal: React.FC<{
           <p className="text-sm text-slate-300 leading-relaxed">
             {spec.body}
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={onCancel}
               className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs py-3 transition-colors"
@@ -83,7 +89,7 @@ export const OffseasonAutoResolveConfirmModal: React.FC<{
   return createPortal(
     <div className="fixed inset-0 z-[121] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative w-full max-w-lg rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl">
         <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
           <p className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-300 mb-2">
             {isPba ? 'Conference Break' : 'Summer Checklist'}
@@ -112,7 +118,7 @@ export const OffseasonAutoResolveConfirmModal: React.FC<{
               </>
             )}
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={onCancel}
               className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs py-3 transition-colors"
@@ -133,6 +139,45 @@ export const OffseasonAutoResolveConfirmModal: React.FC<{
   );
 };
 
+export const OffseasonBriefingModal: React.FC<{
+  spec: OffseasonBriefingSpec | null;
+  onConfirm: () => void;
+  onDismissForever: () => void;
+}> = ({ spec, onConfirm, onDismissForever }) => {
+  if (!spec) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[121] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onConfirm} />
+      <div className="relative w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl">
+        <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
+          <p className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-300 mb-2">{spec.eyebrow}</p>
+          <h2 className="text-xl font-black uppercase tracking-tight text-white">{spec.title}</h2>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">
+            {spec.body}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={onDismissForever}
+              className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs py-3 transition-colors"
+            >
+              Don&apos;t Show Again
+            </button>
+            <button
+              onClick={onConfirm}
+              className="flex-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs py-3 transition-colors"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+};
+
 export const RookieContractsDisclaimerModal: React.FC<{
   open: boolean;
   rookies: RookieRow[];
@@ -142,7 +187,7 @@ export const RookieContractsDisclaimerModal: React.FC<{
   return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onDismiss} />
-      <div className="relative w-full max-w-md rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl overflow-hidden">
+      <div className="relative w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl">
         <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
           <h2 className="text-lg font-black uppercase tracking-tight text-white">Rookie Contracts Signed</h2>
         </div>
@@ -198,8 +243,8 @@ export const YouthPromotionModal: React.FC<{
   return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto scrollbar-hide bg-slate-900 rounded-2xl border border-slate-700 p-6">
-        <div className="flex items-center justify-between mb-5">
+      <div className="relative w-full max-w-4xl max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-hide bg-slate-900 rounded-2xl border border-slate-700 p-4 sm:p-6">
+        <div className="flex items-start justify-between gap-3 mb-5">
           <div className="flex items-center gap-3">
             <GraduationCap size={22} className="text-emerald-400" />
             <div>
@@ -234,8 +279,8 @@ export const PreseasonFriendliesModal: React.FC<{
   return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-2xl rounded-2xl border border-sky-500/30 bg-slate-950 shadow-2xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/10 bg-sky-500/[0.06] flex items-center justify-between gap-3">
+      <div className="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-sky-500/30 bg-slate-950 shadow-2xl">
+        <div className="px-5 py-4 border-b border-white/10 bg-sky-500/[0.06] flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.35em] text-sky-300">Summer Checklist</p>
             <h2 className="mt-1 text-xl font-black uppercase tracking-tight text-white">Preseason Tune-Ups</h2>
@@ -248,7 +293,7 @@ export const PreseasonFriendliesModal: React.FC<{
           {games.length > 0 ? (
             <div className="divide-y divide-slate-800 rounded-xl border border-slate-800 overflow-hidden">
               {games.map(game => (
-                <div key={game.key} className="grid grid-cols-[110px_1fr] gap-3 px-4 py-3 bg-slate-900/60">
+                <div key={game.key} className="grid grid-cols-1 sm:grid-cols-[110px_1fr] gap-2 sm:gap-3 px-4 py-3 bg-slate-900/60">
                   <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">{game.dateLabel}</div>
                   <div className="text-sm font-bold text-slate-100">{game.matchup}</div>
                 </div>

@@ -157,18 +157,18 @@ export const InvitePerformanceModal: React.FC<InvitePerformanceModalProps> = ({ 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-3 md:p-4"
       >
         <motion.div 
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 20 }}
-          className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+          className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)]"
         >
-          <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-            <div className="flex items-center gap-3 text-amber-400">
+          <div className="p-4 sm:p-6 border-b border-slate-800 flex items-start justify-between gap-3 bg-slate-900/50">
+            <div className="flex min-w-0 items-start gap-3 text-amber-400">
                 <Music size={24} />
-                <h3 className="text-xl font-black uppercase tracking-tight text-white">
+                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-white leading-tight">
                     {step === 'type' ? 'Invite Performance' : 
                      step === 'event' ? 'Select Event' : 
                      step === 'team' ? 'Select Team' :
@@ -176,12 +176,12 @@ export const InvitePerformanceModal: React.FC<InvitePerformanceModalProps> = ({ 
                      'Select Artist(s)'}
                 </h3>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
+            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors flex-shrink-0">
               <X size={20} />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-6">
             {step === 'type' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
@@ -360,11 +360,11 @@ export const InvitePerformanceModal: React.FC<InvitePerformanceModalProps> = ({ 
             )}
           </div>
 
-          <div className="p-6 border-t border-slate-800 bg-slate-900/50 flex justify-between items-center">
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <div className="p-4 sm:p-6 border-t border-slate-800 bg-slate-900/50 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider text-center sm:text-left">
               {step === 'artists' ? `${selectedArtists.length} Artist(s) Selected` : ''}
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col-reverse sm:flex-row gap-3">
               {step !== 'type' && (
                 <button 
                   onClick={() => {
@@ -377,7 +377,7 @@ export const InvitePerformanceModal: React.FC<InvitePerformanceModalProps> = ({ 
                         else setStep('event');
                     }
                   }}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-white hover:bg-slate-800 transition-colors uppercase tracking-wider"
+                  className="w-full sm:w-auto px-4 py-3 sm:py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-white hover:bg-slate-800 transition-colors uppercase tracking-wider"
                 >
                   Back
                 </button>

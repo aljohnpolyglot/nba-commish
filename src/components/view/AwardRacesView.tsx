@@ -131,10 +131,6 @@ export const AwardRacesView: React.FC = () => {
           name={c.coachName}
           subtitle={`${c.team.name} · ${c.wins}–${c.losses}`}
           teamLogoUrl={c.team.logoUrl}
-          metaLine={{
-            text: `${c.improvement > 0 ? `+${c.improvement}` : c.improvement < 0 ? `${c.improvement}` : '±0'} wins vs last season`,
-            color: c.improvement > 0 ? 'text-emerald-400' : c.improvement < 0 ? 'text-red-400' : 'text-slate-500',
-          }}
           odds={c.odds}
           accentColor="teal"
           animDelay={i * 0.05}

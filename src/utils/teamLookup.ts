@@ -1,5 +1,6 @@
 import type { NBATeam, NonNBATeam } from '../types';
 import { getTeamForGame } from './helpers';
+import { getResolvedTeamLogoUrl } from './teamAssets';
 
 /**
  * Resolve any tid to an NBATeam-shaped object — handles all three scopes:
@@ -26,15 +27,16 @@ export function resolveAnyTeam(
         id: tid,
         name: nonNBA.name,
         abbrev: nonNBA.abbrev || nonNBA.name.substring(0, 3).toUpperCase(),
-        logoUrl: nonNBA.imgURL || '',
+        logoUrl: getResolvedTeamLogoUrl(nonNBA),
         wins: 0, losses: 0, city: '', state: '', pop: nonNBA.pop ?? 0, region: nonNBA.region ?? '',
         conference: nonNBA.league, division: '',
         primaryColor: nonNBA.colors?.[0] ?? '', secondaryColor: nonNBA.colors?.[1] ?? '',
         arena: '', capacity: nonNBA.stadiumCapacity ?? 0, championships: 0, playoffAppearances: 0,
-        history: [], retiredNumbers: [], rivals: [],
+        history: [], seasons: (nonNBA as any).seasons ?? [], retiredNumbers: [], retiredJerseyNumbers: (nonNBA as any).retiredJerseyNumbers ?? [], rivals: [],
         fanBase: 0, marketSize: 0, prestige: 0, facilities: 0, budget: 0,
         expenses: { scouting: 0, coaching: 0, health: 0, facilities: 0 },
         tycoon: (nonNBA as any).tycoon,
+        colors: (nonNBA as any).colors,
       } as unknown as NBATeam;
     }
     return null;

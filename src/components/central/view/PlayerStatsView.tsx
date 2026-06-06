@@ -6,19 +6,25 @@ import { isFourPointEnabled } from '../../../utils/ruleFlags';
 import { matchCheat, triggerCheat } from '../../../utils/debugCheats';
 import { useHubScope } from '../../../hooks/useHubScope';
 import { useLeagueLabels } from '../../../utils/leagueLabels';
+import { PBA_COMPETITIONS } from '../../../data/templates/philippines/competitions';
+import { getConferenceSpec, type PbaConference } from '../../../services/pba/conferenceTransition';
 import { PlayerStatsControls } from './PlayerStatsControls';
 import { PlayerStatsTable } from './PlayerStatsTable';
 import { ComputedRow, Phase, SeasonMode, SortField, StatType } from './PlayerStatsShared';
 import { usePlayerStatsDerivedData } from './usePlayerStatsDerivedData';
+import { loadPbaStatsForPlayers, type PbaStatsByPlayer } from '../../../services/pba/statsArchive';
+import { loadEuroStatsForPlayers, type EuroStatsByPlayer } from '../../../services/euro/statsArchive';
 
 interface PlayerStatsViewProps {
   initialTeamFilter?: string;
 }
 
+const PBA_COMBINED_FILTER = 'combined';
+
 export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFilter }) => {
   const { state, dispatchAction, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
   const ownTid = getOwnTeamId(state);
-  const { teams: scopedTeams, tids: scopedTids, players: scopedPlayers, isScoped, euroIsolated } = useHubScope();
+  const { teams: scopedTeams, tids: scopedTids, players: scopedPlayers, isScoped, euroIsolated, pbaIsolated } = useHubScope();
   const labels = useLeagueLabels();
   const statPlayers = isScoped ? scopedPlayers : state.players;
   const statTeams = isScoped ? scopedTeams : state.teams;
@@ -26,6 +32,10 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
   const quick = usePlayerQuickActions();
   const [statType, setStatType] = useState<StatType>('perGame');
   const [phase, setPhase] = useState<Phase>('regular');
+  const [pbaCompetitionFilter, setPbaCompetitionFilter] = useState(() =>
+    getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id,
+  );
+  const currentPbaCompetitionId = getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id;
   const [teamFilter, setTeamFilter] = useState<string>(initialTeamFilter ?? 'all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('pts');
@@ -35,8 +45,58 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
   const [showFilters, setShowFilters] = useState(false);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [brefRows, setBrefRows] = useState<Map<string, ComputedRow>>(new Map());
+  const [pbaArchiveStats, setPbaArchiveStats] = useState<PbaStatsByPlayer>(new Map());
+  const [euroArchiveStats, setEuroArchiveStats] = useState<EuroStatsByPlayer>(new Map());
+
+  useEffect(() => {
+    let cancelled = false;
+    if (pbaIsolated) {
+      loadPbaStatsForPlayers(scopedPlayers).then(rows => {
+        if (!cancelled) setPbaArchiveStats(rows);
+      });
+    } else {
+      setPbaArchiveStats(new Map());
+    }
+    if (euroIsolated) {
+      loadEuroStatsForPlayers(scopedPlayers).then(rows => {
+        if (!cancelled) setEuroArchiveStats(rows);
+      });
+    } else {
+      setEuroArchiveStats(new Map());
+    }
+    return () => { cancelled = true; };
+  }, [euroIsolated, pbaIsolated, scopedPlayers]);
 
   const availableSeasons = useMemo(() => {
+    if (pbaIsolated) {
+      const pbaIds = new Set(PBA_COMPETITIONS.map(spec => spec.id));
+      const seasons = new Set<number>();
+      (state.boxScores as any[]).forEach(box => {
+        if (!pbaIds.has(String(box.competitionId ?? ''))) return;
+        const seasonYear = Number(box.season) || state.leagueStats.year;
+        if (seasonYear > 0) seasons.add(seasonYear);
+      });
+      for (const rows of pbaArchiveStats.values()) {
+        rows.forEach(row => {
+          if (row.gp > 0) seasons.add(row.season);
+        });
+      }
+      return Array.from(seasons).sort((a, b) => b - a);
+    }
+    if (euroIsolated) {
+      const seasons = new Set<number>();
+      statPlayers.forEach(player => {
+        player.stats?.forEach(stat => {
+          if (stat.gp > 0) seasons.add(stat.season);
+        });
+      });
+      for (const rows of euroArchiveStats.values()) {
+        rows.forEach(row => {
+          if (row.gp > 0) seasons.add(row.season);
+        });
+      }
+      return Array.from(seasons).sort((a, b) => b - a);
+    }
     const seasons = new Set<number>();
     statPlayers.forEach(player => {
       player.stats?.forEach(stat => {
@@ -44,26 +104,76 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
       });
     });
     return Array.from(seasons).sort((a, b) => b - a);
-  }, [statPlayers]);
+  }, [euroArchiveStats, euroIsolated, pbaArchiveStats, pbaIsolated, state.boxScores, state.leagueStats.year, statPlayers]);
 
   const [season, setSeason] = useState<SeasonMode>(() => availableSeasons[0] ?? state.leagueStats.year);
+
+  useEffect(() => {
+    if ((!pbaIsolated && !euroIsolated) || typeof season !== 'number') return;
+    if (availableSeasons.length > 0 && !availableSeasons.includes(season)) {
+      setSeason(availableSeasons[0]);
+    }
+  }, [availableSeasons, euroIsolated, pbaIsolated, season]);
 
   useEffect(() => {
     if (!pendingStatSort || pendingStatSort.type !== 'player') return;
     setSortField(pendingStatSort.field as SortField);
     setSortOrder(pendingStatSort.order);
+    if (pendingStatSort.phase) setPhase(pendingStatSort.phase as Phase);
+    if (pbaIsolated && pendingStatSort.competitionId) setPbaCompetitionFilter(pendingStatSort.competitionId);
     const advFields: SortField[] = ['per', 'tsPct', 'efgPctA', 'usgPct', 'ortg', 'drtg', 'bpm', 'ws', 'vorp'];
     if (advFields.includes(pendingStatSort.field as SortField)) setStatType('advanced');
     setPendingStatSort(null);
-  }, [pendingStatSort, setPendingStatSort]);
+  }, [pendingStatSort, pbaIsolated, setPendingStatSort]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [season, phase, statType, teamFilter, searchTerm, sortField, sortOrder]);
+  }, [season, phase, pbaCompetitionFilter, statType, teamFilter, searchTerm, sortField, sortOrder]);
 
   useEffect(() => {
-    if (euroIsolated && phase === 'cup') setPhase('regular');
-  }, [euroIsolated, phase]);
+    if ((euroIsolated || pbaIsolated) && phase === 'cup') setPhase('regular');
+  }, [euroIsolated, pbaIsolated, phase]);
+
+  useEffect(() => {
+    if (!pbaIsolated) return;
+    const valid = new Set([PBA_COMBINED_FILTER, ...PBA_COMPETITIONS.map(spec => spec.id)]);
+    if (!valid.has(pbaCompetitionFilter)) {
+      setPbaCompetitionFilter(currentPbaCompetitionId);
+      return;
+    }
+    if (pbaCompetitionFilter !== PBA_COMBINED_FILTER && pbaCompetitionFilter !== currentPbaCompetitionId) {
+      setPbaCompetitionFilter(currentPbaCompetitionId);
+    }
+  }, [currentPbaCompetitionId, pbaIsolated, pbaCompetitionFilter]);
+
+  const pbaCompetitionOptions = useMemo(() => [
+    ...PBA_COMPETITIONS.map(spec => ({ id: spec.id, label: spec.displayName.replace(/^PBA\s+/, '') })),
+    { id: PBA_COMBINED_FILTER, label: 'Combined' },
+  ], []);
+
+  const pbaCompetitionIds = useMemo(() => {
+    if (!pbaIsolated) return undefined;
+    return pbaCompetitionFilter === PBA_COMBINED_FILTER
+      ? PBA_COMPETITIONS.map(spec => spec.id)
+      : [pbaCompetitionFilter];
+  }, [pbaIsolated, pbaCompetitionFilter]);
+
+  const filteredPbaArchiveStats = useMemo(() => {
+    if (!pbaIsolated) return undefined;
+    if (pbaCompetitionFilter === PBA_COMBINED_FILTER) return pbaArchiveStats;
+    const filtered = new Map<string, typeof pbaArchiveStats extends Map<string, infer T> ? T : never>();
+    for (const [playerId, rows] of pbaArchiveStats.entries()) {
+      const nextRows = rows.filter(row => (row as any)._archiveCompetitionId === pbaCompetitionFilter);
+      if (nextRows.length > 0) filtered.set(playerId, nextRows as any);
+    }
+    return filtered;
+  }, [pbaArchiveStats, pbaCompetitionFilter, pbaIsolated]);
+
+  const externalArchiveStats = pbaIsolated
+    ? filteredPbaArchiveStats
+    : euroIsolated
+      ? euroArchiveStats
+      : undefined;
 
   const sortedTeams = useMemo(
     () =>
@@ -129,6 +239,8 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
     isScoped,
     season,
     phase,
+    competitionIds: pbaCompetitionIds,
+    externalStatsByPlayer: externalArchiveStats,
     statType,
     teamFilter,
     searchTerm,
@@ -190,6 +302,9 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
         setStatType={setStatType}
         phase={phase}
         setPhase={setPhase}
+        pbaCompetitionFilter={pbaCompetitionFilter}
+        setPbaCompetitionFilter={setPbaCompetitionFilter}
+        pbaCompetitionOptions={pbaCompetitionOptions}
         perPage={perPage}
         setPerPage={handlePerPageChange}
         searchTerm={searchTerm}
@@ -199,12 +314,16 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
         setShowFilters={setShowFilters}
         brefLoading={brefLoading}
         euroIsolated={euroIsolated}
+        pbaIsolated={pbaIsolated}
         cupShort={labels.cupShort}
       />
       <PlayerStatsTable
         season={season}
         statType={statType}
         phase={phase}
+        competitionLabel={pbaIsolated
+          ? pbaCompetitionOptions.find(option => option.id === pbaCompetitionFilter)?.label
+          : undefined}
         cupShort={labels.cupShort}
         cupChampion={labels.cupChampion}
         fourPointEnabled={fourPointEnabled}

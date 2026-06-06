@@ -1,4 +1,5 @@
 import { generateSocialStats } from './socialhelpers';
+import { fetchAvatarData, getAvatarByHandle } from '../services/avatarService';
 
 /**
  * Find the avatar URL for a handle from existing social feed posts.
@@ -17,6 +18,8 @@ function findAvatarFromPosts(handle: string, state: any): string | undefined {
 
 export const fetchProfileData = async (handle: string, dispatchAction: (action: any) => void, state?: any) => {
   const cleanHandle = handle.replace('@', '');
+  const avatars = await fetchAvatarData().catch(() => []);
+  const gistAvatar = getAvatarByHandle(cleanHandle, avatars);
 
   try {
     const API = "https://twitterfollowers.mogatas-princealjohn-05082003.workers.dev";
@@ -34,7 +37,7 @@ export const fetchProfileData = async (handle: string, dispatchAction: (action: 
 
       // Avatar: API may return it under various field names; fall back to existing post avatar
       const apiAvatar = d.scrapedAvatar || d.profileImageUrl || d.avatar || d.image || d.profile_image_url || d.profile_image_url_https;
-      const avatarUrl = apiAvatar || findAvatarFromPosts(cleanHandle, state);
+      const avatarUrl = gistAvatar || findAvatarFromPosts(cleanHandle, state) || apiAvatar;
       const bannerUrl = d.scrapedBanner || d.profileBannerUrl || d.banner || d.profile_banner_url || undefined;
 
       profileData = {
@@ -60,7 +63,7 @@ export const fetchProfileData = async (handle: string, dispatchAction: (action: 
         followingCount: stats.following,
         followersCount: stats.followers,
         verified: false,
-        avatarUrl: findAvatarFromPosts(cleanHandle, state)
+        avatarUrl: gistAvatar || findAvatarFromPosts(cleanHandle, state)
       };
     }
 
@@ -77,7 +80,7 @@ export const fetchProfileData = async (handle: string, dispatchAction: (action: 
       followingCount: stats.following,
       followersCount: stats.followers,
       verified: false,
-      avatarUrl: findAvatarFromPosts(cleanHandle, state)
+      avatarUrl: gistAvatar || findAvatarFromPosts(cleanHandle, state)
     };
     dispatchAction({ type: 'CACHE_PROFILE', payload: { handle: cleanHandle, profile: fallback } });
     return fallback;

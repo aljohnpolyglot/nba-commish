@@ -3,6 +3,7 @@ import { Building2, TrendingUp, HeartPulse, Smile, Plane, Shield, Dumbbell, Targ
 import type { TycoonState } from '../../../../../types/tycoon';
 import { medicalQuality } from '../../../../../services/tycoon/medicalEngine';
 import { FacilityKpi } from '../shared/FacilityKpi';
+import { getTycoonFacilityLevel, getTycoonStadiumCapacity } from '../../../../../services/tycoon/tierBase';
 
 const SectionTitle: React.FC<{ icon: React.ReactNode; title: string; subtitle: string }> = ({ icon, title, subtitle }) => (
   <div className="flex items-start gap-3">
@@ -88,9 +89,13 @@ export const FacilitiesSection: React.FC<{
     ? Math.round((tycoon.travelPreferences.hotel + tycoon.travelPreferences.flight + tycoon.travelPreferences.bus) / 3)
     : 2;
   const travelRating = 58 + travelAverage * 8;
-  const trainingRating = 58 + tycoon.facilities.trainingCenter.level * 9;
-  const academyRating = 54 + tycoon.facilities.academy.level * 9;
-  const arenaRating = 56 + tycoon.facilities.stadium.level * 9;
+  const stadiumLevel = getTycoonFacilityLevel(tycoon.facilities?.stadium);
+  const trainingLevel = getTycoonFacilityLevel(tycoon.facilities?.trainingCenter);
+  const academyLevel = getTycoonFacilityLevel(tycoon.facilities?.academy);
+  const stadiumCapacity = getTycoonStadiumCapacity(tycoon);
+  const trainingRating = 58 + trainingLevel * 9;
+  const academyRating = 54 + academyLevel * 9;
+  const arenaRating = 56 + stadiumLevel * 9;
   const analyticsRating = 72;
   const cards: Array<{
     title: string;
@@ -193,11 +198,11 @@ export const FacilitiesSection: React.FC<{
     },
   ];
   const avgRating = Math.round(cards.reduce((sum, card) => sum + card.rating, 0) / cards.length);
-  const maintenance = (tycoon.facilities.stadium.level + tycoon.facilities.trainingCenter.level + tycoon.facilities.academy.level) * 2_600_000
+  const maintenance = (stadiumLevel + trainingLevel + academyLevel) * 2_600_000
     + (tycoon.medicalBudget ?? 0) * 0.35 + travelAverage * 450_000;
-  const facilityValue = tycoon.facilities.stadium.capacity * 4_500
-    + tycoon.facilities.trainingCenter.level * 16_000_000
-    + tycoon.facilities.academy.level * 9_000_000
+  const facilityValue = stadiumCapacity * 4_500
+    + trainingLevel * 16_000_000
+    + academyLevel * 9_000_000
     + (tycoon.medicalBudget ?? 0) * 5;
   return (
     <div className="space-y-6">
@@ -295,7 +300,7 @@ export const FacilitiesSection: React.FC<{
             <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Operational Insights</div>
             {[
               ['good', 'Training facilities are world-class. Player development is at elite level.'],
-              ['warn', `Arena capacity of ${tycoon.facilities.stadium.capacity.toLocaleString()} may limit future revenue.`],
+              ['warn', `Arena capacity of ${stadiumCapacity.toLocaleString()} may limit future revenue.`],
               ['warn', 'Youth academy facilities could be upgraded.'],
               ['good', 'Medical center is reducing injury risk effectively.'],
               ['info', 'Three European clubs have better travel conditions.'],

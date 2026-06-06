@@ -27,8 +27,8 @@ export const FinanceRecapModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[140] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl rounded-2xl border border-emerald-400/30 bg-slate-950 text-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-800 p-5">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-emerald-400/30 bg-slate-950 text-white shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-800 p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl border border-emerald-400/40 bg-emerald-400/10 flex items-center justify-center text-emerald-200">
               <Landmark size={22} />
@@ -40,7 +40,7 @@ export const FinanceRecapModal: React.FC = () => {
           </div>
           <button onClick={() => close()} className="w-10 h-10 rounded-xl border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><X size={18} /></button>
         </div>
-        <div className="p-5 space-y-5">
+        <div className="space-y-5 overflow-y-auto p-4 sm:p-5">
           <div className="grid sm:grid-cols-4 gap-3">
             <Kpi label="Cash In" value={formatCurrencyWithCode(recap.cashIn, 'EUR', false)} tone="text-emerald-300" />
             <Kpi label="Cash Out" value={formatCurrencyWithCode(recap.cashOut, 'EUR', false)} tone="text-rose-300" />
@@ -65,7 +65,7 @@ export const FinanceRecapModal: React.FC = () => {
               Next payroll cadence date: <span className="font-black">{recap.nextPayday}</span>
             </div>
           )}
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <button onClick={() => { close(); setCurrentView('Front Office Finances'); }} className="h-12 flex-1 rounded-xl border border-emerald-400/50 bg-emerald-400/15 text-emerald-200 font-black uppercase tracking-widest text-xs">
               Open Finances
             </button>

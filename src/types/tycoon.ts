@@ -235,9 +235,23 @@ export interface TycoonState {
     contractYears: number;
     rating?: number;
     hiredYear?: number;
+    yearsWithTeam?: number;
+    bornYear?: number;
+    careerStartYear?: number;
+    position?: string;
+    jobTitle?: string;
+    motivationType?: import('../services/staff/staffRetirement').StaffMotivationType;
+    healthDurability?: number;
+    stressTolerance?: number;
     signingBonus?: number;
     face?: any;
     staffImageId?: number;
+    leagueId?: string;
+    sourcePlayerId?: string;
+    retiredYear?: number;
+    retiredDate?: string;
+    retirementReason?: import('../services/staff/staffRetirement').StaffRetirementReason;
+    retirementReasonLabel?: string;
   }>;
 }
 

@@ -11,6 +11,7 @@
 
 import type { NBAPlayer, NonNBATeam } from '../types';
 import { generateDraftClassForGame } from './genDraftPlayers';
+import { PHILIPPINE_COLLEGE_POOL } from '../data/philippineCollegePool';
 import { getNameData } from '../data/nameDataFetcher';
 import { EUROLEAGUE_TEAMS, ENDESA_TEAMS, NBL_TEAMS, BLEAGUE_TEAMS } from '../genplayersconstants';
 import type { Player } from '../genplayersconstants';
@@ -198,7 +199,21 @@ function generateLeague(
   // Generate prospect-shaped players via the existing pipeline (gives us all
   // the rating fields we need), then convert them to active overseas players.
   const raw = generateDraftClassForGame(
-    startYear, totalPlayers, rng, nameData, startYear,
+    startYear,
+    totalPlayers,
+    rng,
+    nameData,
+    startYear,
+    undefined,
+    undefined,
+    'legacy_newgen',
+    league === 'PBA'
+      ? {
+          collegePool: PHILIPPINE_COLLEGE_POOL,
+          nationalityOverride: 'Philippines',
+          forceCollegePath: true,
+        }
+      : undefined,
   );
   const players = distributePlayersToTeams(raw, teams, status, startYear, rng);
   return { players, teams };

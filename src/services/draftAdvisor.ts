@@ -14,6 +14,7 @@ import {
   getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2,
   resolveManualOutlook, type CapThresholds,
 } from '../utils/salaryUtils';
+import { isOnRoster } from '../utils/teamLookup';
 
 // ── Position bucket helpers (Guard / Forward / Center) ──────────────────────
 
@@ -75,7 +76,7 @@ export function computeWeakPositions(
   teamId: number,
   allPlayers: NBAPlayer[],
 ): PositionBucket[] {
-  const roster = allPlayers.filter(p => p.tid === teamId && p.status === 'Active');
+  const roster = allPlayers.filter(p => p.tid === teamId && isOnRoster(p));
   const groups: Record<PositionBucket, number[]> = { Guard: [], Forward: [], Center: [] };
   for (const p of roster) {
     groups[posBucketFor(p.pos)].push(calcOvr2K(p));

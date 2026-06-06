@@ -91,6 +91,7 @@ export const fetchAndParseBBGMData = async () => {
                     tid: p.tid,
                     name: fullName,
                     overallRating: overallRating,
+                    potential: p.potential ?? latestRating.pot,
                     ratings: p.ratings || [],
                     stats: p.stats || [],
                     imgURL: p.imgURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`,

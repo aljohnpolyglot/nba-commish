@@ -18,12 +18,31 @@ function emptyGH(): Pick<SeasonRow, 'ghMin'|'ghFgm'|'ghFga'|'ghTpm'|'ghTpa'|'ghT
 interface BoxAggregate {
   gp: number;
   teamTid: number;
+  leagueTag?: string;
+  leagueTitle?: string;
   rimFgm: number; rimFga: number;
   lpFgm: number; lpFga: number;
   mrFgm: number; mrFga: number;
   ba: number;
   dd: number; td: number; qd: number; fiveBy5: number;
   gh: ReturnType<typeof emptyGH>;
+}
+
+function inferLeagueFromGame(game: any, teamTid: number): { tag: string; title: string } {
+  const competitionId = String(game?.competitionId ?? '').toLowerCase();
+  if (competitionId === 'euroleague') return { tag: 'EUROPE', title: 'EuroLeague' };
+  if (competitionId === 'endesa') return { tag: 'ESP-1', title: 'Liga Endesa' };
+  if (competitionId === 'copa-del-rey') return { tag: 'ESP-CUP', title: 'Copa del Rey' };
+  if (competitionId === 'supercopa') return { tag: 'ESP-SC', title: 'Supercopa' };
+  if (competitionId === 'pba') return { tag: 'PBA', title: 'PBA' };
+  if (teamTid >= 5000 && teamTid < 6000) return { tag: 'ESP-1', title: 'Liga Endesa' };
+  if (teamTid >= 1000 && teamTid < 2000) return { tag: 'EUROPE', title: 'EuroLeague / Europe' };
+  if (teamTid >= 2000 && teamTid < 3000) return { tag: 'PBA', title: 'PBA' };
+  if (teamTid >= 3000 && teamTid < 4000) return { tag: 'WNBA', title: 'WNBA' };
+  if (teamTid >= 6000 && teamTid < 7000) return { tag: 'G-LG', title: 'G League' };
+  if (teamTid >= 7000 && teamTid < 8000) return { tag: 'CBA', title: 'China CBA' };
+  if (teamTid >= 8000 && teamTid < 9000) return { tag: 'NBL', title: 'NBL Australia' };
+  return { tag: 'NBA', title: 'NBA' };
 }
 
 export function useBoxData(playerId: string, boxScores: any[]) {
@@ -46,6 +65,14 @@ export function useBoxData(playerId: string, boxScores: any[]) {
       const aggregate = getOrCreate(`${seasonYear}_${isPlayoffs ? 'ply' : 'rs'}`);
       const gameTid = inHome ? (game.homeTeamId ?? game.homeTid ?? -1) : (game.awayTeamId ?? game.awayTid ?? -1);
       if (gameTid > 0) aggregate.teamTid = gameTid;
+      const league = inferLeagueFromGame(game, gameTid);
+      if (!aggregate.leagueTag) {
+        aggregate.leagueTag = league.tag;
+        aggregate.leagueTitle = league.title;
+      } else if (aggregate.leagueTag !== league.tag) {
+        aggregate.leagueTag = 'MIX';
+        aggregate.leagueTitle = 'Multiple competitions';
+      }
       aggregate.gp += 1;
 
       const rimFgm = sp(stats.fgAtRim); const rimFga = sp(stats.fgaAtRim);
@@ -115,26 +142,40 @@ export function buildSeasonRows(
   boxData: Map<string, BoxAggregate>,
   phase: Phase,
 ): { body: SeasonRow[]; career: SeasonRow | null } {
+  const normalizeAbbrev = (value: unknown): string | null => {
+    const text = String(value ?? '').trim().toUpperCase();
+    return text.length > 0 ? text : null;
+  };
+  const statTeamAbbrev = (stat: NBAGMStat): string | null => {
+    const raw = stat as any;
+    return (
+      normalizeAbbrev(raw.abbrev) ??
+      normalizeAbbrev(raw.teamAbbrev) ??
+      normalizeAbbrev(raw.tm) ??
+      normalizeAbbrev(raw.TM)
+    );
+  };
   const rsPool = stats.filter(stat => !stat.playoffs && sp(stat.gp) > 0);
   const plyPool = stats.filter(stat => !!stat.playoffs && sp(stat.gp) > 0);
 
   const makeSeasoned = (pool: NBAGMStat[], phaseKey: 'rs' | 'ply'): SeasonRow[] => {
-    const bySeasonTid = new Map<string, NBAGMStat[]>();
+    const bySeasonTeamKey = new Map<string, NBAGMStat[]>();
     for (const stat of pool) {
-      const key = `${stat.season}_${stat.tid}`;
-      if (!bySeasonTid.has(key)) bySeasonTid.set(key, []);
-      bySeasonTid.get(key)!.push(stat);
+      const abbrevKey = statTeamAbbrev(stat) ?? '_';
+      const key = `${stat.season}_${stat.tid}_${abbrevKey}`;
+      if (!bySeasonTeamKey.has(key)) bySeasonTeamKey.set(key, []);
+      bySeasonTeamKey.get(key)!.push(stat);
     }
 
     const rows: SeasonRow[] = [];
-    bySeasonTid.forEach((list, key) => {
+    bySeasonTeamKey.forEach((list, key) => {
       const [seasonLabel] = key.split('_');
       const season = parseInt(seasonLabel, 10);
       const box = boxData.get(`${season}_${phaseKey}`);
       const statTid = list[0].tid;
       const inferredTid = statTid < 0 && box?.teamTid && box.teamTid > 0 ? box.teamTid : statTid;
       const team = teams.find(entry => entry.id === inferredTid);
-      const abbrev = team?.abbrev ?? (inferredTid < 0 ? 'FA' : 'UNK');
+      const abbrev = statTeamAbbrev(list[0]) ?? team?.abbrev ?? (inferredTid < 0 ? 'FA' : 'UNK');
       const rowAge = (age ?? 0) - (currentYear - season);
 
       const totGp = list.reduce((sum, stat) => sum + sp(stat.gp), 0) || 1;
@@ -162,6 +203,9 @@ export function buildSeasonRows(
 
       rows.push({
         season,
+        seasonLabel: (list[0] as any)._seasonLabel,
+        leagueTag: box?.leagueTag ?? (list[0] as any).tag ?? (list[0] as any).leagueTag ?? inferLeagueFromGame(null, inferredTid).tag,
+        leagueTitle: box?.leagueTitle ?? (list[0] as any).title ?? (list[0] as any).leagueTitle ?? inferLeagueFromGame(null, inferredTid).title,
         teamAbbrev: abbrev,
         age: Math.max(16, rowAge),
         gp: totGp,
@@ -255,7 +299,13 @@ export function buildSeasonRows(
       const weighted = (field: keyof SeasonRow) => seasonRows.reduce((sum, row) => sum + (row[field] as number) * row.gp, 0) / totalGp;
       const total = (field: keyof SeasonRow) => seasonRows.reduce((sum, row) => sum + (row[field] as number), 0);
       const totalRow: SeasonRow = {
-        season: seasonRows[0].season, teamAbbrev: 'TOT', age: seasonRows[0].age, isTot: true,
+        season: seasonRows[0].season,
+        seasonLabel: seasonRows[0].seasonLabel,
+        leagueTag: seasonRows.every(row => row.leagueTag === seasonRows[0].leagueTag) ? seasonRows[0].leagueTag : 'MIX',
+        leagueTitle: seasonRows.every(row => row.leagueTitle === seasonRows[0].leagueTitle) ? seasonRows[0].leagueTitle : 'Multiple competitions',
+        teamAbbrev: 'TOT',
+        age: seasonRows[0].age,
+        isTot: true,
         gp: totalGp, gs: total('gs'), minTotal: total('minTotal'), minPG: weighted('minPG'),
         fg: weighted('fg'), fga: weighted('fga'), fgPct: seasonRows.reduce((sum, row) => sum + row.fg * row.gp, 0) / (seasonRows.reduce((sum, row) => sum + row.fga * row.gp, 0) || 1),
         tp: weighted('tp'), tpa: weighted('tpa'), tpPct: seasonRows.reduce((sum, row) => sum + row.tp * row.gp, 0) / (seasonRows.reduce((sum, row) => sum + row.tpa * row.gp, 0) || 1),
@@ -296,7 +346,14 @@ export function buildSeasonRows(
       const totalGp = regular.gp + playoffs.gp;
       const weighted = (left: keyof SeasonRow, right: keyof SeasonRow) => (((regular[left] as number) * regular.gp) + ((playoffs[right] as number) * playoffs.gp)) / totalGp;
       body.push({
-        season, teamAbbrev: regular.teamAbbrev, age: regular.age, gp: totalGp, gs: regular.gs + playoffs.gs,
+        season,
+        seasonLabel: regular.seasonLabel ?? playoffs.seasonLabel,
+        leagueTag: regular.leagueTag === playoffs.leagueTag ? regular.leagueTag : 'MIX',
+        leagueTitle: regular.leagueTitle === playoffs.leagueTitle ? regular.leagueTitle : 'Multiple competitions',
+        teamAbbrev: regular.teamAbbrev,
+        age: regular.age,
+        gp: totalGp,
+        gs: regular.gs + playoffs.gs,
         minTotal: regular.minTotal + playoffs.minTotal, minPG: ((regular.minPG * regular.gp) + (playoffs.minPG * playoffs.gp)) / totalGp,
         fg: weighted('fg', 'fg'), fga: weighted('fga', 'fga'), fgPct: weighted('fgPct', 'fgPct'),
         tp: weighted('tp', 'tp'), tpa: weighted('tpa', 'tpa'), tpPct: weighted('tpPct', 'tpPct'),
@@ -321,7 +378,7 @@ export function buildSeasonRows(
   const weighted = (field: keyof SeasonRow) => careerBase.reduce((sum, row) => sum + (row[field] as number) * row.gp, 0) / totalGp;
   const total = (field: keyof SeasonRow) => careerBase.reduce((sum, row) => sum + (row[field] as number), 0);
   const career: SeasonRow = {
-    season: 0, teamAbbrev: '', age: 0, isCareer: true,
+    season: 0, leagueTag: '', leagueTitle: '', teamAbbrev: '', age: 0, isCareer: true,
     gp: total('gp'), gs: total('gs'), minTotal: total('minTotal'), minPG: weighted('minPG'),
     fg: weighted('fg'), fga: weighted('fga'), fgPct: careerBase.reduce((sum, row) => sum + row.fg * row.gp, 0) / (careerBase.reduce((sum, row) => sum + row.fga * row.gp, 0) || 1),
     tp: weighted('tp'), tpa: weighted('tpa'), tpPct: careerBase.reduce((sum, row) => sum + row.tp * row.gp, 0) / (careerBase.reduce((sum, row) => sum + row.tpa * row.gp, 0) || 1),

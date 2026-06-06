@@ -226,7 +226,8 @@ export const TeamHistorySeasonPanel: React.FC<{
   summaryStats: { totalW: number; totalL: number; winPct: string; playoffApps: number; finalsApps: number; titles: number; best?: any; worst?: any };
   seasonHistory: any[];
   isFictional: boolean;
-}> = ({ accent, summaryStats, seasonHistory, isFictional }) => (
+  championLabel?: string;
+}> = ({ accent, summaryStats, seasonHistory, isFictional, championLabel }) => (
   <motion.div key="history" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
       {[
@@ -262,7 +263,7 @@ export const TeamHistorySeasonPanel: React.FC<{
                 <td className="py-3 px-4 font-bold text-sm">{row.isCurrent ? <span className="text-zinc-600 italic text-xs">In Progress</span> : row.won != null ? `${row.won}-${row.lost}` : <span className="text-zinc-700">—</span>}</td>
                 <td className="py-3 px-4 text-zinc-400 font-mono text-xs">{row.isCurrent ? <span className="text-zinc-700">TBC</span> : row.won != null ? (row.won / ((row.won + row.lost) || 1)).toFixed(3) : '—'}</td>
                 <td className="py-3 px-4">
-                  {row.isCurrent ? <span className="text-xs text-zinc-600 italic">Season ongoing</span> : row.isChamp ? <span className="flex items-center gap-1.5 text-xs font-black" style={{ color: accent }}><Trophy className="w-3 h-3" /> {isFictional ? 'League Champions' : 'NBA Champions'}</span> : row.isRU ? <span className="text-xs font-semibold text-zinc-400 flex items-center gap-1"><Trophy className="w-3 h-3 opacity-40" /> Runner-Up</span> : row.playoffRoundsWon === 3 ? <span className="text-xs text-zinc-400">Conf. Finals</span> : row.playoffRoundsWon === 2 ? <span className="text-xs text-zinc-500">2nd Round</span> : row.playoffRoundsWon === 1 ? <span className="text-xs text-zinc-600">1st Round</span> : row.playoffRoundsWon === 0 ? <span className="text-xs text-zinc-700">Play-In</span> : <span className="text-xs text-zinc-800">Missed Playoffs</span>}
+                  {row.isCurrent ? <span className="text-xs text-zinc-600 italic">Season ongoing</span> : row.isChamp ? <span className="flex items-center gap-1.5 text-xs font-black" style={{ color: accent }}><Trophy className="w-3 h-3" /> {row.conferenceTitles?.length ? row.conferenceTitles.join(', ') : championLabel ?? (isFictional ? 'League Champions' : 'NBA Champions')}</span> : row.isRU ? <span className="text-xs font-semibold text-zinc-400 flex items-center gap-1"><Trophy className="w-3 h-3 opacity-40" /> Runner-Up</span> : row.playoffRoundsWon === 3 ? <span className="text-xs text-zinc-400">Conf. Finals</span> : row.playoffRoundsWon === 2 ? <span className="text-xs text-zinc-500">2nd Round</span> : row.playoffRoundsWon === 1 ? <span className="text-xs text-zinc-600">1st Round</span> : row.playoffRoundsWon === 0 ? <span className="text-xs text-zinc-700">Play-In</span> : <span className="text-xs text-zinc-800">Missed Playoffs</span>}
                 </td>
               </tr>
             ))}

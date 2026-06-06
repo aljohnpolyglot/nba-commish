@@ -81,6 +81,53 @@ export function getLeagueLabels(leagueType: LeagueType): LeagueLabels {
  * before LOAD_GAME / START_GAME completes. */
 export function useLeagueLabels(): LeagueLabels {
   const { state } = useGame();
+  const uiMode = state?.leagueStats?.uiMode ?? state?.pendingStartPayload?.uiMode;
+  if (uiMode === 'pba_isolated') {
+    return {
+      cupShort: 'PBA Cup',
+      cupLong: 'PBA Cup',
+      central: 'PBA Central',
+      finals: 'PBA Finals',
+      draft: 'PBA Draft',
+      draftLottery: 'Draft Order',
+      leagueOffice: 'PBA Office',
+      officials: 'PBA Officials',
+      referee: 'PBA Referee',
+      official: 'PBA Official',
+      leaguePass: 'PBA Pass',
+      injuriesTitle: 'PBA Injuries',
+      leagueHQ: 'PBA HQ',
+      mediaRights: 'PBA Media Rights',
+      appTitle: 'FilipinoBasketCommissionerSim',
+      leagueTeam: 'PBA Team',
+      finalsHalftime: 'PBA Finals Halftime Show',
+      cupChampion: 'Conference Champion',
+      cupMVP: 'Conference MVP',
+    };
+  }
+  if (uiMode === 'euro_isolated') {
+    return {
+      cupShort: 'Cup',
+      cupLong: 'Cup',
+      central: 'Club Central',
+      finals: 'League Finals',
+      draft: 'Draft',
+      draftLottery: 'Draft Order',
+      leagueOffice: 'League Office',
+      officials: 'League Officials',
+      referee: 'League Referee',
+      official: 'League Official',
+      leaguePass: 'League Pass',
+      injuriesTitle: 'League Injuries',
+      leagueHQ: 'League HQ',
+      mediaRights: 'League Media Rights',
+      appTitle: 'Basketball Commissioner Simulator',
+      leagueTeam: 'Club',
+      finalsHalftime: 'Finals Halftime Show',
+      cupChampion: 'Cup Champion',
+      cupMVP: 'Cup MVP',
+    };
+  }
   const leagueType = state?.leagueType ?? state?.pendingStartPayload?.leagueType;
   return getLeagueLabels(leagueType);
 }

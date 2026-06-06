@@ -31,7 +31,7 @@ import { calculatePlayerOverallForYear } from '../../utils/playerRatings';
 import { applyLeagueDisplayScale, LEAGUE_DISPLAY_MULTIPLIERS } from '../../hooks/useLeagueScaledRatings';
 import { calculateLeagueOverall } from '../logic/leagueOvr';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
-import { EXTERNAL_LEAGUE_OVR_CAP } from '../../constants';
+import { EXTERNAL_LEAGUE_OVR_CAP, YOUTH_EXTERNAL_OVR_CAP } from '../../constants';
 import { getFocusWeights, ARCHETYPE_PROFILES } from '../../TeamTraining/constants/trainingarchetypes';
 import { calculateMentorExp } from '../training/mentorScore';
 import type { TrainingParadigm, Allocations } from '../../TeamTraining/types';
@@ -72,6 +72,26 @@ interface TeamPlanForDay {
 const EXTERNAL_LEAGUE_STATUSES = new Set([
   'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa', 'China CBA', 'NBL Australia',
 ]);
+
+function isYouthExternalProspect(player: NBAPlayer, age: number): boolean {
+  return age < 19
+    && EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')
+    && !(player as any).promotedFromAcademy;
+}
+
+function calcYouthExternalBaseChange(age: number, seed: string, devSpeed: number): number {
+  const ageBase = age <= 15 ? 0.55 : age === 16 ? 0.70 : age === 17 ? 0.85 : 1.00;
+  const noise = seededUniform(seed + 'youth-base', -0.15, 0.25);
+  const speed = Math.max(0.85, Math.min(1.12, devSpeed));
+  return Math.max(0.35, Math.min(1.20, (ageBase + noise) * speed));
+}
+
+function getYouthExternalProgressionCap(age: number): number {
+  if (age <= 15) return YOUTH_EXTERNAL_OVR_CAP + 1;
+  if (age === 16) return YOUTH_EXTERNAL_OVR_CAP + 2;
+  if (age === 17) return YOUTH_EXTERNAL_OVR_CAP + 3;
+  return YOUTH_EXTERNAL_OVR_CAP + 4;
+}
 
 /** NBA-active: on an NBA roster (not FA, not overseas, not WNBA/retired/prospect) */
 function isNBAActive(p: NBAPlayer): boolean {
@@ -298,11 +318,10 @@ function progressPlayer(
   const age = getPlayerAge(player, currentYear);
   const pid = player.internalId ?? player.name;
   const isOverseasPlayer = !!LEAGUE_DISPLAY_MULTIPLIERS[player.status ?? ''];
+  const isYouthExternal = isYouthExternalProspect(player, age);
   const pos = player.pos ?? 'F';
 
-  // Freeze all development for stashable under-19 players until they age into
-  // draft-eligible progression territory.
-  if (age < 19) {
+  if (age < 19 && !isYouthExternal) {
     return player;
   }
 
@@ -327,7 +346,9 @@ function progressPlayer(
   // tilts positive growth — decline years (negative base) shouldn't be softened
   // for slow developers.
   const devSpeed: number = rating.devSpeed ?? 1.0;
-  let baseRaw = calcBaseChange(age, pid + currentYear, pot);
+  let baseRaw = isYouthExternal
+    ? calcYouthExternalBaseChange(age, pid + currentYear, devSpeed)
+    : calcBaseChange(age, pid + currentYear, pot);
 
   // MVP aging resistance — only kicks in at 38+, where the real cliff starts.
   // Curry/LeBron types get a modest dampen; still decline, just slower.
@@ -348,9 +369,11 @@ function progressPlayer(
     }
   }
 
-  const rawBase = baseRaw > 0 ? baseRaw * devSpeed : baseRaw;
+  const rawBase = isYouthExternal ? baseRaw : (baseRaw > 0 ? baseRaw * devSpeed : baseRaw);
   // Only apply the offset when the base isn't already large (don't double-boost elite youth)
-  const annualBase = rawBase + (Math.abs(rawBase) < 4 ? careerOffset : careerOffset * 0.3);
+  const annualBase = isYouthExternal
+    ? Math.max(0.30, Math.min(1.35, rawBase + careerOffset * 0.12))
+    : rawBase + (Math.abs(rawBase) < 4 ? careerOffset : careerOffset * 0.3);
   const dailyBase = annualBase / 365;
 
   // Skip attribute delta if base is exactly 0 and not overseas (peak-age NBA player)
@@ -552,7 +575,16 @@ function progressPlayer(
   // Prevents NBA-boosted returners (e.g. high-OVR cut player returning to B-League)
   // from staying above the realistic ceiling for their league each tick.
   // Youth (<19) is already frozen upstream in applyDailyProgression; no double-gate needed.
-  if (EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')) {
+  if (isYouthExternal) {
+    const youthCap = Math.max(rating.ovr ?? player.overallRating ?? 0, getYouthExternalProgressionCap(age));
+    if (updatedPlayer.overallRating > youthCap) {
+      updatedPlayer.overallRating = youthCap;
+      const cappedRating = { ...rating, ovr: youthCap };
+      updatedPlayer.ratings = player.ratings.map((r: any, i: number) =>
+        i === ratingIdx ? cappedRating : r,
+      );
+    }
+  } else if (EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')) {
     const ovrCap = EXTERNAL_LEAGUE_OVR_CAP[player.status!];
     if (ovrCap !== undefined && updatedPlayer.overallRating > ovrCap) {
       updatedPlayer.overallRating = ovrCap;
@@ -641,10 +673,6 @@ export function applyDailyProgression(
     if ((player as any).diedYear) return player;
     if (player.status === 'Retired') return player;
     if (player.tid === -2) return player; // future draft prospect — ratings frozen until drafted
-    const age = (player as any).age;
-    if (typeof age === 'number' && age < 19 && EXTERNAL_MENS_LEAGUES.has((player as any).status ?? '')) {
-      return player;
-    }
     try {
       const teamPlan = planByTid.get(player.tid);
       const devMultiplier = devMultByTid.get(player.tid) ?? 1;

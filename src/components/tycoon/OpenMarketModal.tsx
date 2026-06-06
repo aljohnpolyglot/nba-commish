@@ -257,13 +257,13 @@ export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-950 border border-slate-800 rounded-2xl max-w-[1600px] w-full max-h-[94vh] overflow-hidden flex flex-col shadow-2xl">
-        <div className="flex items-start justify-between px-7 py-5 border-b border-slate-800">
-          <div className="flex items-center gap-4">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[1600px] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-800 px-4 py-4 sm:px-7 sm:py-5">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
             <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
               <Handshake size={22} className="text-emerald-300" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-2xl font-black text-white tracking-wide">OPEN MARKET</h2>
               <p className="text-sm text-slate-400">Review sponsor offers from brands interested in partnering with your club.</p>
             </div>
@@ -271,10 +271,10 @@ export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
           <button onClick={onClose} aria-label="Close"><X size={22} className="text-slate-400 hover:text-white" /></button>
         </div>
 
-        <div className="flex items-center gap-3 px-7 py-3 border-b border-slate-800">
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 px-4 py-3 sm:px-7">
           <span className="text-xs font-black uppercase tracking-widest text-emerald-300">Interested Sponsors</span>
           <span className="inline-flex items-center justify-center min-w-[26px] h-[22px] rounded-full px-2 text-[11px] font-black bg-emerald-500/25 text-emerald-300">{availableCount}</span>
-          <span className={`ml-auto inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-widest ${
+          <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-widest sm:ml-auto ${
             endorsementCapReached ? 'border-amber-400/40 bg-amber-400/10 text-amber-200' : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
           }`}>
             Endorsements {Math.min(activeEndorsements.length, ENDORSEMENT_SLOT_CAP)}/{ENDORSEMENT_SLOT_CAP}
@@ -282,7 +282,7 @@ export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
           <span className="absolute left-0 right-0 bottom-0 h-[2px] bg-emerald-400 hidden" />
         </div>
 
-        <div className="grid grid-cols-5 gap-3 px-7 py-4 border-b border-slate-800 bg-slate-950">
+        <div className="grid grid-cols-1 gap-3 border-b border-slate-800 bg-slate-950 px-4 py-4 sm:grid-cols-2 sm:px-7 xl:grid-cols-5">
           <KpiCard tint="text-emerald-300" label="Interested Brands" value={String(kpis.count)} />
           <KpiCard tint="text-sky-300" label="Total Potential Value / Year" value={fmt(kpis.totalAnnual)} />
           <KpiCard tint="text-amber-300" label="Total Potential Value" value={fmt(kpis.totalValue)} />
@@ -290,8 +290,8 @@ export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
           <KpiCard tint="text-amber-300" label="Market Attractiveness" value={kpis.attractiveness} />
         </div>
 
-        <div className="flex-1 overflow-hidden grid grid-cols-[280px_1fr]">
-          <aside className="overflow-y-auto border-r border-slate-800 p-5 space-y-6">
+        <div className="grid flex-1 overflow-hidden lg:grid-cols-[280px_1fr]">
+          <aside className="overflow-y-auto border-b border-slate-800 p-4 space-y-6 lg:border-b-0 lg:border-r lg:p-5">
             <div className="flex items-center justify-between">
               <div className="text-xs font-black uppercase tracking-widest text-slate-400">Filters</div>
               <button onClick={clearFilters} className="text-[11px] font-bold text-slate-500 hover:text-slate-300 flex items-center gap-1">
@@ -347,9 +347,9 @@ export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
             </div>
           </aside>
 
-          <main className="overflow-hidden flex flex-col">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-800">
-              <div className="relative flex-1 max-w-[420px]">
+          <main className="flex min-h-0 flex-col overflow-hidden">
+            <div className="flex flex-col gap-3 border-b border-slate-800 px-4 py-4 sm:px-6 lg:flex-row lg:items-center">
+              <div className="relative w-full max-w-none lg:max-w-[420px]">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   value={search}

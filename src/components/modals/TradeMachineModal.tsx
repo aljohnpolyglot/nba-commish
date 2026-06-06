@@ -349,14 +349,16 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
   return (
     <AnimatePresence>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-[60] flex flex-col items-center justify-start lg:justify-center p-3 sm:p-4 pb-24 lg:pb-4 font-sans backdrop-blur-md overflow-y-auto">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/95 z-[220] flex flex-col items-center justify-start lg:justify-center p-3 sm:p-4 pb-24 lg:pb-4 font-sans backdrop-blur-md overflow-y-auto">
 
-        <TradeMachineActionBar
-          onConfirm={handleConfirm}
-          onClose={onClose}
-          sameTeam={teamAId === teamBId}
-          disabled={!canClickAssets || teamAId === teamBId || teamAId == null || teamBId == null || (teamAPlayers.length === 0 && teamBPlayers.length === 0 && teamAPicks.length === 0 && teamBPicks.length === 0 && teamACashUSD === 0 && teamBCashUSD === 0)}
-        />
+        {!tradeResponse && !showSummaryModal && (
+          <TradeMachineActionBar
+            onConfirm={handleConfirm}
+            onClose={onClose}
+            sameTeam={teamAId === teamBId}
+            disabled={!canClickAssets || teamAId === teamBId || teamAId == null || teamBId == null || (teamAPlayers.length === 0 && teamBPlayers.length === 0 && teamAPicks.length === 0 && teamBPicks.length === 0 && teamACashUSD === 0 && teamBCashUSD === 0)}
+          />
+        )}
 
         {/* MAIN 2-COLUMN WRAPPER */}
         {/* Mobile: let the wrapper grow with content (each column is min-h-[85vh])

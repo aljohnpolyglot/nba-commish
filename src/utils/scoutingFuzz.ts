@@ -1,5 +1,6 @@
 import type { GameState, NBAPlayer } from '../types';
 import { getTeamScoutingFuzzBand } from '../services/staff/staffGameplayEffects';
+import { getDisplayOverall, getDisplayPotential } from './playerRatings';
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -50,4 +51,12 @@ export function fuzzRatingValue(value: number, state: GameState, player?: NBAPla
 export function formatFuzzedRating(value: number, state: GameState, player?: NBAPlayer | null, salt = 'ovr'): string {
   const fuzzed = fuzzRatingValue(value, state, player, salt);
   return String(fuzzed);
+}
+
+export function getScoutedDisplayOverall(state: GameState, player: NBAPlayer, season?: number): number {
+  return fuzzRatingValue(getDisplayOverall(player, season), state, player, 'ovr');
+}
+
+export function getScoutedDisplayPotential(state: GameState, player: NBAPlayer, currentYear: number, season?: number): number {
+  return fuzzRatingValue(getDisplayPotential(player, currentYear, season), state, player, 'pot');
 }

@@ -32,6 +32,15 @@ export function clearNationalityPoolCache(): void {
   cache.clear();
 }
 
+function normalizeCountryFromLoc(value: unknown): string {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  const lower = raw.toLowerCase();
+  if (lower.includes('philippines') || lower.includes('filipino')) return 'Philippines';
+  if (lower.includes('united states') || lower === 'usa' || lower.endsWith(', usa')) return 'USA';
+  return raw.split(',').pop()?.trim() || raw;
+}
+
 export function buildCoachNationalityPool(
   state: Pick<GameState, 'players'>,
   leagueId: string,
@@ -57,7 +66,7 @@ export function buildCoachNationalityPool(
 
   const counts = new Map<string, number>();
   for (const p of matched) {
-    const c = p.born?.loc;
+    const c = normalizeCountryFromLoc(p.born?.loc);
     if (!c) continue;
     counts.set(c, (counts.get(c) ?? 0) + 1);
   }

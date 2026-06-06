@@ -13,11 +13,12 @@ import { ensurePhotosLoaded, getPhotoBySlug, getPhotoByName } from '../../../dat
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import type { Tab } from '../../../types';
 import { getActiveLeagueTeams, resolveAnyTeam } from '../../../utils/teamLookup';
-import { isEuroIsolatedMode } from '../../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import { getTeamMascot } from '../../../utils/helpers';
 import { TeamHistoryLeadersPanel, TeamHistoryOverviewPanel, TeamHistoryRecordsPanel, TeamHistoryRetireModal, TeamHistorySeasonPanel } from './TeamHistoryPanels';
 import { TeamHistoryPicker } from './TeamHistoryPicker';
 import { avatarFallback, consumePendingTeamHistoryOrigin, consumePendingTeamHistoryTid, getBestAccentColor, NBA_HUB_ID, requestTeamHistoryFor } from './TeamHistoryShared';
+import { buildPbaAverageLeaders, buildPbaCareerLeaders, buildPbaTeamLiveTotals } from './pbaTeamHistoryStats';
 
 export { requestTeamHistoryFor };
 
@@ -29,6 +30,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   const { state } = useGame();
   const isFictional = state.leagueType === 'fictional';
   const euroIsolated = isEuroIsolatedMode(state);
+  const pbaIsolated = isPbaIsolatedMode(state);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(() => consumePendingTeamHistoryTid());
   const [originView, setOriginView] = useState<Tab | null>(() => consumePendingTeamHistoryOrigin());
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,10 +59,20 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
   };
   const selectedTeam = selectedTeamId === NBA_HUB_ID ? nbaHubTeam : (selectedTeamId != null ? resolveAnyTeam(selectedTeamId, state.teams, state.nonNBATeams ?? []) ?? null : null);
   const isNBAHub = selectedTeamId === NBA_HUB_ID;
+  const canUseExternalFranchiseFeed = !!selectedTeam && !pbaIsolated && selectedTeam.id >= 0 && selectedTeam.id < 30;
 
-  const liveTotals = useMemo(() => selectedTeam ? computeLiveTotals(state.players, selectedTeam.id) : [], [selectedTeam, state.players]);
-  const mergedCareer = useMemo(() => mergeCareerLeaders(careerLeaders, liveTotals), [careerLeaders, liveTotals]);
-  const mergedAverage = useMemo(() => mergeAverageLeaders(averageLeaders, liveTotals), [averageLeaders, liveTotals]);
+  const liveTotals = useMemo(
+    () => selectedTeam ? (pbaIsolated ? buildPbaTeamLiveTotals(state, selectedTeam.id) : computeLiveTotals(state.players, selectedTeam.id)) : [],
+    [pbaIsolated, selectedTeam, state],
+  );
+  const mergedCareer = useMemo(
+    () => pbaIsolated ? buildPbaCareerLeaders(liveTotals as any) : mergeCareerLeaders(careerLeaders, liveTotals),
+    [careerLeaders, liveTotals, pbaIsolated],
+  );
+  const mergedAverage = useMemo(
+    () => pbaIsolated ? buildPbaAverageLeaders(liveTotals as any) : mergeAverageLeaders(averageLeaders, liveTotals),
+    [averageLeaders, liveTotals, pbaIsolated],
+  );
   const accent = selectedTeam ? getBestAccentColor(selectedTeam.colors, selectedTeam.name) : '#94a3b8';
 
   const findPlayerImg = (name: string): string => {
@@ -91,7 +103,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
 
   useEffect(() => {
     if (!selectedTeam) return;
-    if (isFictional || euroIsolated || selectedTeam.id >= 100) {
+    if (isFictional || euroIsolated || pbaIsolated || selectedTeam.id >= 100 || !canUseExternalFranchiseFeed) {
       setRegularRecords([]);
       setPlayoffRecords([]);
       setCareerLeaders([]);
@@ -123,13 +135,23 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
       .finally(() => { if (!cancelled) setExternalLoading(false); });
 
     return () => { cancelled = true; };
-  }, [euroIsolated, isFictional, selectedTeam, selectedTeamId]);
+  }, [canUseExternalFranchiseFeed, euroIsolated, pbaIsolated, isFictional, selectedTeam, selectedTeamId]);
 
   const topPlayers = useMemo(() => {
     if (!selectedTeam) return [];
 
     const scorePlayer = (player: any, tid: number | null): number => {
-      const teamSeasons = tid !== null ? new Set((player.stats ?? []).filter((season: any) => season.tid === tid).map((season: any) => season.season)) : null;
+      const franchiseSeasonSet = tid !== null
+        ? new Set<number>((selectedTeam as any)?.seasons?.map((season: any) => Number(season.season)).filter(Number.isFinite) ?? [])
+        : null;
+      const hasFranchiseSeasonGuard = !!franchiseSeasonSet && franchiseSeasonSet.size > 0;
+      const teamSeasons = tid !== null
+        ? new Set(
+            (player.stats ?? [])
+              .filter((season: any) => season.tid === tid && (!hasFranchiseSeasonGuard || franchiseSeasonSet!.has(Number(season.season))))
+              .map((season: any) => season.season),
+          )
+        : null;
       const inScope = (season: number) => teamSeasons === null || teamSeasons.has(season);
 
       const awards = (player.awards ?? []).filter((award: any) => inScope(award.season));
@@ -142,8 +164,28 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
       const ad2 = awards.filter((award: any) => award.type === 'All-Defensive Second Team').length;
       const allStar = awards.filter((award: any) => award.type === 'All-Star').length;
       const champ = awards.filter((award: any) => award.type === 'NBA Champion').length;
-      const regularStats = (player.stats ?? []).filter((season: any) => !season.playoffs && (tid === null || season.tid === tid));
-      const playoffStats = (player.stats ?? []).filter((season: any) => !!season.playoffs && (tid === null || season.tid === tid));
+      const regularStats = (player.stats ?? []).filter(
+        (season: any) =>
+          !season.playoffs &&
+          (
+            tid === null ||
+            (
+              season.tid === tid &&
+              (!hasFranchiseSeasonGuard || franchiseSeasonSet!.has(Number(season.season)))
+            )
+          ),
+      );
+      const playoffStats = (player.stats ?? []).filter(
+        (season: any) =>
+          !!season.playoffs &&
+          (
+            tid === null ||
+            (
+              season.tid === tid &&
+              (!hasFranchiseSeasonGuard || franchiseSeasonSet!.has(Number(season.season)))
+            )
+          ),
+      );
       const regularWS = regularStats.reduce((sum: number, season: any) => sum + (season.ows ?? 0) + (season.dws ?? 0) + (season.ewa ?? 0), 0);
       const playoffWS = playoffStats.reduce((sum: number, season: any) => sum + (season.ows ?? 0) + (season.dws ?? 0) + (season.ewa ?? 0), 0);
       return mvp * 6 + fmvp * 6 + al1 * 2 + al2 + al3 * 0.25 + (ad1 + ad2) * 0.15 + allStar * 0.1 + champ + (playoffWS / 2) * 0.1 + (regularWS / 2) * 0.075;
@@ -158,9 +200,16 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
     }
 
     const teamId = selectedTeam.id;
+    const teamTenureNames = new Set<string>(
+      state.players
+        .filter(player => (player.stats ?? []).some((season: any) => season.tid === teamId))
+        .map(player => (player.name ?? '').toLowerCase().trim())
+        .filter(Boolean),
+    );
     const parMap = new Map<string, { pts: number; reb: number; ast: number }>();
     for (const row of mergedCareer) {
       const name = cleanName(row.NAME);
+      if (teamTenureNames.size > 0 && !teamTenureNames.has(name.toLowerCase().trim())) continue;
       if (!parMap.has(name)) parMap.set(name, { pts: 0, reb: 0, ast: 0 });
       const entry = parMap.get(name)!;
       const category = row.Category ?? row.Career_Leader_Category;
@@ -171,6 +220,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
     }
     for (const live of liveTotals) {
       const name = live.NAME;
+      if (teamTenureNames.size > 0 && !teamTenureNames.has(name.toLowerCase().trim())) continue;
       if (!parMap.has(name)) parMap.set(name, { pts: 0, reb: 0, ast: 0 });
       const entry = parMap.get(name)!;
       entry.pts = Math.max(entry.pts, parseFloat(live.PTS ?? '0') || 0);
@@ -201,6 +251,40 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
     const runnerUpAwards = awards.filter((award: any) => award.type === 'Runner Up' && Number(award.tid) === teamId);
     const champSeasons = new Set(champAwards.map((award: any) => Number(award.season)));
     const runnerUpSeasons = new Set(runnerUpAwards.map((award: any) => Number(award.season)));
+    const pbaTitlesBySeason = new Map<number, string[]>();
+    const pbaConferenceLabels: Record<string, string> = {
+      philippine: 'Philippine Cup',
+      commissioners: "Commissioner's Cup",
+      governors: "Governors' Cup",
+    };
+    if (pbaIsolated) {
+      for (const entry of (((state.leagueStats as any).pbaConferenceChampions ?? []) as any[])) {
+        const season = Number(entry.season);
+        if (!Number.isFinite(season)) continue;
+        seasonsSet.add(season);
+        if (Number(entry.teamId) !== teamId) continue;
+        if (!pbaTitlesBySeason.has(season)) pbaTitlesBySeason.set(season, []);
+        pbaTitlesBySeason.get(season)!.push(pbaConferenceLabels[entry.conference] ?? entry.conference);
+      }
+    }
+    const pbaRecordsBySeason = new Map<number, { w: number; l: number }>();
+    if (pbaIsolated) {
+      for (const box of (state.boxScores ?? []) as any[]) {
+        if (!String(box?.competitionId ?? '').startsWith('pba-')) continue;
+        const season = Number(box.season ?? state.leagueStats?.year);
+        if (!Number.isFinite(season)) continue;
+        const isHome = Number(box.homeTeamId) === teamId;
+        const isAway = Number(box.awayTeamId) === teamId;
+        if (!isHome && !isAway) continue;
+        seasonsSet.add(season);
+        const rec = pbaRecordsBySeason.get(season) ?? { w: 0, l: 0 };
+        const homeWon = Number(box.homeScore ?? 0) > Number(box.awayScore ?? 0);
+        const won = isHome ? homeWon : !homeWon;
+        rec.w += won ? 1 : 0;
+        rec.l += won ? 0 : 1;
+        pbaRecordsBySeason.set(season, rec);
+      }
+    }
 
     if (!isFictional) {
       for (const [year, brefData] of getAllCachedSeasons().entries()) {
@@ -216,21 +300,24 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
     const currentSeason = state.leagueStats?.year ?? new Date(state.date).getFullYear();
     return Array.from(seasonsSet).sort((left, right) => right - left).map(season => {
       const teamSeason = ((selectedTeam as any).seasons ?? []).find((entry: any) => Number(entry.season) === season);
+      const pbaRecord = pbaRecordsBySeason.get(season);
+      const pbaConferenceTitles = pbaTitlesBySeason.get(season) ?? [];
       const playoffRoundsWon = teamSeason?.playoffRoundsWon;
-      const isChamp = champSeasons.has(season) || playoffRoundsWon === 4;
+      const isChamp = pbaConferenceTitles.length > 0 || champSeasons.has(season) || playoffRoundsWon === 4;
       const isRU = !isChamp && (runnerUpSeasons.has(season) || playoffRoundsWon === 3);
       const isCurrent = season === currentSeason && (teamSeason?.won ?? 0) + (teamSeason?.lost ?? 0) === 0;
       return {
         season,
-        won: isCurrent ? undefined : teamSeason?.won,
-        lost: isCurrent ? undefined : teamSeason?.lost,
+        won: isCurrent ? undefined : (teamSeason?.won ?? pbaRecord?.w),
+        lost: isCurrent ? undefined : (teamSeason?.lost ?? pbaRecord?.l),
         playoffRoundsWon: isCurrent ? undefined : (playoffRoundsWon ?? (isChamp ? 4 : isRU ? 3 : undefined)),
         isChamp,
         isRU,
         isCurrent,
+        conferenceTitles: pbaConferenceTitles,
       };
     });
-  }, [isFictional, selectedTeam, state.date, state.historicalAwards, state.leagueStats, state.players]);
+  }, [isFictional, pbaIsolated, selectedTeam, state.date, state.historicalAwards, state.leagueStats, state.players, state.boxScores]);
 
   const summaryStats = useMemo(() => {
     const known = seasonHistory.filter(season => season.won != null && (season.won + (season.lost ?? 0)) > 0);
@@ -243,23 +330,26 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
       winPct: totalW + totalL > 0 ? (totalW / (totalW + totalL)).toFixed(3) : '.000',
       playoffApps: seasonHistory.filter(season => (season.playoffRoundsWon ?? -1) >= 0).length,
       finalsApps: seasonHistory.filter(season => (season.playoffRoundsWon ?? -1) >= 3).length,
-      titles: seasonHistory.filter(season => season.isChamp).length,
+      titles: pbaIsolated
+        ? seasonHistory.reduce((sum, season) => sum + ((season.conferenceTitles?.length ?? 0) || (season.isChamp ? 1 : 0)), 0)
+        : seasonHistory.filter(season => season.isChamp).length,
       best: sorted[0],
       worst: sorted[sorted.length - 1],
     };
-  }, [seasonHistory]);
+  }, [pbaIsolated, seasonHistory]);
 
   const processedRecords = useMemo(() => {
     const source = recordType === 'regular' ? regularRecords : playoffRecords;
     const isPlayoff = recordType === 'playoff';
+    const leagueYear = state.leagueStats?.year ?? new Date().getFullYear();
+    const currentSeasonStart = new Date(Date.UTC(leagueYear - 1, 9, 1));
+    const currentSeasonEnd = new Date(Date.UTC(leagueYear, 6, 1));
     const filtered = source.filter(record => {
       if (!record.DATE) return true;
       try {
         const date = new Date(record.DATE);
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
-        if (year === 2025 && month >= 10) return false;
-        if (year === 2026 && month <= 6) return false;
+        if (Number.isNaN(date.getTime())) return true;
+        if (date >= currentSeasonStart && date < currentSeasonEnd) return false;
       } catch {}
       return true;
     });
@@ -285,13 +375,15 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
     return Object.entries(grouped)
       .sort(([left], [right]) => (CATEGORY_ORDER.indexOf(left) === -1 ? 99 : CATEGORY_ORDER.indexOf(left)) - (CATEGORY_ORDER.indexOf(right) === -1 ? 99 : CATEGORY_ORDER.indexOf(right)))
       .map(([, records]) => records);
-  }, [isNBAHub, playoffRecords, recordType, regularRecords, selectedTeam, state.simFranchiseRecords]);
+  }, [isNBAHub, playoffRecords, recordType, regularRecords, selectedTeam, state.leagueStats?.year, state.simFranchiseRecords]);
 
   const filteredTeams = useMemo(() => {
     const lowered = searchTerm.toLowerCase();
-    const sourceTeams = euroIsolated ? getActiveLeagueTeams(state) : state.teams;
+    const sourceTeams = pbaIsolated
+      ? ((state.nonNBATeams ?? []).filter((team: any) => team.league === 'PBA').map((team: any) => resolveAnyTeam(team.tid, state.teams, state.nonNBATeams ?? [])).filter(Boolean) as any[])
+      : euroIsolated ? getActiveLeagueTeams(state) : state.teams;
     return sourceTeams.filter(team => team.name.toLowerCase().includes(lowered) || (team.region ?? '').toLowerCase().includes(lowered) || team.abbrev.toLowerCase().includes(lowered));
-  }, [euroIsolated, searchTerm, state]);
+  }, [euroIsolated, pbaIsolated, searchTerm, state]);
 
   const quick = usePlayerQuickActions();
   const isGM = state.gameMode === 'gm';
@@ -299,7 +391,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
 
   if (quick.fullPageView) return quick.fullPageView;
   if (!selectedTeam) {
-    return <TeamHistoryPicker euroIsolated={euroIsolated} isFictional={isFictional} searchTerm={searchTerm} setSearchTerm={setSearchTerm} filteredTeams={filteredTeams} setSelectedTeamId={setSelectedTeamId} setActiveTab={setActiveTab} setExpandedLeaders={setExpandedLeaders} setExpandedRecords={setExpandedRecords} quickPortals={quick.portals} />;
+    return <TeamHistoryPicker euroIsolated={euroIsolated || pbaIsolated} isFictional={isFictional} searchTerm={searchTerm} setSearchTerm={setSearchTerm} filteredTeams={filteredTeams} setSelectedTeamId={setSelectedTeamId} setActiveTab={setActiveTab} setExpandedLeaders={setExpandedLeaders} setExpandedRecords={setExpandedRecords} quickPortals={quick.portals} />;
   }
 
   const retiredJerseys: any[] = (selectedTeam as any).retiredJerseyNumbers ?? [];
@@ -380,7 +472,7 @@ export const TeamHistoryView: React.FC<TeamHistoryViewProps> = ({ onViewChange }
           {activeTab === 'overview' && <TeamHistoryOverviewPanel accent={accent} isNBAHub={isNBAHub} retiredJerseys={retiredJerseys} retiredJerseyDisplayName={retiredJerseyDisplayName} jerseyReasonLabel={jerseyReasonLabel} canRetireForTeam={canRetireForTeam} setShowRetireModal={setShowRetireModal} topPlayers={topPlayers} statePlayers={state.players} findPlayerImg={findPlayerImg} onOpenPlayer={name => { const player = state.players.find(entry => entry.name?.toLowerCase() === name.toLowerCase()); if (player) quick.openFor(player); }} />}
           {activeTab === 'records' && <TeamHistoryRecordsPanel accent={accent} isNBAHub={isNBAHub} recordType={recordType} setRecordType={setRecordType} externalLoading={externalLoading} externalError={externalError} processedRecords={processedRecords} expandedRecords={expandedRecords} setExpandedRecords={setExpandedRecords} findPlayerImg={findPlayerImg} cleanName={cleanName} getStatValue={getStatValue} />}
           {activeTab === 'leaders' && <TeamHistoryLeadersPanel accent={accent} isNBAHub={isNBAHub} leaderSubTab={leaderSubTab} setLeaderSubTab={setLeaderSubTab} externalLoading={externalLoading} externalError={externalError} mergedCareer={mergedCareer} mergedAverage={mergedAverage} expandedLeaders={expandedLeaders} setExpandedLeaders={setExpandedLeaders} statePlayers={state.players} findPlayerImg={findPlayerImg} cleanName={cleanName} getStatValue={getStatValue} categoryOrder={CATEGORY_ORDER} categoryOrderAvg={CATEGORY_ORDER_AVG} />}
-          {activeTab === 'history' && <TeamHistorySeasonPanel accent={accent} summaryStats={summaryStats} seasonHistory={seasonHistory} isFictional={isFictional} />}
+          {activeTab === 'history' && <TeamHistorySeasonPanel accent={accent} summaryStats={summaryStats} seasonHistory={seasonHistory} isFictional={isFictional} championLabel={pbaIsolated ? 'PBA Conference Champion' : undefined} />}
         </AnimatePresence>
       </div>
 

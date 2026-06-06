@@ -12,7 +12,7 @@ export const toNoonUTC = (d: Date): string => {
   return `${year}-${month}-${day}T12:00:00.000Z`;
 };
 
-export function getAllStarWeekendDates(year: number): {
+export function getAllStarWeekendDates(year: number, leagueStats?: { uiMode?: string | null }): {
   votingStart: Date;
   votingEnd: Date;
   startersAnnounced: Date;
@@ -33,6 +33,37 @@ export function getAllStarWeekendDates(year: number): {
   breakEnd: Date;
   regularResumes: Date;
 } {
+  if (leagueStats?.uiMode === 'pba_isolated') {
+    const shift = (base: Date, days: number) => {
+      const d = new Date(base);
+      d.setUTCDate(base.getUTCDate() + days);
+      return d;
+    };
+    const friday = new Date(Date.UTC(year, 2, 6));
+    const saturday = shift(friday, 1);
+    const sunday = shift(friday, 2);
+    return {
+      votingStart: new Date(Date.UTC(year, 1, 20)),
+      votingEnd: new Date(Date.UTC(year, 1, 28)),
+      startersAnnounced: new Date(Date.UTC(year, 2, 1)),
+      reservesAnnounced: new Date(Date.UTC(year, 2, 1)),
+      risingStarsAnnounced: new Date(Date.UTC(year, 2, 1)),
+      celebrityAnnounced: new Date(Date.UTC(year, 2, 1)),
+      dunkContestAnnounced: new Date(Date.UTC(year, 2, 3)),
+      threePointAnnounced: new Date(Date.UTC(year, 2, 3)),
+      throneSignupOpens: new Date(Date.UTC(year, 1, 20)),
+      throneSignupCloses: new Date(Date.UTC(year, 1, 28)),
+      throneVotingOpens: new Date(Date.UTC(year, 2, 1)),
+      throneFieldReveal: new Date(Date.UTC(year, 2, 3)),
+      breakStart: friday,
+      risingStars: friday,
+      celebrityGame: friday,
+      saturday,
+      allStarGame: sunday,
+      breakEnd: shift(sunday, 1),
+      regularResumes: shift(sunday, 2),
+    };
+  }
   const allStarSunday = getAllStarSunday(year);
   const shift = (base: Date, days: number) => {
     const d = new Date(base);
@@ -82,8 +113,8 @@ export function getAllStarWeekendDates(year: number): {
 
 export const ALL_STAR_DATES = getAllStarWeekendDates(2026);
 
-export function getBreakWindowStrings(year: number): { breakStart: string; breakEnd: string; regularResumes: string } {
-  const dates = getAllStarWeekendDates(year);
+export function getBreakWindowStrings(year: number, leagueStats?: { uiMode?: string | null }): { breakStart: string; breakEnd: string; regularResumes: string } {
+  const dates = getAllStarWeekendDates(year, leagueStats);
   const ymd = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
   return {
     breakStart: ymd(dates.breakStart),

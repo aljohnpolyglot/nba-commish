@@ -185,6 +185,7 @@ export const useRulesState = (
   return {
     rules,
     setRule,
+    isPbaMode: leagueStats.uiMode === 'pba_isolated',
     localRules,
     setLocalRules,
     localAwards,

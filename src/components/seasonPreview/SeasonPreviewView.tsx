@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Trophy, Star, ChevronLeft, ChevronRight, Shield, Zap, Award, BarChart2 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { calculateTeamStrength } from '../../utils/playerRatings';
+import { calculateDisplayTeamOverall } from '../../utils/playerRatings';
 import { motion, AnimatePresence } from 'motion/react';
 import type { SeasonHistoryEntry, Tab } from '../../types';
 
@@ -90,11 +90,10 @@ export const SeasonPreviewView: React.FC<SeasonPreviewViewProps> = ({ onViewChan
     return (teams ?? [])
       .filter(t => t.id >= 0 && t.id < 100)
       .map(t => {
-        // calculateTeamStrength returns K2-scale OVR for the team
-        const strength = calculateTeamStrength(t.id, players ?? []);
+        const roster = (players ?? []).filter(p => p.tid === t.id);
+        const strength = calculateDisplayTeamOverall(t.id, players ?? [], roster);
 
         // Compute avg K2 POT across the active roster
-        const roster = (players ?? []).filter(p => p.tid === t.id);
         const avgPot = roster.length > 0
           ? roster.reduce((sum, p) => {
               const lr = (p as any).ratings?.[(p as any).ratings?.length - 1];

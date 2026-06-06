@@ -272,7 +272,7 @@ export function PlayerProgressionModal({ player, nbaPlayer, currentYear, team, c
   );
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-8">
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -285,10 +285,10 @@ export function PlayerProgressionModal({ player, nbaPlayer, currentYear, team, c
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-6xl max-h-[90vh] bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden"
+        className="relative w-full max-w-6xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] bg-slate-900 border border-slate-800 rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden"
       >
-        <div className="p-6 border-b border-slate-800/60 flex justify-between items-center bg-slate-900/50">
-           <div className="flex items-center gap-4">
+        <div className="p-4 sm:p-6 border-b border-slate-800/60 flex justify-between items-start gap-3 bg-slate-900/50">
+           <div className="flex items-center gap-4 min-w-0">
               <div className="relative">
                 {player.imgURL ? (
                   <img src={player.imgURL} alt="" className="w-12 h-12 rounded-full object-cover border border-slate-700 bg-slate-800" />
@@ -298,8 +298,8 @@ export function PlayerProgressionModal({ player, nbaPlayer, currentYear, team, c
                   </div>
                 )}
               </div>
-              <div>
-                 <h3 className="text-xl font-black text-white uppercase tracking-tight">{player.name}</h3>
+              <div className="min-w-0">
+                 <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight break-words">{player.name}</h3>
                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Player growth snapshot</p>
               </div>
            </div>
@@ -321,7 +321,7 @@ export function PlayerProgressionModal({ player, nbaPlayer, currentYear, team, c
              ))}
            </div>
 
-           <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition-colors">
+           <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition-colors flex-shrink-0">
               <X size={20} className="text-slate-500" />
            </button>
         </div>

@@ -12,6 +12,7 @@ import { getGMAttributes, getGMName, tradeInitiateProb, pickHoardResistance } fr
 import { validateStepienRule } from './trade/stepienRule';
 import { validateCBATradeRules } from '../utils/cbaTradeRules';
 import { daysBetweenGameDates, isInPostDeadlinePreFAWindow, parseGameDate, toISODateString } from '../utils/dateUtils';
+import { isPbaIsolatedMode } from '../utils/uiMode';
 export { executeAITrade } from './AITradeExecution';
 
 /** Players traded within the last 60 days — not eligible to be traded again. */
@@ -201,6 +202,7 @@ export function generateAIDayTradeProposals(state: GameState): TradeProposal[] {
         tradablePickWindow,
         isPostDeadlinePreFA,
         recentlySignedLockMs,
+        allowPbaRoster: isPbaIsolatedMode(state),
       });
       if (!proposal) continue;
 

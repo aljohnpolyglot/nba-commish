@@ -57,8 +57,6 @@ export function useLiveGame(
   const gameKey = `${game.gid}-${homeTeam?.id}-${awayTeam?.id}-${riggedForTid ?? ''}-${game.gameFormat ?? 'timed'}-${game.targetScore ?? ''}-${timingConfig.numQuarters}-${timingConfig.quarterLengthSeconds}-${timingConfig.overtimeLengthSeconds}`;
 
   useEffect(() => {
-    console.log(`[useLiveGame] effect triggered — gameKey=${gameKey} hasPrecomputed=${!!precomputedResult} precomputedScore=${precomputedResult ? `${precomputedResult.homeScore}-${precomputedResult.awayScore}` : 'none'}`);
-
     playersRef.current = players;
     homeOverrideRef.current = homeOverridePlayers;
     awayOverrideRef.current = awayOverridePlayers;
@@ -84,7 +82,6 @@ export function useLiveGame(
         const snapshotPrecomputed = precomputedRef.current;
         const usedPrecomputed = !!snapshotPrecomputed;
         const result = snapshotPrecomputed ?? GameSimulator.simulateGame(homeTeam, awayTeam, frozenPlayers, game.gid, game.date, 50, frozenHome, frozenAway, undefined, undefined, undefined, riggedForTid);
-        console.log(`[useLiveGame] ${usedPrecomputed ? '✅ using precomputed' : '🔄 fresh sim'} — home=${result.homeScore} away=${result.awayScore} gid=${result.gameId}`);
         setFinalResult(result);
         window.__finalResult = result;
         const qs = result.quarterScores;
@@ -101,7 +98,8 @@ export function useLiveGame(
             result.gameWinner,
             homeTeam.abbrev,
             awayTeam.abbrev,
-            timingConfig
+            timingConfig,
+            result,
           );
           setPlays(generatedPlays);
         }

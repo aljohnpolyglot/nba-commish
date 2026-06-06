@@ -6,6 +6,14 @@ import { useGameDispatchAction } from './gameContext/useGameDispatchAction';
 import { useGameProviderBootstrapEffects, useGameProviderPostLoadEffects } from './providers/gameProviderEffects';
 import { useOffseasonChecklistLifecycle } from './providers/useOffseasonChecklistLifecycle';
 
+interface PendingStatSort {
+  type: 'player' | 'team';
+  field: string;
+  order: 'asc' | 'desc';
+  phase?: 'regular' | 'playoffs' | 'combined' | 'cup';
+  competitionId?: string;
+}
+
 interface GameContextType {
   state: GameState;
   dispatchAction: (action: UserAction) => Promise<void>;
@@ -26,8 +34,8 @@ interface GameContextType {
   setSelectedTeamId: (id: number | null) => void;
   navigateToTeam: (teamId: number) => void;
   navigateToTeamFinances: (teamId: number) => void;
-  pendingStatSort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null;
-  setPendingStatSort: (sort: { type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null) => void;
+  pendingStatSort: PendingStatSort | null;
+  setPendingStatSort: (sort: PendingStatSort | null) => void;
   placeBet: (bet: { type: Bet['type']; wager: number; potentialPayout: number; legs: BetLeg[] }) => void;
   updatePlayerRatings: (playerId: string, season: number, ratings: Record<string, number>) => void;
   createPlayer: (player: import('../types').NBAPlayer) => void;
@@ -41,11 +49,46 @@ interface GameContextType {
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
+const fallbackGameContext: GameContextType = {
+  state: initialState,
+  dispatchAction: async () => {},
+  markEmailRead: () => {},
+  clearOutcome: () => {},
+  saveSocialThread: () => {},
+  toggleLike: () => {},
+  toggleRetweet: () => {},
+  markSocialRead: () => {},
+  markNewsRead: () => {},
+  markChatRead: () => {},
+  followUser: () => {},
+  unfollowUser: () => {},
+  markPayslipsRead: () => {},
+  currentView: 'Schedule',
+  setCurrentView: () => {},
+  selectedTeamId: null,
+  setSelectedTeamId: () => {},
+  navigateToTeam: () => {},
+  navigateToTeamFinances: () => {},
+  pendingStatSort: null,
+  setPendingStatSort: () => {},
+  placeBet: () => {},
+  updatePlayerRatings: () => {},
+  createPlayer: () => {},
+  healPlayer: () => {},
+  updateProfile: () => {},
+  addPost: () => {},
+  addReply: () => {},
+  generateReplies: async () => {},
+  isGeneratingReplies: {},
+};
+
+let warnedMissingGameProvider = false;
+
 export const GameProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<GameState>(initialState);
   const [currentView, setCurrentView] = useState<Tab>('Schedule');
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
-  const [pendingStatSort, setPendingStatSort] = useState<{ type: 'player' | 'team'; field: string; order: 'asc' | 'desc' } | null>(null);
+  const [pendingStatSort, setPendingStatSort] = useState<PendingStatSort | null>(null);
   const generationIdRef = useRef(0);
   const stateRef = useRef(state);
 
@@ -131,6 +174,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
 
 export const useGame = () => {
   const context = useContext(GameContext);
-  if (!context) throw new Error('useGame must be used within a GameProvider');
+  if (!context) {
+    if (!warnedMissingGameProvider) {
+      warnedMissingGameProvider = true;
+      console.error('useGame must be used within a GameProvider. Falling back to a safe no-op context.');
+    }
+    return fallbackGameContext;
+  }
   return context;
 };

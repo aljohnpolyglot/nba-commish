@@ -18,6 +18,7 @@ interface PlayerStatsTableProps {
   season: SeasonMode;
   statType: StatType;
   phase: Phase;
+  competitionLabel?: string;
   cupShort: string;
   cupChampion: string;
   fourPointEnabled: boolean;
@@ -71,6 +72,7 @@ export function PlayerStatsTable({
   season,
   statType,
   phase,
+  competitionLabel,
   cupShort,
   cupChampion,
   fourPointEnabled,
@@ -98,6 +100,8 @@ export function PlayerStatsTable({
       : season === 'all'
         ? 'All Time'
         : `${(season as number) - 1}–${String(season).slice(2)}`;
+  const formatRowSeason = (row: ComputedRow) =>
+    row.seasonLabel ?? (typeof row.season === 'number' ? `${row.season - 1}–${String(row.season).slice(2)}` : '—');
   const typeLabel = getPlayerStatsTypeLabel(statType);
   const phaseLabel = getPlayerStatsPhaseLabel(phase, cupShort);
   const thCls = (field: SortField) =>
@@ -124,7 +128,7 @@ export function PlayerStatsTable({
           {brefRowsSize > 0 && <span className="ml-3 text-slate-600">† bref career</span>}
         </span>
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-          {seasonLabel} · {typeLabel} · {phaseLabel}
+          {seasonLabel} · {competitionLabel ? `${competitionLabel} · ` : ''}{typeLabel} · {phaseLabel}
         </span>
       </div>
 
@@ -244,7 +248,7 @@ export function PlayerStatsTable({
                   </td>
                   {season === 'all' && (
                     <td className="px-2 py-1.5 text-right text-slate-500 text-[10px]">
-                      {typeof row.season === 'number' ? `${row.season - 1}–${String(row.season).slice(2)}` : '—'}
+                      {formatRowSeason(row)}
                     </td>
                   )}
                   {statType === 'shotLocations' ? (

@@ -69,6 +69,7 @@ export interface NBAPlayer {
   tid: number;
   name: string;
   overallRating: number;
+  potential?: number;
   ratings: any[];
   stats?: NBAGMStat[];
   imgURL?: string;
@@ -97,6 +98,10 @@ export interface NBAPlayer {
   nonGuaranteed?: boolean;
   superMaxEligible?: boolean;
   diedYear?: number;
+  diedDate?: string;
+  deathCause?: string;
+  deathType?: 'natural' | 'tragic';
+  deathCheckDate?: string;
   hof?: boolean;
   retiredYear?: number;
   hofInductionYear?: number;
@@ -110,6 +115,9 @@ export interface NBAPlayer {
   transactions?: Array<{ season: number; tid: number; type?: string; phase?: number; pickNum?: number }>;
   durability?: number;
   farewellTour?: boolean;
+  postCareerStaffJoined?: boolean;
+  postCareerStaffRole?: string;
+  postCareerStaffYear?: number;
   playoffEligible?: boolean;
   isImport?: boolean;
   importConference?: 'commissioners' | 'governors';

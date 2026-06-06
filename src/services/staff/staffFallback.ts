@@ -116,7 +116,7 @@ function pickNameFromSeed(nationality: string, seed: number): string {
 
 export function makePlaceholderGM(
   team: NBATeam,
-  opts: { country?: string; nationality?: string; nationalityPool?: NationalityPoolEntry[] } = {},
+  opts: { country?: string; nationality?: string; nationalityPool?: NationalityPoolEntry[]; leagueId?: string } = {},
 ): PlaceholderGM {
   const seed = seedFromTeam(team);
   // Spread attributes +/-10 around defaults so each placeholder feels distinct.
@@ -143,7 +143,7 @@ export function makePlaceholderGM(
 
 export function makePlaceholderCoach(
   team: NBATeam,
-  opts: { country?: string; nationality?: string; nationalityPool?: NationalityPoolEntry[]; currentYear?: number } = {},
+  opts: { country?: string; nationality?: string; nationalityPool?: NationalityPoolEntry[]; currentYear?: number; leagueId?: string } = {},
 ): PlaceholderCoach {
   const seed = seedFromTeam(team);
   const currentYear = opts.currentYear ?? new Date().getFullYear();
@@ -161,7 +161,7 @@ export function makePlaceholderCoach(
     born: { year: bornYear, loc: nationality },
     contractExp: currentYear + Math.max(1, 4 - Math.min(3, yearsWithTeam)),
     startSeason: `${startYear}-${String(startYear + 1).slice(2)}`,
-    reputation: 60,
+    reputation: opts.leagueId === 'pba' ? 52 : 60,
     staffImageId: deterministicStaffImageId(name),
     isPlaceholder: true,
   };
@@ -190,8 +190,8 @@ export function generatePlaceholderNonNBAStaff(state: { nonNBATeams?: any[]; pla
     } as unknown as NBATeam;
     const leagueId = leagueIdForTeam(teamLike);
     const pool = buildCoachNationalityPool({ players: state.players ?? [] } as any, leagueId);
-    coaches.push(makePlaceholderCoach(teamLike, { nationalityPool: pool, currentYear: state.leagueStats?.year }));
-    gms.push(makePlaceholderGM(teamLike, { nationalityPool: pool }));
+    coaches.push(makePlaceholderCoach(teamLike, { nationalityPool: pool, currentYear: state.leagueStats?.year, leagueId }));
+    gms.push(makePlaceholderGM(teamLike, { nationalityPool: pool, leagueId }));
     owners.push({
       name: `${fmtTeamLabel(teamLike)} Ownership Group`,
       team: fmtTeamLabel(teamLike),

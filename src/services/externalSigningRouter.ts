@@ -126,7 +126,7 @@ const MIN_NBA_FA_TIER_MID   = 30; // K2 60–69
 
 export function routeUnsignedPlayers(
   state: GameState,
-  options: { protectedPlayerIds?: Set<string> } = {},
+  options: { protectedPlayerIds?: Set<string>; excludedDestinationLeagues?: Set<ExternalRoutingResult['league']> } = {},
 ): { results: ExternalRoutingResult[]; players: NBAPlayer[] } {
   // [OSPLAN] drift check — overseas routing should fire only on Oct 1 (preCamp).
   if (state.date) {
@@ -191,6 +191,7 @@ export function routeUnsignedPlayers(
 
     const dest = pickDestination(k2Ovr, playerAge, state.nonNBATeams ?? [], playerSeed, (p as any).born);
     if (!dest) return p;
+    if (options.excludedDestinationLeagues?.has(dest.league)) return p;
 
     // Generate contract with salary based on EXTERNAL_SALARY_SCALE
     const salaryCap = state.leagueStats?.salaryCap ?? 154_600_000;

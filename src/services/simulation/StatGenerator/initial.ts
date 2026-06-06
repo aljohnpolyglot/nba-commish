@@ -7,7 +7,7 @@ import { getNightProfile } from './nightProfile';
 import { SimulatorKnobs, KNOBS_DEFAULT, isEuroClubCompetitionGame } from '../SimulatorKnobs';
 import { playThroughInjuriesFactor, injurySeverityLevel, minutesRestrictionFactor } from '../playThroughInjuriesFactor';
 import { generateGamePlan } from '../GamePlan';
-import { getGameplan } from '../../../store/gameplanStore';
+import { resolveRotationPlan } from '../rotationPlan';
 
 export function generateStatsForTeam(
   team: Team,
@@ -30,6 +30,7 @@ export function generateStatsForTeam(
   // ── Rotation (WHO plays) + Minutes (HOW MANY) — both from MinutesPlayedService ──
   // Pass rotationDepthOverride into getRotation directly so exhibition games (All-Star: 12,
   // Rising Stars: 10) bypass the standings-based depth cap before the list is truncated.
+  const resolvedPlan = resolveRotationPlan(team, players, season, knobs, lead, overridePlayers);
   const rotResult  = MinutesPlayedService.getRotation(
     team, players, lead, season, overridePlayers,
     knobs.conferenceRank, knobs.gbFromLeader, knobs.gamesRemaining,
@@ -37,22 +38,7 @@ export function generateStatsForTeam(
     knobs.playThroughInjuries ?? 0,
   );
 
-  let rotation = rotResult.players;
-
-  // GM's saved gameplan — promote saved starters into slots 0-4 if they're healthy
-  // and already in the computed rotation. Displaced starters fall to bench order.
-  const savedPlan = overridePlayers ? null : getGameplan(team.id);
-  if (savedPlan?.starterIds?.length === 5) {
-    const idToPlayer = new Map(rotation.map(p => [p.internalId, p]));
-    const savedStarters = savedPlan.starterIds
-      .map(id => idToPlayer.get(id))
-      .filter((p): p is Player => !!p);
-    if (savedStarters.length === 5) {
-      const startersSet = new Set(savedStarters.map(p => p.internalId));
-      const bench = rotation.filter(p => !startersSet.has(p.internalId));
-      rotation = [...savedStarters, ...bench];
-    }
-  }
+  let rotation = resolvedPlan.rotation;
 
   if (rotation.length === 0) return [];
 
@@ -83,24 +69,9 @@ export function generateStatsForTeam(
       return Math.max(1, mins + (Math.random() - 0.5) * 3);
     });
   } else {
-    const mpgTarget = knobs.starMpgOverride ?? rotResult.starMpgTarget;
-    const minuteProfile = isEuroClubGame ? 'euro_club' : 'default';
-    const { minutes } = MinutesPlayedService.allocateMinutes(
-      rotation, season, lead, otCount, mpgTarget, !!knobs.isPlayoffs, knobs.quarterLength, overtimeDuration, numQuarters, minuteProfile
-    );
-    playerMinutes = minutes;
-
-    // Apply GM's saved minute overrides (renormalized so team still hits 240).
-    // We only override players the GM actually set — others keep their computed value.
-    if (savedPlan?.minuteOverrides && Object.keys(savedPlan.minuteOverrides).length > 0) {
-      const overridden = rotation.map((p, i) => {
-        const v = savedPlan.minuteOverrides![p.internalId];
-        return typeof v === 'number' ? v : playerMinutes[i];
-      });
-      const sum = overridden.reduce((a, b) => a + b, 0) || 1;
-      const target = totalMinuteBudget;
-      playerMinutes = overridden.map(m => m * (target / sum));
-    }
+    const baseMinutes = resolvedPlan.minuteTargets;
+    const baseTotal = baseMinutes.reduce((sum, value) => sum + value, 0) || 1;
+    playerMinutes = baseMinutes.map(value => value * (totalMinuteBudget / baseTotal));
   }
 
   // ── GamePlan: per-game role lottery (stars stable, bench volatile) ─────────

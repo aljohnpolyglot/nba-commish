@@ -2,9 +2,19 @@ import type { GameState, NewsItem } from '../../../types';
 import { NewsGenerator } from '../../news/NewsGenerator';
 import { logPlanEvent } from '../../offseason/offseasonPlan';
 import { backfillAllStarAwards } from './allStarSelectionResolvers';
+import {
+  backfillPbaAllStarAwards,
+  buildPbaAllStarLeagueStats,
+  buildPbaAllStarPatch,
+  buildPbaContestPatch,
+} from '../../pba/allStar';
+
+const skipIsolatedNonNbaAllStar = (state: GameState) =>
+  state.leagueStats?.uiMode === 'euro_isolated';
 
 export const autoOpenThroneSignups = async (state: GameState): Promise<Partial<GameState>> => {
   logPlanEvent('autoResolvers.autoOpenThroneSignups', 'fire', `date=${state.date}`);
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   if (state.leagueStats.allStarThroneEnabled !== true) return {};
   if (!state.allStar) return {};
   if ((state.allStar as any).throneSignupSchedule) return {};
@@ -21,6 +31,7 @@ export const autoOpenThroneSignups = async (state: GameState): Promise<Partial<G
 
 export const autoCloseThroneSignups = async (state: GameState): Promise<Partial<GameState>> => {
   logPlanEvent('autoResolvers.autoCloseThroneSignups', 'fire', `date=${state.date}`);
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   if (state.leagueStats.allStarThroneEnabled !== true) return {};
   if (!state.allStar) return {};
   if ((state.allStar as any).throneSignupComplete) return {};
@@ -35,6 +46,7 @@ export const autoCloseThroneSignups = async (state: GameState): Promise<Partial<
 
 export const autoOpenThroneVoting = async (state: GameState): Promise<Partial<GameState>> => {
   logPlanEvent('autoResolvers.autoOpenThroneVoting', 'fire', `date=${state.date}`);
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   if (state.leagueStats.allStarThroneEnabled !== true) return {};
   if (!state.allStar) return {};
   if ((state.allStar as any).throneAnnounced) return {};
@@ -51,6 +63,7 @@ export const autoOpenThroneVoting = async (state: GameState): Promise<Partial<Ga
 
 export const autoLockThroneField = async (state: GameState): Promise<Partial<GameState>> => {
   logPlanEvent('autoResolvers.autoLockThroneField', 'fire', `date=${state.date}`);
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   if (state.leagueStats.allStarThroneEnabled !== true) return {};
   if (!state.allStar) return {};
   if ((state.allStar as any).throneAnnounced) return {};
@@ -65,6 +78,66 @@ export const autoLockThroneField = async (state: GameState): Promise<Partial<Gam
 
 export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<GameState>> => {
   logPlanEvent('autoResolvers.autoSimAllStarWeekend', 'fire', `date=${state.date}`);
+  if (state.leagueStats?.uiMode === 'pba_isolated') {
+    if ((state.allStar as any)?.weekendComplete) {
+      return backfillAllStarAwards(state);
+    }
+    try {
+      const { AllStarWeekendOrchestrator } = await import('../../allStar/AllStarWeekendOrchestrator');
+      const leagueStats = buildPbaAllStarLeagueStats(state.leagueStats);
+      const pbaTeams = ((state as any).nonNBATeams ?? [])
+        .filter((team: any) => team?.league === 'PBA')
+        .map((team: any) => ({ ...team, id: team.tid ?? team.id }));
+      const seedPatch = state.allStar?.reservesAnnounced
+        ? { players: state.players, allStar: state.allStar }
+        : buildPbaAllStarPatch({ ...state, leagueStats } as GameState, state.players);
+      const players = seedPatch?.players ?? state.players;
+      let allStar = (seedPatch?.allStar ?? state.allStar) as any;
+      if (!allStar?.reservesAnnounced) return seedPatch ?? {};
+      allStar = buildPbaContestPatch({ ...state, leagueStats, players, allStar } as GameState, players, allStar);
+
+      let schedule = state.schedule;
+      if (!allStar.gamesInjected) {
+        schedule = AllStarWeekendOrchestrator.injectAllStarGames(
+          state.schedule,
+          pbaTeams,
+          leagueStats.year,
+          allStar.roster ?? [],
+          leagueStats,
+        );
+        allStar = { ...allStar, gamesInjected: true };
+      }
+
+      const patch = await AllStarWeekendOrchestrator.simulateWeekend(
+        {
+          ...state,
+          players,
+          teams: state.teams,
+          nonNBATeams: (state as any).nonNBATeams,
+          schedule,
+          leagueStats,
+          allStar,
+        } as GameState,
+        { friday: false, saturday: true, sunday: true },
+      );
+      const finalAllStar = patch.allStar ?? allStar;
+      return {
+        ...patch,
+        leagueStats,
+        schedule: patch.schedule ?? schedule,
+        allStar: finalAllStar,
+        players: backfillPbaAllStarAwards(
+          { ...state, leagueStats, players, allStar: finalAllStar } as GameState,
+          players,
+          finalAllStar,
+        ),
+      };
+    } catch (err) {
+      console.warn('autoSimPbaAllStarWeekend failed:', err);
+      return {};
+    }
+  }
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   if ((state.allStar as any)?.weekendComplete) {
     return backfillAllStarAwards(state);
   }
@@ -145,7 +218,7 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
         stateForSim.allStar?.roster ?? [],
         stateForSim.leagueStats
       );
-      const win = AllStarWeekendOrchestrator.getBreakWindowStrings(stateForSim.leagueStats.year);
+      const win = AllStarWeekendOrchestrator.getBreakWindowStrings(stateForSim.leagueStats.year, stateForSim.leagueStats);
       stateForSim = {
         ...stateForSim,
         schedule: newSchedule,

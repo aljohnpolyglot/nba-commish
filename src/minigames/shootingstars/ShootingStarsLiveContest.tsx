@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ChevronRight, Play, X } from 'lucide-react';
 import { LiveContestPlayerCard } from '../shared/LiveContestPlayerCard';
 import { LiveContestTeam, ShotLocation, formatContestTime } from '../shared/liveContestTypes';
-import { ShootingStarsResult } from '../../services/allStar/AllStarShootingStarsSim';
+import { AllStarShootingStarsSim, ShootingStarsResult } from '../../services/allStar/AllStarShootingStarsSim';
 import { ShootingStarsCourt } from './ShootingStarsCourt';
 import { getTeamFullName } from '../../utils/teamNames';
 
@@ -14,6 +14,8 @@ const SHOT_LOCATIONS: ShotLocation[] = [
   { type: 'HALF_COURT', x: 270, y: 470, label: 'Halfcourt Shot', difficulty: 0.08, stat: 'tp' },
 ];
 
+const SHOT_TIME_WEIGHTS = [0.18, 0.2, 0.24, 0.38];
+
 type ModalState = 'TEAM_FINISHED' | 'STANDINGS_UPDATE' | 'ROUND_RECAP' | 'TOURNAMENT_WINNER' | null;
 
 interface ShootingStarsLiveContestProps {
@@ -22,6 +24,9 @@ interface ShootingStarsLiveContestProps {
   onClose?: () => void;
   onComplete?: (result: ShootingStarsResult) => void;
 }
+
+type ShootingRunLog = NonNullable<ShootingStarsResult['runs']>[number];
+type ShootingStationRunLog = ShootingRunLog['stations'][number];
 
 const sortPlayersForShootingStars = (players: LiveContestTeam['players']) => {
   if (players.length !== 3) return players;
@@ -55,6 +60,7 @@ export const ShootingStarsLiveContest: React.FC<ShootingStarsLiveContestProps> =
   const executionIdRef = useRef(0);
   const savedRef = useRef(false);
   const timerRef = useRef(0);
+  const resultRef = useRef<ShootingStarsResult | null>(null);
 
   useEffect(() => { simSpeedRef.current = simSpeed; }, [simSpeed]);
   useEffect(() => { timerRef.current = timer; }, [timer]);
@@ -105,6 +111,27 @@ export const ShootingStarsLiveContest: React.FC<ShootingStarsLiveContestProps> =
   const activeTeamObj = activeTeamData?.team;
   const activeTeamPlayers = activeTeamData?.players || [];
 
+  const officialResult = () => {
+    if (!resultRef.current) {
+      const players = tournamentTeams.flatMap(team => team.players) as any[];
+      const nbaTeams = tournamentTeams.map(team => ({ ...team.team, id: team.team.tid })) as any[];
+      resultRef.current = AllStarShootingStarsSim.simulate(players, tournamentTeams.length, 3, nbaTeams, year);
+    }
+    return resultRef.current;
+  };
+
+  const officialRun = (teamId: number, round: number): ShootingRunLog | undefined => {
+    return officialResult().runs?.find(entry => Number(entry.teamId) === teamId && entry.round === round);
+  };
+
+  const officialRunTime = (teamId: number, round: number) => {
+    const run = officialRun(teamId, round);
+    if (typeof run?.timeSec === 'number') return run.timeSec;
+    const row = officialResult().teams.find(entry => Number(entry.teamId) === teamId);
+    const time = round === 2 ? row?.finalTime : row?.round1Time;
+    return typeof time === 'number' ? time : undefined;
+  };
+
   const buildResult = (nextResults = results): ShootingStarsResult => {
     const finalResults = [...(nextResults[2]?.length ? nextResults[2] : nextResults[1] ?? [])].sort((a, b) => a.time - b.time);
     const teamsResult = tournamentTeams.map((team, index) => {
@@ -133,6 +160,7 @@ export const ShootingStarsLiveContest: React.FC<ShootingStarsLiveContestProps> =
       winnerTeamId: winner?.teamId ?? '',
       winnerLabel: winner?.label ?? 'TBD',
       log: teamsResult.map(team => `${team.label} finished in ${formatContestTime(team.timeSec)}.`),
+      runs: officialResult().runs,
     };
   };
 
@@ -143,9 +171,8 @@ export const ShootingStarsLiveContest: React.FC<ShootingStarsLiveContestProps> =
       let player = team.players[shooterIndex % team.players.length];
       let rating = player.ratings[0]?.[shot.stat] || 50;
       let speed = player.ratings[0]?.spd || 50;
-      let attempts = 1;
       const probability = Math.max(0.03, (rating / 100) * shot.difficulty);
-      while (Math.random() >= probability && attempts < 7) attempts += 1;
+      let attempts = Math.max(1, Math.min(7, Math.ceil(1 / probability)));
       total += Math.max(0.4, (3000 - speed * 15) / 1000);
       total += attempts * 1.05 + (attempts - 1) * 2.05;
       if (shot.type === 'HALF_COURT') {
@@ -163,6 +190,17 @@ export const ShootingStarsLiveContest: React.FC<ShootingStarsLiveContestProps> =
   };
 
   const completeRemainingResults = (baseResults = results) => {
+    const official = officialResult();
+    const round1 = official.teams
+      .filter(entry => entry.round1Time != null)
+      .map(entry => ({ tid: Number(entry.teamId), time: entry.round1Time! }))
+      .filter(entry => Number.isFinite(entry.tid));
+    const round2 = official.teams
+      .filter(entry => entry.finalTime != null)
+      .map(entry => ({ tid: Number(entry.teamId), time: entry.finalTime! }))
+      .filter(entry => Number.isFinite(entry.tid));
+    if (round1.length > 0) return { 1: round1, 2: round2 };
+
     const next: Record<number, { tid: number; time: number }[]> = {
       1: [...(baseResults[1] || [])],
       2: [...(baseResults[2] || [])],
@@ -190,7 +228,7 @@ export const ShootingStarsLiveContest: React.FC<ShootingStarsLiveContestProps> =
   const saveResultOnce = (nextResults = results) => {
     if (savedRef.current) return;
     savedRef.current = true;
-    onComplete?.(buildResult(nextResults));
+    onComplete?.(officialResult());
   };
 
   const handleClose = () => {
@@ -212,73 +250,70 @@ export const ShootingStarsLiveContest: React.FC<ShootingStarsLiveContestProps> =
     shotIdx: number,
     roundTeams: LiveContestTeam[],
     executionId: number,
+    targetRunTime?: number,
+    targetRun?: ShootingRunLog,
   ) => {
     if (stopRef.current || executionIdRef.current !== executionId) return;
     const team = roundTeams[teamIdx];
     if (!team) return;
+    const run = targetRun ?? officialRun(team.team.tid, roundNum);
+    const runTime = targetRunTime ?? run?.timeSec ?? officialRunTime(team.team.tid, roundNum) ?? estimateTeamTime(team, 0);
 
     if (shotIdx >= SHOT_LOCATIONS.length) {
       isSimulatingRef.current = false;
       setIsFinished(true);
       setCommentary('UNBELIEVABLE FINISH!');
-      setTimer(prevTime => {
-        const finalTime = Number(prevTime.toFixed(1));
-        setResults(prev => {
-          const currentRoundResults = prev[roundNum] || [];
-          if (currentRoundResults.some(result => result.tid === team.team.tid)) return prev;
-          return { ...prev, [roundNum]: [...currentRoundResults, { tid: team.team.tid, time: finalTime }] };
-        });
-        return finalTime;
+      const finalTime = Number(runTime.toFixed(1));
+      setTimer(finalTime);
+      setResults(prev => {
+        const currentRoundResults = prev[roundNum] || [];
+        if (currentRoundResults.some(result => result.tid === team.team.tid)) return prev;
+        return { ...prev, [roundNum]: [...currentRoundResults, { tid: team.team.tid, time: finalTime }] };
       });
       setTimeout(() => setActiveModal('TEAM_FINISHED'), 1500 / (simSpeedRef.current || 1));
       return;
     }
 
     const targetShot = SHOT_LOCATIONS[shotIdx];
-    let currentShooterIdx = playerIdx % 3;
+    const stationRun = run?.stations?.find(station => station.shotIndex === shotIdx) ?? run?.stations?.[shotIdx];
+    let currentShooterIdx = stationRun
+      ? Math.max(0, team.players.findIndex(item => item.id === stationRun.shooterId || item.internalId === stationRun.shooterId))
+      : playerIdx % 3;
     setActiveShooterIndex(currentShooterIdx);
-    let player = team.players[currentShooterIdx];
-    let rating = player.ratings[0]?.[targetShot.stat] || 50;
-    let speedRating = player.ratings[0]?.spd || 50;
+    const player = team.players[currentShooterIdx];
+    const shotMs = stationRun ? stationRun.timeSec * 1000 : Math.max(400, runTime * 1000 * (SHOT_TIME_WEIGHTS[shotIdx] ?? 0.25));
+    const moveMs = stationRun ? stationRun.moveTimeSec * 1000 : shotMs * (targetShot.type === 'HALF_COURT' ? 0.28 : 0.22);
+    const shootMs = shotMs - moveMs;
 
     setCommentary(`${player.name.toUpperCase()} MOVING TO ${targetShot.label.toUpperCase()}...`);
-    await delay(Math.max(400, 3000 - speedRating * 15));
+    await delay(moveMs);
     if (stopRef.current || executionIdRef.current !== executionId) return;
 
-    let made = false;
-    let localAttempts = 0;
-    while (!made) {
-      if (stopRef.current) return;
-      localAttempts++;
-      setCurrentAttempts(localAttempts);
+    const attempts = stationRun?.attempts?.length
+      ? stationRun.attempts
+      : [{ attempt: 1, shooterId: player.id, shooterName: player.name, made: true, durationSec: Math.max(0.12, shootMs / 1000) }];
+    for (const attempt of attempts) {
+      if (stopRef.current || executionIdRef.current !== executionId) return;
+      const attemptShooterIdx = team.players.findIndex(item => item.id === attempt.shooterId || item.internalId === attempt.shooterId);
+      if (attemptShooterIdx >= 0) {
+        currentShooterIdx = attemptShooterIdx;
+        setActiveShooterIndex(attemptShooterIdx);
+      }
+      const shooter = team.players[currentShooterIdx] ?? player;
+      const durationMs = Math.max(120, attempt.durationSec * 1000);
+      setCurrentAttempts(attempt.attempt);
       setIsShooting(true);
-      setCommentary(localAttempts === 1 ? `PULLS UP FOR THE ${targetShot.label.toUpperCase()}!` : localAttempts === 2 ? 'GRABS THE REBOUND, TRIES AGAIN!' : 'HE NEEDS THIS ONE...');
-      await delay(1000);
+      setCommentary(attempt.attempt === 1 ? `${shooter.name.toUpperCase()} PULLS UP FOR THE ${targetShot.label.toUpperCase()}!` : `${shooter.name.toUpperCase()} RELOADS FOR ATTEMPT ${attempt.attempt}.`);
+      await delay(durationMs * 0.55);
       setIsShooting(false);
       if (stopRef.current || executionIdRef.current !== executionId) return;
-
-      const probability = (rating / 100) * targetShot.difficulty;
-      if (Math.random() < probability || localAttempts > 6) {
-        made = true;
-        setCommentary('IT GOES IN!');
-        await delay(500);
-      } else {
-        setCommentary('OH NO! OFF THE RIM!');
-        await delay(2000);
-        if (shotIdx === 3) {
-          currentShooterIdx = (currentShooterIdx + 1) % 3;
-          setActiveShooterIndex(currentShooterIdx);
-          player = team.players[currentShooterIdx];
-          rating = player.ratings[0]?.[targetShot.stat] || 50;
-          speedRating = player.ratings[0]?.spd || 50;
-          setCommentary(`PASSES TO ${player.name.toUpperCase()} FOR THE NEXT ATTEMPT!`);
-          await delay(Math.max(400, 3000 - speedRating * 15));
-        }
-      }
+      setCommentary(attempt.made ? 'IT GOES IN!' : 'OH NO! OFF THE RIM!');
+      await delay(durationMs * 0.45);
     }
+    if (stopRef.current || executionIdRef.current !== executionId) return;
 
     setCompletedShots(shotIdx + 1);
-    runSimulationStep(teamIdx, roundNum, currentShooterIdx + 1, shotIdx + 1, roundTeams, executionId);
+    runSimulationStep(teamIdx, roundNum, currentShooterIdx + 1, shotIdx + 1, roundTeams, executionId, runTime, run);
   };
 
   const startTeamSimulation = (teamIdx: number, roundNum: number, roundTeams: LiveContestTeam[]) => {
@@ -483,8 +518,8 @@ export const ShootingStarsLiveContest: React.FC<ShootingStarsLiveContestProps> =
               <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-neutral-800 bg-[#111116] p-12 shadow-2xl">
                 <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-orange-400 to-orange-600" />
                 <h2 className="mb-2 text-4xl font-black italic tracking-tighter">TEAM {activeTeamObj?.name.toUpperCase()} FINISHED!</h2>
-                <p className="mb-8 font-mono text-sm uppercase tracking-widest text-neutral-400">Official Time Recorded</p>
-                <div className="mb-10 text-center text-8xl font-black tracking-tighter text-transparent bg-gradient-to-br from-white to-neutral-400 bg-clip-text tabular-nums">{formatContestTime(results[currentRound]?.[results[currentRound].length - 1]?.time)}</div>
+                <p className="mb-8 font-mono text-sm uppercase tracking-widest text-neutral-400">Run Complete</p>
+                <div className="mb-10 text-center text-8xl font-black tracking-tighter text-transparent bg-gradient-to-br from-white to-neutral-400 bg-clip-text tabular-nums">{formatContestTime(timer)}</div>
                 <button onClick={advanceSimulation} className="w-full rounded-xl bg-white py-4 text-sm font-black uppercase tracking-widest text-black transition-all hover:bg-neutral-200">View Standings</button>
               </motion.div>
             )}
@@ -518,7 +553,7 @@ export const ShootingStarsLiveContest: React.FC<ShootingStarsLiveContestProps> =
               const winner = result.teams.find(team => team.teamId === result.winnerTeamId);
               const winnerTeam = tournamentTeams.find(team => String(team.team.tid) === result.winnerTeamId);
               return (
-                <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="relative flex w-full max-w-5xl flex-col gap-12 overflow-hidden rounded-2xl border border-orange-500/30 bg-[#111116] p-12 shadow-[0_0_50px_rgba(249,115,22,0.1)] md:flex-row">
+                <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="relative flex w-[min(96vw,84rem)] max-h-[90vh] flex-col gap-12 overflow-y-auto rounded-2xl border border-orange-500/30 bg-[#111116] p-6 shadow-[0_0_50px_rgba(249,115,22,0.1)] md:p-8 lg:flex-row">
                   <div className="flex flex-col items-center justify-center text-center md:w-1/3">
                     <div className="mb-6"><span className="text-[10px] font-bold uppercase tracking-[0.3em] text-orange-500">{year} SHOOTING STARS</span><h2 className="mt-1 text-4xl font-black italic tracking-tighter text-white">CHAMPIONS</h2></div>
                     {winnerTeam?.team.imgURL && <img src={winnerTeam.team.imgURL} alt={winnerTeam.team.name} className="mb-6 h-40 w-40 object-contain drop-shadow-[0_0_30px_rgba(255,255,255,0.1)]" referrerPolicy="no-referrer" />}
@@ -526,10 +561,10 @@ export const ShootingStarsLiveContest: React.FC<ShootingStarsLiveContestProps> =
                     <div className="mb-10 font-mono text-sm uppercase tracking-widest text-neutral-400">Winning Time: <span className="ml-2 text-lg font-bold text-white">{formatContestTime(winner?.timeSec)}</span></div>
                     {onClose && <button onClick={handleClose} className="w-full rounded-xl bg-orange-500 py-4 text-sm font-black uppercase tracking-widest text-white shadow-[0_0_20px_rgba(249,115,22,0.3)] transition-all hover:bg-orange-400">Done</button>}
                   </div>
-                  <div className="flex flex-col border-t border-neutral-800/50 pt-8 md:w-2/3 md:border-l md:border-t-0 md:pl-12 md:pt-0">
+                  <div className="flex min-w-0 flex-col border-t border-neutral-800/50 pt-8 md:w-2/3 md:border-l md:border-t-0 md:pl-12 md:pt-0">
                     <h3 className="mb-6 text-xl font-black uppercase italic tracking-tighter text-neutral-300">Final Standings</h3>
-                    <div className="flex-grow overflow-hidden rounded-xl border border-neutral-800 bg-[#0c0c0f]">
-                      <table className="w-full min-w-max border-collapse text-left">
+                    <div className="flex-grow overflow-x-auto overflow-y-hidden rounded-xl border border-neutral-800 bg-[#0c0c0f]">
+                      <table className="w-full min-w-[760px] border-collapse text-left">
                         <thead><tr className="border-b border-neutral-800 bg-[#1a1a24] text-[10px] uppercase tracking-widest text-neutral-500"><th className="p-4 font-black">Team</th><th className="p-4 font-black">Members</th><th className="p-4 text-right font-black">Round 1</th><th className="p-4 text-right font-black">Finals</th></tr></thead>
                         <tbody className="divide-y divide-neutral-800/50">
                           {result.teams.map(team => {

@@ -1,5 +1,10 @@
 import type { LeagueStats } from '../types';
-import { INITIAL_LEAGUE_STATS, PBA_ISOLATED_DEFAULTS, EXTERNAL_SALARY_SCALE } from '../constants';
+import {
+  EXTERNAL_LEAGUE_OVR_CAP,
+  INITIAL_LEAGUE_STATS,
+  PBA_ISOLATED_DEFAULTS,
+  EXTERNAL_SALARY_SCALE,
+} from '../constants';
 import { LEAGUE_MULTIPLIERS, calculateLeagueOverall } from './logic/leagueOvr';
 
 /** Returns true if the URL is ProBallers' "no photo" placeholder. Treat as missing. */
@@ -45,23 +50,34 @@ export function scaleRatings(ratings: any[], mult: number, hgtMult?: number): an
 
 export function computeLeagueOvr(rawRatings: any, league: string): number {
   const mult = LEAGUE_MULTIPLIERS[league] ?? 1.0;
+  const cap = EXTERNAL_LEAGUE_OVR_CAP[league];
 
-  if (league === 'PBA') {
-    return calculateLeagueOverall(rawRatings, league);
-  }
+  const ovr = league === 'PBA'
+    ? calculateLeagueOverall(rawRatings, league)
+    : (() => {
+        const srcOvr = rawRatings?.ovr;
+        if (srcOvr && srcOvr > 0 && srcOvr <= 100) {
+          return Math.round(Math.max(10, srcOvr * mult));
+        }
+        return calculateLeagueOverall(rawRatings, league);
+      })();
 
-  const srcOvr = rawRatings?.ovr;
-  if (srcOvr && srcOvr > 0 && srcOvr <= 100) {
-    return Math.round(Math.max(10, srcOvr * mult));
-  }
-
-  return calculateLeagueOverall(rawRatings, league);
+  return cap !== undefined ? Math.min(ovr, cap) : ovr;
 }
 
 export type PBAEconomyConfig = {
   salaryCapUSD: number;
   minSalaryUSD: number;
   maxSalaryPct: number;
+};
+
+type PBAContractPlayerLike = {
+  internalId?: string;
+  name?: string;
+  tid?: number;
+  born?: { year?: number };
+  age?: number;
+  stats?: Array<{ playoffs?: boolean; gp?: number }>;
 };
 
 type PBAEconomySource = Pick<LeagueStats, 'salaryCap' | 'minContractStaticAmount' | 'maxContractStaticPercentage'>;
@@ -102,13 +118,53 @@ export function getPBARosterEconomyConfig(
 }
 
 function computeImportedPBASalaryUSD(ovr: number, economy: PBAEconomyConfig): number {
-  const ovrNorm = Math.max(0, Math.min(1, (ovr - 35) / 11));
   const maxSalaryUSD = Math.round(economy.salaryCapUSD * (economy.maxSalaryPct / 100));
-  return Math.round(economy.minSalaryUSD + ovrNorm * Math.max(0, maxSalaryUSD - economy.minSalaryUSD));
+  const importFloorUSD = Math.max(
+    Math.round(economy.minSalaryUSD * 4),
+    Math.round(maxSalaryUSD * 0.35),
+  );
+  const ovrNorm = Math.max(0, Math.min(1, (ovr - 34) / 18));
+  const scaledUSD = importFloorUSD + Math.pow(ovrNorm, 1.15) * Math.max(0, maxSalaryUSD - importFloorUSD);
+  return Math.round(Math.min(maxSalaryUSD, Math.max(importFloorUSD, scaledUSD)));
 }
 
-export function normalizeImportedPBAContract(contract: any, pbaOvr: number, economy: PBAEconomyConfig): any {
-  const salaryUSD = computeImportedPBASalaryUSD(pbaOvr, economy);
+function seededUnit(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 4294967295;
+}
+
+export function computeLocalPBASalaryUSD(
+  pbaOvr: number,
+  economy: PBAEconomyConfig,
+  player?: PBAContractPlayerLike,
+  currentYear = new Date().getFullYear(),
+): number {
+  const minSalaryUSD = Math.max(10_000, economy.minSalaryUSD);
+  const maxSalaryUSD = Math.max(minSalaryUSD, Math.round(economy.salaryCapUSD * (economy.maxSalaryPct / 100)));
+  const age = player?.born?.year ? currentYear - player.born.year : player?.age ?? 28;
+  const service = (player?.stats ?? []).filter(row => !row.playoffs && (row.gp ?? 0) > 0).length;
+  const ratingScore = Math.pow(Math.max(0, Math.min(1, (pbaOvr - 50) / 18)), 1.15);
+  const veteranBump =
+    age >= 36 ? 0.10 :
+    age >= 32 ? 0.18 :
+    age >= 29 ? 0.12 :
+    age <= 23 ? -0.06 :
+    0;
+  const serviceBump = Math.min(0.10, service * 0.012);
+  const seed = seededUnit(`${player?.internalId ?? ''}|${player?.name ?? ''}|${player?.tid ?? ''}|${pbaOvr}`);
+  const noise = (seed - 0.5) * 0.18;
+  const score = Math.max(0, Math.min(1, ratingScore + veteranBump + serviceBump + noise));
+  return Math.round(minSalaryUSD + score * (maxSalaryUSD - minSalaryUSD));
+}
+
+export function normalizeImportedPBAContract(contract: any, pbaOvr: number, economy: PBAEconomyConfig, player?: PBAContractPlayerLike): any {
+  const salaryUSD = contract?.isImport
+    ? computeImportedPBASalaryUSD(pbaOvr, economy)
+    : computeLocalPBASalaryUSD(pbaOvr, economy, player);
   const exp = Number(contract?.exp ?? 2026);
   return {
     ...(contract ?? {}),

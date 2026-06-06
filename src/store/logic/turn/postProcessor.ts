@@ -81,10 +81,12 @@ export const processSimulationResults = (
         // Identify game type via schedule lookup
         const schedGame = schedule?.find(g => g.gid === res.gameId);
         const competitionPhase = schedGame?.competitionPhase;
+        const competitionId = String(schedGame?.competitionId ?? '').toLowerCase();
         const isCompetitionPlayIn = competitionPhase === 'play-in';
         const isCompetitionPlayoff = competitionPhase === 'qf' || competitionPhase === 'sf' || competitionPhase === 'final';
-        const isPlayoffGame = schedGame?.isPlayoff === true || res.isPlayoff === true || isCompetitionPlayoff;
-        const isPlayInGame = schedGame?.isPlayIn === true || res.isPlayIn === true || isCompetitionPlayIn;
+        const treatCompetitionPlayInAsPlayoffs = isCompetitionPlayIn && competitionId === 'euroleague';
+        const isPlayoffGame = schedGame?.isPlayoff === true || res.isPlayoff === true || isCompetitionPlayoff || treatCompetitionPlayInAsPlayoffs;
+        const isPlayInGame = !treatCompetitionPlayInAsPlayoffs && (schedGame?.isPlayIn === true || res.isPlayIn === true || isCompetitionPlayIn);
         const isPreseasonGame = schedGame?.isPreseason === true || res.isPreseason === true;
         const excludeFromRecord = (schedGame as any)?.excludeFromRecord === true || res.excludeFromRecord === true;
 
@@ -359,17 +361,21 @@ export const processSimulationResults = (
 
     // Decrement injury and suspension games remaining for players whose teams played today
     const teamGamesPlayed = new Map<number, number>();
-    const awayGamesPlayed = new Map<number, number>();
+    const awayFatigueUnits = new Map<number, number>();
     const awayMinutesPlayed = new Map<string, number>();
     allSimResults.forEach(res => {
         if (res.homeTeamId < 0 || res.awayTeamId < 0) return;
+        const schedGame = schedule?.find(g => g.gid === res.gameId);
+        const isPreseasonGame = schedGame?.isPreseason === true || res.isPreseason === true;
+        const isExhibitionGame = schedGame?.isExhibition === true || res.isExhibition === true;
+        const awayFatigueWeight = isExhibitionGame ? 0.1 : isPreseasonGame ? 0.2 : 1;
         teamGamesPlayed.set(res.homeTeamId, (teamGamesPlayed.get(res.homeTeamId) || 0) + 1);
         teamGamesPlayed.set(res.awayTeamId, (teamGamesPlayed.get(res.awayTeamId) || 0) + 1);
-        awayGamesPlayed.set(res.awayTeamId, (awayGamesPlayed.get(res.awayTeamId) || 0) + 1);
+        awayFatigueUnits.set(res.awayTeamId, (awayFatigueUnits.get(res.awayTeamId) || 0) + awayFatigueWeight);
         for (const stat of res.awayStats ?? []) {
             awayMinutesPlayed.set(
                 stat.playerId,
-                (awayMinutesPlayed.get(stat.playerId) || 0) + Number(stat.min ?? 0),
+                (awayMinutesPlayed.get(stat.playerId) || 0) + Number(stat.min ?? 0) * awayFatigueWeight,
             );
         }
     });
@@ -411,15 +417,15 @@ export const processSimulationResults = (
                 changed = true;
             }
 
-            const awayTrips = awayGamesPlayed.get(p.tid) || 0;
-            if (awayTrips > 0 && (p.injury?.gamesRemaining ?? 0) <= 0) {
+            const awayUnits = awayFatigueUnits.get(p.tid) || 0;
+            if (awayUnits > 0 && (p.injury?.gamesRemaining ?? 0) <= 0) {
                 const team = teamById.get(p.tid);
                 const travel = getTeamTravelGameplayEffects(team as any);
                 const totalAwayMinutes = awayMinutesPlayed.get(p.internalId) || 0;
                 if (totalAwayMinutes <= 0) return changed ? updated : p;
-                const averageAwayMinutes = totalAwayMinutes / awayTrips;
+                const averageAwayMinutes = totalAwayMinutes / awayUnits;
                 const fatigueLoad = 0.45 + Math.min(1.15, averageAwayMinutes / 28);
-                const fatigueGain = fatigueLoad * awayTrips * travel.roadTripFatigueDelta;
+                const fatigueGain = fatigueLoad * awayUnits * travel.roadTripFatigueDelta;
                 const currentFatigue = Number((p as any).trainingFatigue ?? 0);
                 const nextFatigue = clamp(currentFatigue + fatigueGain, 0, 100);
                 if (Math.abs(nextFatigue - currentFatigue) > 0.01) {

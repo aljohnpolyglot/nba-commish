@@ -33,6 +33,7 @@ import { memCache, isCacheValid, fetchWithDedup, prefetchPlayerBio, getNonNBABio
 import { ensureNonNBAFetched, getNonNBAGistData } from './nonNBACache';
 import { extractNbaId, hdPortrait } from '../../../utils/helpers';
 import { classifyBoxScoreGame } from '../../../utils/gameClassification';
+import { isEuroIsolatedMode } from '../../../utils/uiMode';
 import {
   ensureBiosLoaded, getBioBySlug, fmtHeight,
 } from '../../../data/realPlayerDataFetcher';
@@ -106,6 +107,7 @@ const buildHeroStatsFromBoxScores = (
   playoffs: any,
   nbaCup: any,
   nbaCupHistory: any,
+  leagueStats?: { uiMode?: string | null },
 ) => {
   let gp = 0;
   let pts = 0;
@@ -115,7 +117,7 @@ const buildHeroStatsFromBoxScores = (
   let blk = 0;
 
   for (const box of boxScores ?? []) {
-    const meta = classifyBoxScoreGame(box as any, schedule ?? [], playoffs, nbaCup, nbaCupHistory, season);
+    const meta = classifyBoxScoreGame(box as any, schedule ?? [], playoffs, nbaCup, nbaCupHistory, season, leagueStats);
     if (meta.seasonYear !== season || meta.isPreseason || meta.isPlayoff || meta.isPlayIn || meta.isCupFinal) {
       continue;
     }
@@ -339,6 +341,9 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
 
   const liveHeroStats = useMemo(() => {
     const season = state.leagueStats?.year ?? maxSeason;
+    if (isEuroIsolatedMode(state)) {
+      return buildHeroStatsFromSave(player.stats, season);
+    }
     return buildHeroStatsFromBoxScores(
       player.internalId,
       season,
@@ -347,6 +352,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
       state.playoffs,
       state.nbaCup,
       state.nbaCupHistory,
+      state.leagueStats,
     ) ?? buildHeroStatsFromSave(player.stats, season);
   }, [
     maxSeason,
@@ -358,6 +364,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
     state.nbaCup,
     state.nbaCupHistory,
     state.leagueStats?.year,
+    state.leagueStats?.uiMode,
   ]);
 
   useEffect(() => {

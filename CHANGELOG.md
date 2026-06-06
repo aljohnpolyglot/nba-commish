@@ -2,6 +2,40 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 69 (June 5, 2026) — PBA history table + UI-copy hardening
+
+- `src/components/central/view/PbaLeagueHistoryView.tsx`, `src/components/central/view/LeagueHistoryView.tsx` — replaced the old PBA isolated-mode placeholder table with an NBA-style season archive: one row per season, separate Philippine / Commissioner's / Governors' cup columns, major season-award columns, and click-through into season detail / team history where data exists.
+- `src/components/central/view/LeagueHistoryDetailView.tsx` — PBA season detail now recognizes both sim slugs (`MVP`, `COY`, etc.) and scraped long-form PBA award names (`Most Valuable Player`, `Coach of the Year`, etc.), so historical PBA seasons populate their award cards instead of showing blanks.
+- `src/components/view/PBAAwardRacesView.tsx`, `src/components/central/view/PbaLeagueHistoryView.tsx` — removed player-facing copy that talked about archives/gists/save blending and replaced it with plain basketball-facing descriptions.
+- `CLAUDE.md`, `AGENTS.md`, `README.md`, `TODO.md` — strengthened the standing rule that visible UI copy must never explain data provenance or merge mechanics (`loaded from gist`, `blended with your save`, `written into history`, etc.); UI text should say what the screen means, not how the app assembled it.
+
+## Session 68 (June 1, 2026) — All-Star H-O-R-S-E event
+
+- `src/services/allStar/AllStarHorseSim.ts`, `src/services/allStar/allStarWeekendEvents.ts`, `src/store/logic/gameLogic.ts`, `src/services/logic/autoResolversParts/allStarSelectionResolvers.ts` — added an opt-in All-Star Weekend H-O-R-S-E event with announcement, LazySim resolution, Saturday schedule injection, winner award backfill, and selection based on 3PT%, FT%, TS%, market size, minimum attempt gates, and a young-player bias.
+- `src/components/allstar/HorseView.tsx`, `src/minigames/horse/*`, `src/components/schedule/view/components/AllStarSaturdayCards.tsx`, `src/components/allstar/AllStarView.tsx` — added live H-O-R-S-E viewing plus a resolved champion/table view modeled after the existing All-Star contest pages.
+- `src/components/commissioner/rules/view/*`, `src/constants.ts`, `src/types/league.ts`, `src/types/offseason.ts`, `src/store/gameContext/directDispatchActions.ts` — wired Commissioner controls for enabling H-O-R-S-E, 3-10 participants, no per-player repeat, and no global repeat.
+
+## Session 67 (May 30, 2026) — Spanish EuroLeague wildcard
+
+- `src/utils/euroleagueQualification.ts`, `src/services/competition/competitionScheduler.ts`, `src/utils/euroLeagueDefaults.ts` — EuroLeague participants now treat Real Madrid, FC Barcelona, and Baskonia as permanent Spanish clubs, then assign exactly one Spanish wildcard from the highest non-licensed Liga Endesa finisher. Fresh saves seed Valencia as the current wildcard until real standings exist.
+- `src/services/logic/seasonRollover.ts`, `src/services/logic/seasonRollover/teamPass.ts`, `src/App.tsx`, `src/types/state.ts` — GM saves now queue a mobile-safe “Welcome to EuroLeague” modal when the user’s Endesa club earns Spain’s open EuroLeague place for the upcoming season.
+- `src/components/CommissionerSetup.tsx`, `src/store/gameContext/specialCareerDispatchActions.ts` — Endesa setup and the first board briefing now state the EuroLeague route for non-licensed clubs, while licensed/current-wildcard clubs get matching expectations.
+
+## Session 66 (May 30, 2026) — Staff and Euro retirement reviews
+
+- `src/services/staff/staffRetirement.ts` — added a no-UI staff retirement model for offseason use. Retirement now uses a desire score from age, role, inferred motivation, team situation, career satisfaction, contract/security, stress/health, and save-stable chaos rather than a flat age cutoff.
+- `src/services/staff/nbaRealStaffSeed.ts`, `src/services/logic/seasonRollover.ts`, `src/services/logic/seasonRollover/teamPass.ts` — season rollover now removes retired staff from active team staffs, stores `staffRetirementAnnouncements`, writes personnel history, and leaves open roles for the existing offseason staff task/backfill flow.
+- `src/components/offseason/views/StaffRetirementsReviewView.tsx`, `src/components/offseason/OffseasonSidebar.tsx`, `src/services/offseason/offseasonChecklistState.ts` — added a dedicated Staff Retirements offseason task before Staff Signings with the requested portrait/name/role/age/experience/team review layout.
+- `src/components/offseason/views/EuroRetiredPlayersReviewView.tsx`, `src/components/offseason/OffseasonSidebarOverlays.tsx` — Euro isolated mode now uses its own retired-player review modal without Hall of Fame, jersey retirement, championship, or award columns.
+- `src/types/staff.ts`, `src/types/state.ts`, `src/types/tycoon.ts` — persisted staff retirement metadata, motivation/health/stress traits, portrait/team display fields, and post-retirement outcome fields.
+
+## Session 65 (May 29, 2026) — Date-based deaths for players and staff
+
+- `src/services/playerDevelopment/deathEngine.ts`, `src/store/logic/turn/simulation/seasonCalendarPasses.ts` — replaced the old year-end retired-player mortality roll with a date-based death pass that stores a per-person annual check date. Active players, retired players, team staff, league-office staff, and staff free agents are now eligible; survivors get rescheduled to next year instead of being re-rolled every day.
+- `src/types/player.ts`, `src/types/staff.ts`, `src/types/state.ts` — added persisted death metadata (`diedDate`, `deathCause`, `deathType`, `deathCheckDate`) plus `pendingDeathToasts` so deaths carry exact dates and causes through saves.
+- `src/components/shared/ToastNotifier.tsx`, `src/components/central/view/PlayerBioTransactionsTab.tsx` — active deaths now surface as toasts with cause of death, and death entries show up in player bio transaction history instead of only the news feed.
+- `src/services/logic/seasonRollover/playerPass.ts` — season rollover no longer does the old year-based mortality batch, so death timing is calendar-driven rather than tied to age increment day.
+
 ## Session 64 (May 20, 2026) — Euro offseason checklist copy polish
 
 - `src/services/offseason/offseasonState.ts`, `src/components/offseason/OffseasonAufgaben.tsx` — Euro initial offseason no longer pre-skips `My Free Agents`; the row now opens as a real checklist task, and the visible offseason labels/descriptions/section headers were rewritten in more player-facing language instead of internal-sounding "flow/phase" copy.

@@ -18,6 +18,8 @@ const BLANK = (p: Player): PlayerGameStats => ({
   fga: 0,
   threePm: 0,
   threePa: 0,
+  fourPm: 0,
+  fourPa: 0,
   ftm: 0,
   fta: 0,
   pf: 0,
@@ -66,16 +68,18 @@ export class BoxAccumulator {
       if (s) {
         s.fga += 1;
         if (end.zone === 'three') s.threePa += 1;
+        if (end.zone === 'four') s.fourPa += 1;
         if (end.zone === 'rim')      s.fgaAtRim    = (s.fgaAtRim ?? 0) + 1;
         if (end.zone === 'lowPost')  s.fgaLowPost  = (s.fgaLowPost ?? 0) + 1;
         if (end.zone === 'midRange') s.fgaMidRange = (s.fgaMidRange ?? 0) + 1;
         if (end.made) {
           s.fgm += 1;
           if (end.zone === 'three') s.threePm += 1;
+          if (end.zone === 'four') s.fourPm += 1;
           if (end.zone === 'rim')      s.fgAtRim    = (s.fgAtRim ?? 0) + 1;
           if (end.zone === 'lowPost')  s.fgLowPost  = (s.fgLowPost ?? 0) + 1;
           if (end.zone === 'midRange') s.fgMidRange = (s.fgMidRange ?? 0) + 1;
-          s.pts += end.zone === 'three' ? 3 : 2;
+          s.pts += end.zone === 'three' ? 3 : end.zone === 'four' ? 4 : 2;
         }
         if (end.ftAttempts > 0) {
           s.fta += end.ftAttempts;
@@ -97,7 +101,7 @@ export class BoxAccumulator {
         if (f) f.pf += 1;
       }
       // Plus/Minus
-      const ptsScored = (end.made ? (end.zone === 'three' ? 3 : 2) : 0) + end.ftMade;
+      const ptsScored = (end.made ? (end.zone === 'three' ? 3 : end.zone === 'four' ? 4 : 2) : 0) + end.ftMade;
       if (ptsScored > 0) {
         offenseIds.forEach(id => { const x = this.byId.get(id); if (x) x.pm += ptsScored; });
         defenseIds.forEach(id => { const x = this.byId.get(id); if (x) x.pm -= ptsScored; });

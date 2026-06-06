@@ -52,6 +52,8 @@ export const buildRulesStateBaseline = (leagueStats: LeagueStats, viewDefaults: 
   allStarSkillsChallengeTotalPlayers: viewDefaults.allStarSkillsChallengeTotalPlayers,
   allStarHorse: viewDefaults.allStarHorse,
   allStarHorseParticipants: viewDefaults.allStarHorseParticipants,
+  allStarHorseNoPlayerRepeat: viewDefaults.allStarHorseNoPlayerRepeat,
+  allStarHorseNoGlobalRepeat: viewDefaults.allStarHorseNoGlobalRepeat,
   allStarOneOnOneEnabled: viewDefaults.allStarOneOnOneEnabled,
   allStarOneOnOneParticipants: viewDefaults.allStarOneOnOneParticipants,
   allStarThroneEnabled: viewDefaults.allStarThroneEnabled,
@@ -159,6 +161,7 @@ export const buildRulesStateBaseline = (leagueStats: LeagueStats, viewDefaults: 
   shotClockResetOffensiveRebound: leagueStats.shotClockResetOffensiveRebound ?? 14,
   currency: leagueStats.currency ?? 'USD',
   tradesAllowed: leagueStats.tradesAllowed ?? true,
+  pbaLocalEligibilityMode: leagueStats.pbaLocalEligibilityMode ?? 'registered_roster',
   salaryCap: leagueStats.salaryCap ?? 154647000,
   salaryCapEnabled: leagueStats.salaryCapEnabled ?? true,
   salaryCapType: leagueStats.salaryCapType ?? 'soft',
@@ -323,7 +326,7 @@ export const saveRulesConfig = async ({
   }
 
   const { eligibilityRule, draftEligibilityRule: _draftEligibilityRule, playoffFormat: _playoffFormat, ...rawStats } = rules;
-  const newStats = {
+  const newStats: any = {
     ...rawStats,
     numGamesPlayoffSeries: cleanedFormat,
     draftEligibilityRule: typeof eligibilityRule === 'string' ? eligibilityRule : 'one_and_done',
@@ -333,8 +336,36 @@ export const saveRulesConfig = async ({
     divisionGames: cleanedDivisionGames,
     conferenceGames: cleanedConferenceGames,
   };
+  {
+    const value = Number(newStats.allStarShootingStarsTeams);
+    const teams = Number.isFinite(value) ? Math.min(30, Math.max(2, Math.round(value))) : 4;
+    newStats.allStarShootingStarsMode = 'team';
+    newStats.allStarShootingStarsTeams = teams;
+    newStats.allStarShootingStarsPlayersPerTeam = 3;
+    newStats.allStarShootingStarsTotalPlayers = teams * 3;
+  }
+  {
+    const value = Number(newStats.allStarSkillsChallengeTeams ?? newStats.allStarSkillsChallengeTotalPlayers);
+    const competitors = Number.isFinite(value) ? Math.min(30, Math.max(3, Math.round(value))) : 4;
+    newStats.allStarSkillsChallengeMode = 'individual';
+    newStats.allStarSkillsChallengeTeams = competitors;
+    newStats.allStarSkillsChallengePlayersPerTeam = 1;
+    newStats.allStarSkillsChallengeTotalPlayers = competitors;
+  }
+  {
+    const value = Number(newStats.allStarHorseParticipants);
+    newStats.allStarHorseParticipants = Number.isFinite(value) ? Math.min(10, Math.max(3, Math.round(value))) : 3;
+  }
 
   const changes = Object.keys(baseline)
+    .filter(key => ![
+      'allStarShootingStarsMode',
+      'allStarShootingStarsPlayersPerTeam',
+      'allStarShootingStarsTotalPlayers',
+      'allStarSkillsChallengeMode',
+      'allStarSkillsChallengePlayersPerTeam',
+      'allStarSkillsChallengeTotalPlayers',
+    ].includes(key))
     .filter(key => {
       const left = key === 'playoffFormat' ? cleanedFormat : newStats[key as keyof typeof newStats];
       return !sameRuleValue(left as RuleValue, baseline[key]);

@@ -190,18 +190,18 @@ export const JerseyRetirementModal: React.FC<Props> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4 font-sans"
+          className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-3 md:p-4 font-sans"
           onClick={onClose}
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[#0f172a] border border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col"
+            className="bg-[#0f172a] border border-slate-700 rounded-2xl shadow-2xl w-full max-w-lg max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] flex flex-col"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700">
-              <div>
+            <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-4 border-b border-slate-700">
+              <div className="min-w-0">
                 <h2 className="text-base font-black uppercase tracking-widest" style={{ color: accent }}>
                   Retire a Number
                 </h2>
@@ -209,7 +209,7 @@ export const JerseyRetirementModal: React.FC<Props> = ({
                   Ceremony happens immediately · {currentYear}
                 </p>
               </div>
-              <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 transition-colors">
+              <button onClick={onClose} className="text-zinc-500 hover:text-zinc-200 transition-colors flex-shrink-0">
                 <X className="w-5 h-5" />
               </button>
             </div>

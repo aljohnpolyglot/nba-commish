@@ -1,18 +1,22 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Award, Briefcase, Star, X } from 'lucide-react';
+import { ArrowLeft, Briefcase, Star, X } from 'lucide-react';
 import { formatCurrencyWithCode } from '../../../../../utils/helpers';
 import { deterministicStaffImageId } from '../../../../../utils/staffPortrait';
-import { getCountryFlag } from '../../../../../utils/countryFlags';
 import { getNameData } from '../../../../../data/nameDataFetcher';
+import { getNBA2KCoach } from '../../../../../services/staffService';
+import { getCountryFlag, normalizeNationality } from '../../../../../utils/countryFlags';
+import { endYearFromRange, parseCareerLines, resolveHistoryLogo, splitCoachingRow, splitPlayingRow } from '../shared/staffCareerUtils';
 import { FacilityKpi } from '../shared/FacilityKpi';
 import { SliderRow } from '../shared/SliderRow';
 import { getStaffMarketSalary, type StaffMarket } from '../../../../../services/tycoon/economyScale';
 import {
   buildDisplayAttributes,
   buildStaffAttrs,
-  computeStaffOverall,
+  resolveStaffRating,
   seedForStaff,
   ROLE_DISPLAY_KEYS,
+  STAFF_ATTRIBUTE_GROUPS,
+  getStaffAttributeTooltip,
 } from '../../../../../services/staff/displayAttributes';
 
 export type StaffCandidate = {
@@ -24,13 +28,25 @@ export type StaffCandidate = {
   salary: number;
   rating: number;
   years: number;
+  coachingYears?: number;
+  playingYears?: number;
   face: any;
   staffImageId?: number;
   playerPortraitUrl?: string;
+  teamLogoUrl?: string;
+  lastRole?: string;
+  lastTeam?: string;
+  playingCareerTeams?: string[];
+  playingCareerRows?: Array<{ years: string; team: string; position: string }>;
+  awardsSummary?: string[];
+  playingCareerStats?: { games: number; ppg: number; rpg: number; apg: number; fgPct: number; seasons: number };
+  career_history?: string;
+  coaching_career?: string;
+  attributeOverrides?: import('../../../../../TeamTraining/types').StaffAttributes;
   attributes: Array<[string, number]>;
 };
 
-type WizardStep = 'candidates' | 'offer' | 'review';
+type WizardStep = 'candidates' | 'profile' | 'offer' | 'review';
 export type StaffSigningMode = 'hire' | 'extension';
 
 /** Focus tag labels for the candidate-list summary line. Derived from the
@@ -50,6 +66,7 @@ const NAME_POOL_COUNTRY_ALIASES: Record<string, string> = {
 function resolveNamePoolCountry(country: string): string {
   return NAME_POOL_COUNTRY_ALIASES[country] ?? country;
 }
+
 
 const StepperPill: React.FC<{ index: number; label: string; status: 'done' | 'current' | 'todo' }> = ({ index, label, status }) => (
   <div className="flex items-center gap-2">
@@ -121,8 +138,7 @@ export const StaffSigningModal: React.FC<{
       // Same seed pipeline as the FA pool so emergency candidates also show a
       // role-weighted overall consistent with the card and ratings modal.
       const seed = seedForStaff({ name: fullName, reputation: 54 + i * 3 });
-      const attrsFull = buildStaffAttrs(seed);
-      const rating = computeStaffOverall(selectedRole, attrsFull);
+      const rating = resolveStaffRating(selectedRole, { name: fullName, reputation: 54 + i * 3, coachingYears: 2 + i * 2, playingYears: 0 });
       emergency.push({
         id: `emergency-${selectedRole}-${i}`,
         role: selectedRole,
@@ -138,12 +154,13 @@ export const StaffSigningModal: React.FC<{
         years: 2 + i * 2,
         face: undefined,
         staffImageId: deterministicStaffImageId(fullName),
-        attributes: buildDisplayAttributes(selectedRole, seed),
+        attributes: buildDisplayAttributes(selectedRole, seed, fullName, { role: selectedRole }),
       });
     }
     return [...pool, ...emergency];
   }, [emergencyCountries, market, pool, selectedRole]);
   const [step, setStep] = useState<WizardStep>('candidates');
+  const [profileTab, setProfileTab] = useState<'attributes' | 'career'>('attributes');
   const [selectedId, setSelectedId] = useState<string>(candidatePool[0]?.id ?? '');
   const [sortKey, setSortKey] = useState<'overall' | 'salary-asc' | 'salary-desc' | 'years'>('overall');
   const sortedPool = useMemo(() => {
@@ -177,10 +194,37 @@ export const StaffSigningModal: React.FC<{
   }
 
   const focusTags = focusTagsFor(selectedRole);
+  const fullAttrs = buildStaffAttrs(seedForStaff(candidate as any), {
+    role: selectedRole,
+    attributeOverrides: candidate.attributeOverrides,
+  });
+  const nba2kCareer = getNBA2KCoach(candidate.name);
+  const coachingHistory = Array.from(new Set([
+    ...parseCareerLines(nba2kCareer?.career_history ?? nba2kCareer?.coaching_career),
+    ...parseCareerLines(candidate.career_history ?? candidate.coaching_career),
+  ]));
+  const parsedCoachingRows = coachingHistory
+    .map(splitCoachingRow)
+    .sort((a, b) => endYearFromRange(b.years) - endYearFromRange(a.years));
+  const latestCoachingRow = parsedCoachingRows[0];
+  const latestCoachingRowWithTeam = parsedCoachingRows.find(row => row.team && row.team !== '—');
+  const playingCareer = parseCareerLines(nba2kCareer?.playing_career);
+  const nonEmpty = (...values: Array<string | undefined | null>) =>
+    values.find(v => typeof v === 'string' && v.trim().length > 0)?.trim();
+  const lastRoleText = nonEmpty(candidate.lastRole, latestCoachingRowWithTeam?.role, latestCoachingRow?.role, nba2kCareer?.position) ?? 'N/A';
+  const lastTeamText = nonEmpty(candidate.lastTeam, latestCoachingRowWithTeam?.team, latestCoachingRow?.team, nba2kCareer?.team) ?? 'N/A';
+  const lastTeamLogo = candidate.teamLogoUrl ?? resolveHistoryLogo(lastTeamText);
+  const displayNationality = normalizeNationality(candidate.nationality);
+  const displayFlag = getCountryFlag(displayNationality);
+  const coachingYears = candidate.coachingYears ?? candidate.years;
+  const playingYears = candidate.playingYears ?? 0;
+  const awardsRows = candidate.awardsSummary?.length
+    ? candidate.awardsSummary
+    : parseCareerLines((nba2kCareer as any)?.awards ?? (nba2kCareer as any)?.accolades);
 
   return (
-    <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md p-4 md:p-8 overflow-y-auto">
-      <div className="max-w-[1480px] mx-auto rounded-2xl border border-violet-400/30 bg-slate-950 text-white shadow-2xl">
+    <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md p-2 sm:p-4 md:p-8 overflow-y-auto overflow-x-hidden">
+      <div className="max-w-[1480px] w-full mx-auto rounded-2xl border border-violet-400/30 bg-slate-950 text-white shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-800 p-5">
           <button onClick={onClose} className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-white"><ArrowLeft size={16} /> Back to Staff</button>
           <div>
@@ -194,14 +238,16 @@ export const StaffSigningModal: React.FC<{
           <button onClick={onClose} className="w-10 h-10 rounded-xl border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><X size={18} /></button>
         </div>
 
-        <div className="flex items-center justify-center gap-4 px-6 py-4 border-b border-slate-800 bg-slate-950/50">
+        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 px-3 sm:px-6 py-4 border-b border-slate-800 bg-slate-950/50">
           <StepperPill index={1} label="Role"       status="done" />
           <div className="h-px w-8 bg-slate-800" />
-          <StepperPill index={2} label="Candidates" status={step === 'candidates' ? 'current' : 'done'} />
+          <StepperPill index={2} label="Candidates" status={step === 'candidates' ? 'current' : step === 'profile' || step === 'offer' || step === 'review' ? 'done' : 'todo'} />
           <div className="h-px w-8 bg-slate-800" />
-          <StepperPill index={3} label={isExtension ? 'Terms' : 'Offer'} status={step === 'offer' ? 'current' : step === 'review' ? 'done' : 'todo'} />
+          <StepperPill index={3} label="Profile" status={step === 'profile' ? 'current' : step === 'offer' || step === 'review' ? 'done' : 'todo'} />
           <div className="h-px w-8 bg-slate-800" />
-          <StepperPill index={4} label="Review"     status={step === 'review' ? 'current' : 'todo'} />
+          <StepperPill index={4} label={isExtension ? 'Terms' : 'Offer'} status={step === 'offer' ? 'current' : step === 'review' ? 'done' : 'todo'} />
+          <div className="h-px w-8 bg-slate-800" />
+          <StepperPill index={5} label="Review"     status={step === 'review' ? 'current' : 'todo'} />
         </div>
 
         <div className="px-6 pt-6">
@@ -262,12 +308,12 @@ export const StaffSigningModal: React.FC<{
                           </span>
                         )}
                       </div>
-                      <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">{c.flag} {c.nationality}</div>
+                      <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">{getCountryFlag(normalizeNationality(c.nationality))} {normalizeNationality(c.nationality)}</div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <OvrRing value={c.rating} />
                       <div className="text-[11px] font-black text-emerald-300 tabular-nums">{formatCurrencyWithCode(c.salary, currency, false)}</div>
-                      <div className="text-[10px] text-slate-500">{c.years} yrs exp</div>
+                      <div className="text-[10px] text-slate-500">{c.coachingYears ?? c.years} yrs coaching exp</div>
                     </div>
                   </button>
                 );
@@ -277,52 +323,52 @@ export const StaffSigningModal: React.FC<{
             <div className="mt-6 flex items-center justify-between">
               <div className="text-xs text-slate-500">Selected · <span className="text-amber-300 font-bold">{candidate.name}</span></div>
               <button
-                onClick={() => setStep('offer')}
+                onClick={() => setStep('profile')}
                 className="h-12 px-6 rounded-xl bg-amber-400 text-slate-950 font-black uppercase tracking-widest text-xs hover:bg-amber-300"
               >
-                {isExtension ? 'Negotiate Extension' : 'Negotiate Offer'} →
+                Review Profile →
               </button>
             </div>
           </div>
         )}
 
         {step === 'offer' && (
-          <div className="grid xl:grid-cols-[1fr_360px] gap-0">
-            <main className="p-6">
-              <div className="grid lg:grid-cols-[220px_1fr] gap-6">
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 flex justify-center">
-                  {renderPortrait(candidate.face, candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-44 h-56', candidate.staffImageId, candidate.name, candidate.playerPortraitUrl)}
+          <div className="grid xl:grid-cols-[minmax(0,1fr)_480px] gap-0">
+            <main className="p-4 sm:p-6 xl:p-8 min-w-0">
+              <div className="grid lg:grid-cols-[380px_1fr] gap-8 items-start">
+                <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-0 flex justify-center overflow-hidden">
+                  {renderPortrait(candidate.face, candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-full h-[520px]', candidate.staffImageId, candidate.name, candidate.playerPortraitUrl)}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-[10px] font-black uppercase tracking-[0.35em] text-violet-300">{candidate.role}</div>
                   <h3 className="text-4xl font-black tracking-tight mt-2">{candidate.name}</h3>
-                  <p className="text-sm text-slate-400 mt-2">{candidate.flag} {candidate.nationality} · {candidate.years} years experience · Strong fit for {selectedRole}.</p>
-                  <div className="mt-5 grid sm:grid-cols-3 gap-3">
-                    <FacilityKpi icon={<Award size={20} />} label="Reputation" value={`${candidate.rating}/100`} sub="Market profile" />
+                  <p className="text-sm text-slate-400 mt-2">
+                    {displayFlag} {displayNationality} · {coachingYears} years coaching experience
+                    {playingYears > 0 ? ` · ${playingYears} years playing experience` : ''}
+                    {' · '}Strong fit for {selectedRole}.
+                  </p>
+                  <div className="mt-5 grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3 min-w-0">
                     <FacilityKpi icon={<Briefcase size={20} />} label="Current Ask" value={formatCurrencyWithCode(candidate.salary, currency, false)} sub="Annual salary" />
                     <FacilityKpi icon={<Star size={20} />} label="Interest" value="High" sub="Would join now" />
+                    <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Last Role</div>
+                      <div className="mt-1 flex items-center gap-2 text-[28px] font-black leading-none text-white">
+                        {lastTeamLogo ? <img src={lastTeamLogo} alt="" className="h-5 w-5 object-contain" /> : null}
+                        <span className="text-sm leading-tight">{lastTeamText}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400">{lastRoleText}</div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-                <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Key Attributes</div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {candidate.attributes.map(([label, value]) => (
-                    <div key={label}>
-                      <div className="flex justify-between text-xs mb-1"><span className="text-slate-400">{label}</span><span className="font-black text-violet-300">{value}</span></div>
-                      <div className="h-2 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-violet-400" style={{ width: `${value}%` }} /></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
               <button
-                onClick={() => setStep('candidates')}
+                onClick={() => setStep('profile')}
                 className="mt-4 text-xs text-slate-400 hover:text-white"
               >
-                ← Back to candidates
+                ← Back to profile
               </button>
             </main>
-            <aside className="border-l border-slate-800 p-6 space-y-5">
+            <aside className="border-l border-slate-800 p-4 sm:p-6 xl:p-8 space-y-6 min-w-0">
               <div>
                 <div className="text-xs font-black uppercase tracking-widest text-violet-300">
                   {isExtension ? 'Extension Package' : 'Negotiation Package'}
@@ -379,6 +425,196 @@ export const StaffSigningModal: React.FC<{
                 );
               })()}
             </aside>
+          </div>
+        )}
+
+        {step === 'profile' && (
+          <div className="p-6">
+            <div className="grid lg:grid-cols-[220px_1fr] gap-6">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 flex justify-center">
+                {renderPortrait(candidate.face, candidate.name.split(' ').map((n) => n[0]).join('').slice(0, 2), 'w-44 h-56', candidate.staffImageId, candidate.name, candidate.playerPortraitUrl)}
+              </div>
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.35em] text-violet-300">{candidate.role}</div>
+                <h3 className="text-4xl font-black tracking-tight mt-2">{candidate.name}</h3>
+                <p className="text-sm text-slate-400 mt-2">
+                  {displayFlag} {displayNationality} · {coachingYears} years coaching experience
+                  {playingYears > 0 ? ` · ${playingYears} years playing experience` : ''}
+                  {' · '}Strong fit for {selectedRole}.
+                </p>
+                <div className="mt-5 grid sm:grid-cols-3 gap-3">
+                  <FacilityKpi icon={<Briefcase size={20} />} label="Current Ask" value={formatCurrencyWithCode(candidate.salary, currency, false)} sub="Annual salary" />
+                  <FacilityKpi icon={<Star size={20} />} label="Interest" value="High" sub="Would join now" />
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">Last Role</div>
+                    <div className="mt-1 flex items-center gap-2 text-sm font-black text-white">
+                      {lastTeamLogo ? <img src={lastTeamLogo} alt="" className="h-4 w-4 object-contain" /> : null}
+                      <span className="leading-tight">{lastTeamText}</span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">{lastRoleText}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <button
+                  onClick={() => setProfileTab('attributes')}
+                  className={`rounded-lg border px-3 py-1.5 text-[11px] font-black uppercase tracking-widest ${profileTab === 'attributes' ? 'border-amber-400/60 bg-amber-400/15 text-amber-300' : 'border-slate-700 bg-slate-900 text-slate-400 hover:text-white'}`}
+                >
+                  Attributes
+                </button>
+                <button
+                  onClick={() => setProfileTab('career')}
+                  className={`rounded-lg border px-3 py-1.5 text-[11px] font-black uppercase tracking-widest ${profileTab === 'career' ? 'border-amber-400/60 bg-amber-400/15 text-amber-300' : 'border-slate-700 bg-slate-900 text-slate-400 hover:text-white'}`}
+                >
+                  Career
+                </button>
+              </div>
+
+              {profileTab === 'attributes' ? (
+                <div className="space-y-5">
+                  {STAFF_ATTRIBUTE_GROUPS.map((group) => (
+                    <section key={group.label}>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">{group.label}</div>
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {group.keys.map(([key, label]) => {
+                          const value = fullAttrs[key];
+                          const tone = value >= 85 ? 'bg-emerald-400 text-emerald-300'
+                            : value >= 75 ? 'bg-violet-400 text-violet-300'
+                            : value >= 65 ? 'bg-amber-400 text-amber-300'
+                            : 'bg-slate-500 text-slate-400';
+                          const [barBg, textColor] = tone.split(' ');
+                          return (
+                            <div key={key}>
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="text-slate-400" title={getStaffAttributeTooltip(key)}>{label}</span>
+                                <span className={`font-black ${textColor}`}>{value}</span>
+                              </div>
+                              <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
+                                <div className={`h-full ${barBg}`} style={{ width: `${value}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Coaching History</div>
+                    {coachingHistory.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-[96px_minmax(0,1fr)_120px] gap-2 border-b border-slate-800 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          <span>Years</span><span>Team</span><span>Role</span>
+                        </div>
+                        {coachingHistory.map((row, index) => {
+                          const parsed = splitCoachingRow(row);
+                          const rowLogo = resolveHistoryLogo(parsed.team);
+                          return (
+                            <div key={`${row}-${index}`} className="grid grid-cols-[96px_minmax(0,1fr)_120px] gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-1.5 text-xs">
+                              <div className="text-slate-400">{parsed.years}</div>
+                              <div className="flex items-center gap-2 text-slate-200 min-w-0">
+                                {rowLogo ? <img src={rowLogo} alt="" className="h-4 w-4 object-contain" /> : null}
+                                <span className="truncate">{parsed.team}</span>
+                              </div>
+                              <div className="text-slate-300 truncate">{parsed.role}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-500">No coaching-history rows available for this candidate.</div>
+                    )}
+                  </section>
+                  <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Playing Career</div>
+                    {candidate.playingCareerRows && candidate.playingCareerRows.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-[96px_minmax(0,1fr)_80px] gap-2 border-b border-slate-800 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          <span>Years</span><span>Team</span><span>Position</span>
+                        </div>
+                        {candidate.playingCareerRows.map((row, index) => {
+                          const rowLogo = resolveHistoryLogo(row.team);
+                          return (
+                            <div key={`${row.team}-${row.years}-${index}`} className="grid grid-cols-[96px_minmax(0,1fr)_80px] gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-1.5 text-xs">
+                              <div className="text-slate-400">{row.years}</div>
+                              <div className="flex items-center gap-2 text-slate-200 min-w-0">
+                                {rowLogo ? <img src={rowLogo} alt="" className="h-4 w-4 object-contain" /> : null}
+                                <span className="truncate">{row.team}</span>
+                              </div>
+                              <div className="text-slate-300 truncate">{row.position}</div>
+                            </div>
+                          );
+                        })}
+                        {candidate.playingCareerStats && (
+                          <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/40 p-2">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">
+                              Career Stats ({candidate.playingCareerStats.seasons} seasons)
+                            </div>
+                            <div className="grid grid-cols-5 gap-2 text-xs">
+                              <div><div className="font-black text-white">{candidate.playingCareerStats.games}</div><div className="text-slate-500">Games</div></div>
+                              <div><div className="font-black text-white">{candidate.playingCareerStats.ppg.toFixed(1)}</div><div className="text-slate-500">PPG</div></div>
+                              <div><div className="font-black text-white">{candidate.playingCareerStats.rpg.toFixed(1)}</div><div className="text-slate-500">RPG</div></div>
+                              <div><div className="font-black text-white">{candidate.playingCareerStats.apg.toFixed(1)}</div><div className="text-slate-500">APG</div></div>
+                              <div><div className="font-black text-white">{candidate.playingCareerStats.fgPct.toFixed(1)}</div><div className="text-slate-500">FG%</div></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : playingCareer.length > 0 ? (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-[96px_minmax(0,1fr)_80px] gap-2 border-b border-slate-800 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                          <span>Years</span><span>Team</span><span>Position</span>
+                        </div>
+                        {playingCareer.map((row, index) => {
+                          const parsed = splitPlayingRow(row);
+                          const rowLogo = resolveHistoryLogo(parsed.team);
+                          return (
+                            <div key={`${row}-${index}`} className="grid grid-cols-[96px_minmax(0,1fr)_80px] gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-1.5 text-xs">
+                              <div className="text-slate-400">{parsed.years}</div>
+                              <div className="flex items-center gap-2 text-slate-200 min-w-0">
+                                {rowLogo ? <img src={rowLogo} alt="" className="h-4 w-4 object-contain" /> : null}
+                                <span className="truncate">{parsed.team}</span>
+                              </div>
+                              <div className="text-slate-300 truncate">{parsed.position}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-500">No playing-career rows available for this candidate.</div>
+                    )}
+                  </section>
+                  <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Awards & Accolades</div>
+                    {awardsRows.length > 0 ? (
+                      <ul className="space-y-1.5 text-xs text-slate-300">
+                        {awardsRows.map((row, index) => <li key={`${row}-${index}`}>• {row}</li>)}
+                      </ul>
+                    ) : (
+                      <div className="text-xs text-slate-500">No awards data available for this candidate.</div>
+                    )}
+                  </section>
+                </div>
+              )}
+            </div>
+            <div className="mt-4 flex items-center justify-between">
+              <button
+                onClick={() => setStep('candidates')}
+                className="text-xs text-slate-400 hover:text-white"
+              >
+                ← Back to candidates
+              </button>
+              <button
+                onClick={() => setStep('offer')}
+                className="h-12 px-6 rounded-xl bg-amber-400 text-slate-950 font-black uppercase tracking-widest text-xs hover:bg-amber-300"
+              >
+                Continue to {isExtension ? 'terms' : 'offer'} →
+              </button>
+            </div>
           </div>
         )}
 

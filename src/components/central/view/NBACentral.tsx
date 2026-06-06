@@ -24,6 +24,8 @@ import { GameSimulatorScreen } from '../../shared/GameSimulatorScreen';
 import { WatchGamePreviewModal } from '../../modals/WatchGamePreviewModal';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { PBA_COMPETITIONS } from '../../../data/templates/philippines/competitions';
+import { getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
 
 export const NBACentral: React.FC = () => {
   const { state, dispatchAction, selectedTeamId, setSelectedTeamId, healPlayer } = useGame();
@@ -45,9 +47,74 @@ export const NBACentral: React.FC = () => {
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
   const [riggedForTid, setRiggedForTid] = useState<number | undefined>(undefined);
   const [precomputedResult, setPrecomputedResult] = useState<any | null>(null);
+  const pbaMode = state.leagueStats?.uiMode === 'pba_isolated';
 
-  const playerService = useMemo(() => new PlayerService(state.players), [state.players]);
-  const teamService = useMemo(() => new TeamService(state.teams), [state.teams]);
+  const pbaSpec = useMemo(() => {
+    const current = (state.leagueStats as any)?.pbaConference;
+    if (current === 'commissioners') return PBA_COMPETITIONS[1];
+    if (current === 'governors') return PBA_COMPETITIONS[2];
+    return PBA_COMPETITIONS[0];
+  }, [state.leagueStats]);
+
+  const pbaRecords = useMemo(() => {
+    if (!pbaMode) return new Map<number, { wins: number; losses: number }>();
+    const records = new Map<number, { wins: number; losses: number }>();
+    for (const team of state.nonNBATeams ?? []) {
+      if ((team as any).league === 'PBA') {
+        records.set((team as any).tid, { wins: 0, losses: 0 });
+      }
+    }
+    const season = (state.leagueStats as any)?.year ?? new Date().getFullYear();
+    for (const box of state.boxScores ?? []) {
+      const phase = String((box as any).competitionPhase ?? '').toLowerCase();
+      const boxSeason = Number((box as any).season ?? season);
+      if ((box as any).competitionId !== pbaSpec.id || boxSeason !== Number(season)) continue;
+      if (phase && !phase.startsWith('r') && phase !== 'regular' && phase !== 'league' && phase !== 'group') continue;
+      const homeTid = (box as any).homeTeamId;
+      const awayTid = (box as any).awayTeamId;
+      const home = records.get(homeTid) ?? { wins: 0, losses: 0 };
+      const away = records.get(awayTid) ?? { wins: 0, losses: 0 };
+      const homeWon = (box as any).homeScore > (box as any).awayScore;
+      home.wins += homeWon ? 1 : 0;
+      home.losses += homeWon ? 0 : 1;
+      away.wins += homeWon ? 0 : 1;
+      away.losses += homeWon ? 1 : 0;
+      records.set(homeTid, home);
+      records.set(awayTid, away);
+    }
+    return records;
+  }, [pbaMode, state.nonNBATeams, state.boxScores, state.leagueStats, pbaSpec.id]);
+
+  const centralTeams = useMemo(() => {
+    if (!pbaMode) return state.teams;
+    return (state.nonNBATeams ?? [])
+      .filter((team: any) => team.league === 'PBA')
+      .map((team: any) => {
+        const wrapped = resolveAnyTeam(team.tid, state.teams, state.nonNBATeams ?? []);
+        const record = pbaRecords.get(team.tid) ?? { wins: Number(team.wins ?? team.won ?? 0), losses: Number(team.losses ?? team.lost ?? 0) };
+        return {
+          ...(wrapped ?? {}),
+          id: team.tid,
+          name: team.name,
+          abbrev: team.abbrev || String(team.name ?? 'PBA').slice(0, 3).toUpperCase(),
+          logoUrl: getResolvedTeamLogoUrl({ ...team, logoUrl: wrapped?.logoUrl }),
+          wins: record.wins,
+          losses: record.losses,
+          conference: 'PBA',
+          strength: (wrapped as any)?.strength ?? 50,
+          colors: team.colors ?? (wrapped as any)?.colors,
+          tycoon: team.tycoon ?? (wrapped as any)?.tycoon,
+        };
+      }) as any;
+  }, [pbaMode, state.teams, state.nonNBATeams, pbaRecords]);
+
+  const centralPlayers = useMemo(() => {
+    if (!pbaMode) return state.players;
+    return state.players.filter(player => player.tid >= 2000 && player.tid < 2100);
+  }, [pbaMode, state.players]);
+
+  const playerService = useMemo(() => new PlayerService(centralPlayers), [centralPlayers]);
+  const teamService = useMemo(() => new TeamService(centralTeams), [centralTeams]);
 
   const filteredTeams = useMemo(() => {
     const teams = searchTerm ? teamService.searchTeams(searchTerm) : teamService.getAllTeams();
@@ -65,13 +132,32 @@ export const NBACentral: React.FC = () => {
     ? resolveAnyTeam(selectedTeamId, state.teams, state.nonNBATeams ?? []) ?? undefined
     : undefined;
   const seasonPhase = useMemo(() => getSeasonPhase(state), [state.schedule, state.date, state.teams]);
-  const isScheduleRevealed = seasonPhase !== 'preseason';
+  const centralPhase = useMemo(() => {
+    if (!pbaMode) return seasonPhase;
+    const phase = (state.leagueStats as any)?.pbaConferencePhase;
+    if (phase === 'playoffs') return 'playoffs';
+    if (phase === 'offseason' || phase === 'complete') return 'offseason';
+    return 'regular';
+  }, [pbaMode, seasonPhase, state.leagueStats]);
+  const isScheduleRevealed = pbaMode || seasonPhase !== 'preseason';
 
   const todayGames = useMemo(() => {
     if (!isScheduleRevealed) return [];
     const normalizedCurrent = normalizeDate(state.date);
-    return state.schedule.filter(g => normalizeDate(g.date) === normalizedCurrent && !g.played);
-  }, [state.schedule, state.date, isScheduleRevealed]);
+    if (!pbaMode) return state.schedule.filter(g => normalizeDate(g.date) === normalizedCurrent && !g.played);
+    const teamIds = new Set(centralTeams.map(team => team.id));
+    return state.schedule.filter(g =>
+      normalizeDate(g.date) === normalizedCurrent &&
+      !g.played &&
+      (g.competitionId === pbaSpec.id || (teamIds.has(g.homeTid) && teamIds.has(g.awayTid)))
+    );
+  }, [state.schedule, state.date, isScheduleRevealed, pbaMode, centralTeams, pbaSpec.id]);
+
+  const resolveCentralTeam = (tid: number) => {
+    return centralTeams.find(team => team.id === tid)
+      ?? resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? [])
+      ?? undefined;
+  };
 
   const handleWatchGame = (game: Game) => {
       if (game.played) {
@@ -88,17 +174,15 @@ export const NBACentral: React.FC = () => {
   };
 
   const getContactFromPlayer = (player: NBAPlayer): Contact => {
-    const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '');
-    const playerTeam = isNBA ? state.teams.find(t => t.id === player.tid) : null;
-    const nonNBATeam = !isNBA ? state.nonNBATeams.find(t => t.tid === player.tid && t.league === player.status) : null;
+    const playerTeam = player.tid >= 0
+      ? resolveAnyTeam(player.tid, state.teams, state.nonNBATeams ?? [])
+      : null;
     
     let org = 'Free Agent';
     if (player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect') {
       org = 'Draft Prospect';
     } else if (playerTeam) {
       org = playerTeam.name;
-    } else if (nonNBATeam) {
-      org = nonNBATeam.name;
     } else if (['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
       org = player.status!;
     }
@@ -206,7 +290,9 @@ export const NBACentral: React.FC = () => {
 
   return (
     <>
-      {viewingBioPlayer ? (
+      {quick.fullPageView ? (
+        quick.fullPageView
+      ) : viewingBioPlayer ? (
         <PlayerBioView
           player={viewingBioPlayer}
           onBack={() => setViewingBioPlayer(null)}
@@ -217,17 +303,17 @@ export const NBACentral: React.FC = () => {
         <TeamDetailView
           team={selectedTeam}
           players={state.players}
-          allTeams={[
+          allTeams={pbaMode ? centralTeams : [
             ...state.teams,
-            ...(state.nonNBATeams ?? []).map((t: any) => ({
+                ...(state.nonNBATeams ?? []).map((t: any) => ({
               id: t.tid, name: t.name, abbrev: t.abbrev,
-              logoUrl: t.imgURL || '', wins: 0, losses: 0, conference: t.league,
+              logoUrl: getResolvedTeamLogoUrl(t), wins: 0, losses: 0, conference: t.league,
             } as any)),
           ]}
           schedule={state.schedule}
           currentDate={state.date}
           onBack={() => setSelectedTeamId(null)}
-          onContact={setSelectedPlayerForActions}
+          onContact={quick.openFor}
           onViewBio={setViewingBioPlayer}
           onGameClick={handleWatchGame}
           onTeamClick={setSelectedTeamId}
@@ -270,6 +356,7 @@ export const NBACentral: React.FC = () => {
           <NBACentralHeader 
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
+            title={pbaMode ? 'PBA Central' : 'NBA Central'}
           />
 
           <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar">
@@ -301,32 +388,44 @@ export const NBACentral: React.FC = () => {
                 )}
           <DailyGamesBar
               games={todayGames}
-              teams={[
+              teams={pbaMode ? centralTeams : [
                 ...state.teams,
                 ...(state.nonNBATeams ?? []).map((t: any) => ({
                   id: t.tid, name: t.name, abbrev: t.abbrev,
-                  logoUrl: t.imgURL || '', wins: 0, losses: 0, conference: t.league,
+                  logoUrl: getResolvedTeamLogoUrl(t), wins: 0, losses: 0, conference: t.league,
                 } as any)),
               ]}
               onWatch={handleWatchGame}
               onTeamClick={setSelectedTeamId}
           />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-10">
-                  <StandingsTable
-                    teams={eastTeams}
-                    conference="East"
-                    onSelectTeam={setSelectedTeamId}
-                    selectedTeamId={selectedTeamId}
-                    phase={seasonPhase}
-                  />
-                  <StandingsTable
-                    teams={westTeams}
-                    conference="West"
-                    onSelectTeam={setSelectedTeamId}
-                    selectedTeamId={selectedTeamId}
-                    phase={seasonPhase}
-                  />
-                </div>
+                {pbaMode ? (
+                  <div className="grid grid-cols-1 gap-4 md:gap-10">
+                    <StandingsTable
+                      teams={filteredTeams}
+                      conference={pbaSpec.shortName || 'PBA'}
+                      onSelectTeam={setSelectedTeamId}
+                      selectedTeamId={selectedTeamId}
+                      phase={centralPhase}
+                    />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-10">
+                    <StandingsTable
+                      teams={eastTeams}
+                      conference="East"
+                      onSelectTeam={setSelectedTeamId}
+                      selectedTeamId={selectedTeamId}
+                      phase={centralPhase}
+                    />
+                    <StandingsTable
+                      teams={westTeams}
+                      conference="West"
+                      onSelectTeam={setSelectedTeamId}
+                      selectedTeamId={selectedTeamId}
+                      phase={centralPhase}
+                    />
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -400,8 +499,8 @@ export const NBACentral: React.FC = () => {
       {pendingGameToWatch && (
           <WatchGamePreviewModal
               game={pendingGameToWatch}
-              homeTeam={state.teams.find(t => t.id === pendingGameToWatch.homeTid)!}
-              awayTeam={state.teams.find(t => t.id === pendingGameToWatch.awayTid)!}
+              homeTeam={resolveCentralTeam(pendingGameToWatch.homeTid)!}
+              awayTeam={resolveCentralTeam(pendingGameToWatch.awayTid)!}
               players={state.players}
               onConfirm={async (rig, watchLive) => {
                   if (watchLive === false) {
@@ -415,8 +514,8 @@ export const NBACentral: React.FC = () => {
                       // Mirror ScheduleView: pre-sim + RECORD + ADVANCE_DAY before opening viewer.
                       // "Leave Game" is then a pure close — no re-simulation on exit.
                       const game = pendingGameToWatch;
-                      const homeTeam = state.teams.find(t => t.id === game.homeTid)!;
-                      const awayTeam = state.teams.find(t => t.id === game.awayTid)!;
+                      const homeTeam = resolveCentralTeam(game.homeTid)!;
+                      const awayTeam = resolveCentralTeam(game.awayTid)!;
                       const preResult = GameSimulator.simulateGame(
                           homeTeam, awayTeam, state.players,
                           game.gid, game.date,

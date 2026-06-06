@@ -8,11 +8,13 @@ import {
 } from '../../../services/simulation/convert2kAttributes';
 import { convertTo2KRating } from '../../../utils/helpers';
 import type { NBAPlayer } from '../../../types';
+import { useGame } from '../../../store/GameContext';
 import {
   ensurePlayerRatingData,
   resolvePlayerRatingBundle,
   usePlayerRatingStore,
 } from '../../../store/playerRatingStore';
+import { getScoutedDisplayOverall, getScoutedDisplayPotential, fuzzRatingValue } from '../../../utils/scoutingFuzz';
 
 // ─── Radar ───────────────────────────────────────────────────────────────────
 
@@ -102,6 +104,7 @@ function ensureVisibleColor(hex: string): string {
 }
 
 export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player, currentYear, teamColor: rawTeamColor }) => {
+  const { state } = useGame();
   const teamColor = ensureVisibleColor(rawTeamColor);
   const ratingVersion = usePlayerRatingStore(s => s.version);
   const [view, setView] = React.useState<'K2' | 'Simple'>('K2');
@@ -119,7 +122,16 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
   const currentRating = ratingBundle.currentRatings;
   const prevRating = player.ratings?.find((r: any) => r.season === currentYear - 1);
   const k2 = ratingBundle.displayK2;
-  const overall2k = ratingBundle.overall2k;
+  const fuzzedK2 = React.useMemo(() => ({
+    OS: { ovr: fuzzRatingValue(k2.OS.ovr, state, player, 'OS'), sub: k2.OS.sub.map((v, i) => fuzzRatingValue(v, state, player, `OS-${i}`)) },
+    AT: { ovr: fuzzRatingValue(k2.AT.ovr, state, player, 'AT'), sub: k2.AT.sub.map((v, i) => fuzzRatingValue(v, state, player, `AT-${i}`)) },
+    IS: { ovr: fuzzRatingValue(k2.IS.ovr, state, player, 'IS'), sub: k2.IS.sub.map((v, i) => fuzzRatingValue(v, state, player, `IS-${i}`)) },
+    PL: { ovr: fuzzRatingValue(k2.PL.ovr, state, player, 'PL'), sub: k2.PL.sub.map((v, i) => fuzzRatingValue(v, state, player, `PL-${i}`)) },
+    DF: { ovr: fuzzRatingValue(k2.DF.ovr, state, player, 'DF'), sub: k2.DF.sub.map((v, i) => fuzzRatingValue(v, state, player, `DF-${i}`)) },
+    RB: { ovr: fuzzRatingValue(k2.RB.ovr, state, player, 'RB'), sub: k2.RB.sub.map((v, i) => fuzzRatingValue(v, state, player, `RB-${i}`)) },
+    MI: { ovr: fuzzRatingValue(k2.MI.ovr, state, player, 'MI'), sub: k2.MI.sub.map((v, i) => fuzzRatingValue(v, state, player, `MI-${i}`)) },
+  }), [k2, state, player]);
+  const overall2k = getScoutedDisplayOverall(state, player, currentYear);
 
   const attrKeys = ['stre', 'spd', 'jmp', 'endu', 'ins', 'dnk', 'ft', 'fg', 'tp', 'oiq', 'diq', 'drb', 'pss', 'reb'];
   const ratingHistory = (() => {
@@ -193,10 +205,10 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
   const deltaColor = delta > 0 ? '#22c55e' : delta < 0 ? '#f43f5e' : '#64748b';
 
   // Canonical POT — same as PlayerRatingsView / everywhere else.
-  const pot = ratingBundle.potential2k;
+  const pot = getScoutedDisplayPotential(state, player, currentYear, currentYear);
   const potColor = pot >= 90 ? '#3b82f6' : pot >= 80 ? '#22c55e' : pot >= 70 ? '#eab308' : '#94a3b8';
 
-  const radarValues = getRadarValues(k2, overall2k);
+  const radarValues = getRadarValues(fuzzedK2, overall2k);
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -262,10 +274,10 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
       </div>
 
       {view === 'K2' && (
-        k2 ? (
+        fuzzedK2 ? (
           <div className="space-y-3">
             {K2_CATS.map(cat => {
-              const catData = (k2 as any)[cat.k];
+              const catData = (fuzzedK2 as any)[cat.k];
               const isCollapsed = collapsedCats[cat.k] ?? false;
               const catColor = getRatingColor(catData.ovr);
               const accentColor = K2_CAT_COLORS[cat.k];

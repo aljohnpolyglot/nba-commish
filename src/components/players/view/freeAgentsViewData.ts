@@ -1,5 +1,6 @@
 import { calcPot2K } from '../../../services/trade/tradeValueEngine';
-import { getDisplayAge } from '../../../store/playerRatingStore';
+import { getDisplayAge, getDisplayOverall } from '../../../store/playerRatingStore';
+import { fuzzRatingValue } from '../../../utils/scoutingFuzz';
 import { getGameDateParts } from '../../../utils/dateUtils';
 import { getCountryFromLoc } from '../../../utils/helpers';
 import { getCapThresholds, getMLEAvailability, getTeamCapProfileFromState, getTeamPayrollUSD } from '../../../utils/salaryUtils';
@@ -75,6 +76,15 @@ export const getUserRosterSlots = (state: any, isGM: boolean, nonNbaIsolated: bo
   const profile = getTeamCapProfileFromState(state, state.userTeamId, thresholds);
   const payroll = getTeamPayrollUSD(state.players, state.userTeamId, userTeam, state.leagueStats?.year);
   const mle = getMLEAvailability(state.userTeamId, payroll, 0, thresholds, state.leagueStats as any);
+  const reservedMleUSD = (state.faBidding?.markets ?? [])
+    .filter((market: any) => !market?.resolved)
+    .reduce((sum: number, market: any) => {
+      const myTopActive = (market.bids ?? [])
+        .filter((bid: any) => bid.teamId === state.userTeamId && bid.status === 'active')
+        .sort((a: any, b: any) => (b.salaryUSD ?? 0) - (a.salaryUSD ?? 0))[0];
+      return sum + (myTopActive?.salaryUSD ?? 0);
+    }, 0);
+  const mleAvailableNet = Math.max(0, ((mle?.available as number) ?? 0) - reservedMleUSD);
   const guaranteedCount = standardCount - ngCount;
   return {
     standardCount,
@@ -89,7 +99,7 @@ export const getUserRosterSlots = (state: any, isGM: boolean, nonNbaIsolated: bo
     standardLeft: Math.max(0, maxStandard - standardCount),
     twoWayLeft: Math.max(0, maxTwoWay - twoWayCount),
     capSpaceUSD: profile.capSpaceUSD as number,
-    mleAvailable: (mle?.available as number) ?? 0,
+    mleAvailable: mleAvailableNet,
     mleType: (mle?.type as string | null) ?? null,
   };
 };
@@ -121,6 +131,7 @@ export const getFilteredPlayers = ({
   sortBy,
   sortOrder,
   currentYear,
+  state,
 }: {
   sourcePool: any[];
   viewMode: 'available' | 'upcoming';
@@ -133,7 +144,10 @@ export const getFilteredPlayers = ({
   sortBy: 'ovr' | 'pot' | 'age' | 'name';
   sortOrder: 'asc' | 'desc';
   currentYear: number;
+  state: any;
 }) => {
+  const displayedOvr = (player: any) =>
+    fuzzRatingValue(getDisplayOverall(player, currentYear), state, player, 'ovr');
   const filtered = sourcePool.filter((player) => {
     if (searchTerm && !player.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
     if (selectedPool !== 'all') {
@@ -165,7 +179,7 @@ export const getFilteredPlayers = ({
 
   filtered.sort((left, right) => {
     let comparison = 0;
-    if (sortBy === 'ovr') comparison = (left.overallRating || 0) - (right.overallRating || 0);
+    if (sortBy === 'ovr') comparison = displayedOvr(left) - displayedOvr(right) || left.name.localeCompare(right.name);
     else if (sortBy === 'pot') comparison = calcPot2K(left, currentYear) - calcPot2K(right, currentYear);
     else if (sortBy === 'age') comparison = getDisplayAge(left, currentYear) - getDisplayAge(right, currentYear);
     else comparison = left.name.localeCompare(right.name);

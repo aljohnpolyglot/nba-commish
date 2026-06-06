@@ -9,8 +9,9 @@ import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 import { isPlausibleActiveMarket } from '../../../services/freeAgencyBidding';
 import { formatFuzzedRating } from '../../../utils/scoutingFuzz';
 import { isNonNbaIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
-import { isFilipino } from '../../../services/pba/importManager';
+import { isPbaRosterLocal } from '../../../services/pba/importManager';
 import { getDisplayAge, getDisplayOverall } from '../../../store/playerRatingStore';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
 
 const LEAGUE_LOGOS: Record<string, string> = {
   PBA: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/93/Philippine_Basketball_Association_logo.svg/200px-Philippine_Basketball_Association_logo.svg.png',
@@ -31,7 +32,7 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
   const { state } = useGame();
   const nonNbaIsolated = isNonNbaIsolatedMode(state);
   const pbaMode = isPbaIsolatedMode(state);
-  const showImportBadge = pbaMode && !isFilipino(player);
+  const showImportBadge = pbaMode && !isPbaRosterLocal(player, state.leagueStats as any);
   const simYear = state.leagueStats?.year ?? new Date().getFullYear();
   const age = getDisplayAge(player, simYear);
   const ovr = getDisplayOverall(player, simYear);
@@ -39,13 +40,17 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
   const country = getCountryFromLoc(player.born?.loc);
   const countryCode = getCountryCode(country);
 
-  const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '');
-  const nonNBATeam = !isNBA ? nonNBATeams.find(t => t.tid === player.tid && t.league === player.status) : null;
-  // NBA team for on-roster players (upcoming FAs).
-  const nbaTeam = isNBA && (player.tid ?? -1) >= 0
+  const resolvedTeam = player.tid >= 0
+    ? resolveAnyTeam(player.tid, state.teams, nonNBATeams)
+    : null;
+  const isNBA = player.tid >= 0 && player.tid < 100;
+  const nonNBATeam = player.tid >= 100
+    ? nonNBATeams.find(t => t.tid === player.tid) ?? null
+    : null;
+  const nbaTeam = isNBA
     ? state.teams.find(t => t.id === player.tid) ?? null
     : null;
-  const teamLogo = nbaTeam?.logoUrl || nonNBATeam?.imgURL || null;
+  const teamLogo = nbaTeam?.logoUrl || nonNBATeam?.imgURL || (resolvedTeam as any)?.logoUrl || null;
   const leagueLogo = !nonNbaIsolated && !nbaTeam && player.status ? LEAGUE_LOGOS[player.status] || null : null;
 
   let orgLabel = 'Free Agent';
@@ -57,6 +62,8 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
     orgLabel = nonNBATeam.region
       ? `${nonNBATeam.region} ${nonNBATeam.name}`.trim()
       : nonNBATeam.name;
+  } else if (resolvedTeam) {
+    orgLabel = resolvedTeam.name;
   } else if (!nonNbaIsolated && ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
     orgLabel = player.status!;
   }

@@ -8,10 +8,12 @@ import { BudgetReviewModal } from '../tycoon/BudgetReviewModal';
 import { PlayerProtectionModal } from '../expansion/PlayerProtectionModal';
 import { ExpansionDraftView } from '../expansion/ExpansionDraftView';
 import RetiredPlayersReviewModal from './views/RetiredPlayersReviewView';
+import StaffRetirementsReviewModal from './views/StaffRetirementsReviewView';
 import HOFCeremonyModal from './views/HOFCeremonyView';
 import { QualifyingOfferModal } from './OffseasonSidebarBits';
 import {
   OffseasonAutoResolveConfirmModal,
+  OffseasonBriefingModal,
   OffseasonStepConfirmModal,
   PreseasonFriendliesModal,
   RookieContractsDisclaimerModal,
@@ -24,6 +26,7 @@ type Props = {
   tmWindowCounter: { current: number; total: number; isLast?: boolean } | null;
   transferWindowSimPending: boolean;
   retiredReviewOpen: boolean;
+  staffRetirementsOpen: boolean;
   hofCeremonyOpen: boolean;
   sponsorModalOpen: boolean;
   facilityReviewOpen: boolean;
@@ -43,12 +46,14 @@ type Props = {
   preseasonFriendliesOpen: boolean;
   preseasonGames: Array<{ key: string; dateLabel: string; matchup: string }>;
   stepConfirm: any;
+  briefingSpec: { eyebrow: string; title: string; body: string } | null;
   autoResolveConfirmOpen: boolean;
   rookieDisclaimerOpen: boolean;
   userTeamRookies: NBAPlayer[];
   expansionProtectOpen: boolean;
   expansionDraftViewOpen: boolean;
   onRetiredClose: () => void;
+  onStaffRetirementsClose: () => void;
   onHofClose: () => void;
   onSponsorClose: () => void;
   onFacilityOpenSliders: () => void;
@@ -72,6 +77,8 @@ type Props = {
   onPreseasonDone: () => void;
   onStepCancel: () => void;
   onStepConfirm: () => void;
+  onBriefingConfirm: () => void;
+  onBriefingDismissForever: () => void;
   onAutoResolveCancel: () => void;
   onAutoResolveConfirm: () => void;
   onRookieDismiss: () => void;
@@ -86,6 +93,7 @@ export const OffseasonSidebarOverlays: React.FC<Props> = ({
   tmWindowCounter,
   transferWindowSimPending,
   retiredReviewOpen,
+  staffRetirementsOpen,
   hofCeremonyOpen,
   sponsorModalOpen,
   facilityReviewOpen,
@@ -105,12 +113,14 @@ export const OffseasonSidebarOverlays: React.FC<Props> = ({
   preseasonFriendliesOpen,
   preseasonGames,
   stepConfirm,
+  briefingSpec,
   autoResolveConfirmOpen,
   rookieDisclaimerOpen,
   userTeamRookies,
   expansionProtectOpen,
   expansionDraftViewOpen,
   onRetiredClose,
+  onStaffRetirementsClose,
   onHofClose,
   onSponsorClose,
   onFacilityOpenSliders,
@@ -134,6 +144,8 @@ export const OffseasonSidebarOverlays: React.FC<Props> = ({
   onPreseasonDone,
   onStepCancel,
   onStepConfirm,
+  onBriefingConfirm,
+  onBriefingDismissForever,
   onAutoResolveCancel,
   onAutoResolveConfirm,
   onRookieDismiss,
@@ -143,6 +155,7 @@ export const OffseasonSidebarOverlays: React.FC<Props> = ({
 }) => (
   <>
     <RetiredPlayersReviewModal isOpen={retiredReviewOpen} onClose={onRetiredClose} />
+    <StaffRetirementsReviewModal isOpen={staffRetirementsOpen} onClose={onStaffRetirementsClose} />
     <HOFCeremonyModal isOpen={hofCeremonyOpen} onClose={onHofClose} />
     <SponsorshipNegotiationModal open={sponsorModalOpen} showOnlyActionableSlots onClose={onSponsorClose} />
     <FacilityReviewModal
@@ -219,6 +232,11 @@ export const OffseasonSidebarOverlays: React.FC<Props> = ({
       games={preseasonGames}
       onClose={onPreseasonClose}
       onDone={onPreseasonDone}
+    />
+    <OffseasonBriefingModal
+      spec={briefingSpec}
+      onConfirm={onBriefingConfirm}
+      onDismissForever={onBriefingDismissForever}
     />
     <OffseasonStepConfirmModal spec={stepConfirm} onCancel={onStepCancel} onConfirm={onStepConfirm} />
     <OffseasonAutoResolveConfirmModal

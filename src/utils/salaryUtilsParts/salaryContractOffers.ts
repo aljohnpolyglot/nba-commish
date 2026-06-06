@@ -1,5 +1,6 @@
 import type { NBAPlayer } from '../../types';
 import { EXTERNAL_SALARY_SCALE } from '../../constants';
+import { isPbaRosterLocal } from '../../services/pba/importManager';
 import { getDisplayAge } from '../../store/playerRatingStore';
 import { convertTo2KRating } from '../helpers';
 
@@ -16,9 +17,28 @@ const MAX_CONTRACT_PCT = [0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.30, 0.30, 
 const MIN_CONTRACT_BASE_M = [1.273, 1.426, 1.598, 1.790, 2.006, 2.247, 2.518, 2.821, 3.161, 3.541, 3.967];
 const BASE_CAP_M = 154.6;
 
+function getPbaImportSalaryFloorUSD(salaryCapUSD: number, minSalaryUSD: number, maxSalaryUSD: number): number {
+  return Math.max(
+    Math.round(minSalaryUSD * 4),
+    Math.round(maxSalaryUSD * 0.5),
+    Math.round(salaryCapUSD * 0.16),
+  );
+}
+
+function isPbaImportLike(player: NBAPlayer, leagueStats?: ContractLeagueStats): boolean {
+  if (leagueStats?.uiMode === 'pba_isolated') return !isPbaRosterLocal(player, leagueStats);
+  if ((player as any).status !== 'PBA') return false;
+  const born = (player as any).born ?? {};
+  const nationality = String((born as any).country ?? (player as any).nationality ?? '').toLowerCase();
+  const loc = String((born as any).loc ?? '').toLowerCase();
+  return !nationality.includes('philippines') && !loc.includes('philippines');
+}
+
 export type ContractLeagueStats = Pick<
   import('../../types').LeagueStats,
   | 'salaryCap'
+  | 'uiMode'
+  | 'pbaLocalEligibilityMode'
   | 'minContractType'
   | 'minContractStaticAmount'
   | 'maxContractType'
@@ -100,7 +120,7 @@ export function computeContractOffer(
   if ((leagueStats.minContractType ?? 'dynamic') === 'dynamic') {
     minSalaryUSD = (MIN_CONTRACT_BASE_M[svcIdx] / BASE_CAP_M) * capM * 1_000_000;
   } else {
-    minSalaryUSD = ((leagueStats.minContractStaticAmount ?? 1273) as number) * 1_000;
+    minSalaryUSD = ((leagueStats.minContractStaticAmount ?? 1.273) as number) * 1_000_000;
   }
 
   const lastRating = (player as any).ratings?.[(player as any).ratings?.length - 1];
@@ -142,6 +162,9 @@ export function computeContractOffer(
   if (scale) {
     const externalPeakUSD = salaryCapUSD * scale.maxPct;
     salaryUSD = Math.min(salaryUSD, externalPeakUSD * 3);
+  }
+  if (isPbaImportLike(player, leagueStats)) {
+    salaryUSD = Math.max(salaryUSD, getPbaImportSalaryFloorUSD(salaryCapUSD, minSalaryUSD, maxContractUSD));
   }
   salaryUSD = Math.max(minSalaryUSD, salaryUSD);
 
@@ -293,6 +316,10 @@ export function getContractLimits(
     const baseM = MIN_CONTRACT_BASE_M[svcIdx];
     const yr0M = MIN_CONTRACT_BASE_M[0];
     minSalaryUSD = (baseM / BASE_CAP_M) * capM * (staticMinM / yr0M) * 1_000_000;
+  }
+  if (isPbaImportLike(player, leagueStats)) {
+    minSalaryUSD = Math.max(minSalaryUSD, getPbaImportSalaryFloorUSD(salaryCapUSD, minSalaryUSD, maxSalaryUSD));
+    maxSalaryUSD = Math.max(maxSalaryUSD, minSalaryUSD);
   }
 
   return { minSalaryUSD, maxSalaryUSD, maxPct, isSupermaxEligible, isRookieExtEligible, rookieRoseQualified };

@@ -209,24 +209,24 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-3 md:p-4"
       >
         <motion.div
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 20 }}
-          className="bg-slate-900 border border-slate-800 w-[95vw] max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh]"
+          className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)]"
         >
-          <div className="p-4 md:p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-            <div className="flex items-center gap-2 md:gap-3 text-indigo-400">
+          <div className="p-4 md:p-6 border-b border-slate-800 flex items-start justify-between gap-3 bg-slate-900/50">
+            <div className="flex min-w-0 items-start gap-2 md:gap-3 text-indigo-400">
                 <User size={20} className="md:w-6 md:h-6" />
-                <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-white">
+                <h3 className="text-base md:text-xl font-black uppercase tracking-tight text-white leading-tight break-words">
                     {step === 'player'
                       ? (isGM && userTeam ? `Select Free Agent for ${userTeam.name}` : 'Select Free Agent')
                       : `Sign to ${selectedTeam?.name || 'Team'}`}
                 </h3>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
+            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors flex-shrink-0">
               <X size={20} />
             </button>
           </div>

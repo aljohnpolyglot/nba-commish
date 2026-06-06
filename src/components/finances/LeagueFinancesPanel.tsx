@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type { NBAPlayer } from '../../types';
 import type { TycoonState, TycoonTier } from '../../types/tycoon';
 import { TIER_BASE, getTierForClub } from '../../services/tycoon/specs/spain';
@@ -55,6 +55,24 @@ export interface FinanceRow {
   wageRevPct: number;
   health: { label: string; tone: 'excellent' | 'good' | 'stable' | 'risk' | 'critical' };
 }
+
+type FinanceSortKey =
+  | 'team'
+  | 'matchday'
+  | 'sponsorship'
+  | 'tv'
+  | 'totalRev'
+  | 'profit'
+  | 'wages'
+  | 'staff'
+  | 'facility'
+  | 'scouting'
+  | 'travel'
+  | 'medical'
+  | 'academy'
+  | 'totalExp'
+  | 'wageRevPct'
+  | 'health';
 
 const HEALTH_STYLES: Record<FinanceRow['health']['tone'], { dot: string; text: string; bg: string }> = {
   excellent: { dot: 'bg-emerald-400', text: 'text-emerald-300', bg: 'bg-emerald-500/10' },
@@ -271,13 +289,45 @@ export interface LeagueFinancesPanelProps {
 export const LeagueFinancesPanel: React.FC<LeagueFinancesPanelProps> = ({
   teams, players, displayName, shortName, currencySymbol: symbol, seasonYear,
 }) => {
+  const [sortKey, setSortKey] = useState<FinanceSortKey>('profit');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const acbView = useMemo(() => teams.length > 0 && teams.every(isACBClub), [teams]);
   const euroLeagueView = useMemo(() => teams.length > 0 && teams.every(isEuroLeagueClub), [teams]);
+  const healthRank = useMemo(
+    () => ({ excellent: 4, good: 3, stable: 2, risk: 1, critical: 0 } as const),
+    [],
+  );
+  const handleSort = (nextKey: FinanceSortKey) => {
+    if (sortKey === nextKey) {
+      setSortDir(current => current === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDir(nextKey === 'team' || nextKey === 'health' ? 'asc' : 'desc');
+  };
   const rows = useMemo(
     () => teams
       .map(team => buildFinanceRow(team, players))
-      .sort((a, b) => b.profit - a.profit),
-    [teams, players],
+      .sort((a, b) => {
+        let comparison = 0;
+        switch (sortKey) {
+          case 'team':
+            comparison = `${a.team.region ? `${a.team.region} ` : ''}${a.team.name}`.localeCompare(
+              `${b.team.region ? `${b.team.region} ` : ''}${b.team.name}`,
+            );
+            break;
+          case 'health':
+            comparison = healthRank[a.health.tone] - healthRank[b.health.tone]
+              || a.health.label.localeCompare(b.health.label);
+            break;
+          default:
+            comparison = (a[sortKey] as number) - (b[sortKey] as number);
+            break;
+        }
+        if (comparison === 0) comparison = a.team.name.localeCompare(b.team.name);
+        return sortDir === 'asc' ? comparison : -comparison;
+      }),
+    [teams, players, sortKey, sortDir, healthRank],
   );
 
   const totals = useMemo(() => {
@@ -333,6 +383,28 @@ export const LeagueFinancesPanel: React.FC<LeagueFinancesPanelProps> = ({
         { tone: 'risk', label: 'At Risk' },
         { tone: 'critical', label: 'Critical' },
       ] as const;
+  const SortHeader: React.FC<{
+    label: string;
+    sort: FinanceSortKey;
+    align?: 'left' | 'center' | 'right';
+    className?: string;
+  }> = ({ label, sort, align = 'right', className = '' }) => {
+    const active = sortKey === sort;
+    return (
+      <button
+        type="button"
+        onClick={() => handleSort(sort)}
+        className={`inline-flex items-center gap-1 font-bold hover:text-slate-300 transition-colors ${
+          align === 'left' ? 'justify-start' : align === 'center' ? 'justify-center' : 'justify-end'
+        } w-full ${className}`}
+      >
+        <span>{label}</span>
+        <span className={`${active ? 'text-slate-300' : 'text-slate-700'}`}>
+          {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+        </span>
+      </button>
+    );
+  };
 
   return (
     <div className="space-y-5 p-4 md:p-6">
@@ -392,26 +464,34 @@ export const LeagueFinancesPanel: React.FC<LeagueFinancesPanelProps> = ({
             <thead>
               <tr className="text-[9px] uppercase tracking-widest text-slate-500 border-b border-white/5">
                 <th rowSpan={2} className="px-3 py-2 text-left font-bold">#</th>
-                <th rowSpan={2} className="px-3 py-2 text-left font-bold">Team</th>
+                <th rowSpan={2} className="px-3 py-2 text-left font-bold">
+                  <SortHeader label="Team" sort="team" align="left" />
+                </th>
                 <th colSpan={4} className="px-3 py-2 text-center font-bold border-l border-white/5">Money In</th>
-                <th rowSpan={2} className="px-3 py-2 text-right font-bold border-l border-white/5">Projected Profit</th>
+                <th rowSpan={2} className="px-3 py-2 text-right font-bold border-l border-white/5">
+                  <SortHeader label="Projected Profit" sort="profit" />
+                </th>
                 <th colSpan={8} className="px-3 py-2 text-center font-bold border-l border-white/5">Money Out</th>
-                <th rowSpan={2} className="px-3 py-2 text-right font-bold border-l border-white/5">Wage / Rev</th>
-                <th rowSpan={2} className="px-3 py-2 text-center font-bold border-l border-white/5">Outlook</th>
+                <th rowSpan={2} className="px-3 py-2 text-right font-bold border-l border-white/5">
+                  <SortHeader label="Wage / Rev" sort="wageRevPct" />
+                </th>
+                <th rowSpan={2} className="px-3 py-2 text-center font-bold border-l border-white/5">
+                  <SortHeader label="Outlook" sort="health" align="center" />
+                </th>
               </tr>
               <tr className="text-[9px] uppercase tracking-widest text-slate-500 border-b border-white/5">
-                <th className="px-2 py-2 text-right font-bold border-l border-white/5">Matchday</th>
-                <th className="px-2 py-2 text-right font-bold">Sponsors</th>
-                <th className="px-2 py-2 text-right font-bold">TV Rights</th>
-                <th className="px-2 py-2 text-right font-bold">Total Rev</th>
-                <th className="px-2 py-2 text-right font-bold border-l border-white/5">Wages</th>
-                <th className="px-2 py-2 text-right font-bold">Staff</th>
-                <th className="px-2 py-2 text-right font-bold">Facility</th>
-                <th className="px-2 py-2 text-right font-bold">Scouting</th>
-                <th className="px-2 py-2 text-right font-bold">Travel</th>
-                <th className="px-2 py-2 text-right font-bold">Medical</th>
-                <th className="px-2 py-2 text-right font-bold">Academy</th>
-                <th className="px-2 py-2 text-right font-bold">Total Exp</th>
+                <th className="px-2 py-2 text-right font-bold border-l border-white/5"><SortHeader label="Matchday" sort="matchday" /></th>
+                <th className="px-2 py-2 text-right font-bold"><SortHeader label="Sponsors" sort="sponsorship" /></th>
+                <th className="px-2 py-2 text-right font-bold"><SortHeader label="TV Rights" sort="tv" /></th>
+                <th className="px-2 py-2 text-right font-bold"><SortHeader label="Total Rev" sort="totalRev" /></th>
+                <th className="px-2 py-2 text-right font-bold border-l border-white/5"><SortHeader label="Wages" sort="wages" /></th>
+                <th className="px-2 py-2 text-right font-bold"><SortHeader label="Staff" sort="staff" /></th>
+                <th className="px-2 py-2 text-right font-bold"><SortHeader label="Facility" sort="facility" /></th>
+                <th className="px-2 py-2 text-right font-bold"><SortHeader label="Scouting" sort="scouting" /></th>
+                <th className="px-2 py-2 text-right font-bold"><SortHeader label="Travel" sort="travel" /></th>
+                <th className="px-2 py-2 text-right font-bold"><SortHeader label="Medical" sort="medical" /></th>
+                <th className="px-2 py-2 text-right font-bold"><SortHeader label="Academy" sort="academy" /></th>
+                <th className="px-2 py-2 text-right font-bold"><SortHeader label="Total Exp" sort="totalExp" /></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">

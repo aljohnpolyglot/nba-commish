@@ -6,13 +6,14 @@ import {
 import { formatCurrencyWithCode } from '../../../../../utils/helpers';
 import type { TycoonState, SponsorshipSlot } from '../../../../../types/tycoon';
 import { TEAM_ARENAS } from '../../../../../data/arenas';
+import { getTycoonFacilityLevel } from '../../../../../services/tycoon/tierBase';
 
 type TrainingTab = 'center' | 'overview' | 'sponsorship';
 
-const TABS: Array<{ id: TrainingTab; label: string; icon: React.ReactNode }> = [
-  { id: 'center', label: 'Training Center', icon: <Dumbbell size={16} /> },
-  { id: 'overview', label: 'Facility Overview', icon: <Eye size={16} /> },
-  { id: 'sponsorship', label: 'Sponsorship', icon: <Tag size={16} /> },
+const TABS: Array<{ id: TrainingTab; label: string; mobileLabel: string; icon: React.ReactNode }> = [
+  { id: 'center', label: 'Training Center', mobileLabel: 'Training', icon: <Dumbbell size={16} /> },
+  { id: 'overview', label: 'Facility Overview', mobileLabel: 'Overview', icon: <Eye size={16} /> },
+  { id: 'sponsorship', label: 'Sponsorship', mobileLabel: 'Sponsor', icon: <Tag size={16} /> },
 ];
 
 type FacilityTier = 'Elite' | 'Advanced' | 'Standard' | 'Basic';
@@ -43,26 +44,28 @@ export const TrainingSection: React.FC<TrainingSectionProps> = ({
   tycoon, teamName, teamLogoUrl, currency,
 }) => {
   const [tab, setTab] = useState<TrainingTab>('center');
-  const level = tycoon.facilities.trainingCenter.level;
+  const level = getTycoonFacilityLevel(tycoon.facilities?.trainingCenter);
   const rating = 58 + level * 9;
   const facilityName = `${teamName} Training Center`;
   const arenaName = TEAM_ARENAS[teamName] ?? 'Arena';
   const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
 
   return (
-    <div className="space-y-5">
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory">
         {TABS.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-xs font-black uppercase tracking-wider transition-all ${
+            className={`flex shrink-0 snap-start items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.18em] transition-all sm:px-4 sm:text-xs sm:tracking-wider ${
               tab === t.id
                 ? 'bg-sky-400/15 border border-sky-400/40 text-sky-200'
                 : 'border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-600'
             }`}
           >
-            {t.icon} {t.label}
+            {t.icon}
+            <span className="sm:hidden">{t.mobileLabel}</span>
+            <span className="hidden sm:inline">{t.label}</span>
           </button>
         ))}
       </div>
@@ -105,8 +108,8 @@ const StatBox: React.FC<{ icon: React.ReactNode; label: string; value: string; s
   <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-center">
     <div className={`flex justify-center ${accent}`}>{icon}</div>
     <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</div>
-    <div className={`mt-1 text-2xl font-black ${accent}`}>{value}</div>
-    {sub && <div className="text-[10px] text-slate-500 mt-1">{sub}</div>}
+    <div className={`mt-1 text-xl font-black leading-tight break-words sm:text-2xl ${accent}`}>{value}</div>
+    {sub && <div className="mt-1 text-[10px] leading-4 text-slate-500 break-words">{sub}</div>}
   </div>
 );
 
@@ -115,21 +118,21 @@ const CenterTab: React.FC<{
 }> = ({ facilityName, level, rating, arenaName, teamLogoUrl }) => {
   const tierLabel = level >= 5 ? 'World Class' : level >= 4 ? 'Elite' : level >= 3 ? 'Excellent' : level >= 2 ? 'Good' : 'Basic';
   return (
-    <div className="grid lg:grid-cols-[1fr_320px] gap-5">
+    <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
       <div className="space-y-5">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-          <div className="flex items-start gap-5">
-            <div className="w-20 h-20 rounded-2xl border border-sky-400/30 bg-sky-400/10 flex items-center justify-center shrink-0">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 sm:p-6">
+          <div className="flex items-start gap-3 sm:gap-5">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-sky-400/30 bg-sky-400/10 sm:h-20 sm:w-20">
               {teamLogoUrl ? (
-                <img src={teamLogoUrl} alt="" className="w-14 h-14 object-contain" />
+                <img src={teamLogoUrl} alt="" className="h-11 w-11 object-contain sm:h-14 sm:w-14" />
               ) : (
-                <Dumbbell size={36} className="text-sky-300" />
+                <Dumbbell size={32} className="text-sky-300 sm:h-9 sm:w-9" />
               )}
             </div>
             <div className="min-w-0">
               <div className="text-xs font-black uppercase tracking-widest text-slate-500">Training Facility</div>
-              <h3 className="text-2xl font-black text-white mt-1">{facilityName}</h3>
-              <div className="flex flex-wrap items-center gap-3 mt-2">
+              <h3 className="mt-1 text-xl font-black leading-tight text-white break-words sm:text-2xl">{facilityName}</h3>
+              <div className="mt-2 flex flex-wrap items-center gap-2 sm:gap-3">
                 <span className="inline-flex rounded-lg border border-sky-400/30 bg-sky-400/10 px-2 py-1 text-xs font-black text-sky-300">Level {level}</span>
                 <span className="inline-flex rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-2 py-1 text-xs font-black text-emerald-300">{tierLabel}</span>
               </div>
@@ -137,11 +140,11 @@ const CenterTab: React.FC<{
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatBox icon={<Star size={22} />} label="Overall Rating" value={String(Math.min(99, rating))} sub={tierLabel} />
           <StatBox icon={<TrendingUp size={22} />} label="Level" value={`${level} / 5`} sub="Facility tier" />
           <StatBox icon={<Dumbbell size={22} />} label="Training Quality" value={rating >= 85 ? 'Elite' : rating >= 75 ? 'High' : 'Standard'} sub={`${Math.min(99, rating)}/100`} />
-          <StatBox icon={<MapPin size={22} />} label="Arena" value={arenaName.split(' ').slice(0, 2).join(' ')} sub="Home venue" />
+          <StatBox icon={<MapPin size={22} />} label="Arena" value={arenaName} sub="Home venue" />
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">

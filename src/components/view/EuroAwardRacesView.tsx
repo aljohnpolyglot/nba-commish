@@ -82,8 +82,20 @@ export const EuroAwardRacesView: React.FC<EuroAwardRacesViewProps> = ({ forcedCo
     state.players, state.teams, state.nonNBATeams ?? [], state.leagueStats.year, state.staff, undefined, state.boxScores ?? [],
   ), [state.players, state.teams, state.nonNBATeams, state.leagueStats.year, state.staff, state.boxScores]);
 
-  const totalGP = state.teams.reduce((sum, t) => sum + (t.wins ?? 0) + (t.losses ?? 0), 0);
-  const seasonNotStarted = totalGP === 0;
+  const competitionSamples = useMemo(() => {
+    const hasRegularSeasonSample = (id: Competition) => (state.boxScores ?? []).some((game: any) =>
+      game.competitionId === id &&
+      game.season === state.leagueStats.year &&
+      !isPostRegularPhase(game.competitionPhase),
+    );
+    return {
+      euroleague: hasRegularSeasonSample('euroleague'),
+      endesa: hasRegularSeasonSample('endesa'),
+    };
+  }, [state.boxScores, state.leagueStats.year]);
+  const seasonNotStarted = forcedCompetition
+    ? !competitionSamples[forcedCompetition]
+    : !competitionSamples.euroleague && !competitionSamples.endesa;
 
   const competitionWindow = useMemo(() => {
     const buildWindow = (id: Competition) => {
@@ -159,6 +171,7 @@ export const EuroAwardRacesView: React.FC<EuroAwardRacesViewProps> = ({ forcedCo
 
   const selectedRaces = competition === 'euroleague' ? euroleagueRaces : endesaRaces;
   const selectedTab = competition === 'euroleague' ? elTab : endesaTab;
+  const selectedEndesaRaceKey = endesaTab === 'bestYoung' ? 'bestYoungPlayer' : endesaTab;
   const selectedLabel = competition === 'euroleague'
     ? euroleagueLabels[elTab]
     : endesaLabels[endesaTab];
@@ -223,10 +236,6 @@ export const EuroAwardRacesView: React.FC<EuroAwardRacesViewProps> = ({ forcedCo
           name={c.coachName}
           subtitle={`${c.team.name} · ${c.wins}–${c.losses}`}
           teamLogoUrl={c.team.logoUrl}
-          metaLine={{
-            text: `${c.improvement > 0 ? `+${c.improvement}` : c.improvement < 0 ? `${c.improvement}` : '±0'} wins vs last season`,
-            color: c.improvement > 0 ? 'text-emerald-400' : c.improvement < 0 ? 'text-red-400' : 'text-slate-500',
-          }}
           odds={finalized ? undefined : c.odds}
           accentColor="teal"
           animDelay={i * 0.05}
@@ -293,7 +302,7 @@ export const EuroAwardRacesView: React.FC<EuroAwardRacesViewProps> = ({ forcedCo
       return renderPlayerCards((euroleagueRaces as any)[elTab]);
     }
     if (endesaTab === 'bestCoach') return renderCoaches(endesaRaces.bestCoach);
-    return renderPlayerCards((endesaRaces as any)[endesaTab]);
+    return renderPlayerCards((endesaRaces as any)[selectedEndesaRaceKey]);
   })();
 
   return (

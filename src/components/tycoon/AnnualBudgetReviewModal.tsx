@@ -122,11 +122,11 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
       <button className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative flex w-full max-w-6xl max-h-[92vh] flex-col overflow-hidden rounded-2xl border border-amber-500/30 bg-slate-950 text-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-800 bg-amber-500/[0.06] px-6 py-5">
+      <div className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-amber-500/30 bg-slate-950 text-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-800 bg-amber-500/[0.06] px-4 py-4 sm:px-6 sm:py-5">
           <div className="min-w-0">
             <span className="inline-block rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.35em] text-amber-300">Offseason</span>
-            <h2 className="mt-2 text-3xl font-black uppercase tracking-tight">{title}</h2>
+            <h2 className="mt-2 text-2xl font-black uppercase tracking-tight sm:text-3xl">{title}</h2>
             <p className="mt-1 max-w-3xl text-sm text-slate-400">{description ?? `Season ${currentYear}-${String(currentYear + 1).slice(-2)} operating plan`}</p>
           </div>
           <div className="flex items-start gap-3">
@@ -141,7 +141,7 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
         </div>
 
         <div className="grid flex-1 gap-0 overflow-y-auto lg:grid-cols-[1fr_390px]">
-          <div className="space-y-4 p-6">
+          <div className="space-y-4 p-4 sm:p-6">
             {readOnly ? (
               <BudgetSummary values={values} fmt={fmt} />
             ) : (
@@ -285,15 +285,15 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
           </aside>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 bg-slate-950/80 px-5 py-3">
+        <div className="flex flex-col gap-3 border-t border-slate-800 bg-slate-950/80 px-4 py-3 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-h-[40px] flex items-center">
             {footerLeft}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             {onEdit && (
               <button
                 onClick={onEdit}
-                className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-400/5 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-emerald-200 hover:bg-emerald-400/10"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-400/5 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-emerald-200 hover:bg-emerald-400/10 sm:w-auto"
               >
                 <SlidersHorizontal size={14} /> {editLabel}
               </button>
@@ -301,14 +301,14 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
             {closeLabel && (
               <button
                 onClick={onClose}
-                className="rounded-xl border border-slate-700 bg-white/5 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-slate-200 hover:bg-white/10"
+                className="w-full rounded-xl border border-slate-700 bg-white/5 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-slate-200 hover:bg-white/10 sm:w-auto"
               >
                 {closeLabel}
               </button>
             )}
             <button
               onClick={() => onFinalize(values)}
-              className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-amber-300"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-amber-300 sm:w-auto"
             >
               {readOnly ? <CheckCircle2 size={14} /> : <Lock size={14} />} {finalizeLabel}
             </button>

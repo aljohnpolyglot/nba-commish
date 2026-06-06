@@ -48,7 +48,9 @@ export function getTravelGameplayEffectsFromPreferences(
     roadPerformanceScore: Math.min(99, Math.round(averageStars * 14)),
     awayFatigueShift: clamp(Math.round(-normalized * 4), -3, 4),
     awayStrengthBonus: clamp(normalized * 1.5, -1.5, 1.5),
-    roadTripFatigueDelta: clamp(2.7 - normalized * 1.1, 1.4, 3.8),
+    // Persistent road wear should be noticeable over a bad trip, not send a
+    // normal starter to the red zone after one ordinary week.
+    roadTripFatigueDelta: clamp(1.35 - normalized * 0.45, 0.75, 1.8),
     moodComponent: clamp(normalized * 1.5, -1.5, 1.5),
   };
 }

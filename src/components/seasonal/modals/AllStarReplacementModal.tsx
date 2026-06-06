@@ -13,7 +13,7 @@ const ModalShell = ({ children, wide }: { children: React.ReactNode; wide?: bool
   <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <motion.div
       initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
-      className={`bg-slate-900 border border-slate-800 rounded-[2rem] w-full shadow-2xl flex flex-col max-h-[90vh] ${wide ? 'max-w-3xl' : 'max-w-2xl'}`}
+      className={`flex max-h-[calc(100vh-2rem)] w-full flex-col rounded-[2rem] border border-slate-800 bg-slate-900 shadow-2xl ${wide ? 'max-w-3xl' : 'max-w-2xl'}`}
     >
       {children}
     </motion.div>
@@ -74,12 +74,12 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
   if (pickerForId) {
     return (
       <ModalShell wide>
-        <div className="p-8 pb-4">
+        <div className="p-4 pb-4 sm:p-8">
           <button onClick={() => { setPickerForId(null); setSearch(''); }} className="text-slate-500 hover:text-white text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5">
             ← Back to roster
           </button>
           {pickerEntry && (
-            <div className={`flex items-center gap-4 mb-4 p-3 rounded-2xl border ${isAddingReplacement ? 'bg-rose-500/10 border-rose-500/20' : 'bg-sky-500/10 border-sky-500/20'}`}>
+          <div className={`mb-4 flex items-center gap-4 rounded-2xl border p-3 ${isAddingReplacement ? 'bg-rose-500/10 border-rose-500/20' : 'bg-sky-500/10 border-sky-500/20'}`}>
               <PlayerPortrait imgUrl={pickerPlayer?.imgURL} face={(pickerPlayer as any)?.face} playerName={pickerPlayer?.name} teamLogoUrl={pickerTeam?.logoUrl} overallRating={pickerPlayer?.overallRating} size={44} />
               <div>
                 <p className={`text-[9px] font-black uppercase tracking-widest mb-0.5 ${isAddingReplacement ? 'text-rose-400' : 'text-sky-400'}`}>
@@ -104,8 +104,8 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
           </div>
         </div>
 
-        <div className="overflow-y-auto custom-scrollbar px-8 pb-6 flex-1">
-          <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+        <div className="custom-scrollbar flex-1 overflow-y-auto px-4 pb-6 sm:px-8">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
             {filteredCandidates.map(c => {
               const team = state.teams.find(t => t.id === c.tid);
               const stats = c.stats?.find((s: any) => s.season === season) ?? c.stats?.[c.stats.length - 1];
@@ -136,8 +136,8 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
           </div>
         </div>
 
-        <div className="p-6 pt-4 border-t border-slate-800 flex justify-end">
-          <button onClick={onClose} className="px-6 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-bold uppercase tracking-wider text-xs">Cancel</button>
+        <div className="flex justify-end border-t border-slate-800 p-4 pt-4 sm:p-6">
+          <button onClick={onClose} className="w-full rounded-xl px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:bg-slate-800 hover:text-white sm:w-auto">Cancel</button>
         </div>
       </ModalShell>
     );
@@ -186,7 +186,7 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
 
   return (
     <ModalShell wide>
-      <div className="p-8 pb-4">
+      <div className="p-4 pb-4 sm:p-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-400">
             <RotateCcw size={22} />
@@ -207,7 +207,7 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
         </div>
       </div>
 
-      <div className="overflow-y-auto custom-scrollbar px-8 pb-4 flex-1 space-y-5">
+      <div className="custom-scrollbar flex-1 overflow-y-auto space-y-5 px-4 pb-4 sm:px-8">
         {/* Injured players requiring replacements */}
         {injuredPlayers.length > 0 && (
           <div>
@@ -246,8 +246,8 @@ export const AllStarReplacementModal: React.FC<AllStarReplacementModalProps> = (
         })}
       </div>
 
-      <div className="p-8 pt-4 border-t border-slate-800 flex justify-end">
-        <button onClick={onClose} className="px-6 py-3 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-bold uppercase tracking-wider text-xs">Close</button>
+      <div className="flex justify-end border-t border-slate-800 p-4 pt-4 sm:p-8">
+        <button onClick={onClose} className="w-full rounded-xl bg-slate-800 px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white sm:w-auto">Close</button>
       </div>
     </ModalShell>
   );

@@ -9,6 +9,9 @@ import { CompactTeamNeedsPanel } from './simulator/CompactTeamNeedsPanel';
 import { CompactAdvisorBoardPanel } from './simulator/CompactAdvisorBoardPanel';
 import { POSITIONS, getOrdinalSuffix } from './simulator/helpers';
 import type { DraftSimulatorProspect } from './DraftSimulatorView.helpers';
+import type { GameState } from '../../types';
+import { fuzzRatingValue } from '../../utils/scoutingFuzz';
+import { getTeamFullName } from '../../utils/teamNames';
 
 interface DraftBoardSectionProps {
   allProspects: DraftSimulatorProspect[];
@@ -17,6 +20,7 @@ interface DraftBoardSectionProps {
   draftedSet: Set<any>;
   currentPick: number;
   draftYear: number | string;
+  draftLabel: string;
   teamOnClock?: DraftOrderTeam;
   nextTeam?: DraftOrderTeam;
   isDraftComplete: boolean;
@@ -36,15 +40,19 @@ interface DraftBoardSectionProps {
   onOpenScoutingPlayer: (player: DraftSimulatorProspect) => void;
   onSimToMyPick: () => void;
   onSimToEnd: () => void;
+  onPassPick: () => void;
   onToggleAutoSim: () => void;
   onSetSimSpeed: (value: string) => void;
+  state: GameState;
 }
 
 interface PreDraftProspectsPanelProps {
   allProspects: DraftSimulatorProspect[];
   draftDateLabel: string;
+  draftLabel: string;
   leagueYear: number;
   onViewPlayer: (player: NBAPlayer) => void;
+  state: GameState;
 }
 
 const ProspectAvatar: React.FC<{ player: DraftSimulatorProspect; sizeClass: string }> = ({ player, sizeClass }) => {
@@ -77,7 +85,8 @@ const ProspectSummary: React.FC<{
   player: DraftSimulatorProspect;
   leagueYear: number;
   titleClass: string;
-}> = ({ player, leagueYear, titleClass }) => (
+  state: GameState;
+}> = ({ player, leagueYear, titleClass, state }) => (
   <div className="flex-1 min-w-0">
     <p className={`${titleClass} font-black text-white leading-tight truncate`}>{player.name}</p>
     <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1 flex-wrap">
@@ -85,9 +94,9 @@ const ProspectSummary: React.FC<{
       <span className="w-1 h-1 bg-white/20 rounded-full" />
       <span>{(player as any).born?.year ? leagueYear - (player as any).born.year : ((player as any).age ?? '?')}y</span>
       <span className="w-1 h-1 bg-white/20 rounded-full" />
-      <span className="text-indigo-300">OVR {player.displayOvr}</span>
+      <span className="text-indigo-300">OVR {fuzzRatingValue(player.displayOvr ?? 0, state, player as NBAPlayer, 'draft-view-ovr')}</span>
       <span className="w-1 h-1 bg-white/20 rounded-full" />
-      <span className="text-emerald-400/70">POT {player.displayPot}</span>
+      <span className="text-emerald-400/70">POT {fuzzRatingValue(player.displayPot ?? 0, state, player as NBAPlayer, 'draft-view-pot')}</span>
       {(player as any).college && (
         <>
           <span className="w-1 h-1 bg-white/20 rounded-full" />
@@ -105,6 +114,7 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
   draftedSet,
   currentPick,
   draftYear,
+  draftLabel,
   teamOnClock,
   nextTeam,
   isDraftComplete,
@@ -124,8 +134,10 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
   onOpenScoutingPlayer,
   onSimToMyPick,
   onSimToEnd,
+  onPassPick,
   onToggleAutoSim,
   onSetSimSpeed,
+  state,
 }) => (
   <div className="grid lg:grid-cols-[1fr_320px] gap-6">
     <div className="space-y-5">
@@ -157,8 +169,8 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
                 </div>
               )}
               <p className="text-white/70 text-sm leading-relaxed">
-                With the <strong className="text-white">{currentPick}{getOrdinalSuffix(currentPick)}</strong> pick in the {draftYear} NBA draft,
-                the <strong className="text-white">{teamOnClock.name}</strong> select…
+                With the <strong className="text-white">{currentPick}{getOrdinalSuffix(currentPick)}</strong> pick in the {draftYear} {draftLabel},
+                the <strong className="text-white">{getTeamFullName(teamOnClock as any) || teamOnClock.name}</strong> select…
               </p>
             </div>
           </div>
@@ -181,6 +193,14 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
               className="h-8 px-3 text-xs font-black uppercase rounded-sm bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition-colors"
             >
               <FastForward size={11} /> {userHasMorePicks ? 'Assistant GM: Sim to End' : 'Sim to End'}
+            </button>
+          )}
+          {isGM && !isDraftComplete && isUserOnClock && (
+            <button
+              onClick={onPassPick}
+              className="h-8 px-3 text-xs font-black uppercase rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white/80 border border-zinc-600 flex items-center gap-1.5 transition-colors"
+            >
+              Pass Pick
             </button>
           )}
           <div className="flex items-center gap-1 bg-black/40 p-1 rounded-md border border-[#333]">
@@ -269,7 +289,7 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
                   {String(rankById.get(player.internalId) ?? 0).padStart(2, '0')}
                 </div>
                 <ProspectAvatar player={player} sizeClass="w-10 h-10 mr-3" />
-                <ProspectSummary player={player} leagueYear={Number(draftYear) || 0} titleClass="text-base" />
+                <ProspectSummary player={player} leagueYear={Number(draftYear) || 0} titleClass="text-base" state={state} />
                 {(!isGM || isUserOnClock) && (
                   <button
                     onClick={event => {
@@ -294,7 +314,7 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
         <div className="bg-[#1A1A1A] rounded-sm p-3 border border-[#333] flex justify-between items-center">
           <div>
             <div className="text-[9px] font-black uppercase text-white/40">Next Up — Pick {currentPick + 1}</div>
-            <div className="font-black text-white text-sm">{nextTeam.name}</div>
+            <div className="font-black text-white text-sm">{getTeamFullName(nextTeam as any) || nextTeam.name}</div>
           </div>
           {nextTeam.logoUrl && (
             <img src={nextTeam.logoUrl} alt={nextTeam.name} className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
@@ -322,7 +342,9 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
           <div key={player.internalId} className="flex items-center gap-2 py-1">
             <span className="text-[10px] font-black text-white/30 w-5">{index + 1}</span>
             <span className="text-xs font-bold text-white truncate flex-1">{player.name}</span>
-            <span className="text-[10px] font-black text-indigo-300">{player.displayOvr}</span>
+            <span className="text-[10px] font-black text-indigo-300">
+              {fuzzRatingValue(player.displayOvr ?? 0, state, player as NBAPlayer, 'draft-view-ovr')}
+            </span>
           </div>
         ))}
       </div>
@@ -333,14 +355,18 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
 export const PreDraftProspectsPanel: React.FC<PreDraftProspectsPanelProps> = ({
   allProspects,
   draftDateLabel,
+  draftLabel,
   leagueYear,
   onViewPlayer,
+  state,
 }) => (
   <div className="bg-[#1A1A1A] rounded-sm border border-[#333] overflow-hidden">
     <div className="p-3 border-b border-[#333]">
       <span className="font-black text-white text-sm">Top Prospects by OVR — {leagueYear} Draft Class</span>
       <p className="text-[10px] text-white/30 font-medium mt-0.5">
-        Available for drafting on {draftDateLabel}. Ratings may improve before draft day.
+        {draftLabel === 'PBA Draft'
+          ? 'Available when the PBA offseason draft opens. Ratings may improve before draft day.'
+          : `Available for drafting on ${draftDateLabel}. Ratings may improve before draft day.`}
       </p>
     </div>
     <div>
@@ -354,7 +380,7 @@ export const PreDraftProspectsPanel: React.FC<PreDraftProspectsPanelProps> = ({
             {index + 1}
           </div>
           <ProspectAvatar player={player} sizeClass="w-9 h-9 mr-3" />
-          <ProspectSummary player={player} leagueYear={leagueYear} titleClass="text-sm" />
+          <ProspectSummary player={player} leagueYear={leagueYear} titleClass="text-sm" state={state} />
         </div>
       ))}
     </div>

@@ -1,6 +1,11 @@
-import React from 'react';
-import { ChevronLeft, ChevronRight, Lock, Unlock } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, Lock, Star, Unlock } from 'lucide-react';
 import { getCoachPhoto, getNBA2KCoach, getTeamStaff } from '../lib/staffService';
+import { useGame } from '../../../../../../store/GameContext';
+import { PersonnelActionsModal, type PersonnelActionType } from '../../../PersonnelActionsModal';
+import type { Personnel } from '../../../LeagueOfficeSearcher';
+import { computeStaffOverall, attrsForCoach, seedForStaff, staffOverallFor } from '../../../../../../services/staff/displayAttributes';
+import { deterministicStaffImageId, getStaffImageUrl, resolveStaffImageId } from '../../../../../../utils/staffPortrait';
 
 const TACTIC_SLIDERS = [
   { label: 'Tempo', key: 'tempo' },
@@ -201,47 +206,155 @@ export function CoachingPreferencesTab({
   );
 }
 
-export function CoachingStaffTab({ teamName, coachName }: { teamName: string; coachName: string }) {
-  const assistants = getTeamStaff(teamName).filter(staff => {
-    if (staff.name === coachName) return false;
-    const pos = (staff.position ?? '').toLowerCase();
-    return pos.includes('assistant') && pos.includes('coach');
-  });
+function displayRole(role: string) {
+  return String(role ?? 'Staff').replace(/ \d+$/, '');
+}
+
+function portraitForStaff(staff: any) {
+  return staff.playerPortraitUrl
+    ?? getCoachPhoto(staff.name)
+    ?? getNBA2KCoach(staff.name)?.image
+    ?? getStaffImageUrl(resolveStaffImageId(staff))
+    ?? getStaffImageUrl(deterministicStaffImageId(staff.name))
+    ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name ?? 'Staff')}&background=1a1a2e&color=FDB927&size=256&bold=true`;
+}
+
+export function CoachingStaffTab({ team, canEdit }: { team: any; canEdit: boolean }) {
+  const { state, dispatchAction } = useGame();
+  const [actionPerson, setActionPerson] = useState<any | null>(null);
+  const staffRows = useMemo(() => {
+    const order = [
+      'Head Coach',
+      'Assistant Coach',
+      'Assistant Coach 2',
+      'Assistant Coach 3',
+      'Head of Sports Science',
+      'Head Physio',
+      'Player Development Coach',
+      'Chief Scout',
+      'Head of Analytics',
+    ];
+    const persistedMembers = (team?.tycoon?.staffMembers ?? []) as any[];
+    const teamLabel = String(team?.teamName ?? (team?.region && team?.name ? `${team.region} ${team.name}` : team?.name) ?? '').trim();
+    const teamKeys = Array.from(new Set([teamLabel, team?.name, team?.region].map(value => String(value ?? '').trim()).filter(Boolean)));
+    const fallbackDirectoryMembers = persistedMembers.length > 0 ? [] : (() => {
+      const staticCoaches = ((state as any).staff?.coaches ?? []) as any[];
+      const teamKeySet = new Set(teamKeys.map(value => value.toLowerCase()));
+      const staticHeadCoach = staticCoaches.find(coach => {
+        const role = String(coach?.role ?? coach?.jobTitle ?? coach?.position ?? '').toLowerCase();
+        const coachTeam = String(coach?.team ?? '').toLowerCase();
+        return coach?.name && role.includes('head coach') && teamKeySet.has(coachTeam);
+      });
+      const sourceRows = teamKeys.flatMap(key => getTeamStaff(key));
+      const seen = new Set<string>();
+      const realRows = sourceRows.filter(row => {
+        const key = String(row?.name ?? '').toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      const rows: any[] = [];
+      const headCoach = staticHeadCoach ?? realRows.find(row => String(row?.position ?? '').toLowerCase().includes('head coach'));
+      if (headCoach?.name) rows.push({ ...headCoach, role: 'Head Coach', jobTitle: 'Head Coach', position: 'Head Coach' });
+      const assistants = realRows.filter(row => String(row?.position ?? '').toLowerCase().includes('assistant coach') && row.name !== headCoach?.name);
+      assistants.slice(0, 3).forEach((assistant, index) => {
+        const role = index === 0 ? 'Assistant Coach' : `Assistant Coach ${index + 1}`;
+        rows.push({ ...assistant, role, jobTitle: role, position: role });
+      });
+      return rows;
+    })();
+    const members = persistedMembers.length > 0 ? persistedMembers : fallbackDirectoryMembers;
+    return order
+      .map(role => {
+        const member = members.find(staff => String(staff?.role ?? staff?.position ?? staff?.jobTitle) === role);
+        if (!member) return null;
+        const attrs = attrsForCoach(member.name, seedForStaff(member), {
+          role,
+          attributeProfile: member.attributeProfile,
+          attributeOverrides: member.attributeOverrides,
+        });
+        return {
+          role,
+          member,
+          rating: staffOverallFor(role, member) || Number(member.reputation ?? computeStaffOverall(role, attrs)),
+          portrait: portraitForStaff(member),
+        };
+      })
+      .filter(Boolean) as Array<{ role: string; member: any; rating: number; portrait: string }>;
+  }, [team, (state as any).staff?.coaches]);
+
+  const handleStaffAction = (action: PersonnelActionType) => {
+    if (!actionPerson) return;
+    if (action === 'fire') {
+      void dispatchAction({
+        type: 'FIRE_PERSONNEL',
+        payload: {
+          contacts: [{
+            id: actionPerson.member.id ?? `staff-${actionPerson.role}`,
+            name: actionPerson.member.name,
+            title: displayRole(actionPerson.role),
+            organization: team?.teamName ?? team?.name,
+            type: 'coach',
+            playerPortraitUrl: actionPerson.portrait,
+          }],
+        },
+      } as any);
+    }
+    setActionPerson(null);
+  };
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto max-h-[500px] pr-2 scrollbar-hide">
-      <h3 className="text-xl font-bold uppercase mb-4 text-yellow-500">Assistant Coaches</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {assistants.map((staff, index) => (
-          <div key={index} className="bg-[#1a1a1a] border border-gray-700 rounded-lg p-4 flex gap-4 items-center">
-            <img
-              src={staff.image || getCoachPhoto(staff.name) || `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}&background=1a1a2e&color=FDB927&size=128`}
-              alt={staff.name}
-              className="w-16 h-16 rounded-full object-cover border-2 border-gray-600 flex-shrink-0"
-              referrerPolicy="no-referrer"
-              onError={e => {
-                const image = e.target as HTMLImageElement;
-                const nba2k = getNBA2KCoach(staff.name);
-                const fallbacks = [
-                  getCoachPhoto(staff.name),
-                  nba2k?.image,
-                  `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name)}&background=1a1a2e&color=FDB927&size=128`,
-                ].filter(Boolean) as string[];
-                const next = fallbacks.find(url => url && url !== image.src);
-                if (next) image.src = next;
-              }}
-            />
-            <div className="flex flex-col">
-              <span className="font-bold text-lg leading-tight">{staff.name}</span>
-              <span className="text-sm text-yellow-500 mb-1">{staff.position}</span>
-              <span className="text-xs text-gray-400 line-clamp-2" title={staff.coaching_career || staff.playing_career || ''}>
-                {staff.coaching_career || staff.playing_career || 'Career info unavailable'}
-              </span>
+    <div className="flex flex-col h-full overflow-y-auto max-h-[560px] pr-2 scrollbar-hide">
+      <h3 className="text-sm font-black uppercase tracking-widest mb-4 text-yellow-500">Coaching Staff</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {staffRows.map(({ role, member, rating, portrait }) => (
+          <button
+            key={role}
+            onClick={() => setActionPerson({ role, member, rating, portrait })}
+            className={`relative min-h-[145px] rounded-lg border border-slate-700 bg-slate-950/40 p-4 text-left transition-all ${canEdit ? 'hover:border-yellow-500/60 hover:bg-slate-900/70' : 'cursor-default hover:border-slate-600'}`}
+          >
+            {role === 'Head Coach' && <Star size={14} className="absolute left-3 top-3 text-yellow-400 fill-yellow-400" />}
+            <div className="absolute right-3 top-3 h-9 w-9 rounded-full border border-emerald-500/50 bg-emerald-500/10 text-emerald-300 flex items-center justify-center text-xs font-black">
+              {Math.round(rating)}
             </div>
-          </div>
+            <div className="flex flex-col items-center text-center gap-2 pt-2">
+              <img
+                src={portrait}
+                alt={member.name}
+                className="h-16 w-16 rounded-full object-cover object-top"
+                referrerPolicy="no-referrer"
+                onError={event => {
+                  event.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name ?? 'Staff')}&background=1a1a2e&color=FDB927&size=256&bold=true`;
+                }}
+              />
+              <div className="min-w-0 w-full">
+                <div className="truncate text-sm font-black text-white">{member.name}</div>
+                <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-yellow-400">{displayRole(role)}</div>
+              </div>
+            </div>
+          </button>
         ))}
-        {assistants.length === 0 && <div className="col-span-full text-gray-400 text-sm italic">No assistant coach information available for this team.</div>}
+        {staffRows.length === 0 && <div className="col-span-full text-gray-400 text-sm italic">No staff information available for this team.</div>}
       </div>
+      {actionPerson && (
+        <PersonnelActionsModal
+          person={{
+            id: actionPerson.member.id ?? `staff-${actionPerson.role}`,
+            name: actionPerson.member.name,
+            type: 'coach',
+            jobTitle: displayRole(actionPerson.role),
+            team: team?.teamName ?? team?.name,
+            playerPortraitUrl: actionPerson.portrait,
+          } as Personnel}
+          isOpen={true}
+          onClose={() => setActionPerson(null)}
+          filterActions={(canEdit
+            ? ['view_ratings', 'view_candidates', ...((actionPerson.member.contractYears ?? 1) > 0 ? ['fire' as PersonnelActionType] : [])]
+            : ['view_ratings']
+          ) as PersonnelActionType[]}
+          onActionSelect={handleStaffAction}
+        />
+      )}
     </div>
   );
 }

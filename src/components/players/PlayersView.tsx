@@ -8,6 +8,7 @@ import { PlayerRatingsModal } from '../modals/PlayerRatingsModal';
 import ContactModal from '../ContactModal';
 import { PersonSelectorModal } from '../modals/PersonSelectorModal';
 import { usePlayerQuickActions } from '../../hooks/usePlayerQuickActions';
+import { resolveAnyTeam } from '../../utils/teamLookup';
 
 export const PlayersView: React.FC = () => {
   const { state, dispatchAction, navigateToTeam, healPlayer } = useGame();
@@ -29,17 +30,15 @@ export const PlayersView: React.FC = () => {
   };
 
   const getContactFromPlayer = (player: NBAPlayer): Contact => {
-    const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '');
-    const playerTeam = isNBA ? state.teams.find(t => t.id === player.tid) : null;
-    const nonNBATeam = !isNBA ? state.nonNBATeams.find(t => t.tid === player.tid && t.league === player.status) : null;
+    const playerTeam = player.tid >= 0
+      ? resolveAnyTeam(player.tid, state.teams, state.nonNBATeams ?? [])
+      : null;
     
     let org = 'Free Agent';
     if (player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect') {
       org = 'Draft Prospect';
     } else if (playerTeam) {
       org = playerTeam.name;
-    } else if (nonNBATeam) {
-      org = nonNBATeam.name;
     }
 
     return {

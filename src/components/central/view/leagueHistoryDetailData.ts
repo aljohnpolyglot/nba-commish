@@ -1,5 +1,6 @@
 import type { NBAPlayer } from '../../../types';
 import { generateAbbrev, matchTeamByWikiName } from '../../../data/brefFetcher';
+import { getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
 import { getStatValue, type StatCategory } from '../../../utils/statUtils';
 import { resolveLeagueHistoryPortraitUrl } from './leagueHistoryShared';
 
@@ -27,6 +28,7 @@ export interface HistoryAwardGroup {
 }
 
 export const formatHistoryStat = (value: number, decimals = 1) => value.toFixed(decimals);
+const teamIdOf = (team: any) => Number(team?.id ?? team?.tid);
 
 export const aggregateSeason = (player: any, season: number) => {
   const rows = (player.stats ?? []).filter(
@@ -74,7 +76,7 @@ export const getLeaders = (
     if (!agg || agg.gp < minGamesPlayed) continue;
     const value = getStatValue(agg, category);
     if (value <= 0) continue;
-    const team = teams.find((candidate: any) => candidate.id === agg.primaryTid);
+    const team = teams.find((candidate: any) => teamIdOf(candidate) === Number(agg.primaryTid));
     leaders.push({ player, agg, value, team });
   }
   return leaders.sort((left, right) => right.value - left.value).slice(0, count);
@@ -111,7 +113,13 @@ export const buildHistoryPlayerStub = (name: string): NBAPlayer => ({
 
 export const buildDetailAwardObject = (awardEntry: any, teams: any[], players: any[], season: number) => {
   if (!awardEntry) return null;
-  const team = teams.find((candidate: any) => candidate.id === awardEntry.tid);
+  const team = awardEntry.tid != null
+    ? teams.find((candidate: any) => teamIdOf(candidate) === Number(awardEntry.tid))
+    : teams.find((candidate: any) => {
+        const fullName = `${candidate?.region ?? ''} ${candidate?.name ?? ''}`.trim();
+        return fullName.toLowerCase() === String(awardEntry.team ?? '').toLowerCase()
+          || String(candidate?.name ?? '').toLowerCase() === String(awardEntry.team ?? '').toLowerCase();
+      });
   const player = findHistoryPlayer(players, awardEntry);
   const agg = player ? aggregateSeason(player, season) : null;
   const statLine = agg && agg.gp > 0
@@ -119,7 +127,7 @@ export const buildDetailAwardObject = (awardEntry: any, teams: any[], players: a
     : '';
   return {
     name: awardEntry.name,
-    team: team?.abbrev ?? 'FA',
+    team: team?.abbrev ?? awardEntry.team ?? 'FA',
     imgURL: resolveLeagueHistoryPortraitUrl(player, awardEntry.name),
     face: (player as any)?.face,
     teamLogoUrl: team?.logoUrl,
@@ -147,14 +155,20 @@ export const buildBrefAwardObject = (awardEntry: { name: string; team: string } 
 export const resolveHistoryAwardPlayers = (awardEntries: any[], teams: any[], players: any[]): HistoryAwardCard[] => {
   if (!awardEntries) return [];
   return awardEntries.map((awardEntry: any) => {
-    const team = teams.find((candidate: any) => candidate.id === awardEntry.tid);
+    const team = awardEntry.tid != null
+      ? teams.find((candidate: any) => teamIdOf(candidate) === Number(awardEntry.tid))
+      : (matchTeamByWikiName(awardEntry.team, teams as any[]) as any) ?? null;
     const player = findHistoryPlayer(players, awardEntry);
+    const fallbackTeam = awardEntry.team
+      ? { name: awardEntry.team, abbrev: generateAbbrev(awardEntry.team), league: 'PBA' }
+      : null;
+    const logoSource = team ?? fallbackTeam;
     return {
       name: awardEntry.name,
-      team: team?.abbrev ?? 'FA',
+      team: team?.abbrev ?? fallbackTeam?.abbrev ?? 'FA',
       imgURL: resolveLeagueHistoryPortraitUrl(player, awardEntry.name),
       face: (player as any)?.face,
-      teamLogoUrl: team?.logoUrl,
+      teamLogoUrl: logoSource ? getResolvedTeamLogoUrl(logoSource) : undefined,
       playerRef: player ?? null,
     };
   });
@@ -204,13 +218,19 @@ export const buildBestRecords = (teams: any[], season: number, bref: any) => {
   const byConference: Record<string, { team: any; ts: any }[]> = {};
   teams.forEach((team: any) => {
     const ts = team.seasons?.find((teamSeason: any) => Number(teamSeason.season) === Number(season));
-    if (!ts) return;
-    const won = ts.won ?? ts.wins;
-    const lost = ts.lost ?? ts.losses;
-    if (won === undefined) return;
+    const rowWon = ts?.won ?? ts?.wins;
+    const rowLost = ts?.lost ?? ts?.losses;
+    const liveWon = team.wins;
+    const liveLost = team.losses;
+    const shouldUseLiveFallback =
+      (rowWon == null && rowLost == null && liveWon != null && liveLost != null)
+      || ((rowWon ?? 0) + (rowLost ?? 0) === 0 && (liveWon ?? 0) + (liveLost ?? 0) > 0);
+    const won = shouldUseLiveFallback ? liveWon : rowWon;
+    const lost = shouldUseLiveFallback ? liveLost : rowLost;
+    if (won === undefined || lost === undefined) return;
     const conference = team.conference ?? 'Unknown';
     if (!byConference[conference]) byConference[conference] = [];
-    byConference[conference].push({ team, ts: { ...ts, won, lost } });
+    byConference[conference].push({ team, ts: { ...(ts ?? {}), won, lost } });
   });
   const bestRecords: { conference: string; team: any; ts: any }[] = [];
   for (const [conference, entries] of Object.entries(byConference)) {
@@ -234,7 +254,7 @@ export const buildBestRecords = (teams: any[], season: number, bref: any) => {
 
 export const buildSemifinalsMvpEntries = (entries: any[], teams: any[], players: any[], season: number) => (
   entries.map((awardEntry: any) => {
-    const team = teams.find((candidate: any) => candidate.id === awardEntry.tid);
+    const team = teams.find((candidate: any) => teamIdOf(candidate) === Number(awardEntry.tid));
     const player = findHistoryPlayer(players, awardEntry);
     const agg = player ? aggregateSeason(player, season) : null;
     return {
@@ -260,7 +280,7 @@ export const buildHistoricalAllStarRoster = (players: any[], teams: any[], seaso
     seen.add(player.internalId);
     const stats = player.stats?.filter((stat: any) => Number(stat.season) === Number(season) && !stat.playoffs && (stat.tid ?? -1) >= 0) ?? [];
     const tid = stats.length ? stats.reduce((left: any, right: any) => (left.gp >= right.gp ? left : right)).tid : player.tid;
-    const team = teams.find((candidate: any) => candidate.id === tid);
+    const team = teams.find((candidate: any) => teamIdOf(candidate) === Number(tid));
     roster.push({
       playerId: player.internalId,
       playerName: player.name,

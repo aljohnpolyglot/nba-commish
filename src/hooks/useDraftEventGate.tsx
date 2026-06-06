@@ -4,6 +4,7 @@ import { getDraftLotteryDate, getDraftDate, isDraftBlockedByUnresolvedPlayoffs, 
 import { DraftEventGateModal } from '../components/modals/DraftEventGateModal';
 import { normalizeDate } from '../utils/helpers';
 import { isNoDraftLeague } from '../services/offseason/offseasonState';
+import { isPbaIsolatedMode } from '../utils/uiMode';
 
 interface DraftEventGateOptions {
   onNavigateToDraftLottery?: () => void;
@@ -19,6 +20,7 @@ export function useDraftEventGate(options: DraftEventGateOptions = {}) {
   const eventType: 'lottery' | 'draft' | null = (() => {
     if (state.gameMode !== 'gm' || !state.date) return null;
     const ls = state.leagueStats as any;
+    if (isNoDraftLeague(ls) || isPbaIsolatedMode(state)) return null;
     const seasonYear: number = ls?.year ?? new Date().getFullYear();
     const todayStr = normalizeDate(state.date);
     const draftBlockedByPlayoffs = isDraftBlockedByUnresolvedPlayoffs(state);

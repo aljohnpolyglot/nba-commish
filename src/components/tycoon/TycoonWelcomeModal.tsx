@@ -83,15 +83,15 @@ export const TycoonWelcomeModal: React.FC<Props> = ({ open, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-amber-500/30 rounded-2xl max-w-xl w-full p-8 shadow-[0_0_60px_rgba(245,158,11,0.15)]">
-        <div className="flex justify-between items-start mb-6">
+      <div className="w-full max-w-xl rounded-2xl border border-amber-500/30 bg-slate-900 p-5 shadow-[0_0_60px_rgba(245,158,11,0.15)] sm:p-8">
+        <div className="mb-6 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             {slide.icon}
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-300">{slide.eyebrow}</span>
           </div>
           <button onClick={handleClose} aria-label="Skip tutorial"><X size={18} className="text-slate-500 hover:text-white" /></button>
         </div>
-        <h1 className="text-2xl font-black tracking-tight text-white mb-4">{slide.title}</h1>
+        <h1 className="mb-4 text-2xl font-black tracking-tight text-white">{slide.title}</h1>
         <div className="text-sm text-slate-300 space-y-2 leading-relaxed">{slide.body}</div>
 
         <div className="flex justify-center gap-2 mt-8">
@@ -100,7 +100,7 @@ export const TycoonWelcomeModal: React.FC<Props> = ({ open, onClose }) => {
           ))}
         </div>
 
-        <div className="flex justify-between items-center mt-6">
+        <div className="mt-6 flex items-center justify-between gap-3">
           <button
             onClick={() => setSlideIndex(i => Math.max(0, i - 1))}
             disabled={slideIndex === 0}
@@ -109,11 +109,11 @@ export const TycoonWelcomeModal: React.FC<Props> = ({ open, onClose }) => {
             <ChevronLeft size={14} /> Back
           </button>
           {isLast ? (
-            <button onClick={handleClose} className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-6 py-2 rounded-xl font-black uppercase tracking-widest text-xs">
+            <button onClick={handleClose} className="rounded-xl bg-amber-500 px-6 py-2 text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-amber-400">
               Get Started
             </button>
           ) : (
-            <button onClick={() => setSlideIndex(i => Math.min(SLIDES.length - 1, i + 1))} className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl font-black uppercase tracking-widest text-xs">
+            <button onClick={() => setSlideIndex(i => Math.min(SLIDES.length - 1, i + 1))} className="flex items-center gap-1 rounded-xl bg-slate-800 px-4 py-2 text-xs font-black uppercase tracking-widest text-white hover:bg-slate-700">
               Next <ChevronRight size={14} />
             </button>
           )}

@@ -1,4 +1,4 @@
-export { getPBARosterEconomyConfig, normalizeImportedPBAContract } from './externalRosterService.shared';
+export { computeLocalPBASalaryUSD, getPBARosterEconomyConfig, normalizeImportedPBAContract } from './externalRosterService.shared';
 export type { PBAEconomyConfig } from './externalRosterService.shared';
 export {
   fetchBLeagueRoster,

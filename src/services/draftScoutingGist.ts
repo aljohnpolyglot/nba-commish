@@ -32,9 +32,18 @@ const gistCache = new Map<number, GistProspect[] | null>();
 async function fetchDraftClassScouting(year: number): Promise<GistProspect[] | null> {
   try {
     const res = await fetch(`${GIST_BASE}${year}classScouting`);
+    if (!res.ok) {
+      if (res.status !== 404) {
+        console.warn(`Draft scouting gist request failed for ${year} with status ${res.status}.`);
+      }
+      return null;
+    }
     const text = await res.text();
     const jsonStart = text.indexOf('[');
-    if (jsonStart === -1) throw new Error('Invalid Gist format');
+    if (jsonStart === -1) {
+      console.warn(`Draft scouting gist for ${year} did not contain a JSON array payload.`);
+      return null;
+    }
     return JSON.parse(text.substring(jsonStart));
   } catch (e) {
     console.error(`Failed to fetch scouting data for ${year}:`, e);

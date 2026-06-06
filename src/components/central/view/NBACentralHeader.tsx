@@ -5,11 +5,13 @@ import { useGame } from '../../../store/GameContext';
 interface NBACentralHeaderProps {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
+  title?: string;
 }
 
 export const NBACentralHeader: React.FC<NBACentralHeaderProps> = ({
   searchTerm,
-  setSearchTerm
+  setSearchTerm,
+  title = 'NBA Central',
 }) => {
   const { setCurrentView } = useGame();
 
@@ -19,7 +21,7 @@ export const NBACentralHeader: React.FC<NBACentralHeaderProps> = ({
         <div className="flex flex-col">
           <h2 className="text-lg md:text-3xl font-black text-white flex items-center gap-2 md:gap-4 tracking-tighter uppercase">
             <Trophy className="text-amber-500" size={20} />
-            NBA Central
+            {title}
           </h2>
           <p className="text-[9px] md:text-xs font-bold text-slate-500 uppercase tracking-[0.2em] mt-0.5 md:mt-2">League Intelligence Hub</p>
         </div>

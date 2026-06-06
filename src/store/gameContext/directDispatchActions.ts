@@ -153,6 +153,9 @@ export async function handleDirectDispatchAction({
       if (contest === 'skills' && result?.winnerId) {
         awardEntries.push({ playerId: result.winnerId, playerName: result.winnerName, awardType: 'Skills Challenge Winner' });
       }
+      if (contest === 'horse' && result?.winnerId) {
+        awardEntries.push({ playerId: result.winnerId, playerName: result.winnerName, awardType: 'H-O-R-S-E Winner' });
+      }
       const players = awardEntries.length > 0
         ? prev.players.map(player => {
             const entry = awardEntries.find(item =>
@@ -169,6 +172,7 @@ export async function handleDirectDispatchAction({
         : contest === 'three' ? 90004
         : contest === 'shooting-stars' ? 90006
         : contest === 'skills' ? 90007
+        : contest === 'horse' ? 90008
         : null;
 
       return {
@@ -181,6 +185,7 @@ export async function handleDirectDispatchAction({
           ...(contest === 'three' ? { threePointContest: result } : {}),
           ...(contest === 'shooting-stars' ? { shootingStars: result, shootingStarsContestants: contestants ?? (prev.allStar as any).shootingStarsContestants, shootingStarsAnnounced: true } : {}),
           ...(contest === 'skills' ? { skillsChallenge: result, skillsChallengeContestants: contestants ?? (prev.allStar as any).skillsChallengeContestants, skillsChallengeAnnounced: true } : {}),
+          ...(contest === 'horse' ? { horseTournament: result, horseContestants: contestants ?? (prev.allStar as any).horseContestants, horseAnnounced: true } : {}),
         },
       };
     });

@@ -1,11 +1,11 @@
 import React from 'react';
-import type { NBATeam, Conference } from '../../types';
+import type { NBATeam } from '../../types';
 import { useGame } from '../../store/GameContext';
 import { getOwnTeamId } from '../../utils/helpers';
 
 interface StandingsTableProps {
     teams: NBATeam[];
-    conference: Conference;
+    conference: string;
     onSelectTeam: (id: number) => void;
     selectedTeamId: number | null;
     phase?: 'preseason' | 'regular' | 'playoffs' | 'offseason';
@@ -19,7 +19,7 @@ const StandingsTable: React.FC<StandingsTableProps> = ({ teams, conference, onSe
     <div className="bg-zinc-900/50 rounded-2xl border border-zinc-800 p-4">
         <h4 className="text-md font-semibold text-indigo-400 mb-4 border-b border-zinc-800 pb-2 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-          {conference}ern Conference
+          {conference === 'East' || conference === 'West' ? `${conference}ern Conference` : `${conference} Standings`}
           {phase && phase !== 'regular' && (
             <span className={`ml-auto text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
               phase === 'playoffs' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :

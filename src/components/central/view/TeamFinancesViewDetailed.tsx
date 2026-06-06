@@ -154,8 +154,23 @@ export const TeamFinancesViewDetailed: React.FC = () => {
   }
 
   // MLE availability (signingUSD=0 → what's available RIGHT NOW)
-  const mleAvail = (state.leagueStats.mleEnabled ?? true)
+  const mleAvailBase = (state.leagueStats.mleEnabled ?? true)
     ? getMLEAvailability(teamId, payroll, 0, capThresholds, state.leagueStats as any)
+    : null;
+  const reservedMleUSD = ((state.faBidding?.markets ?? []) as any[])
+    .filter(m => !m?.resolved)
+    .reduce((sum, market) => {
+      const topMine = (market.bids ?? [])
+        .filter((b: any) => b.teamId === teamId && b.status === 'active')
+        .sort((a: any, b: any) => (b.salaryUSD ?? 0) - (a.salaryUSD ?? 0))[0];
+      return sum + (topMine?.salaryUSD ?? 0);
+    }, 0);
+  const mleAvail = mleAvailBase
+    ? {
+        ...mleAvailBase,
+        available: Math.max(0, mleAvailBase.available - reservedMleUSD),
+        used: Math.min(mleAvailBase.limit, (mleAvailBase.used ?? 0) + reservedMleUSD),
+      }
     : null;
   const mleBadge: { label: string; color: string; bg: string } | null =
     mleAvail && !mleAvail.blocked && mleAvail.available > 0

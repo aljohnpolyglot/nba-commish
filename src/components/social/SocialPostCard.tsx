@@ -88,9 +88,9 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick, onC
     >
       <div className="flex space-x-3">
         <div className="flex-shrink-0" onClick={handleProfileClick}>
-          {(cachedProfile?.avatarUrl || avatarSrc) ? (
+          {(avatarSrc || cachedProfile?.avatarUrl) ? (
             <img
-              src={cachedProfile?.avatarUrl || avatarSrc!}
+              src={avatarSrc || cachedProfile?.avatarUrl!}
               alt={post.author}
               className={cn("h-10 w-10 rounded-full object-cover bg-zinc-800", post.isAI && !cachedProfile && "animate-pulse")}
               referrerPolicy="no-referrer"

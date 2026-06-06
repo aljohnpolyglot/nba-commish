@@ -48,12 +48,12 @@ export const ACTIVE_NBA_ONLY: Array<NonNullable<NBAPlayer['status']>> = ['Active
 export function isPlayerEligible(
   player: NBAPlayer,
   eligibility: PersonEligibility,
-  context?: { currentYear?: number; userTeamId?: number | null; euroIsolated?: boolean },
+  context?: { currentYear?: number; userTeamId?: number | null; euroIsolated?: boolean; pbaIsolated?: boolean },
 ): boolean {
   if (eligibility.staffOnly) return false;
 
   if (eligibility.requireExpiringContract) {
-    const activeStatuses = context?.euroIsolated
+    const activeStatuses = context?.euroIsolated || context?.pbaIsolated
       ? ['Active', 'Euroleague', 'Endesa', 'PBA', 'B-League', 'G-League', 'China CBA', 'NBL Australia']
       : ['Active'];
     const onTeam = activeStatuses.includes(player.status as never) && (player.tid ?? -1) >= 0;
@@ -99,7 +99,7 @@ export function isPlayerEligible(
   }
 
   if (eligibility.requireActiveNBA) {
-    const activeStatuses = context?.euroIsolated
+    const activeStatuses = context?.euroIsolated || context?.pbaIsolated
       ? ['Active', 'Euroleague', 'Endesa', 'PBA', 'B-League', 'G-League', 'China CBA', 'NBL Australia']
       : ['Active'];
     if (!activeStatuses.includes(player.status as never) || (player.tid ?? -1) < 0) return false;
@@ -112,7 +112,7 @@ export function isPlayerEligible(
       'Free Agent', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia',
     ];
     if (player.tid === -1) return true;
-    if (context?.euroIsolated) return false;
+    if (context?.euroIsolated || context?.pbaIsolated) return false;
     if (player.tid >= 100 && freeOrInt.includes(player.status as never)) return true;
     return false;
   }

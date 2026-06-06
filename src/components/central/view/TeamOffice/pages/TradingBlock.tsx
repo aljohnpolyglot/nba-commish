@@ -19,12 +19,12 @@ import { NBAPlayer, NBATeam } from '../../../../../types';
 import { PlayerBioView } from '../../PlayerBioView';
 import { isNoDraftLeague } from '../../../../../services/offseason/offseasonState';
 import { getDisplayAge } from '../../../../../store/playerRatingStore';
+import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
+import { isPbaIsolatedMode } from '../../../../../utils/uiMode';
 
 interface TradingBlockProps {
   teamId: number;
 }
-
-const EXTERNAL = ['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'];
 
 function ovrText(v: number): string {
   if (v >= 95) return 'text-violet-300';
@@ -40,14 +40,18 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
   if (state.leagueStats?.tradesAllowed === false) return null;
   const { players, teams, draftPicks } = state;
   const noDraft = isNoDraftLeague(state.leagueStats as any);
+  const pbaMode = isPbaIsolatedMode(state);
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const lotterySlotByTid = useMemo(
     () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
     [(state as any).draftLotteryResult, state.teams],
   );
-  const allActive = players.filter(p => p.tid >= 0 && !EXTERNAL.includes(p.status ?? '') && p.status !== 'Draft Prospect');
+  const allActive = players.filter(p => p.tid >= 0 && isOnRoster(p) && p.status !== 'Draft Prospect');
+  const leagueActive = pbaMode
+    ? allActive.filter(p => p.status === 'PBA' || (p.tid >= 2000 && p.tid < 3000))
+    : allActive;
   const teamPlayers = allActive.filter(p => p.tid === teamId);
-  const team = teams.find(t => t.id === teamId);
+  const team = resolveAnyTeam(teamId, teams, state.nonNBATeams ?? []);
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
 
   // Determine team mode using real trade outlook
@@ -165,7 +169,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
     const saved = getTradingBlock(teamId);
     if (!saved) return null;
     const onTeamIds = new Set(teamPlayers.map(p => p.internalId));
-    const otherIds = new Set(allActive.filter(p => p.tid !== teamId).map(p => p.internalId));
+    const otherIds = new Set(leagueActive.filter(p => p.tid !== teamId).map(p => p.internalId));
     const validPickIds = new Set((draftPicks ?? []).filter(p => p.tid === teamId).map(p => p.dpid));
     return {
       untouchable: new Set(saved.untouchableIds.filter(id => onTeamIds.has(id))),
@@ -205,7 +209,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
     lastSyncKey.current = key;
 
     const onTeamIds = new Set(teamPlayers.map(p => p.internalId));
-    const otherIds = new Set(allActive.filter(p => p.tid !== teamId).map(p => p.internalId));
+    const otherIds = new Set(leagueActive.filter(p => p.tid !== teamId).map(p => p.internalId));
     const validPickIds = new Set((draftPicks ?? []).filter(p => p.tid === teamId).map(p => p.dpid));
 
     setUntouchableIds(prev => {
@@ -228,7 +232,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       for (const id of prev) if (validPickIds.has(id)) next.add(id);
       return next.size === prev.size ? prev : next;
     });
-  }, [teamId, teamPlayers, allActive, draftPicks]);
+  }, [teamId, teamPlayers, leagueActive, draftPicks]);
 
   // Autosave to tradingBlockStore on every selection change.
   useEffect(() => {
@@ -248,7 +252,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
   const tradingBlockList = rosterWithTV.filter(r => blockIds.has(r.player.internalId));
 
   // Target List: user-selected from other teams, or AI-suggested
-  const otherPlayers = allActive.filter(p => p.tid !== teamId);
+  const otherPlayers = leagueActive.filter(p => p.tid !== teamId);
   const otherWithTV = useMemo(() => otherPlayers.map(p => ({
     player: p,
     tv: calcPlayerTV(p, teamMode, currentYear),
@@ -442,6 +446,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
         currentDate: state.date ?? '',
         leagueStats: state.leagueStats as any,
       },
+      allowPbaRoster: isPbaIsolatedMode(state),
       mvpRank,
       leagueStats: state.leagueStats,
     });

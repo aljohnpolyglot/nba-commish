@@ -1,9 +1,7 @@
 import React from 'react';
 import { Zap, Trophy, Star } from 'lucide-react';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
-import { format } from 'date-fns';
 import { useGame } from '../../store/GameContext';
-import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
 import { getPlayerImage } from '../central/view/bioCache';
 import { calcDunkOdds } from '../../utils/allStarOdds';
 import { DUNK_MOVES } from '../../services/allStar/dunkMoves';
@@ -11,13 +9,13 @@ import { DUNK_MOVES } from '../../services/allStar/dunkMoves';
 interface DunkContestViewProps {
   allStar: any;
   players: any[];
+  teams?: any[];
   ownTid?: number | null;
 }
 
-export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, players, ownTid }) => {
+export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, players, teams: providedTeams, ownTid }) => {
   const { state } = useGame();
-  const teams = state.teams;
-  const dates = getAllStarWeekendDates(state.leagueStats.year);
+  const teams = providedTeams ?? state.teams;
 
   const dunkContestContestants = allStar.dunkContestContestants ?? [];
   const dunkContestResult = allStar.dunkContest;
@@ -35,7 +33,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
         </div>
         <h3 className="text-lg font-bold text-white mb-2">Slam Dunk Contest</h3>
         <p className="text-sm text-zinc-500">
-          The participants will be announced on {format(dates.dunkContestAnnounced, 'MMM d')}.
+          The participants will be announced before All-Star Saturday.
         </p>
       </div>
     );

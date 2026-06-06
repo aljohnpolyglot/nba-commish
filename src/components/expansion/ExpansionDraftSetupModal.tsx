@@ -215,19 +215,19 @@ export const ExpansionDraftSetupModal: React.FC<Props> = ({ onClose, onConfirm }
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 md:p-4"
         onClick={onClose}
       >
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-zinc-900 text-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col"
+          className="bg-zinc-900 text-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
-            <div>
+          <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 border-b border-zinc-800">
+            <div className="min-w-0">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <Map className="w-5 h-5 text-indigo-400" /> League Expansion Draft
               </h2>
@@ -235,13 +235,13 @@ export const ExpansionDraftSetupModal: React.FC<Props> = ({ onClose, onConfirm }
                 Setup neue Franchises, Realignment und Draft-Settings.
               </p>
             </div>
-            <button onClick={onClose} className="text-zinc-400 hover:text-white">
+            <button onClick={onClose} className="text-zinc-400 hover:text-white flex-shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-zinc-800 px-6">
+          <div className="flex overflow-x-auto border-b border-zinc-800 px-4 sm:px-6 scrollbar-hide">
             {([
               { id: 'teams', label: 'Teams', icon: Users },
               { id: 'realignment', label: 'Realignment', icon: Map },
@@ -252,7 +252,7 @@ export const ExpansionDraftSetupModal: React.FC<Props> = ({ onClose, onConfirm }
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
-                  className={`px-4 py-3 flex items-center gap-2 text-sm border-b-2 transition-colors ${
+                  className={`shrink-0 px-4 py-3 flex items-center gap-2 text-sm border-b-2 transition-colors ${
                     tab === t.id
                       ? 'border-indigo-500 text-white'
                       : 'border-transparent text-zinc-400 hover:text-zinc-200'
@@ -268,7 +268,7 @@ export const ExpansionDraftSetupModal: React.FC<Props> = ({ onClose, onConfirm }
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
             {tab === 'teams' && (
               <TeamsTab
                 teams={teams}
@@ -301,8 +301,8 @@ export const ExpansionDraftSetupModal: React.FC<Props> = ({ onClose, onConfirm }
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-800 bg-zinc-950">
-            <div className="text-xs text-zinc-400">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-t border-zinc-800 bg-zinc-950">
+            <div className="text-xs text-zinc-400 text-center sm:text-left">
               {teams.length === 0 ? (
                 <span className="text-amber-400">Add at least one expansion team to continue.</span>
               ) : (
@@ -312,17 +312,17 @@ export const ExpansionDraftSetupModal: React.FC<Props> = ({ onClose, onConfirm }
                 </span>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col-reverse sm:flex-row gap-2">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-sm text-zinc-300 hover:text-white"
+                className="w-full sm:w-auto px-4 py-2 text-sm text-zinc-300 hover:text-white"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={!canSubmit}
-                className="px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 disabled:text-zinc-500 rounded font-semibold"
+                className="w-full sm:w-auto px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 disabled:text-zinc-500 rounded font-semibold"
               >
                 Schedule for {scheduleYear}
               </button>

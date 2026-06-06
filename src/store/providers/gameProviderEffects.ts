@@ -14,6 +14,9 @@ import { setActiveSaveId as setMatchupAssignmentsSaveId } from '../matchupAssign
 import { setActiveSaveId as setDefenderDetailSaveId } from '../defenderDetailStore';
 import { setActiveSaveId as setRivalGameplanSaveId } from '../rivalGameplanStore';
 import { SEED_2029_TEAMS, SEED_2029_YEAR, SEED_2029_SETTINGS, ZENGM_2029_REALIGNMENT } from '../../data/expansion2029';
+import { getDraftCombineStartDate, toISODateString } from '../../utils/dateUtils';
+import { normalizeDate } from '../../utils/helpers';
+import { isNoDraftLeague } from '../../services/offseason/offseasonState';
 
 type SetGameState = Dispatch<SetStateAction<GameState>>;
 type SetTabState = Dispatch<SetStateAction<Tab>>;
@@ -158,17 +161,22 @@ export function useGameProviderBootstrapEffects({
 
   useEffect(() => {
     if (!state.isDataLoaded) return;
-    if (state.leagueStats?.auto2029ExpansionSeeded) return;
-    if (state.expansionSchedule) return;
-    if (state.leagueStats?.uiMode === 'euro_isolated') {
+    if (state.leagueStats?.uiMode === 'euro_isolated' || state.leagueStats?.uiMode === 'pba_isolated') {
       setState(prev => ({
         ...prev,
+        expansionSchedule: undefined,
+        expansionProtectionSettings: undefined,
+        expansionDraftProtections: undefined,
+        expansionEligiblePlayers: undefined,
+        expansionTeamIds: undefined,
         leagueStats: prev.leagueStats
           ? { ...prev.leagueStats, auto2029ExpansionSeeded: true }
           : prev.leagueStats,
       }));
       return;
     }
+    if (state.leagueStats?.auto2029ExpansionSeeded) return;
+    if (state.expansionSchedule) return;
     const lsYear = state.leagueStats?.year;
     if (lsYear == null || lsYear >= SEED_2029_YEAR) {
       setState(prev => ({
@@ -192,6 +200,46 @@ export function useGameProviderBootstrapEffects({
         : prev.leagueStats,
     }));
   }, [state.isDataLoaded, state.leagueStats?.year, state.expansionSchedule, state.leagueStats?.auto2029ExpansionSeeded, state.leagueStats?.uiMode, setState]);
+
+  useEffect(() => {
+    if (!state.isDataLoaded || state.gameMode !== 'gm') return;
+    if (state.leagueStats?.uiMode === 'euro_isolated' || state.leagueStats?.uiMode === 'pba_isolated') return;
+    if (isNoDraftLeague(state.leagueStats as any)) return;
+    const seasonYear = state.leagueStats?.year ?? new Date().getFullYear();
+    const combineDay = toISODateString(getDraftCombineStartDate(seasonYear, state.leagueStats as any));
+    const today = normalizeDate(state.date ?? '');
+    if (today !== combineDay) return;
+    if (state.draftCombineResultsAvailableYear === seasonYear) return;
+    setState(prev => ({
+      ...prev,
+      draftCombineResultsAvailableYear: seasonYear,
+      pendingDraftCombineToast: { year: seasonYear },
+    }));
+  }, [
+    state.isDataLoaded,
+    state.gameMode,
+    state.leagueStats,
+    state.date,
+    state.draftCombineResultsAvailableYear,
+    setState,
+  ]);
+
+  useEffect(() => {
+    if (currentView !== 'Draft Scouting') return;
+    const seasonYear = state.leagueStats?.year ?? new Date().getFullYear();
+    if (state.draftCombineResultsAvailableYear !== seasonYear) return;
+    if (state.draftCombineResultsViewedYear === seasonYear) return;
+    setState(prev => ({
+      ...prev,
+      draftCombineResultsViewedYear: seasonYear,
+    }));
+  }, [
+    currentView,
+    state.leagueStats?.year,
+    state.draftCombineResultsAvailableYear,
+    state.draftCombineResultsViewedYear,
+    setState,
+  ]);
 }
 
 export function useGameProviderPostLoadEffects(state: GameState, setState: SetGameState) {

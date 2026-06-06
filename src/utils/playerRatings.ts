@@ -172,6 +172,29 @@ export const calculateTeamStrength = (
     return result;
 };
 
+export function calculateDisplayTeamOverall(teamId: number, players: Player[], overridePlayers?: Player[]): number {
+    const roster = (overridePlayers ?? players.filter(p => p.tid === teamId)).filter((player: any) => {
+        if (player.status === 'Retired') return false;
+        if (player.tid < 0) return false;
+        return true;
+    });
+    const pool = roster
+        .map(player => {
+            const r = player.ratings?.[player.ratings.length - 1];
+            return convertTo2KRating(player.overallRating ?? r?.ovr ?? 50, r?.hgt ?? 50, r?.tp);
+        })
+        .sort((a, b) => b - a)
+        .slice(0, 10);
+    if (pool.length === 0) return 50;
+
+    const weights = [0.30, 0.22, 0.16, 0.10, 0.07, 0.05, 0.04, 0.03, 0.02, 0.01].slice(0, pool.length);
+    const total = weights.reduce((sum, weight) => sum + weight, 0) || 1;
+    const weighted = pool.reduce((sum, rating, index) => sum + rating * weights[index], 0) / total;
+    const starBonus = pool[0] >= 94 ? 3 : pool[0] >= 90 ? 2 : pool[0] < 83 ? -3 : 0;
+    const coStarBonus = pool[0] >= 88 && pool[1] >= 86 ? 2 : 0;
+    return Math.max(50, Math.min(99, Math.round(weighted + starBonus + coStarBonus)));
+}
+
 /**
  * Minutes-weighted team strength. Each player's contribution = their 2K rating ×
  * (their minutes / 240). Bench your star to 8 mpg and they only contribute 3% to

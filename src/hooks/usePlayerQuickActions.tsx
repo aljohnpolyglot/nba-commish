@@ -10,10 +10,11 @@ import { DraftScoutingModal } from '../components/draft/DraftScoutingModal';
 import { FAOffersModal } from '../components/modals/FAOffersModal';
 import { WaiveConfirmModal } from '../components/modals/WaiveConfirmModal';
 import type { NBAPlayer } from '../types';
-import { formatGameDateShort, getCurrentOffseasonEffectiveFAStart, parseGameDate } from '../utils/dateUtils';
+import { formatGameDateShort, getCurrentOffseasonEffectiveFAStart, getDraftCombineStartDate, parseGameDate, toISODateString } from '../utils/dateUtils';
 import { isOnRoster, resolveAnyTeam } from '../utils/teamLookup';
 import { isPbaIsolatedMode } from '../utils/uiMode';
-import { canSignInPba, isFilipino } from '../services/pba/importManager';
+import { isTransferWindowOpen } from '../utils/transferWindow';
+import { canSignInPba, getEffectivePbaConference, isFilipino } from '../services/pba/importManager';
 import { isDraftProspectLike } from '../utils/prospectUtils';
 import {
   getClassPercentiles,
@@ -59,12 +60,23 @@ export function usePlayerQuickActions() {
   const [offersPlayer, setOffersPlayer] = useState<NBAPlayer | null>(null);
   const [waivePlayer, setWaivePlayer] = useState<NBAPlayer | null>(null);
   const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
+  const pbaMode = isPbaIsolatedMode(state);
   const currentYear = state.leagueStats?.year ?? new Date().getUTCFullYear();
+  const currentDateNorm = React.useMemo(() => {
+    const date = parseGameDate(state.date);
+    return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : '';
+  }, [state.date]);
   const scoutingDraftYear = Number((scoutingPlayer as any)?.draft?.year ?? currentYear);
-  const [gistByYear, setGistByYear] = useState(() => getCachedDraftScouting(scoutingDraftYear) ?? null);
+  const scoutingCombineDate = toISODateString(getDraftCombineStartDate(scoutingDraftYear, state.leagueStats as any));
+  const scoutingShowCombineTab = pbaMode || scoutingDraftYear < currentYear || currentDateNorm >= scoutingCombineDate;
+  const [gistByYear, setGistByYear] = useState(() => pbaMode ? null : getCachedDraftScouting(scoutingDraftYear) ?? null);
 
   React.useEffect(() => {
     if (!scoutingPlayer) return;
+    if (pbaMode) {
+      setGistByYear(null);
+      return;
+    }
     const cached = getCachedDraftScouting(scoutingDraftYear);
     if (cached !== undefined) {
       setGistByYear(cached);
@@ -75,22 +87,29 @@ export function usePlayerQuickActions() {
       if (!cancelled) setGistByYear(data);
     });
     return () => { cancelled = true; };
-  }, [scoutingPlayer, scoutingDraftYear]);
+  }, [pbaMode, scoutingPlayer, scoutingDraftYear]);
+
+  const pbaTeamIds = React.useMemo(
+    () => new Set((state.nonNBATeams ?? []).filter((team: any) => team.league === 'PBA').map((team: any) => Number(team.tid ?? team.id))),
+    [state.nonNBATeams],
+  );
 
   const scoutingClassProspects = React.useMemo(() => {
     if (!scoutingPlayer) return [] as NBAPlayer[];
     return state.players.filter(player =>
       isDraftProspectLike(player, currentYear) &&
+      (!pbaMode || isFilipino(player)) &&
       Number((player as any).draft?.year ?? scoutingDraftYear) === scoutingDraftYear,
     );
-  }, [scoutingPlayer, state.players, currentYear, scoutingDraftYear]);
+  }, [pbaMode, scoutingPlayer, state.players, currentYear, scoutingDraftYear]);
 
   const scoutingActivePlayers = React.useMemo(() =>
     state.players.filter(player =>
-      player.tid >= 0 && player.tid < 100 &&
+      (pbaMode ? pbaTeamIds.has(player.tid) : player.tid >= 0 && player.tid < 100) &&
+      isOnRoster(player) &&
       !isDraftProspectLike(player, currentYear),
     ),
-  [state.players, currentYear]);
+  [pbaMode, pbaTeamIds, state.players, currentYear]);
 
   const scoutingClassAverages = React.useMemo(
     () => getClassAverages(scoutingClassProspects),
@@ -168,7 +187,7 @@ export function usePlayerQuickActions() {
         return true;
       }
       if (isPbaIsolatedMode(state) && state.userTeamId != null) {
-        const check = canSignInPba(player, state.userTeamId, state.leagueStats?.pbaConference as any, state.players);
+        const check = canSignInPba(player, state.userTeamId, getEffectivePbaConference(state.leagueStats as any), state.players, state.leagueStats as any);
         if (!check.allowed) {
           setBlockedMessage(check.reason!);
           return true;
@@ -220,6 +239,25 @@ export function usePlayerQuickActions() {
         } as any);
         setCurrentView('Trade Finder' as any);
       }
+      return true;
+    }
+    if (actionType === 'open_transfer_market') {
+      const isOwnEuroRosterPlayer =
+        state.gameMode === 'gm' &&
+        state.leagueStats?.uiMode === 'euro_isolated' &&
+        state.userTeamId != null &&
+        player.tid === state.userTeamId &&
+        isOnRoster(player);
+      if (!isOwnEuroRosterPlayer) return true;
+      if (!isTransferWindowOpen(state.date, state.leagueStats)) {
+        setBlockedMessage('The transfer window is closed right now.');
+        return true;
+      }
+      dispatchAction({
+        type: 'UPDATE_STATE',
+        payload: { pendingTransferListingPlayerId: player.internalId },
+      } as any);
+      setCurrentView('Front Office Transfer Market' as any);
       return true;
     }
     if (actionType === 'convert_to_twoway') {
@@ -313,6 +351,7 @@ export function usePlayerQuickActions() {
             setScoutingPlayer(null);
             setBioPlayer(player);
           }}
+          showCombineTab={scoutingShowCombineTab}
         />
       )}
       {offersPlayer && (
@@ -352,25 +391,6 @@ export function usePlayerQuickActions() {
             closeSigning();
             console.log('[quickActions] SIGN_FREE_AGENT dispatch', payload);
             await dispatchAction({ type: 'SIGN_FREE_AGENT', payload });
-            // Stamp import flag for non-Filipino players signed to PBA teams
-            if (isPbaIsolatedMode(state) && payload.playerId) {
-              const signed = state.players.find(p => p.internalId === payload.playerId);
-              if (signed && !isFilipino(signed)) {
-                const conf = (state.leagueStats as any)?.pbaConference;
-                if (conf && conf !== 'philippine') {
-                  dispatchAction({
-                    type: 'UPDATE_STATE',
-                    payload: {
-                      players: state.players.map(p =>
-                        p.internalId === payload.playerId
-                          ? { ...p, isImport: true, importConference: conf }
-                          : p
-                      ),
-                    },
-                  } as any);
-                }
-              }
-            }
           }}
         />
       )}

@@ -2,7 +2,7 @@ import { GameState, UserAction } from '../../../types';
 import { calculateOutcome } from '../../../services/logic/outcomeDecider';
 import { advanceDay } from '../../../services/llm/llm';
 import { generateFreeAgentSigningReactions } from '../../../services/llm/services/freeAgentService';
-import { calculateSocialEngagement } from '../../../utils/helpers';
+import { calculateSocialEngagement, formatCurrencyWithCode } from '../../../utils/helpers';
 import { buildShamsSigningPost } from '../../../services/social/templates/charania';
 import { getInsiderHandle } from '../../../data/social/handles';
 import { NewsGenerator } from '../../../services/news/NewsGenerator';
@@ -15,6 +15,15 @@ import { clearWaiverMarkers, stripLiveContractAfterWaive } from '../../../utils/
 import { getTeamFullName } from '../../../utils/teamNames';
 import { buildGeneratedNBAStaffForRole } from '../../../services/staff/nbaRealStaffSeed';
 import { ensureStaffPoolDepth, inferEuroStaffLeagueId, normalizeStaffPoolRole, toStaffFreeAgent } from '../../../services/euro/staffPool';
+import {
+    buildPbaImportContractMetadata,
+    canSignInPba,
+    getActiveImport,
+    getEffectivePbaConference,
+    getPbaImportConferenceSalary,
+    getPbaImportContractLabel,
+    isPbaImportForTeam,
+} from '../../../services/pba/importManager';
 
 function getPriorNbaTid(player: any): number {
     const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = player?.stats ?? [];
@@ -64,9 +73,31 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
 
     const MIN_CONTRACT_USD = 1_300_000;
     const leagueYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
-    const baseSalaryUSD = typeof salary === 'number' && salary > 0 ? salary : MIN_CONTRACT_USD;
+    let baseSalaryUSD = typeof salary === 'number' && salary > 0 ? salary : MIN_CONTRACT_USD;
     const isEuroMode = stateWithSim.leagueStats?.uiMode === 'euro_isolated';
-    if (stateWithSim.gameMode === 'gm' && player.tid === -1 && player.status === 'Free Agent' && stateWithSim.date) {
+    const isPbaMode = stateWithSim.leagueStats?.uiMode === 'pba_isolated';
+    const isPbaTeam = isPbaMode && String((team as any).league ?? '') === 'PBA';
+    const pbaConference = getEffectivePbaConference(stateWithSim.leagueStats as any);
+    const effectiveMleType = !isEuroMode && !isPbaMode ? signedMleType : null;
+    const isPbaImportSigning = isPbaTeam && isPbaImportForTeam(player as any, teamId, pbaConference, stateWithSim.leagueStats as any);
+    const activePbaImport = isPbaImportSigning
+        ? getActiveImport(stateWithSim.players as any, teamId)
+        : undefined;
+    const replacedPbaImport = activePbaImport?.internalId === playerId ? undefined : activePbaImport;
+    const pbaImportReplacementCount = replacedPbaImport
+        ? Number((replacedPbaImport as any).pbaImportContract?.replacementsUsed ?? 0) + 1
+        : 0;
+    if (isPbaTeam) {
+        const pbaGate = canSignInPba(player as any, teamId, pbaConference, stateWithSim.players as any, stateWithSim.leagueStats as any);
+        if (!pbaGate.allowed) {
+            console.warn(`[SIGN_FREE_AGENT] Blocked PBA signing: ${pbaGate.reason}`);
+            return { isProcessing: false };
+        }
+        if (isPbaImportSigning) {
+            baseSalaryUSD = getPbaImportConferenceSalary(baseSalaryUSD, stateWithSim.leagueStats as any, pbaConference);
+        }
+    }
+    if (!isPbaMode && stateWithSim.gameMode === 'gm' && player.tid === -1 && player.status === 'Free Agent' && stateWithSim.date) {
         // Gate the pre-FA blackout — Jun 30 → Jul 1 sliver where the rollover
         // hasn't run yet. Anything past this Jul 1 (or before, mid-season)
         // is fine: the FA pool is permanently signable once FA has opened
@@ -78,10 +109,10 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         // gate via faMarketTicker so the user was the only one stuck.
         const currentDate = parseGameDate(stateWithSim.date);
         const thisSeasonFAStart = getFreeAgencyStartDate(currentDate.getUTCFullYear(), stateWithSim.leagueStats as any);
-        // Only block if we're between Jan 1 and the FA start of THIS calendar
-        // year — i.e. the actual pre-FA period leading into the offseason.
-        const thisYearStart = new Date(Date.UTC(currentDate.getUTCFullYear(), 0, 1));
-        const inPreFABlackout = currentDate >= thisYearStart && currentDate < thisSeasonFAStart;
+        // Only block the late-offseason sliver right before FA opens.
+        // In-season (trade deadline through playoffs) signings must remain legal.
+        const juneStart = new Date(Date.UTC(currentDate.getUTCFullYear(), 5, 1));
+        const inPreFABlackout = currentDate >= juneStart && currentDate < thisSeasonFAStart;
         if (inPreFABlackout) {
             console.warn(`[SIGN_FREE_AGENT] Blocked pre-FA offer: ${player.name} to ${team.name}`);
             return { isProcessing: false };
@@ -108,12 +139,12 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         .reduce((sum: number, p: any) => sum + contractToUSD(p.contract?.amount || 0), 0);
     const projectedPayroll = committedAtStartYear + baseSalaryUSD;
     const mle = getMLEAvailability(teamId, teamPayroll, baseSalaryUSD, thresholds, stateWithSim.leagueStats as any);
-    const hasRequestedValidMLE = !!signedMleType && !mle.blocked && signedMleType === mle.type && baseSalaryUSD <= mle.available;
+    const hasRequestedValidMLE = !!effectiveMleType && !mle.blocked && effectiveMleType === mle.type && baseSalaryUSD <= mle.available;
     // Defense-in-depth: client claimed an MLE tier but salary exceeds that tier.
     // The Khris Middleton case — modal auto-stamped non_taxpayer MLE on a $33.3M
     // signing because contract was guaranteed; this gate refuses the signing
     // server-side regardless of the client claim.
-    if (!isEuroMode && signedMleType && (mle.blocked || baseSalaryUSD > mle.available)) {
+    if (effectiveMleType && (mle.blocked || baseSalaryUSD > mle.available)) {
         console.warn(`[SIGN_FREE_AGENT] Blocked: claimed ${signedMleType} MLE but salary $${(baseSalaryUSD/1e6).toFixed(1)}M exceeds available $${(mle.available/1e6).toFixed(1)}M`);
         return { isProcessing: false };
     }
@@ -123,7 +154,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
     // body to fill an open slot — physically impossible in real NBA.
     const minSalaryUSD = getContractLimits(player as any, stateWithSim.leagueStats as any).minSalaryUSD;
     const isMinContract = baseSalaryUSD <= minSalaryUSD * 1.05;
-    if (!isEuroMode && signedAsGuaranteed && !ownTeamBirdRights && projectedPayroll > thresholds.salaryCap && !hasRequestedValidMLE && !isMinContract) {
+    if (!isEuroMode && !isPbaMode && signedAsGuaranteed && !ownTeamBirdRights && projectedPayroll > thresholds.salaryCap && !hasRequestedValidMLE && !isMinContract) {
         console.warn(`[SIGN_FREE_AGENT] Blocked illegal over-cap signing: ${player.name} to ${team.name}`);
         return { isProcessing: false };
     }
@@ -212,8 +243,11 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         const existingPlayerForMerge: any = stateWithSim.players.find(p => p.internalId === playerId);
         // Re-signs (player already on this team) start next season; fresh FA signings start current season.
         const signYear = isResignAction ? leagueYear + 1 : leagueYear;
-        const totalYears = typeof negotiatedYears === 'number' && negotiatedYears > 0 ? negotiatedYears : 1;
-        const hasOption = option === 'PLAYER' || option === 'TEAM';
+        const totalYears = isPbaImportSigning
+            ? 1
+            : typeof negotiatedYears === 'number' && negotiatedYears > 0 ? negotiatedYears : 1;
+        const finalOption = isPbaImportSigning ? 'NONE' : option;
+        const hasOption = finalOption === 'PLAYER' || finalOption === 'TEAM';
         const totalSeasons = hasOption ? totalYears + 1 : totalYears;
         // BBGM stores contract.amount in thousands of USD; also use the final guaranteed year as exp.
         const newDealAmountThousands = Math.round(baseSalaryUSD / 1_000);
@@ -235,7 +269,8 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                 season: `${seasonYear - 1}-${String(seasonYear).slice(-2)}`,
                 // NG contracts have zero guaranteed money — waiving them costs nothing.
                 guaranteed: signedAsNG ? 0 : escalated,
-                option: isOptionYear ? (option === 'PLAYER' ? 'player' : 'team') : '',
+                option: isOptionYear ? (finalOption === 'PLAYER' ? 'player' : 'team') : '',
+                ...(isPbaImportSigning ? { type: 'pba_import', conference: pbaConference } : {}),
             };
         });
         // Preserve historical (past + prior in-flight) contractYears entries so
@@ -259,17 +294,23 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
 
         // Match AI signing/re-signing template so the transaction log + news
         // get full contract details (salary, years, option, contract type).
+        const currencyCode = String((stateWithSim.leagueStats as any)?.currency ?? 'USD');
         const annualM = Math.round(baseSalaryUSD / 100_000) / 10;
         const totalRaw = annualM * totalYears;
         const totalStr = totalRaw < 1 ? totalRaw.toFixed(1) : Math.round(totalRaw).toString();
-        const optTag = option === 'PLAYER' ? ' (player option)' : option === 'TEAM' ? ' (team option)' : '';
+        const optTag = finalOption === 'PLAYER' ? ' (player option)' : finalOption === 'TEAM' ? ' (team option)' : '';
         const twoWayTag = signedAsTwoWay ? ' (two-way)' : '';
         const ngTag = signedAsNG ? ' (non-guaranteed)' : '';
-        const mleTag = signedMleType && !signedAsTwoWay && !signedAsNG
-            ? (signedMleType === 'taxpayer' ? ' (taxpayer MLE)' : signedMleType === 'room' ? ' (room MLE)' : ' (MLE)')
+        const mleTag = effectiveMleType && !signedAsTwoWay && !signedAsNG
+            ? (effectiveMleType === 'taxpayer' ? ' (taxpayer MLE)' : effectiveMleType === 'room' ? ' (room MLE)' : ' (MLE)')
             : '';
-        const contractDetails = `: $${totalStr}M/${totalYears}yr${optTag}${twoWayTag}${ngTag}${mleTag}`;
-        const treatAsResignText = isResignAction && !signedMleType;
+        const formattedDealAmount = currencyCode === 'USD'
+            ? `$${totalStr}M`
+            : formatCurrencyWithCode(baseSalaryUSD, currencyCode, false);
+        const contractDetails = isPbaImportSigning
+            ? `: ${formattedDealAmount} ${getPbaImportContractLabel(pbaConference)}`
+            : `: ${formattedDealAmount}/${totalYears}yr${optTag}${twoWayTag}${ngTag}${mleTag}`;
+        const treatAsResignText = isResignAction && !effectiveMleType;
         const signingOutcomeText = treatAsResignText
             ? `${playerName} re-signs with ${teamName}${contractDetails}`
             : `${playerName} signs with the ${teamName}${contractDetails}${returnContext}`;
@@ -304,16 +345,50 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         // Force correct contract amount — LLM generates wrong units
         // Update the player directly in result.players if present
         if (result.players) {
-            result.players = result.players.map((p: any) =>
-                p.internalId === playerId
+            result.players = result.players.map((p: any) => {
+                if (isPbaImportSigning && replacedPbaImport && p.internalId === replacedPbaImport.internalId) {
+                    const previousMeta = (p as any).pbaImportContract ?? buildPbaImportContractMetadata(teamId, pbaConference, stateWithSim.date);
+                    const reserveAllowed = Number(previousMeta.replacementsUsed ?? 0) === 0;
+                    return reserveAllowed
+                        ? {
+                            ...p,
+                            tid: -1,
+                            status: 'PBA Import Reserve',
+                            importTeamId: teamId,
+                            importConference: pbaConference,
+                            isImport: true,
+                            pbaImportContract: {
+                                ...previousMeta,
+                                status: 'reserve',
+                                reserveDate: stateWithSim.date,
+                                replacementsUsed: pbaImportReplacementCount,
+                            },
+                        }
+                        : {
+                            ...p,
+                            tid: -1,
+                            status: 'Free Agent',
+                            isImport: undefined,
+                            importConference: undefined,
+                            importTeamId: undefined,
+                            pbaImportContract: {
+                                ...previousMeta,
+                                status: 'released',
+                                releaseDate: stateWithSim.date,
+                                replacementsUsed: pbaImportReplacementCount,
+                            },
+                        };
+                }
+                return p.internalId === playerId
                     ? clearWaiverMarkers({
                         ...p,
                         tid: teamId,
-                        status: 'Active',
+                        status: isPbaTeam ? 'PBA' : 'Active',
                         contract: {
                             amount: contractAmountThousands,
                             exp: expYear,
-                            rookie: false
+                            rookie: false,
+                            ...(isPbaImportSigning ? { type: 'PBA_IMPORT' } : {}),
                         },
                         contractYears: mergedContractYears,
                         // Stamp signing date so autoTrimOversizedRosters won't waive
@@ -327,25 +402,74 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                         // ships as a two-way contract.
                         twoWay: !!signedAsTwoWay,
                         nonGuaranteed: !!signedAsNG,
+                        ...(isPbaImportSigning ? {
+                            isImport: true,
+                            importConference: pbaConference,
+                            importTeamId: teamId,
+                            pbaImportContract: buildPbaImportContractMetadata(teamId, pbaConference, stateWithSim.date, pbaImportReplacementCount),
+                            pbaImportHistory: [
+                                ...(((p as any).pbaImportHistory ?? []) as any[]),
+                                { season: leagueYear, conference: pbaConference, teamId, signedDate: stateWithSim.date },
+                            ],
+                        } : {
+                            isImport: undefined,
+                            importConference: undefined,
+                            importTeamId: undefined,
+                            pbaImportContract: undefined,
+                        }),
                         // Stamp MLE source so TeamFinancesView can color the
                         // contract cell and leagueStats.mleUsage below accounts
                         // for the draw.
-                        ...(signedMleType ? { mleSignedVia: signedMleType } : {}),
+                        ...(effectiveMleType ? { mleSignedVia: effectiveMleType } : {}),
                     })
-                    : p
-            );
+                    : p;
+            });
         } else {
             // Patch directly onto stateWithSim players via result
-            result.players = stateWithSim.players.map((p: any) =>
-                p.internalId === playerId
+            result.players = stateWithSim.players.map((p: any) => {
+                if (isPbaImportSigning && replacedPbaImport && p.internalId === replacedPbaImport.internalId) {
+                    const previousMeta = (p as any).pbaImportContract ?? buildPbaImportContractMetadata(teamId, pbaConference, stateWithSim.date);
+                    const reserveAllowed = Number(previousMeta.replacementsUsed ?? 0) === 0;
+                    return reserveAllowed
+                        ? {
+                            ...p,
+                            tid: -1,
+                            status: 'PBA Import Reserve',
+                            importTeamId: teamId,
+                            importConference: pbaConference,
+                            isImport: true,
+                            pbaImportContract: {
+                                ...previousMeta,
+                                status: 'reserve',
+                                reserveDate: stateWithSim.date,
+                                replacementsUsed: pbaImportReplacementCount,
+                            },
+                        }
+                        : {
+                            ...p,
+                            tid: -1,
+                            status: 'Free Agent',
+                            isImport: undefined,
+                            importConference: undefined,
+                            importTeamId: undefined,
+                            pbaImportContract: {
+                                ...previousMeta,
+                                status: 'released',
+                                releaseDate: stateWithSim.date,
+                                replacementsUsed: pbaImportReplacementCount,
+                            },
+                        };
+                }
+                return p.internalId === playerId
                     ? clearWaiverMarkers({
                         ...p,
                         tid: teamId,
-                        status: 'Active',
+                        status: isPbaTeam ? 'PBA' : 'Active',
                         contract: {
                             amount: contractAmountThousands,
                             exp: expYear,
-                            rookie: false
+                            rookie: false,
+                            ...(isPbaImportSigning ? { type: 'PBA_IMPORT' } : {}),
                         },
                         contractYears: mergedContractYears,
                         // Stamp signing date so autoTrimOversizedRosters won't waive
@@ -359,13 +483,28 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
                         // ships as a two-way contract.
                         twoWay: !!signedAsTwoWay,
                         nonGuaranteed: !!signedAsNG,
+                        ...(isPbaImportSigning ? {
+                            isImport: true,
+                            importConference: pbaConference,
+                            importTeamId: teamId,
+                            pbaImportContract: buildPbaImportContractMetadata(teamId, pbaConference, stateWithSim.date, pbaImportReplacementCount),
+                            pbaImportHistory: [
+                                ...(((p as any).pbaImportHistory ?? []) as any[]),
+                                { season: leagueYear, conference: pbaConference, teamId, signedDate: stateWithSim.date },
+                            ],
+                        } : {
+                            isImport: undefined,
+                            importConference: undefined,
+                            importTeamId: undefined,
+                            pbaImportContract: undefined,
+                        }),
                         // Stamp MLE source so TeamFinancesView can color the
                         // contract cell and leagueStats.mleUsage below accounts
                         // for the draw.
-                        ...(signedMleType ? { mleSignedVia: signedMleType } : {}),
+                        ...(effectiveMleType ? { mleSignedVia: effectiveMleType } : {}),
                     })
-                    : p
-            );
+                    : p;
+            });
         }
 
         // Update leagueStats.mleUsage so the FreeAgents MLE chip + future
@@ -373,16 +512,16 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         // Each team stores { type, usedUSD } — subsequent signings using the
         // same MLE type stack the usedUSD; signings on a different type are
         // blocked by getMLEAvailability's priorType guard.
-        if (signedMleType) {
+        if (effectiveMleType) {
             const prevLS: any = result.leagueStats ?? stateWithSim.leagueStats;
             const prevUsage = (prevLS?.mleUsage ?? {}) as Record<number, { type: string; usedUSD: number }>;
             const prior = prevUsage[teamId];
-            const stackedUSD = prior?.type === signedMleType ? (prior.usedUSD ?? 0) + baseSalaryUSD : baseSalaryUSD;
+            const stackedUSD = prior?.type === effectiveMleType ? (prior.usedUSD ?? 0) + baseSalaryUSD : baseSalaryUSD;
             result.leagueStats = {
                 ...(prevLS ?? {}),
                 mleUsage: {
                     ...prevUsage,
-                    [teamId]: { type: signedMleType, usedUSD: stackedUSD },
+                    [teamId]: { type: effectiveMleType, usedUSD: stackedUSD },
                 },
             };
         }
@@ -393,11 +532,15 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         const signingNewsItem = NewsGenerator.generate('signing_confirmed', stateWithSim.date, {
             playerName: player.name,
             teamName: team.name,
-        }, team.logoUrl);
+        }, (team as any).logoUrl ?? (team as any).imgURL);
         if (signingNewsItem) {
             const verbHeadline = treatAsResignText ? 'Re-Signs With' : 'Signs With';
-            (signingNewsItem as any).headline = `${player.name} ${verbHeadline} ${team.name} — $${totalStr}M/${totalYears}yr${optTag}${twoWayTag}${ngTag}${mleTag}`;
-            (signingNewsItem as any).content = `${signingOutcomeText}. The ${totalYears}-year deal carries an annual value of $${annualM.toFixed(1)}M${optTag ? `, with a${optTag.startsWith(' (player') ? ' player' : ' team'} option in the final year` : ''}.`;
+            (signingNewsItem as any).headline = isPbaImportSigning
+                ? `${player.name} ${verbHeadline} ${team.name} — ${getPbaImportContractLabel(pbaConference)}`
+                : `${player.name} ${verbHeadline} ${team.name} — ${formattedDealAmount}/${totalYears}yr${optTag}${twoWayTag}${ngTag}${mleTag}`;
+            (signingNewsItem as any).content = isPbaImportSigning
+                ? `${signingOutcomeText}. The reinforcement is signed for the current PBA conference and can be replaced only under PBA import rules.`
+                : `${signingOutcomeText}. The ${totalYears}-year deal carries an annual value of ${formattedDealAmount}${optTag ? `, with a${optTag.startsWith(' (player') ? ' player' : ' team'} option in the final year` : ''}.`;
             newNews.unshift(signingNewsItem);
         }
 

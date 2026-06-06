@@ -24,6 +24,7 @@ import { isPlausibleActiveMarket } from '../../../services/freeAgencyBidding';
 import { getGMAttributes, clampSpendOffer } from '../../../services/staff/gmAttributes';
 import { projectYearEndCash } from '../../../services/tycoon/budgetEngine';
 import { getDisplayAge } from '../../../store/playerRatingStore';
+import { getEffectivePbaConference, getPbaImportConferenceSalary, isPbaImportForTeam } from '../../../services/pba/importManager';
 import type { ContractType, MleType, SigningModalBidSubmitted, SigningModalTabDefinition, TabType } from './SigningModalShared';
 import type { SigningModalProps } from './SigningModalTypes';
 
@@ -100,6 +101,10 @@ export function useSigningModalController({
   const { state } = useGame() as any;
   const isOwnTeamGM = state.gameMode === 'gm' && team.id === state.userTeamId;
   const gmSpending = isOwnTeamGM ? getGMAttributes(state, team.id).spending : 75;
+  const pbaIsolated = state.leagueStats?.uiMode === 'pba_isolated';
+  const pbaConference = getEffectivePbaConference(state.leagueStats as any);
+  const isPbaTeam = pbaIsolated && (state.nonNBATeams ?? []).some((t: any) => t.league === 'PBA' && Number(t.tid ?? t.id) === Number(team.id));
+  const isPbaImportSigning = isPbaTeam && isPbaImportForTeam(player, team.id, pbaConference, leagueStats as any);
 
   const [activeTab, setActiveTab] = useState<TabType>('NEGOTIATION');
   const [contractType, setContractType] = useState<ContractType>('GUARANTEED');
@@ -198,10 +203,29 @@ export function useSigningModalController({
     }
     return base;
   }, [playerForLimits, leagueStats, hasOwnTeamBirdRights, limits.isSupermaxEligible, limits.isRookieExtEligible, limits.maxSalaryUSD, limits.minSalaryUSD]);
-  const mle = useMemo(
-    () => getMLEAvailability(team.id, teamPayroll, salary, thresholds, leagueStats),
-    [team.id, teamPayroll, salary, thresholds, leagueStats],
-  );
+  const mle = useMemo(() => {
+    if (pbaIsolated) {
+      return { blocked: true, available: 0, limit: 0, used: 0, type: null };
+    }
+    const base = getMLEAvailability(team.id, teamPayroll, salary, thresholds, leagueStats);
+    if (base.blocked || !base.type) return base;
+    const reservedFromOtherMarketsUSD = ((state.faBidding?.markets ?? []) as any[])
+      .filter(m => !m?.resolved && m?.playerId !== player.internalId)
+      .reduce((sum, market) => {
+        const topMine = (market.bids ?? [])
+          .filter((b: any) => b.teamId === team.id && b.status === 'active')
+          .sort((a: any, b: any) => (b.salaryUSD ?? 0) - (a.salaryUSD ?? 0))[0];
+        return sum + (topMine?.salaryUSD ?? 0);
+      }, 0);
+    const netAvailable = Math.max(0, base.available - reservedFromOtherMarketsUSD);
+    const netUsed = Math.min(base.limit, base.used + reservedFromOtherMarketsUSD);
+    return {
+      ...base,
+      used: netUsed,
+      available: netAvailable,
+      blocked: netAvailable <= 0,
+    };
+  }, [pbaIsolated, team.id, teamPayroll, salary, thresholds, leagueStats, state.faBidding?.markets, player.internalId]);
 
   const playerK2 = useMemo(() => {
     const lastR = (player as any).ratings?.[(player as any).ratings?.length - 1];
@@ -243,8 +267,15 @@ export function useSigningModalController({
     return yearsOfService <= 4;
   }, [player, playerK2, realAge, euroIsolated]);
 
-  const minAllowed = contractType === 'TWO_WAY' ? twoWaySalaryUSD : limits.minSalaryUSD;
-  const maxAllowed = contractType === 'TWO_WAY' ? twoWaySalaryUSD : contractType === 'NON_GUARANTEED' ? limits.minSalaryUSD * 3 : limits.maxSalaryUSD;
+  const pbaImportMinSalary = isPbaImportSigning
+    ? getPbaImportConferenceSalary(limits.minSalaryUSD, leagueStats as any, pbaConference)
+    : 0;
+  const minAllowed = isPbaImportSigning
+    ? pbaImportMinSalary
+    : contractType === 'TWO_WAY' ? twoWaySalaryUSD : limits.minSalaryUSD;
+  const maxAllowed = isPbaImportSigning
+    ? Math.max(pbaImportMinSalary, limits.maxSalaryUSD)
+    : contractType === 'TWO_WAY' ? twoWaySalaryUSD : contractType === 'NON_GUARANTEED' ? limits.minSalaryUSD * 3 : limits.maxSalaryUSD;
 
   const powerRanking = useMemo(() => {
     const ranked = [...state.teams].sort((a: any, b: any) => {
@@ -314,11 +345,11 @@ export function useSigningModalController({
     return current >= faStart && current < peakEnd;
   }, [state.date, leagueStats]);
   const isResignFromOwnTeam = player.tid === team.id;
-  const isBiddingMode = !euroIsolated && !!onSubmitBid && !autoAccept && !isResignFromOwnTeam && player.tid < 0 && state.gameMode === 'gm';
+  const isBiddingMode = !euroIsolated && !pbaIsolated && !!onSubmitBid && !autoAccept && !isResignFromOwnTeam && player.tid < 0 && state.gameMode === 'gm';
   const shouldSubmitBid = isBiddingMode && (hasActiveMarket || isPeakFA);
-  const showOffersTab = !euroIsolated && (hasActiveMarket || isPeakFA);
+  const showOffersTab = !euroIsolated && !pbaIsolated && (hasActiveMarket || isPeakFA);
   const projectedCashAfterDeal = useMemo(() => {
-    if (!euroIsolated || !(team as any).tycoon || contractType === 'TWO_WAY') return null;
+    if (!euroIsolated || pbaIsolated || !(team as any).tycoon || contractType === 'TWO_WAY') return null;
     return projectYearEndCash(team, {
       year: leagueStats.year,
       endesaFinishPosition: (team as any).lastEndesaFinish ?? 9,
@@ -331,14 +362,14 @@ export function useSigningModalController({
 
   const tabs = useMemo(() => {
     let result = showOffersTab ? ALL_TABS : ALL_TABS.filter(t => t.id !== 'OFFERS');
-    if (euroIsolated) result = result.filter(t => !EURO_HIDDEN_TABS.has(t.id));
+    if (euroIsolated || pbaIsolated) result = result.filter(t => !EURO_HIDDEN_TABS.has(t.id));
     return result;
-  }, [showOffersTab, euroIsolated]);
+  }, [showOffersTab, euroIsolated, pbaIsolated]);
 
   useEffect(() => {
     if (!showOffersTab && activeTab === 'OFFERS') setActiveTab('NEGOTIATION');
-    if (euroIsolated && EURO_HIDDEN_TABS.has(activeTab)) setActiveTab('NEGOTIATION');
-  }, [showOffersTab, activeTab, euroIsolated]);
+    if ((euroIsolated || pbaIsolated) && EURO_HIDDEN_TABS.has(activeTab)) setActiveTab('NEGOTIATION');
+  }, [showOffersTab, activeTab, euroIsolated, pbaIsolated]);
 
   const initedForPlayerRef = React.useRef<string | null>(null);
   useEffect(() => {
@@ -348,7 +379,7 @@ export function useSigningModalController({
     const forcedTwoWay = canOfferTwoWay && !hasBirdBypass && roster.standardFull && !roster.twoWayFull;
     const forcedGuaranteed = !hasBirdBypass && roster.twoWayFull && !roster.standardFull;
     let chosenType: ContractType;
-    if (euroIsolated) chosenType = 'GUARANTEED';
+    if (euroIsolated || pbaIsolated) chosenType = 'GUARANTEED';
     else if (forcedGuaranteed) chosenType = 'GUARANTEED';
     else if (forcedTwoWay) chosenType = 'TWO_WAY';
     else if (initialContractType) chosenType = initialContractType;
@@ -360,18 +391,22 @@ export function useSigningModalController({
       setSalary(twoWaySalaryUSD);
       setYears(2);
       setOption('NONE');
+    } else if (isPbaImportSigning) {
+      setSalary(getPbaImportConferenceSalary(initialOffer.salaryUSD, leagueStats as any, pbaConference));
+      setYears(1);
+      setOption('NONE');
     } else {
       const seeded = isOwnTeamGM ? clampSpendOffer(initialOffer.salaryUSD, gmSpending, limits.maxSalaryUSD) : initialOffer.salaryUSD;
       setSalary(Math.min(limits.maxSalaryUSD, Math.max(limits.minSalaryUSD, seeded)));
       setYears(initialOffer.years);
-      setOption(euroIsolated ? 'NONE' : initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
+      setOption((euroIsolated || pbaIsolated) ? 'NONE' : initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
     }
-  }, [player.internalId, isTwoWayCandidate, canOfferTwoWay, twoWaySalaryUSD, initialOffer, limits.minSalaryUSD, limits.maxSalaryUSD, roster.standardFull, roster.twoWayFull, initialContractType, isOwnTeamGM, gmSpending, euroIsolated, hasOwnTeamBirdRights]);
+  }, [player.internalId, isTwoWayCandidate, canOfferTwoWay, twoWaySalaryUSD, initialOffer, limits.minSalaryUSD, limits.maxSalaryUSD, roster.standardFull, roster.twoWayFull, initialContractType, isOwnTeamGM, gmSpending, euroIsolated, pbaIsolated, hasOwnTeamBirdRights, isPbaImportSigning, leagueStats, pbaConference]);
 
   const contractTypeInitedRef = React.useRef(false);
   useEffect(() => {
     if (!contractTypeInitedRef.current) { contractTypeInitedRef.current = true; return; }
-    if (euroIsolated && contractType !== 'GUARANTEED') {
+    if ((euroIsolated || pbaIsolated) && contractType !== 'GUARANTEED') {
       setContractType('GUARANTEED');
       return;
     }
@@ -388,13 +423,17 @@ export function useSigningModalController({
       setSalary(discounted);
       setYears(1);
       setOption('NONE');
+    } else if (isPbaImportSigning) {
+      setSalary(getPbaImportConferenceSalary(initialOffer.salaryUSD, leagueStats as any, pbaConference));
+      setYears(1);
+      setOption('NONE');
     } else {
       const seeded = isOwnTeamGM ? clampSpendOffer(initialOffer.salaryUSD, gmSpending, limits.maxSalaryUSD) : initialOffer.salaryUSD;
       setSalary(Math.min(limits.maxSalaryUSD, Math.max(limits.minSalaryUSD, seeded)));
       setYears(initialOffer.years);
-      setOption(euroIsolated ? 'NONE' : initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
+      setOption((euroIsolated || pbaIsolated) ? 'NONE' : initialOffer.hasPlayerOption ? 'PLAYER' : 'NONE');
     }
-  }, [contractType, canOfferTwoWay, euroIsolated, initialOffer.salaryUSD, initialOffer.years, initialOffer.hasPlayerOption, limits.minSalaryUSD, limits.maxSalaryUSD, isOwnTeamGM, gmSpending, twoWaySalaryUSD]);
+  }, [contractType, canOfferTwoWay, euroIsolated, pbaIsolated, initialOffer.salaryUSD, initialOffer.years, initialOffer.hasPlayerOption, limits.minSalaryUSD, limits.maxSalaryUSD, isOwnTeamGM, gmSpending, twoWaySalaryUSD, isPbaImportSigning, leagueStats, pbaConference]);
 
   const portraitFallback = useMemo(() => getPlayerImage(player), [player]);
   useEffect(() => {
@@ -410,7 +449,8 @@ export function useSigningModalController({
 
   const { interest, uncappedInterest } = useMemo(() => {
     const salaryDiffPct = ((salary - initialOffer.salaryUSD) / initialOffer.salaryUSD) * 100;
-    let base = 65 + salaryDiffPct * 0.5 + Math.abs(years - initialOffer.years) * -8 + (!euroIsolated ? (option === 'PLAYER' ? 15 : option === 'TEAM' ? -15 : 0) : 0);
+    const yearsPenalty = isPbaImportSigning ? 0 : Math.abs(years - initialOffer.years) * -8;
+    let base = 65 + salaryDiffPct * 0.5 + yearsPenalty + (!euroIsolated && !pbaIsolated ? (option === 'PLAYER' ? 15 : option === 'TEAM' ? -15 : 0) : 0);
     const traits = player.moodTraits || [];
     if (traits.includes('FAME')) {
       const externalStatuses = new Set(['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
@@ -437,7 +477,7 @@ export function useSigningModalController({
     const cappedUI = Math.min(100, Math.max(0, rawUncapped));
     if (isTwoWayCandidate) return { interest: 100, uncappedInterest: 100 };
     return { interest: cappedUI, uncappedInterest: rawUncapped };
-  }, [salary, years, option, initialOffer, player.moodTraits, player.tid, team.id, marketSize, powerRanking, maxAllowed, isTwoWayCandidate, resignIntent, player.status, euroIsolated]);
+  }, [salary, years, option, initialOffer, player.moodTraits, player.tid, team.id, marketSize, powerRanking, maxAllowed, isTwoWayCandidate, resignIntent, player.status, euroIsolated, pbaIsolated, isPbaImportSigning]);
 
   const yearsTable = useMemo(() => {
     const total = option !== 'NONE' ? years + 1 : years;
@@ -457,16 +497,16 @@ export function useSigningModalController({
     });
   }, [salary, years, option, thresholds, leagueStats.year, state.players, team.id, isResign, player.internalId]);
 
-  const formattedYears = option !== 'NONE' ? `${years}+1` : String(years);
+  const formattedYears = isPbaImportSigning ? 'Conference' : option !== 'NONE' ? `${years}+1` : String(years);
   const interestColor = interest < 40 ? '#f43f5e' : interest < 70 ? '#f59e0b' : '#22c55e';
 
   const SALARY_STEP = 100_000;
   const decSalaryProps = useHoldable(() => setSalary(v => Math.max(minAllowed, v - SALARY_STEP)), contractType === 'TWO_WAY' || salary <= minAllowed);
   const incSalaryProps = useHoldable(() => setSalary(v => Math.min(maxAllowed, v + SALARY_STEP)), contractType === 'TWO_WAY' || salary >= maxAllowed);
-  const decYearsProps = useHoldable(() => setYears(v => Math.max(1, v - 1)), false);
-  const incYearsProps = useHoldable(() => setYears(v => Math.min(contractType === 'TWO_WAY' ? 2 : contractType === 'NON_GUARANTEED' ? 1 : 5, v + 1)), false);
-  const decOptionProps = useHoldable(() => setOption(v => v === 'NONE' ? 'TEAM' : v === 'PLAYER' ? 'NONE' : 'PLAYER'), contractType === 'TWO_WAY');
-  const incOptionProps = useHoldable(() => setOption(v => v === 'NONE' ? 'PLAYER' : v === 'PLAYER' ? 'TEAM' : 'NONE'), contractType === 'TWO_WAY');
+  const decYearsProps = useHoldable(() => setYears(v => Math.max(1, v - 1)), isPbaImportSigning);
+  const incYearsProps = useHoldable(() => setYears(v => Math.min(contractType === 'TWO_WAY' ? 2 : contractType === 'NON_GUARANTEED' ? 1 : 5, v + 1)), isPbaImportSigning);
+  const decOptionProps = useHoldable(() => setOption(v => v === 'NONE' ? 'TEAM' : v === 'PLAYER' ? 'NONE' : 'PLAYER'), contractType === 'TWO_WAY' || isPbaImportSigning);
+  const incOptionProps = useHoldable(() => setOption(v => v === 'NONE' ? 'PLAYER' : v === 'PLAYER' ? 'TEAM' : 'NONE'), contractType === 'TWO_WAY' || isPbaImportSigning);
 
   const needsGuaranteedOverLimitConfirm = !euroIsolated && contractType === 'GUARANTEED' && !isResign && !teamHoldsBirdRights && guaranteedCount >= 15;
   const submitSigning = (skipOverLimitConfirm = false, mleTypeOverride: 'room' | 'non_taxpayer' | 'taxpayer' | null = selectedMleType) => {
@@ -474,14 +514,14 @@ export function useSigningModalController({
       setOverLimitAction('sign');
       return;
     }
-    const fitsMLE = !euroIsolated && !!mle && !mle.blocked && salary > 0 && salary <= mle.available;
+    const fitsMLE = !euroIsolated && !pbaIsolated && !!mle && !mle.blocked && salary > 0 && salary <= mle.available;
     onSign({
       salary,
-      years,
-      option: euroIsolated ? 'NONE' : option,
+      years: isPbaImportSigning ? 1 : years,
+      option: (euroIsolated || pbaIsolated) ? 'NONE' : option,
       twoWay: contractType === 'TWO_WAY',
       nonGuaranteed: contractType === 'NON_GUARANTEED',
-      mleType: (euroIsolated || contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || !fitsMLE) ? null : mleTypeOverride,
+      mleType: (euroIsolated || pbaIsolated || contractType === 'TWO_WAY' || contractType === 'NON_GUARANTEED' || !fitsMLE) ? null : mleTypeOverride,
     });
   };
   const requestPlayerResponse = (useMle = false) => {
@@ -505,7 +545,7 @@ export function useSigningModalController({
   }, [roster.totalFull, rosterFullOverridden, isFreeAgencySeason, teamPayroll, thresholds.salaryCap]);
 
   const handleMleSubmit = () => {
-    setSelectedMleType(mle?.type ?? null);
+      setSelectedMleType(mle?.type ?? null);
     if (shouldSubmitBid && onSubmitBid) {
       onSubmitBid({ salary, years, option });
       setBidSubmitted({ salary, years, option });
@@ -574,6 +614,7 @@ export function useSigningModalController({
     interest,
     interestColor,
     isOwnTeamGM,
+    isPbaImportSigning,
     isResign,
     isTrainingCampPeriod,
     leagueStats,
@@ -590,6 +631,7 @@ export function useSigningModalController({
     option,
     overLimitAction,
     pendingCashAck,
+    pbaIsolated,
     player,
     playerFace,
     portraitFallback,

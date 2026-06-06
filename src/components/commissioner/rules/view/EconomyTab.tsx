@@ -14,6 +14,8 @@ interface EconomyTabProps {
     setCurrency: (val: string) => void;
     tradesAllowed: boolean;
     setTradesAllowed: (val: boolean) => void;
+    pbaLocalEligibilityMode: 'registered_roster' | 'filipino_only';
+    setPbaLocalEligibilityMode: (val: 'registered_roster' | 'filipino_only') => void;
     salaryCap: number;
     setSalaryCap: (val: number) => void;
     salaryCapEnabled: boolean;
@@ -305,6 +307,7 @@ const ApronRulesCard = ({ props }: { props: EconomyTabProps }) => (
 
 export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
     const { state } = useGame();
+    const pbaMode = state.leagueStats?.uiMode === 'pba_isolated';
     const seasonYear = state.leagueStats?.year ?? new Date().getFullYear();
     const currentDate = state.date ? new Date(state.date) : new Date();
     const [showTaxRates, setShowTaxRates] = useState(false);
@@ -402,6 +405,7 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
                         props={props}
                         setIsMinContractModalOpen={setIsMinContractModalOpen}
                         setIsMaxContractModalOpen={setIsMaxContractModalOpen}
+                        pbaMode={pbaMode}
                     />
                     <EconomyRookieContractsSection
                         props={props}

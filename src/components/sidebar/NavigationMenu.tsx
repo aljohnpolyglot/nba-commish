@@ -5,7 +5,7 @@ import {
   User, Calendar, BarChart2, TrendingUp,
   Search, Users, Star, Building2, Settings2, ChevronDown,
   ListOrdered, Stethoscope, Tv, ThumbsUp, Eye, DollarSign,
-  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight, Globe2, Shield,
+  Target, Ticket, Table2, Zap, UserX, UserPlus, ArrowRightLeft, Cpu, GitPullRequest, ShoppingBag, BookOpen, Clock, ClipboardList, Briefcase, Crown, ArrowLeftRight, Globe2,
   Landmark, Megaphone, Plane, HeartPulse, Hammer, IdCard, Telescope, Repeat
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
@@ -78,6 +78,12 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
   const hasUnreadPayslip     = state.hasUnreadPayslip;
 
   const fmt = (n: number) => (n > 99 ? '99+' : n);
+  const draftScoutingBadge =
+    isGM &&
+    state.draftCombineResultsAvailableYear === seasonYear &&
+    state.draftCombineResultsViewedYear !== seasonYear
+      ? '!'
+      : undefined;
 
   const playoffBadge = (() => {
     if (!state.playoffs) return 0;
@@ -175,60 +181,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     },
   ];
 
-  const pbaGmGroups: NavGroup[] = [
-    {
-      label: 'My Team',
-      items: [
-        { id: 'Schedule' as Tab, label: 'Schedule', icon: Calendar },
-        { id: 'Team Office' as Tab, label: 'Team Office', icon: Briefcase },
-        { id: 'Coaching' as Tab, label: 'Coaching', icon: ClipboardList },
-        { id: 'Training Center' as Tab, label: 'Training', icon: Activity },
-      ],
-    },
-    {
-      label: 'Conferences',
-      items: [
-        { id: 'PBA Philippine Hub' as Tab, label: 'Philippine Cup', icon: Shield },
-        { id: 'PBA Commissioners Hub' as Tab, label: "Commissioner's Cup", icon: Trophy },
-        { id: 'PBA Governors Hub' as Tab, label: "Governors' Cup", icon: Crown },
-      ],
-    },
-    {
-      label: 'Squad',
-      items: [
-        { id: 'Player Search' as Tab, label: 'Player Search', icon: Search },
-        { id: 'Player Bios' as Tab, label: 'Player Bios', icon: Users },
-        { id: 'Player Comparison' as Tab, label: 'Player Comparison', icon: ArrowLeftRight },
-        ...(showFATabInGM ? [{ id: 'Free Agents' as Tab, label: 'Free Agents', icon: UserX }] : []),
-      ],
-    },
-    ...(!tradesDisabled ? [{
-      label: 'Trades',
-      items: [
-        { id: 'Trade Machine' as Tab, label: 'Trade Machine', icon: Cpu },
-        { id: 'Trade Finder' as Tab, label: 'Trade Finder', icon: Search },
-        { id: 'Trade Proposals' as Tab, label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) },
-      ],
-    }] : []),
-    ...(!noDraft ? [{
-      label: 'Draft',
-      items: [
-        { id: 'Draft Scouting' as Tab, label: 'Scouting', icon: Target },
-        { id: 'Draft Board' as Tab, label: 'Draft Board', icon: ClipboardList },
-      ],
-    }] : []),
-    {
-      label: 'Communications',
-      items: [
-        { id: 'Messages' as Tab, label: 'Messages', icon: MessageSquare, badge: fmt(unreadMessagesCount) },
-        { id: 'Social Feed' as Tab, label: 'Social Feed', icon: Activity, badge: fmt(socialCount) },
-        { id: 'League News' as Tab, label: 'League News', icon: Newspaper, badge: fmt(newsCount) },
-        { id: 'Transactions' as Tab, label: 'Transactions', icon: ArrowRightLeft },
-      ],
-    },
-  ];
-
-  const groups: NavGroup[] = isGM && pbaIsolated ? pbaGmGroups : isGM && euroIsolated ? euroGmGroups : [
+  const groups: NavGroup[] = isGM && euroIsolated ? euroGmGroups : [
     {
       label: isGM ? 'My Team' : 'Command Center',
       items: [
@@ -260,13 +213,13 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
     }] : []),
     // NBA GM mode gets ONLY the Staff entry (signings / fires / personnel
     // actions) — no Finances / Sponsorships / Facilities, those are euro-only.
-    ...(isGM && !euroIsolated && !pbaIsolated ? [{
+    ...(isGM && !euroIsolated ? [{
       label: 'Front Office',
       items: [
         { id: 'Front Office Staff' as Tab, label: 'Staff', icon: IdCard },
       ],
     }] : []),
-    ...(!isGM ? [{
+    ...(!isGM && !pbaIsolated ? [{
       label: 'Seasonal',
       items: [
         { id: 'Seasonal' as Tab,       label: 'Seasonal Actions', icon: Clock,  badge: seasonalBadge || undefined },
@@ -280,15 +233,15 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
             ? [{ id: 'Season Preview' as Tab, label: 'Season Preview', icon: Sparkles, badge: '!' as string }]
             : [];
         })(),
-        ...(!euroIsolated ? [{ id: 'All-Star' as Tab, label: 'All-Star', icon: Star }] : []),
-        ...(!euroIsolated ? [{ id: 'NBA Cup' as Tab, label: labels.cupShort, icon: Trophy }] : []),
+        ...(!euroIsolated && !pbaIsolated ? [{ id: 'All-Star' as Tab, label: 'All-Star', icon: Star }] : []),
+        ...(!euroIsolated && !pbaIsolated ? [{ id: 'NBA Cup' as Tab, label: labels.cupShort, icon: Trophy }] : []),
         { id: 'Playoffs' as Tab,       label: 'Playoffs',           icon: Trophy, badge: playoffBadge },
       ],
     }] : [{
       label: 'Season',
       items: [
-        ...(!euroIsolated ? [{ id: 'All-Star' as Tab, label: 'All-Star', icon: Star }] : []),
-        ...(!euroIsolated ? [{ id: 'NBA Cup' as Tab, label: labels.cupShort, icon: Trophy }] : []),
+        ...(!euroIsolated && (!pbaIsolated || isGM) ? [{ id: 'All-Star' as Tab, label: 'All-Star', icon: Star }] : []),
+        ...(!euroIsolated && !pbaIsolated ? [{ id: 'NBA Cup' as Tab, label: labels.cupShort, icon: Trophy }] : []),
         { id: 'Playoffs' as Tab,  label: 'Playoffs',  icon: Trophy, badge: playoffBadge },
       ],
     }]),
@@ -332,16 +285,16 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'League Leaders' as Tab,  label: 'League Leaders',  icon: ListOrdered },
         { id: 'League History' as Tab,  label: 'League History',  icon: Trophy },
         { id: 'Team History' as Tab,    label: 'Team History',    icon: BookOpen },
-        { id: 'Hall of Fame' as Tab,    label: 'Hall of Fame',    icon: Crown },
+        ...(!pbaIsolated ? [{ id: 'Hall of Fame' as Tab, label: 'Hall of Fame', icon: Crown }] : []),
         { id: 'Power Rankings' as Tab,  label: 'Power Rankings',  icon: TrendingUp },
       ],
     },
     ...(!noDraft ? [{
       label: 'Draft',
       items: [
-        { id: 'Draft Scouting' as Tab, label: 'Scouting',      icon: Target },
-        { id: 'Draft Lottery' as Tab,  label: 'Draft Lottery', icon: Ticket },
-        { id: 'Draft Board' as Tab,    label: 'Draft Board',   icon: ClipboardList },
+        { id: 'Draft Scouting' as Tab, label: 'Scouting',      icon: Target, badge: draftScoutingBadge },
+        ...(!pbaIsolated ? [{ id: 'Draft Lottery' as Tab, label: 'Draft Lottery', icon: Ticket }] : []),
+        { id: 'Draft Board' as Tab,    label: pbaIsolated ? 'PBA Draft' : 'Draft Board', icon: ClipboardList },
       ],
     }] : []),
     // ── International league hubs (commented out — user has a better design in mind) ──

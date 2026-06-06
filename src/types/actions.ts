@@ -157,4 +157,5 @@ export interface TradeProposal {
   isSignAndTrade?: boolean;
   cbaValid?: boolean;
   cbaReason?: string;
+  cbaOffendingSide?: 'A' | 'B';
 }

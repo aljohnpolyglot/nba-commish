@@ -4,6 +4,7 @@ import { logPlanEvent } from '../../offseason/offseasonPlan';
 
 export const autoInductHOFClass = async (state: GameState): Promise<Partial<GameState>> => {
   logPlanEvent('autoResolvers.autoInductHOFClass', 'fire', `date=${state.date}`);
+  if (state.leagueStats?.uiMode === 'pba_isolated') return {};
   const classYear = getLsYear(state) - 1;
   const idPrefix = `hof-class-${classYear}-`;
   const inductedClasses = state.leagueStats?.hofClassesInducted ?? [];

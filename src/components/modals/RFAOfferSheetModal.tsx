@@ -57,9 +57,9 @@ export const RFAOfferSheetModal: React.FC = () => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative bg-[#0f0f0f] border border-fuchsia-500/40 rounded-[24px] w-full max-w-lg shadow-2xl overflow-hidden"
+            className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-[24px] border border-fuchsia-500/40 bg-[#0f0f0f] shadow-2xl"
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-fuchsia-500/[0.06]">
+            <div className="flex items-start justify-between gap-3 border-b border-white/10 bg-fuchsia-500/[0.06] px-4 py-4 sm:px-6">
               <div className="flex items-center gap-3">
                 <FileSignature className="w-5 h-5 text-fuchsia-400" />
                 <h3 className="text-lg font-black text-white uppercase tracking-tight">RFA Offer Sheets</h3>
@@ -69,14 +69,14 @@ export const RFAOfferSheetModal: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-6">
+            <div className="overflow-y-auto p-4 sm:p-6">
               <p className="text-sm text-slate-300 mb-1">
                 Your restricted free {sheets.length === 1 ? 'agent has' : 'agents have'} a signed offer sheet from another team.
               </p>
               <p className="text-xs text-slate-500 mb-4">
                 Match the contract to retain via Bird Rights, or decline and let the offering team have him.
               </p>
-              <div className="mb-6 rounded-xl border border-white/10 bg-white/[0.03] divide-y divide-white/10 max-h-72 overflow-y-auto">
+              <div className="mb-6 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.03] divide-y divide-white/10">
                 {sheets.map(s => {
                   const decided = decidedIds.has(s.playerId);
                   const totalM = Math.round(s.annualM * s.years);

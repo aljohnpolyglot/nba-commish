@@ -20,6 +20,11 @@ import { formatPickLabel } from '../draft/draftClassStrength';
 
 export const EXTERNAL = new Set(['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
 
+export function isTradeExcludedStatus(status: string | undefined, allowPbaRoster = false): boolean {
+  if (allowPbaRoster && status === 'PBA') return false;
+  return EXTERNAL.has(status ?? '');
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface TradeOfferItem {
@@ -81,6 +86,8 @@ export interface FindOffersInput {
   /** When true, the reverse-mode loyalty-lifer block is bypassed — user has
    *  overridden the owner's "don't trade our lifer" warning. */
   allowLifers?: boolean;
+  /** When true, PBA status is treated as tradeable instead of external. */
+  allowPbaRoster?: boolean;
   /** Optional: season → class-strength multiplier (0.75-1.30). Scales pick TV
    *  based on upcoming draft class quality. See draftClassStrength.ts. */
   classStrengthByYear?: Map<number, number>;

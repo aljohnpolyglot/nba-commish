@@ -15,7 +15,13 @@ import {
   StatType,
   toRow,
 } from './PlayerStatsShared';
-import { buildCupStatsByPlayer, buildCurrentSeasonStatsByPhase, buildShotLocMap } from './playerStatsBoxScoreMaps';
+import {
+  buildBoxScoreShotLocMap,
+  buildBoxScoreStatsByPlayer,
+  buildCupStatsByPlayer,
+  buildCurrentSeasonStatsByPhase,
+  buildShotLocMap,
+} from './playerStatsBoxScoreMaps';
 
 interface UsePlayerStatsDerivedDataArgs {
   state: GameState;
@@ -25,6 +31,8 @@ interface UsePlayerStatsDerivedDataArgs {
   isScoped: boolean;
   season: SeasonMode;
   phase: Phase;
+  competitionIds?: string[];
+  externalStatsByPlayer?: Map<string, NBAGMStat[]>;
   statType: StatType;
   teamFilter: string;
   searchTerm: string;
@@ -52,6 +60,8 @@ export function usePlayerStatsDerivedData({
   isScoped,
   season,
   phase,
+  competitionIds,
+  externalStatsByPlayer,
   statType,
   teamFilter,
   searchTerm,
@@ -65,6 +75,11 @@ export function usePlayerStatsDerivedData({
 }: UsePlayerStatsDerivedDataArgs): UsePlayerStatsDerivedDataResult {
   const [brefLoading, setBrefLoading] = useState(false);
   const brefAttempted = useRef(new Set<string>());
+  const competitionIdKey = competitionIds?.join('|') ?? '';
+  const competitionIdSet = useMemo(
+    () => competitionIds ? new Set(competitionIds.map(id => id.toLowerCase())) : undefined,
+    [competitionIdKey],
+  );
 
   const cupStatsByPlayer = useMemo(() => buildCupStatsByPlayer(state), [
     state.boxScores,
@@ -83,6 +98,22 @@ export function usePlayerStatsDerivedData({
     state.nbaCupHistory,
     state.leagueStats.year,
   ]);
+
+  const boxScoreStatsByPlayer = useMemo(
+    () => competitionIdSet
+      ? buildBoxScoreStatsByPlayer(state, { competitionIds: competitionIdSet, phase: phase === 'cup' ? 'regular' : phase })
+      : null,
+    [
+      state.boxScores,
+      state.schedule,
+      state.playoffs,
+      state.nbaCup,
+      state.nbaCupHistory,
+      state.leagueStats,
+      competitionIdSet,
+      phase,
+    ],
+  );
 
   const rows = useMemo((): ComputedRow[] => {
     const result: ComputedRow[] = [];
@@ -119,11 +150,44 @@ export function usePlayerStatsDerivedData({
 
       const currentTeam = resolveAnyTeam(player.tid, state.teams, state.nonNBATeams ?? []);
       const currentTeamAbbrev = currentTeam?.abbrev ?? (player.tid < 0 ? 'FA' : '?');
-      if (teamFilter !== 'all' && player.tid > 0 && currentTeamAbbrev !== teamFilter && (season === 'career' || season === state.leagueStats.year)) {
+      if (!boxScoreStatsByPlayer && teamFilter !== 'all' && player.tid > 0 && currentTeamAbbrev !== teamFilter && (season === 'career' || season === state.leagueStats.year)) {
         continue;
       }
 
       const age = getDisplayAge(player, state.leagueStats.year ?? new Date().getFullYear());
+
+      if (boxScoreStatsByPlayer || externalStatsByPlayer) {
+        const archiveStats = (phase === 'playoffs' ? [] : externalStatsByPlayer?.get(player.internalId) ?? []);
+        const boxStats = boxScoreStatsByPlayer?.get(player.internalId) ?? [];
+        const boxSeasons = new Set(boxStats.map(stat => stat.season));
+        const stats = [
+          ...archiveStats.filter(stat => !boxSeasons.has(stat.season)),
+          ...boxStats,
+        ];
+        if (!stats.length) continue;
+
+        if (season === 'career') {
+          const filteredStats = teamFilter === 'all'
+            ? stats
+            : stats.filter(stat => statTeams.find(team => team.id === stat.tid)?.abbrev === teamFilter);
+          if (!filteredStats.length) continue;
+          const agg = aggregateStats(filteredStats);
+          if (agg.gp < 1) continue;
+          result.push(toRow(player, agg, statType, 'career', currentTeamAbbrev, age));
+          continue;
+        }
+
+        if (season === 'all') {
+          const years = new Set(stats.map(stat => stat.season));
+          for (const year of years) {
+            result.push(...historicalTeamRows(stats.filter(stat => stat.season === year), player, statTeams, statType, year, age, teamFilter));
+          }
+          continue;
+        }
+
+        result.push(...historicalTeamRows(stats.filter(stat => stat.season === season), player, statTeams, statType, season as number, age, teamFilter));
+        continue;
+      }
 
       if (season === 'career') {
         const stats = getPhaseStats(player, null);
@@ -183,6 +247,8 @@ export function usePlayerStatsDerivedData({
     brefRows,
     cupStatsByPlayer,
     currentSeasonStatsByPhase,
+    boxScoreStatsByPlayer,
+    externalStatsByPlayer,
   ]);
 
   useEffect(() => {
@@ -213,11 +279,15 @@ export function usePlayerStatsDerivedData({
     });
   }, [season, statPlayers, isScoped]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const shotLocMap = useMemo(() => buildShotLocMap(state.boxScores, statType, season, phase), [
+  const shotLocMap = useMemo(() => competitionIdSet
+    ? buildBoxScoreShotLocMap(state, statType, season, phase === 'cup' ? 'regular' : phase, competitionIdSet)
+    : buildShotLocMap(state.boxScores, statType, season, phase), [
+    state,
     state.boxScores,
     statType,
     season,
     phase,
+    competitionIdSet,
   ]);
 
   const enrichedRows = useMemo((): ComputedRow[] => {
@@ -306,7 +376,7 @@ export function usePlayerStatsDerivedData({
 
   useEffect(() => {
     (window as any).__nbaPlayerStatsDebugRows = {
-      context: { season, phase, statType, teamFilter, searchTerm, sortField, sortOrder },
+      context: { season, phase, competitionIds, statType, teamFilter, searchTerm, sortField, sortOrder },
       rows: filteredRows.map(row => {
         const rating = row.player.ratings?.[row.player.ratings.length - 1] ?? {};
         return {
@@ -333,7 +403,7 @@ export function usePlayerStatsDerivedData({
         };
       }),
     };
-  }, [filteredRows, season, phase, statType, teamFilter, searchTerm, sortField, sortOrder]);
+  }, [filteredRows, season, phase, competitionIdKey, statType, teamFilter, searchTerm, sortField, sortOrder]);
 
   return { brefLoading, filteredRows, pageRows, totalPages };
 }

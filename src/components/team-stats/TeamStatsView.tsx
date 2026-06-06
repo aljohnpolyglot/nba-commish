@@ -9,9 +9,12 @@ import { useHubScope } from '../../hooks/useHubScope';
 import { classifyBoxScoreGame } from '../../utils/gameClassification';
 import { useLeagueLabels } from '../../utils/leagueLabels';
 import { getDisplayAge } from '../../store/playerRatingStore';
+import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
+import { getConferenceSpec, type PbaConference } from '../../services/pba/conferenceTransition';
 
 type StatType = 'team' | 'opponent' | 'shotLocations' | 'oppShotLocations' | 'advanced';
 type Phase = 'regular' | 'playoffs' | 'cup' | 'combined';
+const PBA_COMBINED_FILTER = 'combined';
 
 interface TeamStatRow {
   team: NBATeam;
@@ -55,12 +58,6 @@ interface TeamStatRow {
   dEfgPct: number; dTovPct: number; drbPct: number; dFtFga: number;
 }
 
-function seasonYearFromDate(dateStr: string): number {
-  const d = new Date(dateStr);
-  const yr = d.getFullYear();
-  return d.getMonth() < 9 ? yr : yr + 1;
-}
-
 function countFeats(pts: number, reb: number, ast: number, stl: number, blk: number) {
   const c10 = [pts >= 10, reb >= 10, ast >= 10, stl >= 10, blk >= 10].filter(Boolean).length;
   const c5  = [pts >= 5,  reb >= 5,  ast >= 5,  stl >= 5,  blk >= 5 ].filter(Boolean).length;
@@ -69,8 +66,9 @@ function countFeats(pts: number, reb: number, ast: number, stl: number, blk: num
 
 export const TeamStatsView: React.FC = () => {
   const { state, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
-  const { teams: scopedTeams } = useHubScope();
+  const { teams: scopedTeams, pbaIsolated } = useHubScope();
   const labels = useLeagueLabels();
+  const title = pbaIsolated ? 'PBA Team Stats' : 'Team Stats';
   const ownTid = getOwnTeamId(state);
   const fourPointEnabled = isFourPointEnabled(state.leagueStats);
 
@@ -78,17 +76,56 @@ export const TeamStatsView: React.FC = () => {
   const [season,   setSeason]       = useState<number | 'all'>(state.leagueStats.year);
   useEffect(() => { setSeason(state.leagueStats.year); }, [state.leagueStats.year]);
   const [phase,    setPhase]        = useState<Phase>('regular');
+  const [pbaCompetitionFilter, setPbaCompetitionFilter] = useState(() =>
+    getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id,
+  );
+  const currentPbaCompetitionId = getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id;
   const [sortField, setSortField]   = useState<string>('pts');
   const [sortOrder, setSortOrder]   = useState<'asc' | 'desc'>('desc');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters]     = useState(false);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
 
+  useEffect(() => {
+    if (pbaIsolated && phase === 'cup') setPhase('regular');
+  }, [pbaIsolated, phase]);
+
+  useEffect(() => {
+    if (!pbaIsolated || pbaCompetitionFilter === PBA_COMBINED_FILTER || pbaCompetitionFilter === currentPbaCompetitionId) return;
+    setPbaCompetitionFilter(currentPbaCompetitionId);
+  }, [currentPbaCompetitionId, pbaCompetitionFilter, pbaIsolated]);
+
+  const pbaCompetitionOptions = useMemo(() => [
+    ...PBA_COMPETITIONS.map(spec => ({ id: spec.id, label: spec.displayName.replace(/^PBA\s+/, '') })),
+    { id: PBA_COMBINED_FILTER, label: 'Combined' },
+  ], []);
+
+  const pbaCompetitionIds = useMemo(() => {
+    if (!pbaIsolated) return undefined;
+    return new Set(
+      pbaCompetitionFilter === PBA_COMBINED_FILTER
+        ? PBA_COMPETITIONS.map(spec => spec.id)
+        : [pbaCompetitionFilter],
+    );
+  }, [pbaIsolated, pbaCompetitionFilter]);
+
   const availableSeasons = useMemo(() => {
     const years = new Set<number>();
-    (state.boxScores as any[]).forEach(g => { if (g.date) years.add(seasonYearFromDate(g.date)); });
+    const pbaIds = pbaIsolated ? new Set(PBA_COMPETITIONS.map(spec => spec.id)) : null;
+    (state.boxScores as any[]).forEach(game => {
+      if (pbaIds && !pbaIds.has(String(game.competitionId ?? ''))) return;
+      const savedSeason = Number(game.season);
+      if (savedSeason > 0) {
+        years.add(savedSeason);
+        return;
+      }
+      if (!game.date) return;
+      const date = new Date(game.date);
+      if (Number.isNaN(date.getTime())) return;
+      years.add(date.getMonth() < 9 ? date.getFullYear() : date.getFullYear() + 1);
+    });
     return ['all' as const, ...Array.from(years).sort((a, b) => b - a)];
-  }, [state.boxScores]);
+  }, [pbaIsolated, state.boxScores]);
 
   const seasonIndex = availableSeasons.indexOf(season as any);
 
@@ -96,11 +133,13 @@ export const TeamStatsView: React.FC = () => {
     if (pendingStatSort?.type === 'team') {
       setSortField(pendingStatSort.field);
       setSortOrder(pendingStatSort.order);
+      if (pendingStatSort.phase) setPhase(pendingStatSort.phase as Phase);
+      if (pbaIsolated && pendingStatSort.competitionId) setPbaCompetitionFilter(pendingStatSort.competitionId);
       const advFields = ['ortg','drtg','nrtg','pace','tsPct','efgPct','pw','pl','threePar','ftr'];
       if (advFields.includes(pendingStatSort.field)) setStatType('advanced');
       setPendingStatSort(null);
     }
-  }, [pendingStatSort, setPendingStatSort]);
+  }, [pendingStatSort, pbaIsolated, setPendingStatSort]);
 
   const playerAgeMap = useMemo(() => {
     const m = new Map<string, number>();
@@ -190,8 +229,10 @@ export const TeamStatsView: React.FC = () => {
 
     (state.boxScores as any[]).forEach(game => {
       if (game.isAllStar || game.isRisingStars || game.isCelebrityGame || game.isPreseason) return;
-      const meta = classifyBoxScoreGame(game, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats.year);
-      if (season !== 'all' && meta.seasonYear !== season) return;
+      if (pbaCompetitionIds && !pbaCompetitionIds.has(String(game.competitionId ?? ''))) return;
+      const meta = classifyBoxScoreGame(game, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats.year, state.leagueStats);
+      const gameSeason = Number(game.season ?? meta.seasonYear);
+      if (season !== 'all' && gameSeason !== season) return;
       if (phase === 'regular' && (meta.isPreseason || meta.isPlayoff || meta.isPlayIn || meta.excludeFromRecord)) return;
       if (phase === 'playoffs' && !meta.isPlayoff) return;
       if (phase === 'cup' && !meta.isNBACup) return;
@@ -291,7 +332,7 @@ export const TeamStatsView: React.FC = () => {
         tovPct, orbPct, ftFga, dEfgPct, dTovPct, drbPct, dFtFga,
       };
     });
-  }, [scopedTeams, state.boxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats.year, season, phase, playerAgeMap]);
+  }, [scopedTeams, state.boxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats, season, phase, pbaCompetitionIds, playerAgeMap]);
 
   const sortedStats = useMemo(() => {
     const filtered = teamStats.filter(row => {
@@ -587,7 +628,7 @@ export const TeamStatsView: React.FC = () => {
       <div className="shrink-0 px-3 sm:px-4 py-2.5 border-b border-slate-800 bg-slate-950">
         {/* Row 1 — title + mobile search */}
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">Team Stats</h2>
+          <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">{title}</h2>
           <div className="relative sm:hidden">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" size={13} />
             <input type="text" placeholder="Search..." value={searchTerm}
@@ -642,11 +683,21 @@ export const TeamStatsView: React.FC = () => {
           <select value={phase} onChange={e => setPhase(e.target.value as Phase)}
             className="h-7 bg-slate-900 border border-slate-700 text-white text-xs px-1.5 rounded focus:outline-none focus:border-indigo-500 appearance-none"
           >
-            <option value="regular">Reg Season</option>
+            <option value="regular">Regular Season</option>
             <option value="playoffs">Playoffs</option>
-            <option value="cup">{labels.cupShort}</option>
+            {!pbaIsolated && <option value="cup">{labels.cupShort}</option>}
             <option value="combined">Combined</option>
           </select>
+
+          {pbaIsolated && (
+            <select value={pbaCompetitionFilter} onChange={e => setPbaCompetitionFilter(e.target.value)}
+              className="h-7 bg-slate-900 border border-slate-700 text-white text-xs px-1.5 rounded focus:outline-none focus:border-indigo-500 appearance-none"
+            >
+              {pbaCompetitionOptions.map(option => (
+                <option key={option.id} value={option.id}>{option.label}</option>
+              ))}
+            </select>
+          )}
 
           {/* Desktop search */}
           <div className="relative hidden sm:block ml-auto">
@@ -674,7 +725,7 @@ export const TeamStatsView: React.FC = () => {
       {/* ── Season label ── */}
       <div className="shrink-0 px-3 sm:px-4 py-1 border-b border-slate-800/40 flex items-center justify-end">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-          {seasonLabel} · {statType === 'team' ? 'Team' : statType === 'opponent' ? 'Opponent' : statType === 'shotLocations' ? 'Shot Locations & Feats' : statType === 'oppShotLocations' ? 'Opp. Shot Locations' : 'Advanced'} · {phase === 'regular' ? 'Reg Season' : phase === 'playoffs' ? 'Playoffs' : phase === 'cup' ? labels.cupShort : 'Combined'}
+          {seasonLabel} · {pbaIsolated ? `${pbaCompetitionOptions.find(option => option.id === pbaCompetitionFilter)?.label ?? 'Conference'} · ` : ''}{statType === 'team' ? 'Team' : statType === 'opponent' ? 'Opponent' : statType === 'shotLocations' ? 'Shot Locations & Feats' : statType === 'oppShotLocations' ? 'Opp. Shot Locations' : 'Advanced'} · {phase === 'regular' ? 'Regular Season' : phase === 'playoffs' ? 'Playoffs' : phase === 'cup' ? labels.cupShort : 'Combined'}
         </span>
       </div>
 

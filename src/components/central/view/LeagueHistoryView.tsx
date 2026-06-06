@@ -7,11 +7,13 @@ import type { BRefSeasonData } from '../../../data/brefFetcher';
 import { fetchCoachData, getCoachPhoto } from '../../../data/photos/coaches';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { requestTeamHistoryFor } from './TeamHistoryView';
+import { consumePendingLeagueHistorySeason } from './LeagueHistoryNav';
 import type { Tab } from '../../../types';
 import { getEffectiveUiMode } from '../../../utils/useEffectiveUiMode';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
 import { getTeamFullName } from '../../../utils/teamNames';
 import { AwardCell, resolveLeagueHistoryPortraitUrl } from './leagueHistoryShared';
+import { PbaLeagueHistoryView } from './PbaLeagueHistoryView';
 interface LeagueHistoryViewProps {
   onViewChange?: (view: Tab) => void;
 }
@@ -19,10 +21,17 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
   const { state, dispatchAction } = useGame();
   const isFictional = state.leagueType === 'fictional';
   const euroIsolated = getEffectiveUiMode(state as any) === 'euro_isolated';
-  const disableNbaHistoricalData = isFictional || euroIsolated;
+  const pbaIsolated = getEffectiveUiMode(state as any) === 'pba_isolated';
+  const disableNbaHistoricalData = isFictional || euroIsolated || pbaIsolated;
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [coachPhotosReady, setCoachPhotosReady] = useState(false);
   useEffect(() => { fetchCoachData().then(() => setCoachPhotosReady(true)); }, []);
+  useEffect(() => {
+    const pendingSeason = consumePendingLeagueHistorySeason();
+    if (pendingSeason != null) {
+      setSelectedSeason(pendingSeason);
+    }
+  }, []);
   const quick = usePlayerQuickActions();
 
   const gotoTeamHistory = (tid: number) => {
@@ -55,7 +64,7 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
     return Array.from(seasonsSet).sort((a, b) => b - a).slice(0, 12);
   }, [state.teams, state.players, state.historicalAwards, currentSeason]);
 
-  const brefMap = useBRefSeasonsBatch(isFictional ? [] : historicalYears);
+  const brefMap = useBRefSeasonsBatch(disableNbaHistoricalData ? [] : historicalYears);
 
   const historyData = useMemo(() => {
     const awardsToUse = state.historicalAwards || [];
@@ -310,7 +319,15 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
       .sort((a, b) => b.season - a.season || a.competition.localeCompare(b.competition));
   }, [euroIsolated, state.history, state.activeCompetitions, state.teams, state.nonNBATeams, currentSeason]);
 
+  const openAward = (award: any) => {
+    if (award?.player) quick.openFor(award.player);
+  };
+
   if (quick.fullPageView) return quick.fullPageView;
+
+  if (selectedSeason !== null) {
+    return <LeagueHistoryDetailView season={selectedSeason} onBack={() => setSelectedSeason(null)} />;
+  }
 
   if (euroIsolated) {
     return (
@@ -359,13 +376,21 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
     );
   }
 
-  if (selectedSeason !== null) {
-    return <LeagueHistoryDetailView season={selectedSeason} onBack={() => setSelectedSeason(null)} />;
+  if (pbaIsolated) {
+    return (
+      <PbaLeagueHistoryView
+        currentSeason={currentSeason}
+        historicalAwards={state.historicalAwards ?? []}
+        leagueStats={state.leagueStats}
+        players={state.players}
+        teams={state.teams}
+        nonNBATeams={state.nonNBATeams ?? []}
+        onSelectSeason={setSelectedSeason}
+        onSelectTeam={gotoTeamHistory}
+        onSelectPlayer={openAward}
+      />
+    );
   }
-
-  const openAward = (award: any) => {
-    if (award?.player) quick.openFor(award.player);
-  };
 
   return (
     <div className="h-full overflow-hidden p-4 md:p-8 flex flex-col">

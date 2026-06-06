@@ -50,7 +50,7 @@ export function resolveDueMarkets(ctx: ResolutionContext): void {
   const bidStillLegalAtResolution = (bid: FreeAgentBid, player: NBAPlayer): boolean => {
     const team = ctx.state.teams.find(t => t.id === bid.teamId);
     if (!team) return false;
-    if (!(bid as any).twoWay && ctx.getProjectedStandardRosterCount(bid.teamId) >= ctx.effectiveMaxRoster) {
+    if (!bid.twoWay && ctx.getProjectedStandardRosterCount(bid.teamId) >= ctx.effectiveMaxRoster) {
       return false;
     }
     const priorTid = getRFAPriorTid(player);
@@ -185,6 +185,7 @@ export function resolveDueMarkets(ctx: ResolutionContext): void {
     }
 
     const finalYears = Math.min(winner.years, ctx.resolutionMaxYears);
+    const isTwoWay = !!winner.twoWay;
     const isNonGuaranteed = !!winner.nonGuaranteed && finalYears === 1;
     const joinedNewTeam = priorTid >= 0 && priorTid !== winner.teamId;
     const newContract = {
@@ -225,8 +226,10 @@ export function resolveDueMarkets(ctx: ResolutionContext): void {
         usedBirdRights: !joinedNewTeam,
         isReSign: !joinedNewTeam,
         isMinimum: winner.salaryUSD <= minUSD * 1.01,
+        isTwoWay,
         leagueStats: ctx.state.leagueStats as any,
       }),
+      ...(isTwoWay ? { twoWay: true } : {}),
       ...(isNonGuaranteed ? { nonGuaranteed: true } : {}),
       ...(joinedNewTeam ? { yearsWithTeam: 0, hasBirdRights: false } : {}),
     } as any);
@@ -236,6 +239,7 @@ export function resolveDueMarkets(ctx: ResolutionContext): void {
 
     const annualM = Math.round(winner.salaryUSD / 100_000) / 10;
     const totalM = Math.round(annualM * finalYears);
+    const twoWayTag = isTwoWay ? ' (two-way)' : '';
     const ngTag = isNonGuaranteed ? ' (non-guaranteed)' : '';
     const userWon = !!winner.isUserBid;
     if (market.bids.some(b => b.isUserBid) && !ctx.userBidRejectedForCap.has(market.playerId)) {
@@ -249,7 +253,7 @@ export function resolveDueMarkets(ctx: ResolutionContext): void {
       });
     }
     ctx.historyEntries.push({
-      text: `${player.name} signs with the ${team.name}: $${totalM}M/${finalYears}yr${optionTag(winner.option)}${ngTag}`,
+      text: `${player.name} signs with the ${team.name}: $${totalM}M/${finalYears}yr${optionTag(winner.option)}${twoWayTag}${ngTag}`,
       date: ctx.state.date,
       type: 'Signing',
       playerIds: [player.internalId],
@@ -266,7 +270,7 @@ export function resolveDueMarkets(ctx: ResolutionContext): void {
     ctx.newsItems.push({
       id: `fa-market-signing-${player.internalId}-${ctx.state.date}`,
       headline,
-      content: `${player.name} has agreed to a ${finalYears}-year, $${totalM}M deal with the ${team.name}${optionTag(winner.option)}${ngTag}. ${annualM >= 30 ? `Sources: ${faInsiderName}.` : `Sources: ${faWojName}.`}`,
+      content: `${player.name} has agreed to a ${finalYears}-year, $${totalM}M deal with the ${team.name}${optionTag(winner.option)}${twoWayTag}${ngTag}. ${annualM >= 30 ? `Sources: ${faInsiderName}.` : `Sources: ${faWojName}.`}`,
       date: ctx.state.date,
       type: 'transaction',
       read: false,

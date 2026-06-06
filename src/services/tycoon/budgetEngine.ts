@@ -1,7 +1,7 @@
 import type { NBATeam } from '../../types';
 import type { AnnualLedger, TycoonState } from '../../types/tycoon';
-import { TIER_BASE } from './specs/spain';
 import { academyBudgetCostEUR, fallbackStaffPayrollEUR, sumStaffPayrollEUR } from './economyScale';
+import { getSafeTycoonTier, getTycoonFacilityLevel, getTycoonStadiumCapacity, getTycoonTierBase } from './tierBase';
 
 export interface BudgetContext {
   year: number;
@@ -70,13 +70,14 @@ function wagesEUR(team: NBATeam, allPlayers?: any[]): number {
 export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayers?: any[]): AnnualLedger {
   const t = team.tycoon;
   if (!t) throw new Error(`Team ${team.name} has no tycoon state`);
-  const tb = TIER_BASE[t.tier];
+  const tier = getSafeTycoonTier(t.tier);
+  const tb = getTycoonTierBase(tier);
   const success = successMultiplier(ctx);
 
   const ticketMult = Math.max(0.5, Math.min(2.0, t.ticketPriceMultiplier ?? 1));
   const ticketDemand = Math.max(0.72, Math.min(1.12, 1.06 - (ticketMult - 1) * 0.18));
-  const attendancePct = Math.min(0.99, averageAttendancePct(t.tier, success) * ticketDemand);
-  const capacity = (t.facilities?.stadium as any)?.capacity ?? tb.stadiumCapacity;
+  const attendancePct = Math.min(0.99, averageAttendancePct(tier, success) * ticketDemand);
+  const capacity = getTycoonStadiumCapacity(t);
   const matchday = Math.round(capacity * attendancePct * tb.ticketPrice * ticketMult * 30);
 
   const slotRev = (slot: 'kit' | 'sleeve' | 'stadium'): number => {
@@ -113,13 +114,13 @@ export function computeAnnualBudget(team: NBATeam, ctx: BudgetContext, allPlayer
       salary: member.salary,
     })),
   } as any, 'euro') || fallbackStaffPayrollEUR(wages);
-  const facilityLevelSum = (t.facilities?.stadium?.level ?? 1)
-    + (t.facilities?.trainingCenter?.level ?? 1)
-    + (t.facilities?.academy?.level ?? 1);
+  const facilityLevelSum = getTycoonFacilityLevel(t.facilities?.stadium)
+    + getTycoonFacilityLevel(t.facilities?.trainingCenter)
+    + getTycoonFacilityLevel(t.facilities?.academy);
   const facility = facilityLevelSum * tb.facilityOpsPerLevel;
   const scouting = t.scoutingInvestment ?? tb.scoutingBudget;
   const medical = t.medicalBudget ?? 0;
-  const academy = academyBudgetCostEUR(t.academyBudget, t.tier);
+  const academy = academyBudgetCostEUR(t.academyBudget, tier);
   const travelPrefs = t.travelPreferences;
   const travel = travelPrefs
     ? estimateTravelCost(travelPrefs, 17, ctx.euroleagueAwayGames)

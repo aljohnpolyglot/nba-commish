@@ -17,6 +17,10 @@ import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate'
 import { useDraftEventGate } from '../../../hooks/useDraftEventGate';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import { isEuroVisibleScheduleGame } from '../../../utils/euroLeagueDefaults';
+import { ShootingStarsLiveContest } from '../../../minigames/shootingstars/ShootingStarsLiveContest';
+import { SkillsChallengeLiveContest } from '../../../minigames/skills/SkillsChallengeLiveContest';
+import { HorseLiveContest } from '../../../minigames/horse/HorseLiveContest';
+import { buildShootingStarsLiveTeams, buildSkillsLiveTeams } from '../../../minigames/shared/liveContestBuilders';
 
 // Sub-components
 import { AllStarDayView } from './components/AllStarDayView';
@@ -24,6 +28,7 @@ import { ContestDetailsModal } from './components/ContestDetailsModal';
 import { CalendarView } from './components/CalendarView';
 import { DayView } from './components/DayView';
 import { AllStarRosterModal } from './components/AllStarRosterModal';
+import { NextFixturesAside } from './components/NextFixturesAside';
 
 export const ScheduleView: React.FC = () => {
   const { state, dispatchAction, setCurrentView } = useGame();
@@ -33,6 +38,9 @@ export const ScheduleView: React.FC = () => {
   const [watchingGame, setWatchingGame] = useState<Game | null>(null);
   const [watchingDunkContest, setWatchingDunkContest] = useState(false);
   const [watchingThreePoint, setWatchingThreePoint] = useState(false);
+  const [watchingShootingStars, setWatchingShootingStars] = useState(false);
+  const [watchingSkillsChallenge, setWatchingSkillsChallenge] = useState(false);
+  const [watchingHorse, setWatchingHorse] = useState(false);
   const [pendingWatchGame, setPendingWatchGame] = useState<Game | null>(null);
   const [riggedForTid, setRiggedForTid] = useState<number | undefined>(undefined);
   const [precomputedWatchResult, setPrecomputedWatchResult] = useState<any>(null);
@@ -114,6 +122,18 @@ export const ScheduleView: React.FC = () => {
   const gamesForSelectedDate = useMemo(() => {
     return visibleSchedule.filter(g => normalizeDate(g.date) === normalizeDate(selectedDate));
   }, [visibleSchedule, selectedDate]);
+
+  const shootingStarsPlayers = useMemo(() => ((state.allStar as any)?.shootingStarsContestants ?? [])
+    .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
+    .filter(Boolean), [state.allStar, state.players]);
+  const skillsChallengePlayers = useMemo(() => ((state.allStar as any)?.skillsChallengeContestants ?? [])
+    .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
+    .filter(Boolean), [state.allStar, state.players]);
+  const horsePlayers = useMemo(() => ((state.allStar as any)?.horseContestants ?? [])
+    .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
+    .filter(Boolean), [state.allStar, state.players]);
+  const shootingStarsLiveTeams = useMemo(() => buildShootingStarsLiveTeams(shootingStarsPlayers, state.teams), [shootingStarsPlayers, state.teams]);
+  const skillsLiveTeams = useMemo(() => buildSkillsLiveTeams(skillsChallengePlayers, state.teams), [skillsChallengePlayers, state.teams]);
 
   // Roster compliance gate — shared hook covers every sim advancement path.
   const rosterGate = useRosterComplianceGate();
@@ -313,6 +333,12 @@ export const ScheduleView: React.FC = () => {
     return null;
   };
 
+  const jumpToDate = (dateStr: string) => {
+    setSelectedDate(dateStr);
+    setCalendarMonth(new Date(dateStr));
+    setViewMode('day');
+  };
+
   return (
     <div className="flex-1 flex flex-col md:flex-row bg-[#0a0a0a] min-h-0">
       
@@ -364,6 +390,9 @@ export const ScheduleView: React.FC = () => {
                 onViewRosters={setAllStarModalTab}
                 onWatchDunkContest={() => setWatchingDunkContest(true)}
                 onWatchThreePoint={() => setWatchingThreePoint(true)}
+                onWatchShootingStars={() => setWatchingShootingStars(true)}
+                onWatchSkillsChallenge={() => setWatchingSkillsChallenge(true)}
+                onWatchHorse={() => setWatchingHorse(true)}
                 onViewContestDetails={setContestModalType}
                 onViewBoxScore={setSelectedBoxScoreGame}
                 maxSimulatableDate={maxSimulatableDate}
@@ -405,6 +434,14 @@ export const ScheduleView: React.FC = () => {
           )}
 
       </AnimatePresence>
+      </div>
+
+      {euroIsolated && (
+        <NextFixturesAside
+          state={state}
+          onJumpToDate={jumpToDate}
+        />
+      )}
 
       {watchingDunkContest && !euroIsolated && !state.allStar?.dunkContest?.complete && (
         <div className="fixed inset-0 z-[100] bg-black">
@@ -434,6 +471,57 @@ export const ScheduleView: React.FC = () => {
           </div>
         );
       })()}
+
+      {watchingShootingStars && !euroIsolated && !state.allStar?.shootingStars?.complete && (
+        <div className="fixed inset-0 z-[100] bg-black overflow-y-auto">
+          <ShootingStarsLiveContest
+            teams={shootingStarsLiveTeams}
+            year={state.leagueStats.year}
+            onClose={() => setWatchingShootingStars(false)}
+            onComplete={(result) => {
+              dispatchAction({
+                type: 'SAVE_CONTEST_RESULT',
+                payload: { contest: 'shooting-stars', result: { ...result, complete: true }, contestants: shootingStarsPlayers },
+              });
+            }}
+          />
+        </div>
+      )}
+
+      {watchingSkillsChallenge && !euroIsolated && !state.allStar?.skillsChallenge?.complete && (
+        <div className="fixed inset-0 z-[100] bg-black overflow-y-auto">
+          <SkillsChallengeLiveContest
+            teams={skillsLiveTeams}
+            year={state.leagueStats.year}
+            onClose={() => setWatchingSkillsChallenge(false)}
+            onComplete={(result) => {
+              dispatchAction({
+                type: 'SAVE_CONTEST_RESULT',
+                payload: { contest: 'skills', result: { ...result, complete: true }, contestants: skillsChallengePlayers },
+              });
+            }}
+          />
+        </div>
+      )}
+
+      {watchingHorse && !euroIsolated && !(state.allStar as any)?.horseTournament?.complete && (
+        <div className="fixed inset-0 z-[100] bg-black overflow-y-auto">
+          <HorseLiveContest
+            contestants={horsePlayers}
+            rules={{
+              noPlayerRepeat: state.leagueStats.allStarHorseNoPlayerRepeat === true,
+              noGlobalRepeat: state.leagueStats.allStarHorseNoGlobalRepeat === true,
+            }}
+            onClose={() => setWatchingHorse(false)}
+            onComplete={(result) => {
+              dispatchAction({
+                type: 'SAVE_CONTEST_RESULT',
+                payload: { contest: 'horse', result: { ...result, complete: true }, contestants: horsePlayers },
+              });
+            }}
+          />
+        </div>
+      )}
 
       {allStarModalTab && !euroIsolated && (
         <AllStarRosterModal
@@ -592,7 +680,7 @@ export const ScheduleView: React.FC = () => {
           />
         )}
 
-        {boxScoreClickedPlayer && (
+      {boxScoreClickedPlayer && (
           <PlayerRatingsModal
             player={boxScoreClickedPlayer}
             season={state.leagueStats?.year ?? new Date().getFullYear()}
@@ -600,8 +688,6 @@ export const ScheduleView: React.FC = () => {
           />
         )}
       </AnimatePresence>
-
-      </div>
 
       {rosterGate.modal}
       {draftGate.modal}

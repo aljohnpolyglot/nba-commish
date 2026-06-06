@@ -33,11 +33,11 @@ export function SigningModalBidSubmittedOverlay({
 
   return (
     <OverlayShell borderClass="border-[#FDB927]/30">
-      <div className="w-full h-48 bg-[#050505] relative flex items-end justify-center pt-8 border-b border-white/5">
+      <div className="w-full h-40 sm:h-48 bg-[#050505] relative flex items-end justify-center pt-6 sm:pt-8 border-b border-white/5">
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-20 pointer-events-none" />
         <PlayerThumb player={player} playerFace={playerFace} portraitFallback={portraitFallback} teamColors={teamColors} />
       </div>
-      <div className="p-8 w-full flex flex-col items-center relative z-20">
+      <div className="p-5 sm:p-8 w-full flex flex-col items-center relative z-20">
         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[#FDB927] mb-2">Bid Submitted</p>
         <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-white">
           Offer on the Table
@@ -90,7 +90,7 @@ export function SigningModalBuyoutRefusedOverlay({
 
   return (
     <OverlayShell borderClass="border-orange-500/30">
-      <div className="w-full h-48 bg-[#050505] relative flex items-center justify-center pt-4 border-b border-white/5">
+      <div className="w-full h-40 sm:h-48 bg-[#050505] relative flex items-center justify-center pt-4 border-b border-white/5">
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-20 pointer-events-none" />
         {motherTeamLogo ? (
           <img src={motherTeamLogo} className="h-32 object-contain drop-shadow-2xl z-10" alt={motherTeamName} referrerPolicy="no-referrer" />
@@ -100,7 +100,7 @@ export function SigningModalBuyoutRefusedOverlay({
           </div>
         )}
       </div>
-      <div className="p-8 w-full flex flex-col items-center relative z-20">
+      <div className="p-5 sm:p-8 w-full flex flex-col items-center relative z-20">
         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-300 mb-2">{motherTeamName} Front Office</p>
         <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-orange-400">
           Buyout Refused
@@ -192,11 +192,11 @@ export function SigningModalResponseOverlay({
 
   return (
     <OverlayShell>
-      <div className="w-full h-48 bg-[#050505] relative flex items-end justify-center pt-8 border-b border-white/5">
+      <div className="w-full h-40 sm:h-48 bg-[#050505] relative flex items-end justify-center pt-6 sm:pt-8 border-b border-white/5">
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-20 pointer-events-none" />
         <PlayerThumb player={player} playerFace={playerFace} portraitFallback={portraitFallback} teamColors={teamColors} />
       </div>
-      <div className="p-8 w-full flex flex-col items-center relative z-20">
+      <div className="p-5 sm:p-8 w-full flex flex-col items-center relative z-20">
         <h2 className={`text-2xl font-black italic uppercase tracking-wider mb-4 ${isAccepted ? 'text-green-500' : 'text-[#e21d37]'}`}>
           {responseTitle}
         </h2>
@@ -235,4 +235,3 @@ export function SigningModalResponseOverlay({
     </OverlayShell>
   );
 }
-

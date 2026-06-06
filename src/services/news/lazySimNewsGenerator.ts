@@ -58,7 +58,7 @@ export const generateLazySimNews = (
   schedule?: Game[],
   seasonYear = 2026
 ): NewsItem[] => {
-  const OPENING_NIGHT = getOpeningNightDate(seasonYear).getTime();
+  const OPENING_NIGHT = getOpeningNightDate(seasonYear, undefined, schedule).getTime();
   const news: NewsItem[] = [];
   const isPreseason = dateIsPreseason(currentDate, OPENING_NIGHT);
   // Suppress standings/season-narrative items during playoffs — series news is generated separately
@@ -342,11 +342,10 @@ export const generateLazySimNews = (
       }
       gamesToReport = Array.from(bySeriesId.values());
     } else {
-      // Regular season: pick up to 2 notable games (50% chance each)
+      // Regular season: always surface a few real game results instead of randomly dropping them.
       gamesToReport = eligibleGames
         .sort((a, b) => Math.abs(a.homeScore - a.awayScore) - Math.abs(b.homeScore - b.awayScore))
-        .slice(0, 2)
-        .filter(() => Math.random() > 0.5);
+        .slice(0, Math.min(3, eligibleGames.length));
     }
 
     for (const game of gamesToReport) {

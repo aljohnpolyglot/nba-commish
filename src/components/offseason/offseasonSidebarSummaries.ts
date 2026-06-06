@@ -67,6 +67,7 @@ type RowAutoReasonArgs = {
   pendingTeamOptionsLength: number;
   rfaCandidatesLength: number;
   expiringGateHasRows: boolean;
+  staffRetirementCount?: number;
   openStaffCount: number;
   sponsorCoverageComplete: boolean;
   transferWindowOpen: boolean;
@@ -80,6 +81,7 @@ export function getRowAutoReason({
   pendingTeamOptionsLength,
   rfaCandidatesLength,
   expiringGateHasRows,
+  staffRetirementCount = 0,
   openStaffCount,
   sponsorCoverageComplete,
   transferWindowOpen,
@@ -101,10 +103,12 @@ export function getRowAutoReason({
       return rfaCandidatesLength === 0 ? 'No qualifying-offer decisions remain on your board.' : null;
     case 'myFAs':
       return !expiringGateHasRows ? 'No expiring-contract talks remain on your board.' : null;
+    case 'staffRetirements':
+      return staffRetirementCount === 0 ? 'No staff retirements were announced this offseason.' : null;
     case 'staffSignings':
       return openStaffCount === 0 ? 'All coaching and support roles are already covered.' : null;
     case 'sponsorRenewals':
-      return sponsorCoverageComplete ? 'All sponsor and endorsement slots are already locked in.' : null;
+      return sponsorCoverageComplete ? 'All sponsor slots are already locked in for next season.' : null;
     case 'transferMarket':
       return !transferWindowOpen ? `The player market is closed right now${transferWindowNextOpenLabel ? ` and reopens ${transferWindowNextOpenLabel}` : ''}.` : null;
     default:

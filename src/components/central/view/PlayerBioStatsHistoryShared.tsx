@@ -4,6 +4,9 @@ export type Phase = 'rs' | 'playoffs' | 'combined';
 
 export interface SeasonRow {
   season: number;
+  seasonLabel?: string;
+  leagueTag?: string;
+  leagueTitle?: string;
   teamAbbrev: string;
   age: number;
   gp: number; gs: number; minTotal: number; minPG: number;
@@ -84,11 +87,16 @@ export function SeasonCell({
   cupChampionLabel: string;
 }) {
   if (row.isCareer) return <span>Career</span>;
-  if (row.isSubRow) return <span className="text-slate-500">{getSeasonLabel(row.season)}</span>;
+  if (row.isSubRow) return <span className="text-slate-500">{row.seasonLabel ?? getSeasonLabel(row.season)}</span>;
 
   return (
     <span className="flex items-center gap-1">
-      {getSeasonLabel(row.season)}
+      {row.seasonLabel ?? getSeasonLabel(row.season)}
+      {row.leagueTag && (
+        <span title={row.leagueTitle} className="inline-flex items-center rounded-full border border-slate-700/70 bg-slate-900 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-slate-300">
+          {row.leagueTag}
+        </span>
+      )}
       {ringSeasons.has(row.season) && !row.isTot && <span className="text-yellow-400 text-[9px]" title="NBA Champion">💍</span>}
       {cupSeasons.has(row.season) && !row.isTot && <span className="text-amber-400 text-[9px]" title={cupChampionLabel}>🏆</span>}
       {allStarSeasons.has(row.season) && !row.isTot && <span className="text-amber-400 text-[9px]" title="All-Star">★</span>}
@@ -157,7 +165,9 @@ export function StatsTable({
             <tr key={`${row.season}-${row.teamAbbrev}-${index}`} className={`border-b transition-colors ${row.isSubRow ? 'border-slate-800/20 hover:bg-slate-800/15 opacity-60' : row.isTot ? 'border-slate-700/60 bg-slate-800/30 hover:bg-slate-800/50' : 'border-slate-800/40 hover:bg-slate-800/25'}`}>
               {cols.map(col => (
                 <td key={col.key} className={`whitespace-nowrap tabular-nums ${col.align === 'right' ? 'text-right' : 'text-left'} ${row.isSubRow ? `px-2 py-1 text-slate-400 ${col.key === 'tm' ? 'pl-4' : ''}` : row.isTot ? `px-2 py-1.5 font-semibold ${col.highlight ? 'text-white' : col.dim ? 'text-slate-400' : 'text-slate-200'}` : `px-2 py-1.5 ${col.highlight ? 'font-bold text-white' : col.dim ? 'text-slate-500' : 'text-slate-300'}`} ${col.key === 'season' ? 'font-semibold text-slate-200' : ''}`}>
-                  {col.key === 'season' ? <SeasonCell row={row} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} cupChampionLabel={cupChampionLabel} /> : col.fmt(row)}
+                  {col.key === 'season' ? (
+                    <SeasonCell row={row} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} cupChampionLabel={cupChampionLabel} />
+                  ) : col.fmt(row)}
                 </td>
               ))}
             </tr>

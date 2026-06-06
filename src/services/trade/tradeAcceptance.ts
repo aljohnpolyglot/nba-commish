@@ -157,6 +157,28 @@ function tvOfItem(
   return 0;
 }
 
+function totalTvWithPickDiminishing(
+  items: Array<{ type: 'player' | 'pick' | 'absorb'; player?: NBAPlayer; pick?: DraftPick }>,
+  receiverMode: TeamMode,
+  teams: NBATeam[],
+  currentYear: number,
+  powerRanks: Map<number, number>,
+  tvContext?: TVContext,
+  classStrengthByYear?: Map<number, number>,
+  lotterySlotByTid?: Map<number, number>,
+): number {
+  const pickScales = [1.0, 0.72, 0.5, 0.35, 0.25, 0.18];
+  const playersTv = items
+    .filter((i): i is { type: 'player'; player: NBAPlayer } => i.type === 'player' && !!i.player)
+    .reduce((sum, i) => sum + tvOfItem(i, receiverMode, teams, currentYear, powerRanks, tvContext, classStrengthByYear, lotterySlotByTid), 0);
+  const picksTv = items
+    .filter((i): i is { type: 'pick'; pick: DraftPick } => i.type === 'pick' && !!i.pick)
+    .map(i => tvOfItem(i, receiverMode, teams, currentYear, powerRanks, tvContext, classStrengthByYear, lotterySlotByTid))
+    .sort((a, b) => b - a)
+    .reduce((sum, tv, idx) => sum + tv * (pickScales[idx] ?? 0.12), 0);
+  return playersTv + picksTv;
+}
+
 export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): AcceptanceResult {
   const {
     fromTid, toTid, fromItems, toItems, teams, currentYear,
@@ -170,8 +192,26 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
 
   // Match engine asymmetry: each side's outgoing assets valued in THEIR mode —
   // a contender values their pick the way a contender would, etc.
-  const offerValue = fromItems.reduce((s, i) => s + tvOfItem(i, fromMode, teams, currentYear, powerRanks, tvContext, classStrengthByYear, lotterySlotByTid), 0);
-  const returnVal = toItems.reduce((s, i) => s + tvOfItem(i, toMode, teams, currentYear, powerRanks, tvContext, classStrengthByYear, lotterySlotByTid), 0);
+  const offerValue = totalTvWithPickDiminishing(
+    fromItems,
+    fromMode,
+    teams,
+    currentYear,
+    powerRanks,
+    tvContext,
+    classStrengthByYear,
+    lotterySlotByTid,
+  );
+  const returnVal = totalTvWithPickDiminishing(
+    toItems,
+    toMode,
+    teams,
+    currentYear,
+    powerRanks,
+    tvContext,
+    classStrengthByYear,
+    lotterySlotByTid,
+  );
 
   if (currentDate && isInPostDeadlinePreFAWindow(currentDate, currentYear, leagueStats as any)) {
     const walkingPlayers = [...fromItems, ...toItems]

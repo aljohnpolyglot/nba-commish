@@ -46,6 +46,10 @@ export function detectType(text: string, type?: string) {
   return 'League Event';
 }
 
+export function normalizePersonnelRoleText(text: string): string {
+  return String(text ?? '').replace(/\bAssistant Coach\s+[23]\b/g, 'Assistant Coach');
+}
+
 export const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React.ReactNode; label: string }> = {
   Draft: { color: 'text-violet-400', bg: 'bg-violet-500/10', icon: <Trophy size={18} />, label: 'Draft' },
   Trade: { color: 'text-blue-400', bg: 'bg-blue-500/10', icon: <ArrowRightLeft size={18} />, label: 'Trade' },

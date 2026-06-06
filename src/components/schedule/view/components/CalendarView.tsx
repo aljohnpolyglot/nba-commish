@@ -8,7 +8,7 @@ import {
   getTrainingCampDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString,
 } from '../../../../utils/dateUtils';
 import { isNoDraftLeague } from '../../../../services/offseason/offseasonState';
-import { isEuroIsolatedMode } from '../../../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../../utils/uiMode';
 import { isEuroVisibleScheduleGame } from '../../../../utils/euroLeagueDefaults';
 import { CalendarMonthGrid } from './CalendarMonthGrid';
 import { CompetitionDetailPanel } from './CompetitionDetailPanel';
@@ -53,6 +53,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   const seasonYear: number = state.leagueStats?.year ?? new Date().getFullYear();
   const euroIsolated = isEuroIsolatedMode(state);
+  const pbaIsolated = isPbaIsolatedMode(state);
   const noDraft = isNoDraftLeague(state.leagueStats);
   useEffect(() => {
     setActiveTab('Calendar');
@@ -60,6 +61,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   const visibleSchedule = euroIsolated
     ? (state.schedule ?? []).filter((g: Game) => isEuroVisibleScheduleGame(state, g))
+    : pbaIsolated
+      ? (state.schedule ?? []).filter((g: Game) =>
+          String((g as any).competitionId ?? '').startsWith('pba-') ||
+          ((g.homeTid >= 2000 && g.homeTid < 2100) && (g.awayTid >= 2000 && g.awayTid < 2100))
+        )
     : (state.schedule ?? []);
 
   // ── Key season dates (all derived from leagueStats with configurable defaults) ─

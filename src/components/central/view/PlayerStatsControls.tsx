@@ -22,6 +22,9 @@ interface PlayerStatsControlsProps {
   setStatType: React.Dispatch<React.SetStateAction<StatType>>;
   phase: Phase;
   setPhase: React.Dispatch<React.SetStateAction<Phase>>;
+  pbaCompetitionFilter?: string;
+  setPbaCompetitionFilter?: React.Dispatch<React.SetStateAction<string>>;
+  pbaCompetitionOptions?: Array<{ id: string; label: string }>;
   perPage: number;
   setPerPage: React.Dispatch<React.SetStateAction<number>>;
   searchTerm: string;
@@ -31,6 +34,7 @@ interface PlayerStatsControlsProps {
   setShowFilters: React.Dispatch<React.SetStateAction<boolean>>;
   brefLoading: boolean;
   euroIsolated: boolean;
+  pbaIsolated: boolean;
   cupShort: string;
 }
 
@@ -49,6 +53,9 @@ export function PlayerStatsControls({
   setStatType,
   phase,
   setPhase,
+  pbaCompetitionFilter,
+  setPbaCompetitionFilter,
+  pbaCompetitionOptions,
   perPage,
   setPerPage,
   searchTerm,
@@ -58,12 +65,15 @@ export function PlayerStatsControls({
   setShowFilters,
   brefLoading,
   euroIsolated,
+  pbaIsolated,
   cupShort,
 }: PlayerStatsControlsProps) {
+  const title = pbaIsolated ? 'PBA Player Stats' : 'Player Stats';
+
   return (
     <div className="shrink-0 px-3 sm:px-4 py-2.5 border-b border-slate-800 bg-slate-950">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">Player Stats</h2>
+        <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">{title}</h2>
         <div className="relative sm:hidden">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" size={13} />
           <input
@@ -141,11 +151,23 @@ export function PlayerStatsControls({
           onChange={e => setPhase(e.target.value as Phase)}
           className="h-7 bg-slate-900 border border-slate-700 text-white text-xs px-1.5 rounded focus:outline-none focus:border-indigo-500 appearance-none"
         >
-          <option value="regular">Reg Season</option>
+          <option value="regular">Regular Season</option>
           <option value="playoffs">Playoffs</option>
           <option value="combined">Combined</option>
-          {!euroIsolated && <option value="cup">{cupShort}</option>}
+          {!euroIsolated && !pbaIsolated && <option value="cup">{cupShort}</option>}
         </select>
+
+        {pbaIsolated && pbaCompetitionFilter && setPbaCompetitionFilter && pbaCompetitionOptions && (
+          <select
+            value={pbaCompetitionFilter}
+            onChange={e => setPbaCompetitionFilter(e.target.value)}
+            className="h-7 bg-slate-900 border border-slate-700 text-white text-xs px-1.5 rounded focus:outline-none focus:border-indigo-500 appearance-none"
+          >
+            {pbaCompetitionOptions.map(option => (
+              <option key={option.id} value={option.id}>{option.label}</option>
+            ))}
+          </select>
+        )}
 
         <select
           value={perPage}

@@ -36,12 +36,12 @@ interface DailyPlan {
   version?: number;
 }
 
-// v4: auto-schedule emits ONLY the Balanced paradigm now, with intensity alone
+// v5: preseason defaults are lighter; auto-schedule emits ONLY the Balanced paradigm, with intensity alone
 // distinguishing pre-game / regular / post-game / post-B2B. Recovery, Biometrics,
 // Offensive, Defensive paradigms are user-only — auto cells always render
 // identically to a user-set Balanced day so the schedule reads as one uniform
 // surface. Bumping the version triggers re-autofill of any older auto-plans.
-export const TRAINING_CALENDAR_VERSION = 4;
+export const TRAINING_CALENDAR_VERSION = 5;
 
 // Allocation presets per paradigm — match DailyPlanModal PARADIGM_TEMPLATES.
 const PRESETS: Record<Paradigm, { intensity: number; allocations: Allocations }> = {
@@ -200,7 +200,7 @@ export function autoGenerateTrainingCalendar(
     if (phase === 'preseason') {
       const dow = d.getUTCDay();
       if (dow === 0) { delete result[iso]; continue; }
-      result[iso] = planFor('Balanced', 60);
+      result[iso] = planFor('Balanced', 40);
       continue;
     }
 

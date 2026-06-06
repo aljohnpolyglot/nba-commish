@@ -8,6 +8,7 @@ import type { TycoonState, SponsorshipSlot } from '../../../../../types/tycoon';
 import { TEAM_ARENAS } from '../../../../../data/arenas';
 import { getArenaForTeam, type ArenaInfo } from '../../../../../utils/arenaData';
 import { ARENA_TABS, type ArenaTab, NBA_ARENA_CAPACITIES } from './arenaSectionConfig';
+import { getTycoonFacilityLevel, getTycoonStadiumCapacity } from '../../../../../services/tycoon/tierBase';
 interface ArenaSectionProps {
   tycoon: TycoonState;
   teamName: string;
@@ -24,20 +25,20 @@ export const ArenaSection: React.FC<ArenaSectionProps> = ({
   const ticketMult = tycoon.ticketPriceMultiplier ?? 1.0;
   const arenaName = TEAM_ARENAS[teamName] ?? `${teamName} Arena`;
   const arenaInfo = getArenaForTeam(teamName);
+  const stadiumLevel = getTycoonFacilityLevel(tycoon.facilities?.stadium);
   const capacity = arenaInfo?.seating_capacity
     ?? NBA_ARENA_CAPACITIES[arenaName]
-    ?? tycoon.facilities.stadium.capacity
-    ?? 18_000;
+    ?? getTycoonStadiumCapacity(tycoon);
   const location = arenaInfo?.arena_location ?? '';
   const openingYear = arenaInfo?.opening_year ?? 0;
   const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
-  const arenaRating = 56 + tycoon.facilities.stadium.level * 9;
+  const arenaRating = 56 + stadiumLevel * 9;
   const revenueEstimate = useMemo(() => {
     const avgTicketPrice = 85 * ticketMult;
     const homeGames = 41;
-    const fillRate = Math.min(1.0, 0.75 + ticketMult * -0.05 + tycoon.facilities.stadium.level * 0.03);
+    const fillRate = Math.min(1.0, 0.75 + ticketMult * -0.05 + stadiumLevel * 0.03);
     return Math.round(avgTicketPrice * capacity * homeGames * fillRate);
-  }, [ticketMult, capacity, tycoon.facilities.stadium.level]);
+  }, [ticketMult, capacity, stadiumLevel]);
   const sponsorships = tycoon.sponsorships ?? {};
   const arenaSponsors = (['court', 'stadium'] as SponsorshipSlot[])
     .map(slot => ({ slot, deal: sponsorships[slot] }))
@@ -79,6 +80,7 @@ export const ArenaSection: React.FC<ArenaSectionProps> = ({
           arenaName={arenaName}
           capacity={capacity}
           arenaRating={arenaRating}
+          stadiumLevel={stadiumLevel}
           tycoon={tycoon}
           revenueEstimate={revenueEstimate}
           fmt={fmt}
@@ -250,9 +252,9 @@ const CourtTab: React.FC<{ teamName: string; teamLogoUrl?: string; teamAbbrev?: 
 );
 const OverviewTab: React.FC<{
   arenaName: string; capacity: number; arenaRating: number;
-  tycoon: TycoonState; revenueEstimate: number; fmt: (v: number) => string;
-}> = ({ arenaName, capacity, arenaRating, tycoon, revenueEstimate, fmt }) => {
-  const level = tycoon.facilities.stadium.level;
+  stadiumLevel: number; tycoon: TycoonState; revenueEstimate: number; fmt: (v: number) => string;
+}> = ({ arenaName, capacity, arenaRating, stadiumLevel, revenueEstimate, fmt }) => {
+  const level = stadiumLevel;
   const attributes: Array<[string, number]> = [
     ['Arena Quality', Math.min(99, arenaRating + 2)],
     ['Attendance Draw', Math.min(99, arenaRating)],

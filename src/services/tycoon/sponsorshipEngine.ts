@@ -1,7 +1,7 @@
 import type { SponsorIndustry, Sponsorship, SponsorshipSlot, TycoonState, TycoonTier } from '../../types/tycoon';
 import { ALL_SLOTS } from '../../types/tycoon';
-import { TIER_BASE } from './specs/spain';
 import { pickSponsorName as pickSponsorNameFromCatalog } from '../../data/sponsorCatalogFetcher';
+import { getSafeTycoonTier, getTycoonFacilityLevel, getTycoonTierBase } from './tierBase';
 
 export interface SuccessHistory {
   recentEndesaPositions: number[];
@@ -117,9 +117,9 @@ function objectiveSuccessScore(h: SuccessHistory): number {
 }
 
 export function sponsorFloor(state: TycoonState, slot: SponsorshipSlot, history: SuccessHistory): number {
-  const tb = TIER_BASE[state.tier];
+  const tb = getTycoonTierBase(state.tier);
   const baseFloor = tb.sponsorshipFloor[slot] ?? 0;
-  const stadiumLevel = Math.max(1, state.facilities?.stadium?.level ?? 1);
+  const stadiumLevel = getTycoonFacilityLevel(state.facilities?.stadium);
   const stadiumBonus = 0.10 * (stadiumLevel - 1);
   const successBonus = 0.15 * objectiveSuccessScore(history);
   const cityBonus = 0.20 * (state.cityPrestige ?? 0.5);
@@ -140,7 +140,8 @@ export function getMarketOffer(
   const noise = 0.95 + Math.random() * 0.10;
 
   const floor = sponsorFloor(state, slot, history);
-  const sponsor = overrideSponsor ?? existing?.sponsor ?? pickSponsorName(state.tier, slot, null);
+  const tier = getSafeTycoonTier(state.tier);
+  const sponsor = overrideSponsor ?? existing?.sponsor ?? pickSponsorName(tier, slot, null);
   const sponsorProfile = classifySponsor(sponsor);
   const archetypeMultiplier = sponsorProfile.archetype === 'gambling' ? 1.22
     : sponsorProfile.archetype === 'premium' ? 1.12
@@ -222,7 +223,8 @@ export function computeBrandImpact(offer: SponsorshipOffer, state: TycoonState):
   const prestige = state.cityPrestige ?? 0.5;
   const yearly = offer.valuePerYear;
   const reach: BrandImpact['reach'] = yearly > 2_000_000 || prestige > 0.8 ? 'Worldwide' : yearly > 500_000 || prestige > 0.45 ? 'Regional' : 'Local';
-  const tierBoost = state.tier === 'S' ? 20 : state.tier === 'A' ? 14 : state.tier === 'B' ? 9 : state.tier === 'C' ? 5 : 2;
+  const tier = getSafeTycoonTier(state.tier);
+  const tierBoost = tier === 'S' ? 20 : tier === 'A' ? 14 : tier === 'B' ? 9 : tier === 'C' ? 5 : 2;
   return {
     reach,
     globalAppeal: Math.min(100, Math.round(prestige * 70 + tierBoost)),
@@ -268,12 +270,13 @@ export function seedInitialSponsorships(
   currentYear: number,
   cityPrestige?: number,
 ): TycoonState['sponsorships'] {
-  const tb = TIER_BASE[tier];
+  const safeTier = getSafeTycoonTier(tier);
+  const tb = getTycoonTierBase(safeTier);
   const scale = 0.5 + (cityPrestige ?? 0.5) * 0.9;
   const make = (slot: SponsorshipSlot): Sponsorship => {
     const floor = tb.sponsorshipFloor[slot] ?? 0;
     const value = Math.round(floor * scale * (0.9 + Math.random() * 0.3));
-    const sponsor = pickSponsorName(tier, slot, null);
+    const sponsor = pickSponsorName(safeTier, slot, null);
     return {
       sponsor,
       ...classifySponsor(sponsor),

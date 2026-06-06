@@ -16,7 +16,7 @@ export function SigningModalOverLimitOverlay({
 }: OverLimitOverlayProps): ReactElement {
   return (
     <OverlayShell borderClass="border-amber-500/40">
-      <div className="p-8 w-full flex flex-col items-center">
+      <div className="p-5 sm:p-8 w-full flex flex-col items-center">
         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-300 mb-2">Roster Limit</p>
         <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-white">15/15 Guaranteed</h2>
         <p className="text-white/80 italic mb-8 leading-relaxed text-sm">
@@ -70,13 +70,13 @@ export function SigningModalCapWarningOverlay({
 }: CapWarningOverlayProps): ReactElement {
   return (
     <OverlayShell borderClass="border-rose-500/40">
-      <div className="w-full bg-gradient-to-b from-rose-600/20 to-transparent p-8">
+      <div className="w-full bg-gradient-to-b from-rose-600/20 to-transparent p-5 sm:p-8">
         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-rose-300 mb-2">Cap Violation</p>
         <h2 className="text-2xl font-black italic uppercase tracking-wider text-rose-400">
           Not Possible Under Salary Cap
         </h2>
       </div>
-      <div className="px-8 pb-8 w-full flex flex-col items-center">
+      <div className="px-5 sm:px-8 pb-5 sm:pb-8 w-full flex flex-col items-center">
         <p className="text-white/80 italic mb-4 leading-relaxed text-sm">
           Signing {player.name} at {moneyPrecise(salary, 2)} takes the {team.name} to {money(projectedPayroll)} — {money(overBy)} over the cap, with no MLE or Bird Rights to cover it.
         </p>
@@ -128,13 +128,13 @@ export function SigningModalPendingCashOverlay({
 }: PendingCashOverlayProps): ReactElement {
   return (
     <OverlayShell borderClass="border-amber-500/40">
-      <div className="w-full bg-gradient-to-b from-amber-600/20 to-transparent p-8">
+      <div className="w-full bg-gradient-to-b from-amber-600/20 to-transparent p-5 sm:p-8">
         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-300 mb-2">Owner Notice</p>
         <h2 className="text-2xl font-black italic uppercase tracking-wider text-amber-300">
           Deal Runs Cash Negative
         </h2>
       </div>
-      <div className="px-8 pb-8 w-full flex flex-col items-center">
+      <div className="px-5 sm:px-8 pb-5 sm:pb-8 w-full flex flex-col items-center">
         <p className="text-white/80 italic mb-3 leading-relaxed text-sm">
           Signing {player.name} projects year-end cash <span className="text-amber-300 font-black">{moneyPrecise(Math.abs(deficit), 2)}</span> below zero.
         </p>
@@ -190,11 +190,11 @@ export function SigningModalRosterFullOverlay({
 
   return (
     <OverlayShell borderClass="border-rose-500/30">
-      <div className="w-full h-48 bg-[#050505] relative flex items-end justify-center pt-8 border-b border-white/5">
+      <div className="w-full h-40 sm:h-48 bg-[#050505] relative flex items-end justify-center pt-6 sm:pt-8 border-b border-white/5">
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-20 pointer-events-none" />
         {team.logoUrl && <img src={team.logoUrl} className="h-32 object-contain z-10" alt={team.name} referrerPolicy="no-referrer" />}
       </div>
-      <div className="p-8 w-full flex flex-col items-center relative z-20">
+      <div className="p-5 sm:p-8 w-full flex flex-col items-center relative z-20">
         <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-rose-400">Roster Full</h2>
         <p className="text-white/80 italic mb-2 leading-relaxed text-sm">
           {isCamp
@@ -253,11 +253,11 @@ export function SigningModalPreflightOverlay({
 
   return (
     <OverlayShell>
-      <div className="w-full h-48 bg-[#050505] relative flex items-end justify-center pt-8 border-b border-white/5">
+      <div className="w-full h-40 sm:h-48 bg-[#050505] relative flex items-end justify-center pt-6 sm:pt-8 border-b border-white/5">
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-20 pointer-events-none" />
         <PlayerThumb player={player} playerFace={playerFace} portraitFallback={portraitFallback} teamColors={teamColors} />
       </div>
-      <div className="p-8 w-full flex flex-col items-center relative z-20">
+      <div className="p-5 sm:p-8 w-full flex flex-col items-center relative z-20">
         <h2 className={`text-2xl font-black italic uppercase tracking-wider mb-4 ${toneColor}`}>
           {preflightMessage.title}
         </h2>
@@ -285,4 +285,3 @@ export function SigningModalPreflightOverlay({
     </OverlayShell>
   );
 }
-

@@ -18,6 +18,9 @@ export interface FoundOffer {
   outlook: TradeOutlook;
   strategyLabel?: string;
   variant?: 'match' | 'dump' | 'absorb';
+  cbaValid?: boolean;
+  cbaReason?: string;
+  cbaOffendingSide?: 'A' | 'B';
 }
 
 export interface ManageTradeState {

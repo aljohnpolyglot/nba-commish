@@ -180,6 +180,7 @@ export function toRow(
   return {
     player,
     season: seasonLabel,
+    seasonLabel: (rawStat as any)._seasonLabel,
     teamAbbrev,
     age,
     gp: rawStat.gp,

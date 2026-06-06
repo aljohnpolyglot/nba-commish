@@ -1,5 +1,15 @@
 import type { GameState, NBATeam, NonNBATeam, SetupTierLabel, StaffMember } from '../../types';
 import { seedStaffSix } from './staffSeed';
+import { getNewgenPortraitUrl, getRegenPortraitUrl } from '../../utils/newgenPortrait';
+
+type StaffPoolMember = StaffMember & {
+  id: string;
+  reputation?: number;
+  leagueId: string;
+  formerTeam?: string;
+  formerTeamLogoUrl?: string;
+  formerRole?: string;
+};
 
 /** All staff positions the FA pool tracks. Must match StaffSection role names. */
 export const STAFF_POSITIONS = [
@@ -19,8 +29,11 @@ export const MIN_FA_DEPTH_PER_POSITION = 10;
 const LEAGUE_TID_RANGES: Record<string, [number, number]> = {
   nba: [0, 100],
   euroleague: [1000, 1100],
+  pba: [2000, 2100],
   endesa: [5000, 5100],
   wnba: [3000, 3100],
+  bleague: [4000, 4100],
+  gleague: [6000, 6100],
   chinacba: [7000, 7100],
   nblaus: [8000, 8100],
 };
@@ -28,8 +41,13 @@ const LEAGUE_TID_RANGES: Record<string, [number, number]> = {
 export function inferEuroStaffLeagueId(teamId: number): string {
   if (teamId >= 0 && teamId < 100) return 'nba';
   if (teamId >= 1000 && teamId < 1100) return 'euroleague';
+  if (teamId >= 2000 && teamId < 2100) return 'pba';
+  if (teamId >= 4000 && teamId < 4100) return 'bleague';
   if (teamId >= 5000 && teamId < 5100) return 'endesa';
-  return 'endesa';
+  if (teamId >= 6000 && teamId < 6100) return 'gleague';
+  if (teamId >= 7000 && teamId < 7100) return 'chinacba';
+  if (teamId >= 8000 && teamId < 8100) return 'nblaus';
+  return 'nba';
 }
 
 export function normalizeStaffPoolRole(role: string | undefined | null): string {
@@ -80,14 +98,27 @@ function toTeamStub(team: NonNBATeam): NBATeam {
   };
 }
 
-function freeAgentize(member: StaffMember & { reputation?: number }, id: string, leagueId: string): StaffMember & { id: string; reputation?: number; leagueId: string } {
+function resolvePoolPortrait(member: StaffMember & { reputation?: number }, id: string, leagueId: string): string | undefined {
+  if (member.playerPortraitUrl) return member.playerPortraitUrl;
+  const nationality = String(member.nationality ?? '');
+  if (leagueId === 'pba' || nationality.toLowerCase().includes('philippines')) {
+    return getRegenPortraitUrl(`${id}-${member.name ?? ''}`, 'asian', { nationality: 'Philippines' })
+      ?? getNewgenPortraitUrl(`${id}-${member.name ?? ''}`, 'male');
+  }
+  return undefined;
+}
+
+function freeAgentize(member: StaffMember & { reputation?: number }, id: string, leagueId: string): StaffPoolMember {
   return {
     ...member,
     id,
     leagueId,
+    formerTeam: member.team ?? (member as any).formerTeam ?? '',
+    formerTeamLogoUrl: member.teamLogoUrl ?? (member as any).formerTeamLogoUrl,
+    formerRole: member.role ?? member.position ?? member.jobTitle ?? (member as any).formerRole,
     team: '',
     teamLogoUrl: undefined,
-    playerPortraitUrl: undefined,
+    playerPortraitUrl: resolvePoolPortrait(member, id, leagueId),
     isPlaceholder: true,
   };
 }
@@ -96,7 +127,7 @@ export function toStaffFreeAgent(
   member: StaffMember & { reputation?: number },
   leagueId: string,
   id: string,
-): StaffMember & { id: string; reputation?: number; leagueId: string } {
+): StaffPoolMember {
   const poolRole = normalizeStaffPoolRole((member as any).role ?? member.position ?? member.jobTitle);
   return freeAgentize(
     {

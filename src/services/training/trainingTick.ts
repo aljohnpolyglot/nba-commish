@@ -29,6 +29,7 @@ import { defensiveSystemDescriptions } from '../../utils/defensiveSystemDescript
 import { getAICoachPlanForDay } from './aiCoachParadigm';
 import { resolveEffectiveTrainingPlan } from './trainingPlanResolver';
 import type { Game } from '../../types';
+import { normalizeDate } from '../../utils/helpers';
 import {
   getTeamCoachingGameplayEffects,
   getTeamMedicalGameplayEffects,
@@ -387,13 +388,20 @@ function recentMinutesFatigueScale(mpg: number): number {
 export function tickPlayerFatigue(
   player: NBAPlayer,
   team: NBATeam | undefined,
-  iso: string
+  iso: string,
+  hasGameToday = false,
 ): NBAPlayer {
   const plan = team ? resolveEffectiveTrainingPlan(team, iso) : null;
+  const current = Math.max(0, Math.min(100, Number(player.trainingFatigue ?? 0)));
   const indMult = INDIVIDUAL_INTENSITY_MULT[player.trainingIntensity ?? 'Normal'] ?? 1.0;
   const recoveryMultiplier = team
     ? getTeamMedicalGameplayEffects(team as any).recoveryMultiplier
     : 1.0;
+  const injuryGamesRemaining = Math.max(0, Number((player as any).injury?.gamesRemaining ?? 0));
+  const month = Number(iso.slice(5, 7));
+  const day = Number(iso.slice(8, 10));
+  const isTrainingCampWindow = month === 8 || month === 9;
+  const isPreseasonWindow = month === 10 && day <= 23;
 
   // Modern NBA sport-science calibration: pro recovery teams (cryo, hyperbaric,
   // film/load monitoring, individualized nutrition) keep elite athletes fresh
@@ -402,20 +410,45 @@ export function tickPlayerFatigue(
   // 20–40 fatigue band most of the season unless GM consistently overrides to
   // Double. Future @NEW_FEATURES.md "Coaching / Training Dev staff" tier should
   // add team-level recovery multipliers on top of these baselines.
+  const recoveryDelta = (base: number) => {
+    const highFatigueRelief = Math.max(0, current - 35) * 0.11;
+    return base - highFatigueRelief;
+  };
+
   let delta: number;
-  if (!plan) {
+  if (injuryGamesRemaining > 0) {
+    // Injured players should rehab/recover, not keep stacking practice wear as
+    // if they were available. Longer layoffs clear fatigue a bit faster.
+    delta = recoveryDelta(injuryGamesRemaining >= 10 ? -6.5 : -5.5);
+  } else if (!plan) {
     // No training scheduled (offseason / FA / trade deadline / Sunday). Strong recovery.
-    delta = -5.0;
+    delta = recoveryDelta(-6.5);
   } else if ((player.trainingIntensity ?? 'Normal') === 'Rest') {
-    delta = -3.0;
+    delta = recoveryDelta(-6.0);
   } else if (plan.paradigm === 'Recovery') {
-    delta = -4.0;
+    delta = recoveryDelta(-6.0);
+  } else if (hasGameToday) {
+    // Game-day load is handled by the sim and travel processors. Positive
+    // training fatigue on top of that was double-counting normal NBA days.
+    delta = isPreseasonWindow ? recoveryDelta(-2.5) : 0;
   } else {
     // Training day. Fatigue gain ∝ intensity × paradigm load × individual setting.
-    // Base lowered from 2.5 → 1.5 — modern teams don't burn out from drills.
-    const base = (plan.intensity ?? 50) / 50; // 0 → 0, 50 → 1, 100 → 2
-    const paradigmLoad = plan.paradigm === 'Biometrics' ? 1.3 : 1.0;
-    delta = 1.5 * base * paradigmLoad * indMult;
+    // Regular-season non-game work should be close to maintenance, not a steady
+    // march toward 100 fatigue. Training-camp still carries more load.
+    const intensity = Number(plan.intensity ?? 50);
+    if (intensity <= 25) {
+      delta = recoveryDelta(-5.5);
+    } else if (intensity <= 40) {
+      delta = recoveryDelta(-3.5);
+    } else if (isPreseasonWindow && intensity <= 60) {
+      delta = recoveryDelta(-2.0);
+    } else {
+      const baseScale = isTrainingCampWindow ? 0.35 : 0.22;
+      const base = intensity / 50; // 0 → 0, 50 → 1, 100 → 2
+      const paradigmLoad = plan.paradigm === 'Biometrics' ? 1.3 : 1.0;
+      delta = baseScale * base * paradigmLoad * indMult;
+      if (current > 55) delta -= (current - 55) * 0.08;
+    }
   }
 
   // Bench-player exemption — only scales positive deltas (fatigue gain).
@@ -425,7 +458,6 @@ export function tickPlayerFatigue(
     delta *= recoveryMultiplier;
   }
 
-  const current = player.trainingFatigue ?? 0;
   const next = Math.max(0, Math.min(100, current + delta));
   if (Math.abs(next - current) < 0.05) return player;
   return { ...player, trainingFatigue: next };
@@ -435,7 +467,8 @@ export function applyDailyFatigueTick(
   players: NBAPlayer[],
   teams: NBATeam[],
   startDate: string,
-  daysToAdvance: number
+  daysToAdvance: number,
+  schedule?: Game[],
 ): NBAPlayer[] {
   if (daysToAdvance <= 0) return players;
   const start = new Date(startDate);
@@ -443,6 +476,17 @@ export function applyDailyFatigueTick(
 
   const teamById = new Map<number, NBATeam>();
   for (const t of teams) teamById.set(t.id, t);
+  const teamGameDates = new Map<number, Set<string>>();
+  for (const game of schedule ?? []) {
+    const iso = normalizeDate(String(game.date ?? ''));
+    if (!iso) continue;
+    for (const tid of [game.homeTid, game.awayTid]) {
+      if (typeof tid !== 'number') continue;
+      const dates = teamGameDates.get(tid);
+      if (dates) dates.add(iso);
+      else teamGameDates.set(tid, new Set([iso]));
+    }
+  }
 
   let working = players;
   for (let i = 0; i < daysToAdvance; i++) {
@@ -451,7 +495,8 @@ export function applyDailyFatigueTick(
     const iso = d.toISOString().slice(0, 10);
     working = working.map(p => {
       if (p.status && p.status !== 'Active') return p;
-      return tickPlayerFatigue(p, teamById.get(p.tid), iso);
+      const hasGameToday = teamGameDates.get(p.tid)?.has(iso) ?? false;
+      return tickPlayerFatigue(p, teamById.get(p.tid), iso, hasGameToday);
     });
   }
   return working;

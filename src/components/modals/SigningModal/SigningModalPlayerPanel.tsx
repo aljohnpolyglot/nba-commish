@@ -58,11 +58,11 @@ export default function SigningModalPlayerPanel({
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.07]" />
       <div className="absolute bottom-0 left-0 right-0 h-2/3 bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none z-10" />
 
-      <div className="relative z-20 pt-8 px-8 pb-0">
+      <div className="relative z-20 pt-5 sm:pt-8 px-4 sm:px-8 pb-0">
         <span className="text-[9px] font-black text-[#e21d37] uppercase tracking-[0.4em] block mb-2">
           Prospective Signee
         </span>
-        <h2 className="text-4xl xl:text-5xl font-black italic uppercase tracking-tighter leading-[0.88] text-white drop-shadow-2xl">
+        <h2 className="text-3xl sm:text-4xl xl:text-5xl font-black italic uppercase tracking-tighter leading-[0.88] text-white drop-shadow-2xl break-words">
           {player.name}
         </h2>
         {limits.maxPct >= 0.3 && (
@@ -116,7 +116,7 @@ export default function SigningModalPlayerPanel({
           )}
         </AnimatePresence>
 
-        <div className="relative z-20 w-full px-6 pb-8 flex justify-center gap-2 items-end">
+        <div className="relative z-20 w-full px-4 sm:px-6 pb-5 sm:pb-8 flex justify-center gap-2 items-end">
           {[
             (() => {
               const lastR = (player as any).ratings?.[(player as any).ratings?.length - 1];

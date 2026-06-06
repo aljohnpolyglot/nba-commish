@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { SaveManager, SaveMetadata } from '../services/SaveManager';
-import { Play, Upload, Download, Trash2, FolderOpen, Plus, Settings2, Trophy, Zap } from 'lucide-react';
+import { Play, Upload, Download, Trash2, FolderOpen, Plus, Settings2, Trophy, Zap, Target, Sparkles, CircleDot } from 'lucide-react';
 import { useGame } from '../store/GameContext';
 import { SettingsModal } from './modals/SettingsModal';
 
 interface MainMenuProps {
   onStartNew: () => void;
   onLoadSave: (state: any) => void;
-  onPlayMiniGame?: (game: 'throne' | 'dunk' | '3point') => void;
+  onPlayMiniGame?: (game: 'throne' | 'dunk' | '3point' | 'shooting-stars' | 'skills' | 'horse') => void;
 }
 
 export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPlayMiniGame }) => {
@@ -75,14 +75,15 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPl
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-slate-200">
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      {/* Settings button — top right */}
-      <button
-        onClick={() => setSettingsOpen(true)}
-        className="fixed top-4 right-4 p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-600 text-slate-500 hover:text-white transition-all"
-        title="Settings"
-      >
-        <Settings2 size={18} />
-      </button>
+      <div className="fixed right-4 top-4 z-20 flex items-start gap-2">
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-600 text-slate-500 hover:text-white transition-all"
+          title="Settings"
+        >
+          <Settings2 size={18} />
+        </button>
+      </div>
 
       <div className="max-w-4xl w-full">
         <div className="text-center mb-12">
@@ -172,6 +173,45 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPl
                   <div className="text-left">
                     <h4 className="font-bold text-white text-sm">3-Point Contest</h4>
                     <p className="text-slate-400 text-xs">Pick your shooters</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => onPlayMiniGame?.('shooting-stars')}
+                className="w-full flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 hover:border-sky-500/50 hover:bg-slate-800 rounded-xl transition-all group mt-2"
+              >
+                <div className="flex items-center gap-3">
+                  <Sparkles size={20} className="text-sky-500 group-hover:text-sky-400" />
+                  <div className="text-left">
+                    <h4 className="font-bold text-white text-sm">Shooting Stars</h4>
+                    <p className="text-slate-400 text-xs">Build your teams</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => onPlayMiniGame?.('skills')}
+                className="w-full flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 hover:border-orange-500/50 hover:bg-slate-800 rounded-xl transition-all group mt-2"
+              >
+                <div className="flex items-center gap-3">
+                  <Target size={20} className="text-orange-500 group-hover:text-orange-400" />
+                  <div className="text-left">
+                    <h4 className="font-bold text-white text-sm">Skills Challenge</h4>
+                    <p className="text-slate-400 text-xs">Pick your competitors</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => onPlayMiniGame?.('horse')}
+                className="w-full flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 hover:border-yellow-500/50 hover:bg-slate-800 rounded-xl transition-all group mt-2"
+              >
+                <div className="flex items-center gap-3">
+                  <CircleDot size={20} className="text-yellow-500 group-hover:text-yellow-400" />
+                  <div className="text-left">
+                    <h4 className="font-bold text-white text-sm">H-O-R-S-E</h4>
+                    <p className="text-slate-400 text-xs">Pick your shot-makers</p>
                   </div>
                 </div>
               </button>

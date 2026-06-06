@@ -88,8 +88,11 @@ export interface LeagueStats {
   autoOwnerSeeded?: boolean;
   euroPayrollScaleHealed?: boolean;
   staffPoolSeeded?: boolean;
+  historyIdentityMigrationVersion?: number;
   pbaConference?: 'philippine' | 'commissioners' | 'governors';
   pbaConferencePhase?: 'setup' | 'regularSeason' | 'playoffs' | 'complete' | 'offseason';
+  pbaYearEndRolloverPreparedSeason?: number;
+  pbaLocalEligibilityMode?: 'registered_roster' | 'filipino_only';
   pbaDraftComplete?: boolean;
   pbaOpeningWatched?: boolean;
   pbaMuseSelected?: boolean;
@@ -306,6 +309,8 @@ export interface LeagueStats {
   allStarSkillsChallengeTotalPlayers?: number;
   allStarHorse?: boolean;
   allStarHorseParticipants?: number;
+  allStarHorseNoPlayerRepeat?: boolean;
+  allStarHorseNoGlobalRepeat?: boolean;
   allStarOneOnOneEnabled?: boolean;
   allStarOneOnOneParticipants?: number;
   allStarThroneEnabled?: boolean;

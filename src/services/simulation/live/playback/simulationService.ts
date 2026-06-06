@@ -128,6 +128,68 @@ function clampScoresToFinal(lines: PlayLine[], homeFinal: number, awayFinal: num
   });
 }
 
+function injectLiveEvents(
+  lines: PlayLine[],
+  finalResult: GameResult | undefined,
+  homePool: PlayerPool[],
+  awayPool: PlayerPool[],
+  timingConfig: GameTimingConfig,
+): PlayLine[] {
+  if (!finalResult?.liveEvents || finalResult.liveEvents.length === 0) return lines;
+
+  const withEvents = [...lines];
+  const lookupPlayer = (id: string | undefined, team: TeamId, fallbackName: string): PlayerPool => {
+    const pool = team === 'HOME' ? homePool : awayPool;
+    return pool.find(p => p.id === id)
+      ?? pool.find(p => p.n === fallbackName)
+      ?? {
+        n: fallbackName,
+        fn: fallbackName,
+        id: id ?? `event-${fallbackName}`,
+        imgURL: '',
+        tm: team,
+        min: 0,
+        pos: 'F',
+        fg2: 0, fg3: 0, fg4: 0, m2: 0, m3: 0, m4: 0,
+        ftm: 0, ftmiss: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0,
+      };
+  };
+
+  for (const event of finalResult.liveEvents) {
+    const team = event.team;
+    const anchorIndex = withEvents.findIndex(
+      line => line.q === event.quarter && (line.gs ?? Number.POSITIVE_INFINITY) >= event.gs,
+    );
+    const insertAt = anchorIndex === -1 ? withEvents.length - 1 : Math.max(1, anchorIndex);
+    const prev = withEvents[Math.max(0, insertAt - 1)];
+    const lineupHOME = prev?.lineupHOME ?? RotationService.getLineupAtTime(homePool, event.gs, 0);
+    const lineupAWAY = prev?.lineupAWAY ?? RotationService.getLineupAtTime(awayPool, event.gs, 0);
+    const scoreHome = typeof prev?.cs === 'number' ? prev.cs : 0;
+    const scoreAway = typeof prev?.ds === 'number' ? prev.ds : 0;
+    const period = getPeriodLabel(event.quarter, timingConfig.numQuarters);
+    withEvents.splice(insertAt, 0, {
+      id: makeId(`${event.kind}-${event.playerId ?? event.playerName}`),
+      tm: team,
+      period,
+      q: event.quarter,
+      clock: event.clock,
+      time: `${period} ${event.clock}`,
+      gs: event.gs,
+      pts: 0,
+      desc: event.description,
+      type: event.kind,
+      player: lookupPlayer(event.playerId, team, event.playerName),
+      cs: scoreHome,
+      ds: scoreAway,
+      possession: prev?.possession ?? team,
+      lineupHOME,
+      lineupAWAY,
+    });
+  }
+
+  return withEvents.sort((a, b) => (a.gs ?? 0) - (b.gs ?? 0));
+}
+
 export async function genPlays(
   homeStats: PlayerGameStats[],
   awayStats: PlayerGameStats[],
@@ -137,7 +199,8 @@ export async function genPlays(
   gameWinner?: GameResult['gameWinner'],
   homeTeamName?: string,
   awayTeamName?: string,
-  timingConfig: GameTimingConfig = getGameTimingConfig()
+  timingConfig: GameTimingConfig = getGameTimingConfig(),
+  finalResult?: GameResult,
 ): Promise<PlayLine[]> {
   const homePool = initPool(homeStats, players, 'HOME');
   const awayPool = initPool(awayStats, players, 'AWAY');
@@ -430,7 +493,8 @@ export async function genPlays(
     }
   }
 
-  return clampScoresToFinal(allLines, expectedHomeFinal, expectedAwayFinal);
+  const withLiveEvents = injectLiveEvents(allLines, finalResult, homePool, awayPool, timingConfig);
+  return clampScoresToFinal(withLiveEvents, expectedHomeFinal, expectedAwayFinal);
 }
 
 function buildGameWinnerDesc(

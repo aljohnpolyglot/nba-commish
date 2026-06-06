@@ -1,6 +1,33 @@
 import type { GameState } from '../../../types';
+import {
+  backfillPbaAllStarAwards,
+  buildPbaAllStarPatch,
+  buildPbaContestPatch,
+} from '../../pba/allStar';
+
+const skipIsolatedNonNbaAllStar = (state: GameState) =>
+  state.leagueStats?.uiMode === 'euro_isolated';
+
+const buildPbaAllStarSelection = async (state: GameState): Promise<Partial<GameState>> => {
+  return buildPbaAllStarPatch(state, state.players) ?? {};
+};
+
+const buildPbaContestSelection = async (state: GameState): Promise<Partial<GameState>> => {
+  const basePatch: Partial<Pick<GameState, 'players' | 'allStar'>> = state.allStar?.reservesAnnounced
+    ? {}
+    : buildPbaAllStarPatch(state, state.players) ?? {};
+  const players = basePatch.players ?? state.players;
+  const allStar = (basePatch.allStar ?? state.allStar) as any;
+  if (!allStar?.reservesAnnounced) return basePatch;
+  return {
+    ...basePatch,
+    allStar: buildPbaContestPatch({ ...state, players, allStar } as GameState, players, allStar),
+  };
+};
 
 export const autoSimVotes = async (state: GameState): Promise<Partial<GameState>> => {
+  if (state.leagueStats?.uiMode === 'pba_isolated') return buildPbaAllStarSelection(state);
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   if ((state.allStar?.votes?.length ?? 0) > 0) return {};
   try {
     const { getAllStarWeekendDates } = await import('../../allStar/AllStarWeekendOrchestrator');
@@ -34,6 +61,8 @@ export const autoSimVotes = async (state: GameState): Promise<Partial<GameState>
 };
 
 export const autoAnnounceStarters = async (state: GameState): Promise<Partial<GameState>> => {
+  if (state.leagueStats?.uiMode === 'pba_isolated') return buildPbaAllStarSelection(state);
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   if (state.allStar?.startersAnnounced) return {};
   try {
     const { AllStarSelectionService, bucketRoster } = await import('../../allStar/AllStarSelectionService');
@@ -62,6 +91,8 @@ export const autoAnnounceStarters = async (state: GameState): Promise<Partial<Ga
 };
 
 export const autoAnnounceReserves = async (state: GameState): Promise<Partial<GameState>> => {
+  if (state.leagueStats?.uiMode === 'pba_isolated') return buildPbaAllStarSelection(state);
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   if (state.allStar?.reservesAnnounced) return {};
   try {
     const { AllStarSelectionService, bucketRoster } = await import('../../allStar/AllStarSelectionService');
@@ -151,6 +182,8 @@ export const autoAnnounceReserves = async (state: GameState): Promise<Partial<Ga
 };
 
 export const autoSelectDunkContestants = async (state: GameState): Promise<Partial<GameState>> => {
+  if (state.leagueStats?.uiMode === 'pba_isolated') return buildPbaContestSelection(state);
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   if (state.allStar?.dunkContestAnnounced) return {};
   try {
     const { AllStarDunkContestSim } = await import('../../allStar/AllStarDunkContestSim');
@@ -170,6 +203,8 @@ export const autoSelectDunkContestants = async (state: GameState): Promise<Parti
 };
 
 export const autoSelectThreePointContestants = async (state: GameState): Promise<Partial<GameState>> => {
+  if (state.leagueStats?.uiMode === 'pba_isolated') return buildPbaContestSelection(state);
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   if (state.allStar?.threePointAnnounced) return {};
   try {
     const { AllStarThreePointContestSim } = await import('../../allStar/AllStarThreePointContestSim');
@@ -193,6 +228,8 @@ export const autoSelectThreePointContestants = async (state: GameState): Promise
 };
 
 export const autoSelectShootingStarsContestants = async (state: GameState): Promise<Partial<GameState>> => {
+  if (state.leagueStats?.uiMode === 'pba_isolated') return {};
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   if (state.leagueStats.allStarShootingStars === false) return {};
   if ((state.allStar as any)?.shootingStarsAnnounced) return {};
   try {
@@ -215,6 +252,8 @@ export const autoSelectShootingStarsContestants = async (state: GameState): Prom
 };
 
 export const autoSelectSkillsChallengeContestants = async (state: GameState): Promise<Partial<GameState>> => {
+  if (state.leagueStats?.uiMode === 'pba_isolated') return buildPbaContestSelection(state);
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   if (state.leagueStats.allStarSkillsChallenge !== true) return {};
   if ((state.allStar as any)?.skillsChallengeAnnounced) return {};
   try {
@@ -234,7 +273,33 @@ export const autoSelectSkillsChallengeContestants = async (state: GameState): Pr
   }
 };
 
+export const autoSelectHorseContestants = async (state: GameState): Promise<Partial<GameState>> => {
+  if (state.leagueStats?.uiMode === 'pba_isolated') return {};
+  if (skipIsolatedNonNbaAllStar(state)) return {};
+  if (state.leagueStats.allStarHorse !== true) return {};
+  if ((state.allStar as any)?.horseAnnounced) return {};
+  try {
+    const { AllStarHorseSim } = await import('../../allStar/AllStarHorseSim');
+    const num = Math.min(10, Math.max(3, Math.round(state.leagueStats.allStarHorseParticipants ?? 3)));
+    const contestants = AllStarHorseSim.selectContestants(state.players, state.leagueStats.year, num, state.teams);
+    return {
+      allStar: {
+        ...(state.allStar as any),
+        horseContestants: contestants,
+        horseAnnounced: true,
+      },
+    };
+  } catch (err) {
+    console.warn('autoSelectHorseContestants failed:', err);
+    return {};
+  }
+};
+
 export function backfillAllStarAwards(state: GameState): Partial<GameState> {
+  if (state.leagueStats?.uiMode === 'pba_isolated') {
+    return { players: backfillPbaAllStarAwards(state, state.players, state.allStar) };
+  }
+  if (skipIsolatedNonNbaAllStar(state)) return {};
   const allStarData = state.allStar as any;
   const year = state.leagueStats.year;
   const entries: Array<{ internalId?: string; name?: string; awardType: string }> = [];
@@ -250,6 +315,8 @@ export function backfillAllStarAwards(state: GameState): Partial<GameState> {
   }
   if (allStarData?.skillsChallenge?.winnerId || allStarData?.skillsChallenge?.winnerName)
     entries.push({ internalId: allStarData.skillsChallenge.winnerId, name: allStarData.skillsChallenge.winnerName, awardType: 'Skills Challenge Winner' });
+  if (allStarData?.horseTournament?.winnerId || allStarData?.horseTournament?.winnerName)
+    entries.push({ internalId: allStarData.horseTournament.winnerId, name: allStarData.horseTournament.winnerName, awardType: 'H-O-R-S-E Winner' });
   if (allStarData?.gameMvp?.name)
     entries.push({ name: allStarData.gameMvp.name, awardType: 'All-Star Game MVP' });
   if (allStarData?.throne?.champion?.playerId)

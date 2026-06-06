@@ -1,6 +1,7 @@
 import { Game, LeagueStats, NBATeam as Team, NBAPlayer as Player } from '../../../types';
 import { getLockedStrategy } from '../../../store/coachStrategyLockStore';
 import { resolveExhibitionRules } from '../../allStar/exhibitionRules';
+import { getFourPointDistance } from '../../../utils/ruleFlags';
 import {
   KNOBS_ALL_STAR,
   KNOBS_BLEAGUE,
@@ -94,42 +95,54 @@ function externalCompetitionKnobsForTid(tid: number, leagueStats?: Partial<Leagu
   if (isEuroClubCompetition) {
     return KNOBS_EURO_CLUB_COMPETITION;
   }
+  const isPbaTeam = tid >= 2000 && tid < 3000;
+  const fourPointAvailable = isPbaTeam ? (leagueStats?.fourPointLine ?? true) : undefined;
   return {
     ...externalKnobsForTid(tid),
     quarterLength: leagueStats?.quarterLength ?? 12,
     numQuarters: leagueStats?.numQuarters ?? 4,
+    ...(isPbaTeam
+      ? {
+          fourPointAvailable,
+          fourPointRateMult: fourPointAvailable ? Math.max(0.55, Math.min(1.25, Math.pow(27 / Math.max(23, getFourPointDistance(leagueStats)), 0.75))) : 0,
+          fourPointEfficiencyMult: fourPointAvailable ? Math.max(0.68, Math.min(1.12, Math.pow(27 / Math.max(23, getFourPointDistance(leagueStats)), 0.55))) : 1,
+        }
+      : {}),
   };
 }
 
 function externalRosterCandidates(tid: number): number[] {
   const ids = [tid];
   if (tid >= 1000 && tid < 2000) ids.push(tid - 1000);
+  if (tid >= 1000 && tid < 2000) ids.push(tid + 4000);
   if (tid >= 2000 && tid < 3000) ids.push(tid - 2000);
   if (tid >= 4000 && tid < 5000) ids.push(tid - 4000);
   if (tid >= 5000 && tid < 6000) ids.push(tid - 5000);
+  if (tid >= 5000 && tid < 6000) ids.push(tid - 4000);
   if (tid >= 7000 && tid < 8000) ids.push(tid - 7000);
   if (tid >= 8000 && tid < 9000) ids.push(tid - 8000);
   return ids;
 }
 
-function externalStatusForTid(tid: number): string | null {
-  if (tid >= 1000 && tid < 2000) return 'Euroleague';
-  if (tid >= 5000 && tid < 6000) return 'Endesa';
-  if (tid >= 2000 && tid < 3000) return 'PBA';
-  if (tid >= 4000 && tid < 5000) return 'B-League';
-  if (tid >= 7000 && tid < 8000) return 'China CBA';
-  if (tid >= 8000 && tid < 9000) return 'NBL Australia';
-  return null;
+function externalStatusesForTid(tid: number): Set<string> {
+  if (tid >= 1000 && tid < 2000) return new Set(['Euroleague', 'Endesa']);
+  if (tid >= 5000 && tid < 6000) return new Set(['Endesa', 'Euroleague']);
+  if (tid >= 2000 && tid < 3000) return new Set(['PBA']);
+  if (tid >= 4000 && tid < 5000) return new Set(['B-League']);
+  if (tid >= 7000 && tid < 8000) return new Set(['China CBA']);
+  if (tid >= 8000 && tid < 9000) return new Set(['NBL Australia']);
+  return new Set();
 }
 
 function buildNonNBATeam(tid: number, players: Player[]): { team: Team; roster: Player[] } | null {
   const candidateTids = new Set(externalRosterCandidates(tid));
-  const expectedStatus = externalStatusForTid(tid);
+  const expectedStatuses = externalStatusesForTid(tid);
   const clubPlayers = players.filter(player => {
     const playerTid = Number((player as any).tid);
     if (!candidateTids.has(playerTid)) return false;
     if (playerTid === tid) return true;
-    return !expectedStatus || (player as any).status === expectedStatus;
+    if (expectedStatuses.size === 0) return true;
+    return expectedStatuses.has((player as any).status ?? '');
   });
   if (clubPlayers.length === 0) return null;
   const sorted = [...clubPlayers].sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));

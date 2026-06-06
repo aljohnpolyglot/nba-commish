@@ -129,7 +129,7 @@ CRITICAL INSTRUCTIONS:
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 md:p-8">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -144,7 +144,7 @@ CRITICAL INSTRUCTIONS:
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col"
+          className="relative w-full max-w-4xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col"
         >
           {/* Header */}
           <div className="absolute top-4 right-4 z-10 flex items-center gap-2">

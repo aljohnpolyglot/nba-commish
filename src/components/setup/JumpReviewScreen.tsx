@@ -38,8 +38,8 @@ const AUTO_RESOLVED_ITEMS: ReviewItem[] = [
   { date: '2025-08-06', label: '📺 Broadcasting Deal',          how: 'Default ESPN/ABC + NBC/Peacock + Amazon applied; edit in Broadcasting before Oct 24', status: 'live' },
   { date: '2025-08-14', label: '📅 Schedule Generated',        how: 'Full 82-game schedule generated on Aug 14 — Christmas + Global Games embedded', status: 'live' },
   { date: '2026-01-29', label: '🩺 All-Star Replacements',      how: 'Not yet available — auto-handled',                 status: 'placeholder' },
-  { date: '2026-01-29', label: '🎯 Skills Challenge',           how: 'Not yet available — auto-simmed if enabled',       status: 'placeholder' },
-  { date: '2026-01-29', label: '🌟 Shooting Stars',             how: 'Not yet available — auto-simmed if enabled',       status: 'placeholder' },
+  { date: '2026-01-29', label: '🎯 Skills Challenge',           how: 'Auto-selected and resolved on All-Star Saturday',  status: 'live' },
+  { date: '2026-01-29', label: '🌟 Shooting Stars',             how: 'Auto-selected and resolved on All-Star Saturday',  status: 'live' },
 ];
 
 const PBA_AUTO_RESOLVED_ITEMS: ReviewItem[] = [

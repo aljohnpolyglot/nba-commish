@@ -3,6 +3,9 @@ import { useGame } from '../../../store/GameContext';
 import { ArrowRightLeft, Calendar, Info, UserCheck, UserX, AlertTriangle, Users, Sunset, Trophy, CheckCircle, Plane } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { NBAPlayer } from '../../../types';
+import { isPbaIsolatedMode } from '../../../utils/uiMode';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { getTeamFullName } from '../../../utils/teamNames';
 
 // ─── Types & helpers ──────────────────────────────────────────────────────────
 
@@ -24,6 +27,7 @@ function detectType(text: string, type?: string): string {
   const t = text.toLowerCase();
   if (type === 'Draft'       || t.includes('overall pick of the') || t.includes('went undrafted in the')) return 'Draft';
   if (type === 'NG Guaranteed' || (t.includes('guaranteed by') && t.includes('january 10'))) return 'NG Guaranteed';
+  if (type === 'Death' || t.includes('cause of death') || t.includes(' passed away ') || t.includes(' died at age ')) return 'Retirement';
   if (type === 'Jersey Retirement' || t.includes('retired #') || t.includes('retired jersey')) return 'Jersey Retirement';
   if (type === 'Retirement'  || t.includes('has retired') || t.includes('announced his retirement')) return 'Retirement';
   if (type === 'Transfer'    || t.includes('transferred from') || t.includes(' transferred to ')) return 'Transfer';
@@ -42,6 +46,7 @@ interface PlayerBioTransactionsTabProps {
 
 export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> = ({ player, onTradeClick }) => {
   const { state } = useGame();
+  const pbaMode = isPbaIsolatedMode(state);
 
   // Pre-build player portrait lookup
   const playerPortraitMap = useMemo(() => {
@@ -58,7 +63,19 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
   const playerTransactions = useMemo(() => {
     const name = player.name.toLowerCase();
     const pid = player.internalId;
-    return [...(state.history || [])]
+    const nonNBATeams = (state as any).nonNBATeams ?? [];
+    const pbaTeamIds = new Set(
+      nonNBATeams
+        .filter((team: any) => team.league === 'PBA')
+        .map((team: any) => Number(team.tid ?? team.id)),
+    );
+    const allTeams = [
+      ...state.teams,
+      ...nonNBATeams
+        .map((team: any) => resolveAnyTeam(Number(team.tid ?? team.id), state.teams, nonNBATeams))
+        .filter(Boolean),
+    ];
+    const entries = [...(state.history || [])]
       .sort((a, b) => {
         const da = typeof a === 'string' ? state.date : (a as any).date || state.date;
         const db = typeof b === 'string' ? state.date : (b as any).date || state.date;
@@ -81,9 +98,13 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
         const kind = detectType(text, entry.type);
 
         // Find the primary team mentioned
-        let team: typeof state.teams[0] | null = null;
-        for (const t of state.teams) {
-          if (text.includes(t.name) || text.includes(t.abbrev)) { team = t; break; }
+        let team: any = null;
+        for (const t of allTeams) {
+          const fullName = getTeamFullName(t as any);
+          if (text.includes(t.name) || text.includes(t.abbrev) || (!!fullName && text.includes(fullName))) {
+            team = t;
+            break;
+          }
         }
 
         // For trades: pick the best portrait among mentioned players
@@ -100,7 +121,34 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
 
         return { ...entry, kind, team, portraitSrc };
       });
-  }, [player, state.history, state.date, state.teams, playerPortraitMap]);
+
+    const hasDraftEntry = entries.some(entry => entry.kind === 'Draft');
+    const draft = (player as any).draft;
+    const isDrafted = draft && Number(draft.round) > 0 && Number(draft.pick) > 0 && Number(draft.year) > 0;
+    if (!hasDraftEntry && isDrafted) {
+      const draftedTid = Number(draft.tid);
+      const draftTeam = resolveAnyTeam(draftedTid, state.teams, nonNBATeams);
+      const isPbaDraft = pbaMode || pbaTeamIds.has(draftedTid) || player.status === 'PBA';
+      const teamsPerRound = isPbaDraft ? (pbaTeamIds.size || 12) : 30;
+      const draftLabel = isPbaDraft ? 'PBA Draft' : 'NBA Draft';
+      const ordinal = (n: number) => {
+        const s = ['th', 'st', 'nd', 'rd'];
+        const v = n % 100;
+        return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+      };
+      entries.push({
+        text: `The ${getTeamFullName(draftTeam) || 'team'} select ${player.name} as the ${ordinal((Number(draft.round) - 1) * teamsPerRound + Number(draft.pick))} overall pick of the ${draft.year} ${draftLabel}.`,
+        date: state.date,
+        type: 'Draft',
+        playerIds: [player.internalId],
+        kind: 'Draft',
+        team: draftTeam,
+        portraitSrc: player.imgURL ?? null,
+      } as any);
+    }
+
+    return entries;
+  }, [pbaMode, player, state, playerPortraitMap]);
 
   if (playerTransactions.length === 0) {
     return (

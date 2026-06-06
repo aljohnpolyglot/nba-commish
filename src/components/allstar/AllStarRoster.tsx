@@ -15,14 +15,16 @@ const WORLD_LOGO = ALL_STAR_ASSETS.worldLogo;
 interface AllStarRosterProps {
   allStar: any;
   state: any;
+  teams?: any[];
   ownTid?: number | null;
   onWatchGame?: (game: any) => void;
   onViewBoxScore?: (game: any) => void;
   onPlayerClick?: (player: any) => void;
 }
 
-export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ownTid, onWatchGame, onViewBoxScore, onPlayerClick }) => {
-  const teams = state.teams;
+export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, teams: providedTeams, ownTid, onWatchGame, onViewBoxScore, onPlayerClick }) => {
+  const teams = providedTeams ?? state.teams;
+  const isPba = state.leagueStats?.uiMode === 'pba_isolated';
   const playerById = React.useMemo(
     () => new Map<string, any>((state.players ?? []).map((p: any) => [p.internalId, p])),
     [state.players],
@@ -42,8 +44,8 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
   const bracket = allStar?.bracket;
   const homeBracket = bracket?.teams?.find((t: any) => t.tid === game?.homeTid);
   const awayBracket = bracket?.teams?.find((t: any) => t.tid === game?.awayTid);
-  const homeFinalName = boxScore?.homeTeamName ?? homeBracket?.name ?? 'East All-Stars';
-  const awayFinalName = boxScore?.awayTeamName ?? awayBracket?.name ?? 'West All-Stars';
+  const homeFinalName = boxScore?.homeTeamName ?? homeBracket?.name ?? (isPba ? 'Team A' : 'East All-Stars');
+  const awayFinalName = boxScore?.awayTeamName ?? awayBracket?.name ?? (isPba ? 'Team B' : 'West All-Stars');
 
   // Captains_draft: swap East/West logos for the captains' portraits.
   const formatEarly = state.leagueStats?.allStarFormat ?? 'east_vs_west';
@@ -66,7 +68,8 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, ow
   const isCaptainsDraft = format === 'captains_draft';
 
   const buildPlayerData = (p: any) => {
-    const team = teams.find((t: any) => t.abbrev === p.teamAbbrev);
+    const team = teams.find((t: any) => t.abbrev === p.teamAbbrev)
+      ?? teams.find((t: any) => t.id === playerById.get(p.playerId)?.tid);
     const teamColor = team?.colors?.[0] ?? '#64748b';
     const fullPlayer = playerById.get(p.playerId) ?? null;
     const imgUrl = (fullPlayer && getPlayerImage(fullPlayer)) || undefined;

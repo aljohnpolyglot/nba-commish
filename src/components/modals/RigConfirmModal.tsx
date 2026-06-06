@@ -30,18 +30,18 @@ export const RigConfirmModal: React.FC<RigConfirmModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
+          className="fixed inset-0 z-[130] flex items-center justify-center p-3 md:p-4 bg-black/90 backdrop-blur-md"
         >
           <motion.div
             initial={{ scale: 0.92, y: 24 }}
             animate={{ scale: 1,    y: 0  }}
             exit={{ scale: 0.92, y: 24 }}
-            className="bg-[#0d0d0d] border border-white/10 rounded-[28px] w-full max-w-md shadow-2xl overflow-hidden"
+            className="bg-[#0d0d0d] border border-white/10 rounded-[28px] w-full max-w-md shadow-2xl overflow-hidden max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)]"
           >
             {/* Red header bar */}
             <div className="h-1.5 w-full bg-gradient-to-r from-rose-600 via-amber-500 to-rose-600" />
 
-            <div className="p-8 space-y-6">
+            <div className="overflow-y-auto p-4 sm:p-8 space-y-6">
               {/* Referee confirmation */}
               <div className="flex items-center gap-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20">
                 <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-800 border border-amber-500/30 flex-shrink-0">
@@ -78,7 +78,7 @@ export const RigConfirmModal: React.FC<RigConfirmModalProps> = ({
               </div>
 
               {/* Choices */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   onClick={onJustSimulate}
                   className="flex flex-col items-center gap-2 p-5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-white/5 hover:border-white/10 transition-all group"

@@ -64,6 +64,8 @@ export const useAllStarRulesState = (viewDefaults: RulesViewDefaults) => ({
   allStarSkillsChallengeTotalPlayers: useState(viewDefaults.allStarSkillsChallengeTotalPlayers),
   allStarHorse: useState(viewDefaults.allStarHorse),
   allStarHorseParticipants: useState(viewDefaults.allStarHorseParticipants),
+  allStarHorseNoPlayerRepeat: useState(viewDefaults.allStarHorseNoPlayerRepeat),
+  allStarHorseNoGlobalRepeat: useState(viewDefaults.allStarHorseNoGlobalRepeat),
   allStarOneOnOneEnabled: useState(viewDefaults.allStarOneOnOneEnabled),
   allStarOneOnOneParticipants: useState(viewDefaults.allStarOneOnOneParticipants),
   allStarThroneEnabled: useState(viewDefaults.allStarThroneEnabled),
@@ -177,6 +179,7 @@ export const useGameRulesState = (leagueStats: LeagueStats) => ({
 export const useEconomyRulesState = (leagueStats: LeagueStats) => ({
   currency: useState(leagueStats.currency ?? 'USD'),
   tradesAllowed: useState(leagueStats.tradesAllowed ?? true),
+  pbaLocalEligibilityMode: useState(leagueStats.pbaLocalEligibilityMode ?? 'registered_roster'),
   salaryCap: useState(leagueStats.salaryCap ?? 154647000),
   salaryCapEnabled: useState(leagueStats.salaryCapEnabled ?? true),
   salaryCapType: useState(leagueStats.salaryCapType ?? 'soft'),

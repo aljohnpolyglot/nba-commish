@@ -13,6 +13,7 @@ import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks, DEFAULT_T
 import { buildClassStrengthMap, buildFullDraftSlotMap, comparePicks, formatPickLabel } from '../../../services/draft/draftClassStrength';
 import { tradeRoleToTeamMode, resolveTeamStrategyProfile } from '../../../utils/teamStrategy';
 import { wouldStepienViolateForTid } from '../../../services/trade/stepienRule';
+import { validateCBATradeRules } from '../../../utils/cbaTradeRules';
 import { getGameDateParts, isInPostDeadlinePreFAWindow } from '../../../utils/dateUtils';
 import { isFranchiseLifer } from '../../../utils/playerTenure';
 import { AwardService } from '../../../services/logic/AwardService';
@@ -326,15 +327,38 @@ export const TradeFinderView: React.FC = () => {
           currentDate: state.date ?? '',
           leagueStats: state.leagueStats as any,
         },
+        allowPbaRoster: pbaMode,
       });
 
-      const offers: FoundOffer[] = engineOffers.map(o => ({
-        tid: o.tid,
-        items: o.items as TradeItem[],
-        outlook: teamOutlooks.get(o.tid) ?? { role: 'neutral', label: 'Neutral', color: 'text-slate-400', bgColor: 'bg-slate-700/40', dot: '#94a3b8', reason: '' },
-        strategyLabel: teamStrategies.get(o.tid),
-        variant: o.variant,
-      }));
+      const offers: FoundOffer[] = engineOffers.map(o => {
+        const offerPlayers = o.items.filter(i => i.type === 'player' && i.player).map(i => i.player!);
+        const offerPicks = o.items.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!);
+        const basketPlayers = basket.filter(i => i.type === 'player' && i.player).map(i => i.player!);
+        const basketPicks = basket.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!);
+        const cba = validateCBATradeRules({
+          teamAId: selectedTid,
+          teamBId: o.tid,
+          teamAPlayers: basketPlayers,
+          teamBPlayers: offerPlayers,
+          teamAPicks: basketPicks,
+          teamBPicks: offerPicks,
+          teams,
+          players,
+          leagueStats: state.leagueStats as any,
+          currentDate: state.date ?? '',
+          currentYear,
+        });
+        return {
+          tid: o.tid,
+          items: o.items as TradeItem[],
+          outlook: teamOutlooks.get(o.tid) ?? { role: 'neutral', label: 'Neutral', color: 'text-slate-400', bgColor: 'bg-slate-700/40', dot: '#94a3b8', reason: '' },
+          strategyLabel: teamStrategies.get(o.tid),
+          variant: o.variant,
+          cbaValid: cba.ok,
+          cbaReason: cba.reason,
+          cbaOffendingSide: cba.offendingSide,
+        };
+      });
 
       setFoundOffers(offers);
       setIsSearching(false);

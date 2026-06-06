@@ -44,20 +44,20 @@ export const RigLotteryModal: React.FC<RigLotteryModalProps> = ({ onClose, onCon
   }, [state.teams, activePreset]);
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 md:p-4 z-50">
       <motion.div
         initial={{ scale: 0.95, y: 20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: 20 }}
-        className="bg-slate-900 border border-slate-800 rounded-[2rem] max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh]"
+        className="bg-slate-900 border border-slate-800 rounded-[2rem] max-w-lg w-full shadow-2xl flex flex-col max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)]"
       >
         {/* Header */}
-        <div className="p-8 pb-4">
-          <div className="flex items-center gap-4 mb-1">
+        <div className="p-4 sm:p-8 pb-4">
+          <div className="flex items-start gap-4 mb-1">
             <div className="w-12 h-12 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400">
               <Dna size={22} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-xl font-black text-white uppercase tracking-widest">Fix the Lottery</h3>
               <p className="text-slate-400 text-xs">{activePreset.label} · Select who gets pick #1</p>
             </div>
@@ -65,7 +65,7 @@ export const RigLotteryModal: React.FC<RigLotteryModalProps> = ({ onClose, onCon
         </div>
 
         {/* Team list */}
-        <div className="overflow-y-auto custom-scrollbar px-4 pb-4 flex-1">
+        <div className="overflow-y-auto custom-scrollbar px-3 sm:px-4 pb-4 flex-1">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
@@ -119,22 +119,22 @@ export const RigLotteryModal: React.FC<RigLotteryModalProps> = ({ onClose, onCon
         </div>
 
         {/* Footer */}
-        <div className="p-6 pt-4 border-t border-slate-800 space-y-3">
+        <div className="p-4 sm:p-6 pt-4 border-t border-slate-800 space-y-3">
           <div className="flex items-start gap-2 text-[10px] text-amber-400/70 font-medium">
             <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
             <span>Result is permanent — the watch view will show it as final. No animation replay possible.</span>
           </div>
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
             <button
               onClick={onClose}
-              className="px-6 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-bold uppercase tracking-wider text-xs"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-bold uppercase tracking-wider text-xs"
             >
               Cancel
             </button>
             <button
               disabled={selectedTid === null}
               onClick={() => selectedTid !== null && onConfirm(selectedTid)}
-              className="px-6 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-500 font-bold uppercase tracking-wider text-xs disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-500 font-bold uppercase tracking-wider text-xs disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               Rig Lottery
             </button>

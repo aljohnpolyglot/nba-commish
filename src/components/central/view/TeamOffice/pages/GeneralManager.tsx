@@ -32,6 +32,7 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
   const staff = state.staff;
   const teamColor = team?.colors?.[0] || '#552583';
   const teamName = team ? getTeamFullName(team) : '';
+  const hideNbaContractBadges = isEuroIsolatedMode(state) || teamId >= 100;
   const teamPlayers = useMemo(
     () => (state.players ?? []).filter(p => p.tid === teamId && isOnRoster(p)),
     [state.players, teamId],
@@ -195,15 +196,15 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
 
           <div className="rounded-xl border border-[#30363d] bg-slate-900/60 p-4 sm:p-5">
             <div className="flex items-center justify-between gap-4 mb-4">
-              <div>
-                <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Roster Snapshot</div>
-                <div className="text-sm font-bold text-slate-200">{rosterCounts.total} players active</div>
-              </div>
-              {!isEuroIsolatedMode(state) && (
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Roster Snapshot</div>
+              <div className="text-sm font-bold text-slate-200">{rosterCounts.total} players active</div>
+            </div>
+              {!hideNbaContractBadges && (
                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Contract Mix</div>
               )}
             </div>
-            {!isEuroIsolatedMode(state) && (
+            {!hideNbaContractBadges && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <RosterCount
                   label="Guaranteed"

@@ -19,11 +19,15 @@ export const R1_SHAPE: number[] = Array.from({ length: 30 }, (_, i) =>
  * seasonRollover converts it to millions (0.95) after the first rollover.
  * Both forms are handled here.
  */
-export function computeRookieSalaryUSD(pickSlot: number, ls: any): number {
-  const round = pickSlot <= 30 ? 1 : 2;
+export function computeRookieSalaryUSD(pickSlot: number, ls: any, draftRoundSize?: number): number {
+  const pbaMode = ls?.uiMode === 'pba_isolated';
+  const roundSize = pbaMode ? Math.max(1, Math.round(Number(draftRoundSize) || 12)) : 30;
+  const round = pickSlot <= roundSize ? 1 : 2;
   const rookieScaleType: string = ls?.rookieScaleType ?? 'dynamic';
 
-  const rawMin = ls?.minContract ?? 1.273;
+  const rawMin = pbaMode
+    ? (ls?.minContractStaticAmount ?? ls?.minContract ?? 1.2)
+    : (ls?.minContract ?? 1.273);
   const minSalaryUSD = rawMin > 1000 ? rawMin : rawMin * 1_000_000;
 
   if (rookieScaleType === 'none') return minSalaryUSD;
@@ -43,10 +47,11 @@ export function computeRookieSalaryUSD(pickSlot: number, ls: any): number {
   const capUSD = rawCap > 1_000_000 ? rawCap : rawCap * 1_000_000;
   const maxPct: number = ls?.rookieMaxContractPercentage ?? 9;
   const pick1USD = capUSD * maxPct / 100;
+  const shapeBaseIndex = Math.min(roundSize - 1, R1_SHAPE.length - 1);
   const ratio =
-    pickSlot <= 30
-      ? (R1_SHAPE[pickSlot - 1] ?? R1_SHAPE[29])
-      : R1_SHAPE[29] * Math.pow(1 - 0.0542, pickSlot - 30);
+    pickSlot <= roundSize
+      ? (R1_SHAPE[pickSlot - 1] ?? R1_SHAPE[shapeBaseIndex])
+      : R1_SHAPE[shapeBaseIndex] * Math.pow(1 - 0.0542, pickSlot - roundSize);
 
   return Math.max(minSalaryUSD, Math.round(pick1USD * ratio));
 }

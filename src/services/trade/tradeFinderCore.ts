@@ -14,7 +14,7 @@ import {
   getTradeGapTolerance, getTradeOvershootMargin, getTradeRatioThreshold, getTradeValueFloor, type TVContext,
 } from './tradeValueEngine';
 import { DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
-import { effectiveRecord, seasonLabelToYear, contractToUSD } from '../../utils/salaryUtils';
+import { effectiveRecord, seasonLabelToYear, contractToUSD, getCapThresholds, getTeamCapProfile } from '../../utils/salaryUtils';
 import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 import { formatPickLabel } from '../draft/draftClassStrength';
 import { wouldStepienViolateForTid } from './stepienRule';
@@ -22,7 +22,7 @@ import { validateCBATradeRules } from '../../utils/cbaTradeRules';
 import { isFranchiseLifer } from '../../utils/playerTenure';
 import { isInPostDeadlinePreFAWindow } from '../../utils/dateUtils';
 import { projectTrimDeadMoneyUSD } from './tradeAcceptance';
-import { EXTERNAL, type FindOffersInput, roleToMode, type TradeOffer, type TradeOfferItem } from './tradeFinderShared';
+import { isTradeExcludedStatus, type FindOffersInput, roleToMode, type TradeOffer, type TradeOfferItem } from './tradeFinderShared';
 
 // ── Core Engine ──────────────────────────────────────────────────────────────
 
@@ -35,6 +35,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     fromTid, offerValue, usedIds: basketIds, players, teams, draftPicks,
     currentYear, minTradableSeason, powerRanks, teamOutlooks, targetTids, tvContext, capSpaces,
     tradeDifficulty, bypassUntouchablesForTid, allowLifers,
+    allowPbaRoster = false,
     classStrengthByYear, lotterySlotByTid,
     stepienEnabled = false, tradablePickWindow = DEFAULT_TRADABLE_PICK_SEASONS,
     isPostDeadlinePreFA = false,
@@ -42,6 +43,18 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
   } = input;
   const minLivePickSeason = Math.max(minTradableSeason, currentYear);
   const liveDraftPicks = draftPicks.filter(pk => pk.season >= currentYear);
+
+  // Premium inbound gate: high-end assets (K2 > 84) should only be offered
+  // when the initiating basket already contains a premium return anchor
+  // (POT > 84 player OR a 1st-round pick).
+  const premiumIncoming = (() => {
+    const offeredPlayers = players.filter(p => basketIds.has(p.internalId));
+    const hasPremiumPotPlayer = offeredPlayers.some(p => calcPot2K(p, currentYear) > 84);
+    if (hasPremiumPotPlayer) return true;
+    const offeredPickIds = new Set([...basketIds].map(id => Number(id)).filter(n => Number.isFinite(n)));
+    const hasFirstRoundPick = liveDraftPicks.some(pk => offeredPickIds.has(pk.dpid) && pk.round === 1);
+    return hasFirstRoundPick;
+  })();
 
   // Post-deadline pre-FA: expiring contracts are walking → filter from every
   // candidate pool so they don't end up in either side's basket.
@@ -116,7 +129,8 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     // Get their roster sorted by OVR, excluding external/prospects.
     // Walking expirings and recently-signed players are dropped from candidate pools.
     const theirRoster = players
-      .filter(p => p.tid === team.id && !EXTERNAL.has(p.status ?? '') && p.tid !== -2 && !isWalking(p) && !isLocked(p))
+      .filter(p => p.tid === team.id && !isTradeExcludedStatus(p.status, allowPbaRoster) && p.tid !== -2 && !isWalking(p) && !isLocked(p))
+      .filter(p => premiumIncoming || calcOvr2K(p) <= 84)
       .sort((a, b) => b.overallRating - a.overallRating);
 
     // Picks-only basket — skip player matching entirely. Returns are pick-piles
@@ -408,9 +422,46 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     }
 
     // Absorb variant: cap-space team takes the contract for nothing in return.
-    const teamCapSpace = capSpaces?.get(team.id) ?? -Infinity;
+    const hintedCapSpace = capSpaces?.get(team.id) ?? -Infinity;
+    const strictCapSpace = (() => {
+      const ls = recentlySignedLockMs?.leagueStats as LeagueStats | undefined;
+      if (!ls || ls.salaryCapEnabled === false) return Number.POSITIVE_INFINITY;
+      const thresholds = getCapThresholds(ls as any);
+      const profile = getTeamCapProfile(
+        players,
+        team.id,
+        team.wins ?? 0,
+        team.losses ?? 0,
+        thresholds,
+        team,
+        currentYear,
+      );
+      return profile.capSpaceUSD / 1000;
+    })();
+    const verifiedCapSpace = Math.min(hintedCapSpace, strictCapSpace);
+    const hasStrictCapRoom = Number.isFinite(verifiedCapSpace) && verifiedCapSpace > 0;
+    const absorbCbaOk = (() => {
+      const ls = recentlySignedLockMs?.leagueStats as LeagueStats | undefined;
+      const date = recentlySignedLockMs?.currentDate;
+      if (!ls || !date) return true;
+      const outgoingPlayers = players.filter(p => basketIds.has(p.internalId));
+      const check = validateCBATradeRules({
+        teamAId: fromTid,
+        teamBId: team.id,
+        teamAPlayers: outgoingPlayers,
+        teamBPlayers: [],
+        teams,
+        players,
+        leagueStats: ls,
+        currentDate: date,
+        currentYear,
+      });
+      return check.ok;
+    })();
     const canAbsorb = outgoingSalary > 0
-      && teamCapSpace >= outgoingSalary;
+      && hasStrictCapRoom
+      && outgoingSalary <= (verifiedCapSpace + 100)
+      && absorbCbaOk;
     if (canAbsorb) {
       offers.push({
         tid: team.id,

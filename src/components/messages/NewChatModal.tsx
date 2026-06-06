@@ -178,9 +178,9 @@ export const NewChatModal: React.FC<NewChatModalProps> = ({ onClose, onSelect })
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl"
+        className="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl"
       >
-        <div className="p-4 border-b border-slate-800 flex justify-between items-center">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-800 p-4">
           <h3 className="text-lg font-bold text-white">New Message</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white">
             <X size={20} />

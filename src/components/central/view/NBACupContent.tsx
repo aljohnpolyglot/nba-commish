@@ -4,7 +4,7 @@ import { NBACupState } from '../../../types';
 import { NBACupYearData } from '../types';
 import { sortGroupsForDisplay } from './NBACupData';
 import { BracketDisplay, GroupTable } from './NBACupBracket';
-import { CupAllTournamentSection, CupChampionHero, CupGameLog, PrizePool } from './NBACupSections';
+import { CupAllTournamentSection, CupChampionHero, PrizePool } from './NBACupSections';
 
 export function CupContent({
   data,
@@ -57,7 +57,6 @@ export function CupContent({
           </motion.div>
         )}
       </AnimatePresence>
-      <CupGameLog year={Number(data.year)} cup={liveCup} teams={teams} boxScores={boxScores} schedule={schedule} onGameClick={onGameClick} />
     </>
   );
 }

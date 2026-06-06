@@ -343,19 +343,27 @@ export function applyEuroLoadHeals(params: {
 }
 
 export function ensureStandardStaffPool(loaded: any, migratedLeagueStats: any, healedNonNBATeams: any[], teamsWithFreshTraining: any[], healedStaffFreeAgents: any[]) {
+  const uiMode = migratedLeagueStats?.uiMode;
+  const leagueId = uiMode === 'pba_isolated' ? 'pba' : 'nba';
+  const hasLeaguePool = (healedStaffFreeAgents ?? []).some((member: any) => member?.leagueId === leagueId);
   if (
     loaded.gameMode !== 'gm' ||
-    migratedLeagueStats?.uiMode === 'euro_isolated' ||
-    (migratedLeagueStats as any).staffPoolSeeded
+    uiMode === 'euro_isolated' ||
+    (
+      leagueId === 'pba'
+        ? (migratedLeagueStats as any).pbaStaffPoolSeeded && hasLeaguePool
+        : (migratedLeagueStats as any).staffPoolSeeded
+    )
   ) {
     return healedStaffFreeAgents;
   }
   const seededState = ensureStaffPoolDepth(
-    { players: loaded.players ?? [], nonNBATeams: healedNonNBATeams, teams: teamsWithFreshTraining ?? [], staffFreeAgents: [], saveId: loaded.saveId } as any,
-    'nba',
+    { players: loaded.players ?? [], nonNBATeams: healedNonNBATeams, teams: teamsWithFreshTraining ?? [], staffFreeAgents: healedStaffFreeAgents ?? [], saveId: loaded.saveId } as any,
+    leagueId,
   );
   (migratedLeagueStats as any).staffPoolSeeded = true;
+  if (leagueId === 'pba') (migratedLeagueStats as any).pbaStaffPoolSeeded = true;
   const nextStaffFreeAgents = seededState.staffFreeAgents ?? [];
-  console.log(`[LOAD_GAME] [nba] seeded ${nextStaffFreeAgents.length} staff free agents (min 10/position)`);
+  console.log(`[LOAD_GAME] [${leagueId}] seeded ${nextStaffFreeAgents.length} staff free agents (min 10/position)`);
   return nextStaffFreeAgents;
 }

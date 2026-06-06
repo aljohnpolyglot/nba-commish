@@ -7,6 +7,7 @@ interface SigningModalFooterProps {
   autoAccept: boolean;
   contractType: ContractType;
   euroIsolated: boolean;
+  pbaIsolated: boolean;
   hasOwnTeamBirdRights: boolean;
   isResign: boolean;
   leagueYear: number;
@@ -33,6 +34,7 @@ export default function SigningModalFooter({
   autoAccept,
   contractType,
   euroIsolated,
+  pbaIsolated,
   hasOwnTeamBirdRights,
   isResign,
   leagueYear,
@@ -61,7 +63,8 @@ export default function SigningModalFooter({
     .reduce((sum, p) => sum + contractToUSD(p.contract?.amount || 0), 0);
   const projectedPayroll = committedAtStartYear + salary;
   const isMinContract = salary <= limitsMinSalaryUSD * 1.05;
-  const blownCap = !euroIsolated && contractType !== 'TWO_WAY' && !hasOwnTeamBirdRights && projectedPayroll > thresholdsSalaryCap && !isMinContract;
+  const nonNbaIsolated = euroIsolated || pbaIsolated;
+  const blownCap = !nonNbaIsolated && contractType !== 'TWO_WAY' && !hasOwnTeamBirdRights && projectedPayroll > thresholdsSalaryCap && !isMinContract;
 
   return (
     <div className="sticky bottom-0 z-40 px-3 sm:px-8 xl:px-10 py-3 sm:py-6 bg-black/80 backdrop-blur-xl border-t border-white/10 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-end shrink-0 shadow-[0_-18px_40px_rgba(0,0,0,0.45)]">
@@ -72,7 +75,7 @@ export default function SigningModalFooter({
         >
           Withdraw
         </button>
-        {!euroIsolated && contractType !== 'TWO_WAY' && mle.type && (() => {
+        {!nonNbaIsolated && contractType !== 'TWO_WAY' && mle.type && (() => {
           const mleCanCover = !mle.blocked && salary > 0 && salary <= mle.available;
           const mleLabel = mle.type === 'room' ? 'Room MLE' : mle.type === 'non_taxpayer' ? 'NT MLE' : 'Tax MLE';
           return (

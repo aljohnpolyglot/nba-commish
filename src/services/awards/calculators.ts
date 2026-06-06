@@ -11,6 +11,7 @@
 import type { NBAPlayer, NBAGMStat, NBATeam } from '../../types';
 import type { Calculator, CalculatorContext, AwardCandidate, CalculatorId } from './types';
 import { checkEligibility, playerAge } from './eligibility';
+import { resolveHeadCoachName } from '../staff/coachNameResolver';
 
 const getTrb = (s: any) => s.trb || s.reb || (s.orb || 0) + (s.drb || 0);
 
@@ -233,8 +234,7 @@ export const coyCalc: Calculator = (ctx) => {
     const winPct = wins / (wins + losses || 1);
     const prevWins = (t.seasons ?? [])[(t.seasons ?? []).length - 2]?.won ?? wins;
     const improvement = wins - prevWins;
-    const coach = ctx.staff?.coaches?.find(c => (c.team ?? '').toLowerCase().trim() === t.name.toLowerCase().trim());
-    const coachName = coach?.name ?? `${t.name} Head Coach`;
+    const coachName = resolveHeadCoachName(t, ctx.staff, ctx.season);
     const score = winPct * 70 + improvement * 1.5;
     candidates.push({ coachName, team: t, score, odds: '', wins, losses, improvement } as any);
   }
@@ -246,14 +246,30 @@ export const coyCalc: Calculator = (ctx) => {
 export const allTeamCalc: Calculator = (ctx) => {
   const numTeams = ctx.args?.numTeams ?? 3;
   const perTeam = ctx.args?.perTeam ?? 5;
+  const variant = ctx.args?.variant ?? 'all-league';
   const candidates: AwardCandidate[] = [];
   for (const p of ctx.players) {
     if (!inPool(p, ctx.poolTids)) continue;
     const stat = bestStat(p.stats, ctx.season);
     const team = getTeam(ctx.teams, p.tid) ?? stubTeam(p.tid);
-    if (!stat || !checkEligibility(['min-games'], p, stat, team, ctx.season, ctx.minGames)) continue;
+    if (!stat) continue;
+    if (variant === 'all-rookie') {
+      if (!checkEligibility(['rookie-year', 'min-games'], p, stat, team, ctx.season, ctx.minGames)) continue;
+    } else if (!checkEligibility(['min-games'], p, stat, team, ctx.season, ctx.minGames)) {
+      continue;
+    }
     const gp = stat.gp;
-    const score = (stat.pts / gp) * 1.0 + (getTrb(stat) / gp) * 0.5 + (stat.ast / gp) * 0.6 + computePIR(stat) * 0.4;
+    let score = (stat.pts / gp) * 1.0 + (getTrb(stat) / gp) * 0.5 + (stat.ast / gp) * 0.6 + computePIR(stat) * 0.4;
+    if (variant === 'all-defensive') {
+      const spg = stat.stl / gp;
+      const bpg = stat.blk / gp;
+      const rpg = getTrb(stat) / gp;
+      const diq = (p.ratings?.[p.ratings.length - 1] as any)?.diq ?? 50;
+      const defMult = Math.max(0.4, diq / 70);
+      score = (spg * 3.5 + bpg * 3.0 + rpg * 0.15) * defMult;
+    } else if (variant === 'all-rookie') {
+      score = (stat.pts / gp) * 1.0 + (getTrb(stat) / gp) * 0.5 + (stat.ast / gp) * 0.5;
+    }
     const pos = (p.ratings?.[p.ratings.length - 1] as any)?.pos ?? p.pos ?? 'F';
     candidates.push({ player: p, team, score, odds: '', stats: stat, pos });
   }

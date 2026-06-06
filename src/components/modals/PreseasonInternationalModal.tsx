@@ -118,21 +118,21 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="bg-slate-900 border border-slate-800 rounded-[2rem] w-full max-w-2xl max-h-[85vh] overflow-hidden shadow-2xl flex flex-col"
+          className="bg-slate-900 border border-slate-800 rounded-[2rem] w-full max-w-2xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] overflow-hidden shadow-2xl flex flex-col"
         >
-          <div className="p-6 md:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-            <div className="flex items-center gap-4">
+          <div className="p-4 sm:p-6 md:p-8 border-b border-slate-800 flex items-start justify-between gap-3 bg-slate-900/50">
+            <div className="flex min-w-0 items-start gap-3 sm:gap-4">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
                 <Globe className="text-emerald-500" size={24} />
               </div>
-              <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight">International Preseason</h2>
-                <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">International Preseason</h2>
+                <div className="flex flex-wrap items-center gap-2">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Global Diplomacy & Scouting</p>
                   {pendingGames.length > 0 && (
                     <span className="px-2 py-0.5 bg-emerald-500 text-black text-[10px] font-black rounded-full">
@@ -142,12 +142,12 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
                 </div>
               </div>
             </div>
-            <button onClick={handleClose} className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white">
+            <button onClick={handleClose} className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white flex-shrink-0">
               <X size={24} />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 md:p-8">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
             {step === 'LEAGUE' && (
               <div className="space-y-6">
                 <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-4 mb-6">
@@ -155,7 +155,7 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
                     "Commissioner, which league should we partner with for this preseason showcase?"
                   </p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {leagues.map(league => (
                     <button
                       key={league.name}
@@ -189,12 +189,12 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
 
             {step === 'TEAM' && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <button onClick={() => setStep('LEAGUE')} className="flex items-center gap-2 text-xs font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">
                     <ChevronLeft size={16} />
                     Back
                   </button>
-                  <div className="relative flex-1 max-w-xs">
+                  <div className="relative w-full sm:flex-1 sm:max-w-xs">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                     <input 
                       type="text"
@@ -234,12 +234,12 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
 
             {step === 'NBA_TEAM' && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <button onClick={() => setStep('TEAM')} className="flex items-center gap-2 text-xs font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors">
                     <ChevronLeft size={16} />
                     Back
                   </button>
-                  <div className="relative flex-1 max-w-xs">
+                  <div className="relative w-full sm:flex-1 sm:max-w-xs">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                     <input 
                       type="text"

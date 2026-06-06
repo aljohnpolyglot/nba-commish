@@ -131,24 +131,24 @@ export const GlobalGamesModal: React.FC<GlobalGamesModalProps> = ({ teams, onClo
   });
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-slate-900 border border-slate-800 rounded-[2rem] w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="p-6 md:p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-          <div className="flex items-center gap-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="bg-slate-900 border border-slate-800 rounded-[2rem] w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)]">
+        <div className="p-4 sm:p-6 md:p-8 border-b border-slate-800 flex items-start justify-between gap-3 bg-slate-900/50">
+          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
             <div className="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
               <Globe className="text-blue-500" size={24} />
             </div>
-            <div>
-              <h2 className="text-2xl font-black text-white uppercase tracking-tight">Global Games</h2>
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">Global Games</h2>
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Schedule International Matchups</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white">
+          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white flex-shrink-0">
             <X size={24} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 custom-scrollbar">
           <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4">
             <p className="text-sm text-slate-400 leading-relaxed italic">
               "Commissioner, expanding our global footprint is key to revenue growth. Select up to 5 matchups to be played internationally this season (Oct 24 - Apr 15)."
@@ -174,7 +174,7 @@ export const GlobalGamesModal: React.FC<GlobalGamesModalProps> = ({ teams, onClo
                     <X size={16} />
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Away Team</label>
                     <select
@@ -296,10 +296,10 @@ export const GlobalGamesModal: React.FC<GlobalGamesModalProps> = ({ teams, onClo
           )}
         </div>
 
-        <div className="p-6 md:p-8 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-4">
+        <div className="p-4 sm:p-6 md:p-8 border-t border-slate-800 bg-slate-900/50 flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4">
           <button 
             onClick={onClose}
-            className="px-6 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition-colors"
+            className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition-colors"
           >
             Cancel
           </button>
@@ -310,7 +310,7 @@ export const GlobalGamesModal: React.FC<GlobalGamesModalProps> = ({ teams, onClo
               country: displayCountry
             })))}
             disabled={!isValid}
-            className={`px-8 py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all shadow-xl ${
+            className={`w-full sm:w-auto px-8 py-3 rounded-xl font-black uppercase tracking-widest text-sm transition-all shadow-xl ${
               isValid 
                 ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20 hover:scale-105 active:scale-95' 
                 : 'bg-slate-800 text-slate-500 cursor-not-allowed'

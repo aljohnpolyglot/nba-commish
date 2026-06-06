@@ -18,7 +18,7 @@ const ModalShell = ({ children, wide }: { children: React.ReactNode; wide?: bool
   <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <motion.div
       initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
-      className={`bg-slate-900 border border-slate-800 rounded-[2rem] w-full shadow-2xl flex flex-col max-h-[90vh] ${wide ? 'max-w-4xl' : 'max-w-2xl'}`}
+      className={`flex max-h-[calc(100vh-2rem)] w-full flex-col rounded-[2rem] border border-slate-800 bg-slate-900 shadow-2xl ${wide ? 'max-w-4xl' : 'max-w-2xl'}`}
     >
       {children}
     </motion.div>
@@ -105,7 +105,7 @@ export const AllStarHostPickerModal: React.FC<AllStarHostPickerModalProps> = ({ 
 
     return (
       <ModalShell wide>
-        <div className="p-8 pb-4">
+        <div className="p-4 pb-4 sm:p-8">
           <button
             onClick={() => setEditYear(null)}
             className="text-slate-500 hover:text-white text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5"
@@ -125,7 +125,7 @@ export const AllStarHostPickerModal: React.FC<AllStarHostPickerModalProps> = ({ 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input
               type="text"
               placeholder="Host City (e.g. Inglewood, CA)"
@@ -148,7 +148,7 @@ export const AllStarHostPickerModal: React.FC<AllStarHostPickerModalProps> = ({ 
         </div>
 
         {/* Team grid — shared component used across modals */}
-        <div className="overflow-y-auto custom-scrollbar px-8 pb-6 flex-1">
+        <div className="custom-scrollbar flex-1 overflow-y-auto px-4 pb-6 sm:px-8">
           <TeamPickerGrid
             teams={teams}
             selectedIds={editing.teamIds}
@@ -162,16 +162,16 @@ export const AllStarHostPickerModal: React.FC<AllStarHostPickerModalProps> = ({ 
           />
         </div>
 
-        <div className="p-6 pt-4 border-t border-slate-800 flex justify-between">
+        <div className="flex flex-col gap-3 border-t border-slate-800 p-4 pt-4 sm:flex-row sm:justify-between sm:p-6">
           <button
             onClick={() => clearYear(editing.year)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-rose-400 hover:bg-rose-500/10 font-bold uppercase tracking-wider text-xs"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider text-rose-400 hover:bg-rose-500/10 sm:w-auto"
           >
             <Trash2 size={12} /> Clear
           </button>
           <button
             onClick={() => setEditYear(null)}
-            className="px-6 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold uppercase tracking-wider text-xs"
+            className="w-full rounded-xl bg-sky-600 px-6 py-2 text-xs font-bold uppercase tracking-wider text-white hover:bg-sky-500 sm:w-auto"
           >
             Done
           </button>
@@ -233,7 +233,7 @@ export const AllStarHostPickerModal: React.FC<AllStarHostPickerModalProps> = ({ 
 
   return (
     <ModalShell wide>
-      <div className="p-8 pb-4">
+      <div className="p-4 pb-4 sm:p-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-sky-500/20 flex items-center justify-center text-sky-400">
             <MapPin size={22} />
@@ -248,7 +248,7 @@ export const AllStarHostPickerModal: React.FC<AllStarHostPickerModalProps> = ({ 
         </div>
       </div>
 
-      <div className="overflow-y-auto custom-scrollbar px-8 pb-4 flex-1 space-y-5">
+      <div className="custom-scrollbar flex-1 overflow-y-auto space-y-5 px-4 pb-4 sm:px-8">
         {/* Current year bucket */}
         {currentBucket.length > 0 && (
           <div>
@@ -272,11 +272,11 @@ export const AllStarHostPickerModal: React.FC<AllStarHostPickerModalProps> = ({ 
         )}
       </div>
 
-      <div className="p-6 pt-4 border-t border-slate-800 flex justify-end gap-2">
-        <button onClick={onClose} className="px-6 py-3 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-bold uppercase tracking-wider text-xs">
+      <div className="flex flex-col gap-2 border-t border-slate-800 p-4 pt-4 sm:flex-row sm:justify-end sm:p-6">
+        <button onClick={onClose} className="w-full rounded-xl bg-slate-800 px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-300 hover:text-white sm:w-auto">
           Cancel
         </button>
-        <button onClick={handleSave} className="px-6 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold uppercase tracking-wider text-xs">
+        <button onClick={handleSave} className="w-full rounded-xl bg-sky-600 px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-sky-500 sm:w-auto">
           Save Assignments
         </button>
       </div>

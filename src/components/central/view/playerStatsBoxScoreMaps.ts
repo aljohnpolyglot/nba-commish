@@ -3,6 +3,210 @@ import { classifyBoxScoreGame } from '../../../utils/gameClassification';
 import { Phase, SeasonMode, ShotLocAgg, StatType } from './PlayerStatsTypes';
 import { safePct, zeroStatRow } from './playerStatsMath';
 
+type BoxScoreStatsPhase = Exclude<Phase, 'cup'>;
+
+interface BoxScoreStatsOptions {
+  competitionIds?: Set<string>;
+  phase?: BoxScoreStatsPhase;
+}
+
+function matchesBoxScoreStatsFilter(state: GameState, box: any, options: BoxScoreStatsOptions) {
+  if (box.isAllStar || box.isRisingStars || box.isCelebrityGame) return null;
+  const competitionId = String(box.competitionId ?? '').toLowerCase();
+  if (options.competitionIds && !options.competitionIds.has(competitionId)) return null;
+  const meta = classifyBoxScoreGame(
+    box,
+    state.schedule,
+    state.playoffs,
+    state.nbaCup,
+    state.nbaCupHistory,
+    state.leagueStats.year,
+    state.leagueStats,
+  );
+  if (meta.isPreseason || meta.isPlayIn || meta.excludeFromRecord || meta.isAllStar) return null;
+  if (options.phase === 'regular' && meta.isPlayoff) return null;
+  if (options.phase === 'playoffs' && !meta.isPlayoff) return null;
+  return meta;
+}
+
+function addBoxScoreLine(row: NBAGMStat & Record<string, number>, ln: any) {
+  const reb = ln.reb ?? ln.trb ?? ((ln.orb ?? 0) + (ln.drb ?? 0));
+  row.gp += 1;
+  row.gs += (ln.gs ?? 0) > 0 ? 1 : 0;
+  row.min += ln.min ?? 0;
+  row.fg += ln.fgm ?? 0;
+  row.fga += ln.fga ?? 0;
+  row.tp += ln.threePm ?? 0;
+  row.tpa += ln.threePa ?? 0;
+  row.fp = (row.fp ?? 0) + (ln.fourPm ?? 0);
+  row.fpa = (row.fpa ?? 0) + (ln.fourPa ?? 0);
+  row.ft += ln.ftm ?? 0;
+  row.fta += ln.fta ?? 0;
+  row.orb += ln.orb ?? 0;
+  row.drb += ln.drb ?? 0;
+  row.trb += reb;
+  row.ast += ln.ast ?? 0;
+  row.stl += ln.stl ?? 0;
+  row.blk += ln.blk ?? 0;
+  row.tov += ln.tov ?? 0;
+  row.pf += ln.pf ?? 0;
+  row.pts += ln.pts ?? 0;
+  row.pm = (row.pm ?? 0) + (ln.pm ?? 0);
+  row.ws = (row.ws ?? 0) + (ln.ws ?? 0);
+  row.ows = (row.ows ?? 0) + (ln.ows ?? 0);
+  row.dws = (row.dws ?? 0) + (ln.dws ?? 0);
+  row.vorp = (row.vorp ?? 0) + (ln.vorp ?? 0);
+  row.ewa = (row.ewa ?? 0) + (ln.ewa ?? 0);
+  row._perSum = (row._perSum ?? 0) + (ln.per ?? 0);
+  row._usgPctSum = (row._usgPctSum ?? 0) + (ln.usgPct ?? 0);
+  row._ortgSum = (row._ortgSum ?? 0) + (ln.ortg ?? 0);
+  row._drtgSum = (row._drtgSum ?? 0) + (ln.drtg ?? 0);
+  row._bpmSum = (row._bpmSum ?? 0) + (ln.bpm ?? 0);
+  row._obpmSum = (row._obpmSum ?? 0) + (ln.obpm ?? 0);
+  row._dbpmSum = (row._dbpmSum ?? 0) + (ln.dbpm ?? 0);
+  row._orbPctSum = (row._orbPctSum ?? 0) + (ln.orbPct ?? 0);
+  row._drbPctSum = (row._drbPctSum ?? 0) + (ln.drbPct ?? 0);
+  row._trbPctSum = (row._trbPctSum ?? 0) + (ln.trbPct ?? 0);
+  row._astPctSum = (row._astPctSum ?? 0) + (ln.astPct ?? 0);
+  row._stlPctSum = (row._stlPctSum ?? 0) + (ln.stlPct ?? 0);
+  row._blkPctSum = (row._blkPctSum ?? 0) + (ln.blkPct ?? 0);
+  row._tovPctSum = (row._tovPctSum ?? 0) + (ln.tovPct ?? 0);
+}
+
+function finalizeBoxScoreStat(row: NBAGMStat & Record<string, number>): NBAGMStat {
+  row.fgp = safePct(row.fg, row.fga);
+  row.tpp = safePct(row.tp, row.tpa);
+  row.fpp = safePct(row.fp ?? 0, row.fpa ?? 0);
+  row.ftp = safePct(row.ft, row.fta);
+  const gp = row.gp || 1;
+  row.per = (row._perSum ?? 0) / gp;
+  row.usgPct = (row._usgPctSum ?? 0) / gp;
+  row.drtg = (row._drtgSum ?? 0) / gp;
+  row.bpm = (row._bpmSum ?? 0) / gp;
+  row.obpm = (row._obpmSum ?? 0) / gp;
+  row.dbpm = (row._dbpmSum ?? 0) / gp;
+  row.orbPct = (row._orbPctSum ?? 0) / gp;
+  row.drbPct = (row._drbPctSum ?? 0) / gp;
+  row.rebPct = (row._trbPctSum ?? 0) / gp;
+  row.astPct = (row._astPctSum ?? 0) / gp;
+  row.stlPct = (row._stlPctSum ?? 0) / gp;
+  row.blkPct = (row._blkPctSum ?? 0) / gp;
+  row.tovPct = (row._tovPctSum ?? 0) / gp;
+  const tsDenom = 2 * (row.fga + 0.44 * row.fta);
+  row.tsPct = tsDenom > 0 ? (row.pts / tsDenom) * 100 : 0;
+  row.efgPct = row.fga > 0 ? ((row.fg + 0.5 * row.tp + (row.fp ?? 0)) / row.fga) * 100 : 0;
+  const poss = row.fga + 0.44 * row.fta - row.orb + row.tov;
+  row.ortg = poss > 0 ? (row.pts * 100) / poss : 0;
+  return row;
+}
+
+export function buildBoxScoreStatsByPlayer(
+  state: GameState,
+  options: BoxScoreStatsOptions = {},
+): Map<string, NBAGMStat[]> {
+  const phase = options.phase ?? 'regular';
+  const rows = new Map<string, NBAGMStat & Record<string, number>>();
+
+  for (const box of state.boxScores as any[]) {
+    const meta = matchesBoxScoreStatsFilter(state, box, { ...options, phase });
+    if (!meta) continue;
+    const season = Number(box.season ?? meta.seasonYear);
+    const sides = [
+      { tid: box.homeTeamId, lines: box.homeStats ?? [] },
+      { tid: box.awayTeamId, lines: box.awayStats ?? [] },
+    ];
+    for (const side of sides) {
+      for (const line of side.lines) {
+        const playerId = line.playerId;
+        if (!playerId) continue;
+        const key = `${playerId}|${season}|${side.tid}`;
+        if (!rows.has(key)) rows.set(key, zeroStatRow(season, side.tid) as NBAGMStat & Record<string, number>);
+        addBoxScoreLine(rows.get(key)!, line);
+      }
+    }
+  }
+
+  const byPlayer = new Map<string, NBAGMStat[]>();
+  for (const [key, row] of rows) {
+    const playerId = key.split('|')[0];
+    if (!byPlayer.has(playerId)) byPlayer.set(playerId, []);
+    byPlayer.get(playerId)!.push(finalizeBoxScoreStat(row));
+  }
+  return byPlayer;
+}
+
+export function buildBoxScoreShotLocMap(
+  state: GameState,
+  statType: StatType,
+  season: SeasonMode,
+  phase: BoxScoreStatsPhase,
+  competitionIds?: Set<string>,
+): Map<string, ShotLocAgg> {
+  if (statType !== 'shotLocations') return new Map();
+  const map = new Map<string, ShotLocAgg>();
+  const zero = (): ShotLocAgg => ({
+    rimFgm: 0,
+    rimFga: 0,
+    lpFgm: 0,
+    lpFga: 0,
+    mrFgm: 0,
+    mrFga: 0,
+    tpFgm: 0,
+    tpFga: 0,
+    ba: 0,
+    dd: 0,
+    td: 0,
+    qd: 0,
+    fiveX5: 0,
+    dunks: 0,
+    techs: 0,
+    pip: 0,
+  });
+
+  for (const box of state.boxScores as any[]) {
+    const meta = matchesBoxScoreStatsFilter(state, box, { competitionIds, phase });
+    if (!meta) continue;
+    const boxSeason = Number(box.season ?? meta.seasonYear);
+    if (typeof season === 'number' && boxSeason !== season) continue;
+    const process = (stats: any[]) => {
+      for (const line of stats ?? []) {
+        const pid = line.playerId;
+        if (!pid) continue;
+        const key = season === 'all' ? `${pid}_${boxSeason}` : pid;
+        if (!map.has(key)) map.set(key, zero());
+        const agg = map.get(key)!;
+        const sp = (value: any) => (typeof value === 'number' && isFinite(value) ? value : 0);
+        agg.rimFgm += sp(line.fgAtRim);
+        agg.rimFga += sp(line.fgaAtRim);
+        agg.lpFgm += sp(line.fgLowPost);
+        agg.lpFga += sp(line.fgaLowPost);
+        agg.mrFgm += sp(line.fgMidRange);
+        agg.mrFga += sp(line.fgaMidRange);
+        agg.tpFgm += sp(line.threePm);
+        agg.tpFga += sp(line.threePa);
+        agg.ba += sp(line.ba);
+        agg.dunks += sp(line.dunks);
+        agg.techs += sp(line.techs);
+        agg.pip += sp(line.fgAtRim) * 2 + sp(line.fgLowPost) * 2;
+        const pts = sp(line.pts);
+        const reb = sp(line.trb || line.reb || (line.orb || 0) + (line.drb || 0));
+        const ast = sp(line.ast);
+        const stl = sp(line.stl);
+        const blk = sp(line.blk);
+        const cats10 = [pts >= 10, reb >= 10, ast >= 10, stl >= 10, blk >= 10].filter(Boolean).length;
+        if (cats10 >= 4) agg.qd += 1;
+        else if (cats10 >= 3) agg.td += 1;
+        else if (cats10 >= 2) agg.dd += 1;
+        const cats5 = [pts >= 5, reb >= 5, ast >= 5, stl >= 5, blk >= 5].filter(Boolean).length;
+        if (cats5 >= 5) agg.fiveX5 += 1;
+      }
+    };
+    process(box.homeStats);
+    process(box.awayStats);
+  }
+  return map;
+}
+
 export function buildCupStatsByPlayer(state: GameState): Map<string, NBAGMStat> {
   const out = new Map<string, NBAGMStat>();
   const ensure = (pid: string, tid: number): NBAGMStat => {
@@ -51,6 +255,7 @@ export function buildCupStatsByPlayer(state: GameState): Map<string, NBAGMStat> 
       state.nbaCup,
       state.nbaCupHistory,
       state.leagueStats.year,
+      state.leagueStats,
     );
     if (!meta.isNBACup) continue;
     const sides: Array<{ tid: number; lines: any[] }> = [
@@ -167,6 +372,7 @@ export function buildCurrentSeasonStatsByPhase(state: GameState) {
       state.nbaCup,
       state.nbaCupHistory,
       state.leagueStats.year,
+      state.leagueStats,
     );
     const boxSeason = box.season ?? meta.seasonYear;
     if (boxSeason !== state.leagueStats.year) continue;

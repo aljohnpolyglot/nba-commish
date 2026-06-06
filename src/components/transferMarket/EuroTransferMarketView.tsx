@@ -19,6 +19,7 @@ import {
   statusColor,
   TabsRow,
 } from './EuroTransferMarketShared';
+import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import {
   BidOnListingModal,
   ConfirmTransferModal,
@@ -35,17 +36,28 @@ import { ReleaseClausesTab } from './EuroTransferMarketReleaseClausesTab';
 
 const MyListingsTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPlayer }) => {
   const { listings, inboxBids, window: w, budget, cashChannels, marketActivity, actions, club } = useTransferMarketContext();
+  const { state, dispatchAction } = useGame();
   const [selected, setSelected] = useState<string | null>(listings[0]?.id ?? null);
   const [showListModal, setShowListModal] = useState(false);
   const [viewBidsListingId, setViewBidsListingId] = useState<string | null>(null);
   const [pendingAccept, setPendingAccept] = useState<InboxBid | null>(null);
   const [celebration, setCelebration] = useState<InboxBid | null>(null);
+  const pendingTransferListingPlayerId = state.pendingTransferListingPlayerId ?? null;
+
+  useEffect(() => {
+    if (!pendingTransferListingPlayerId) return;
+    setShowListModal(true);
+    dispatchAction({
+      type: 'UPDATE_STATE',
+      payload: { pendingTransferListingPlayerId: null },
+    } as any);
+  }, [dispatchAction, pendingTransferListingPlayerId]);
 
   return (
-    <div className="grid grid-cols-3 gap-4 p-6">
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4 sm:p-6">
       {/* Left: Listing cards */}
-      <div className="col-span-2 space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="xl:col-span-2 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h2 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-2">
             <ListChecks size={16} className="text-amber-400" />
             My Listings
@@ -90,7 +102,7 @@ const MyListingsTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPla
                 <OvrPotPair ovr={l.player.ovr} pot={l.player.pot} />
               </div>
 
-              <div className="grid grid-cols-4 gap-3 mt-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
                 <div>
                   <div className="text-[9px] uppercase tracking-wider text-slate-500">Asking</div>
                   <div className="text-sm font-black text-white">{fmtEUR(l.askingEUR)}</div>
@@ -113,11 +125,11 @@ const MyListingsTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPla
                 <div className="h-full bg-gradient-to-r from-amber-500 to-amber-300" style={{ width: `${pct}%` }} />
               </div>
 
-              <div className="flex items-center justify-between mt-3 gap-2">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between mt-3 gap-2">
                 <div className="text-[10px] text-slate-400">
                   Top bidder: {l.topBidder ? <ClubChip c={l.topBidder} small /> : <span>—</span>}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); setViewBidsListingId(l.id); }}
                     className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
@@ -137,7 +149,12 @@ const MyListingsTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPla
         })}
       </div>
 
-      {showListModal && <ListPlayerModal onClose={() => setShowListModal(false)} />}
+      {showListModal && (
+        <ListPlayerModal
+          onClose={() => setShowListModal(false)}
+          preselectedPlayerId={pendingTransferListingPlayerId}
+        />
+      )}
 
       <ViewBidsModal
         listingId={viewBidsListingId}
@@ -172,7 +189,7 @@ const MyListingsTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPla
       />
 
       {/* Right rail */}
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4">
         {/* Transfer Window */}
         <div className="bg-slate-800/40 rounded-2xl p-4 border border-amber-500/30">
           <div className="flex items-center justify-between mb-2">
@@ -296,20 +313,20 @@ const InboxTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPlayer }
   ];
 
   return (
-    <div className="p-6 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+    <div className="p-4 sm:p-6 space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-2">
             <Inbox size={16} className="text-amber-400" /> Inbox
           </h2>
           <span className="text-[10px] text-slate-500">Offers received for your players (listed and unsolicited)</span>
         </div>
-        <button className="text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+        <button className="w-full sm:w-auto text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
           Mark All as Read
         </button>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {filterTabs.map(t => (
           <button
             key={t.key}
@@ -323,7 +340,58 @@ const InboxTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPlayer }
         ))}
       </div>
 
-      <div className="bg-slate-800/40 rounded-2xl border border-slate-800/50 overflow-hidden">
+      <div className="md:hidden space-y-3">
+          {filtered.length === 0 && (
+            <div className="px-4 py-8 text-center text-sm text-slate-500 border border-slate-800/40 rounded-2xl bg-slate-800/40">
+              No bids match this filter.
+            </div>
+          )}
+          {filtered.map(b => (
+            <button
+              key={b.id}
+              onClick={() => setSelected(b)}
+              className={`w-full rounded-2xl border p-4 text-left transition-colors ${
+                selected?.id === b.id
+                  ? 'border-amber-500/50 bg-amber-500/5'
+                  : 'border-slate-800/50 bg-slate-800/40 hover:bg-slate-800/30'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <PlayerCell p={b.player} small />
+                <StatusPill tone={statusColor(b.status)}>{b.status}</StatusPill>
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <RatingBadge label="OVR" value={b.player.ovr} small />
+                <RatingBadge label="POT" value={b.player.pot} small />
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3 text-[10px]">
+                <div>
+                  <div className="uppercase tracking-wider text-slate-500">Bidder</div>
+                  <div className="mt-1"><ClubChip c={b.bidder} small /></div>
+                </div>
+                <div>
+                  <div className="uppercase tracking-wider text-slate-500">Offer</div>
+                  <div className="text-xs font-black text-white">{fmtEUR(b.amountEUR)}</div>
+                  {b.pctVsAsking !== 0 && (
+                    <div className={`text-[9px] font-bold ${b.pctVsAsking > 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                      {b.pctVsAsking > 0 ? '+' : ''}{b.pctVsAsking}% vs ask
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="uppercase tracking-wider text-slate-500">Type</div>
+                  <div className="font-bold text-slate-300">{b.bidType}</div>
+                </div>
+                <div>
+                  <div className="uppercase tracking-wider text-slate-500">Expiry</div>
+                  <div className="font-bold text-amber-300">{b.expiresInDays}d</div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+      <div className="hidden md:block bg-slate-800/40 rounded-2xl border border-slate-800/50 overflow-hidden">
           <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-900/60 text-[9px] uppercase tracking-wider text-slate-500 font-bold">
             <div className="col-span-3">Player</div>
             <div className="col-span-1 text-center">OVR</div>
@@ -399,6 +467,7 @@ const InboxTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPlayer }
 
 const BrowseMarketTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPlayer }) => {
   const { browseListings, actions, window: w } = useTransferMarketContext();
+  const { state } = useGame();
   const [selected, setSelected] = useState<BrowseListing | null>(null);
   const [sort, setSort] = useState<{ key: 'ovr' | 'pot' | 'contract' | 'asking' | 'highestBid' | 'left'; dir: 'asc' | 'desc' }>({ key: 'asking', dir: 'desc' });
   // Session-local "ignored listings" — user hides ones they don't care about.
@@ -446,9 +515,9 @@ const BrowseMarketTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenP
   }, [browseListings, selected]);
 
   return (
-    <div className="p-6 space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-2">
+    <div className="p-4 sm:p-6 space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 className="text-sm font-black text-white uppercase tracking-tight flex flex-wrap items-center gap-2">
           <Search size={16} className="text-amber-400" />
           Browse Market
           <span className="text-[10px] font-bold text-slate-500">({visibleListings.length} listings{ignoredCount > 0 ? ` · ${ignoredCount} ignored` : ''})</span>
@@ -463,16 +532,75 @@ const BrowseMarketTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenP
         )}
       </div>
 
-        {/* Filter row */}
-        <div className="grid grid-cols-6 gap-2 bg-slate-800/40 p-3 rounded-2xl border border-slate-800/50">
-          {['All Leagues', 'All Nationalities', 'Age: any', 'OVR: 60–85', 'POT: 60–95', 'Sort: Value desc'].map((label, i) => (
-            <select key={i} className="w-full bg-slate-950 border border-slate-700 rounded-lg text-white text-[10px] py-1.5 px-2 focus:outline-none focus:border-amber-500 font-bold uppercase tracking-wide">
-              <option>{label}</option>
-            </select>
+        <div className="md:hidden space-y-3">
+          {visibleListings.length === 0 && (
+            <div className="px-4 py-8 text-center text-sm text-slate-500 border border-slate-800/40 rounded-2xl bg-slate-800/40">
+              {browseListings.length === 0
+                ? 'No listings on the market right now.'
+                : 'All listings ignored — click "Show Ignored" above to restore.'}
+            </div>
+          )}
+          {visibleListings.map(b => (
+            <div key={b.id} className="rounded-2xl border border-slate-800/50 bg-slate-800/40 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <PlayerCell p={b.player} small onOpen={onOpenPlayer} />
+                  {resolveMarketPlayer(state.players ?? [], b.player) && (
+                    <div className="hidden">
+                      <PlayerNameWithHover player={resolveMarketPlayer(state.players ?? [], b.player)!}>
+                        {b.player.name}
+                      </PlayerNameWithHover>
+                    </div>
+                  )}
+                </div>
+                <div className="shrink-0"><OvrPotPair ovr={b.player.ovr} pot={b.player.pot} small /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-[10px]">
+                <div>
+                  <div className="uppercase tracking-wider text-slate-500">Contract</div>
+                  <div className="font-black text-white">{b.player.contractYearsLeft}y</div>
+                  <div className="text-slate-500">{fmtEUR(b.player.annualWageEUR)}/yr</div>
+                </div>
+                <div>
+                  <div className="uppercase tracking-wider text-slate-500">Selling Club</div>
+                  <div className="mt-1"><ClubChip c={b.club} small /></div>
+                </div>
+                <div>
+                  <div className="uppercase tracking-wider text-slate-500">Asking</div>
+                  <div className="font-black text-white">{fmtEUR(b.askingEUR)}</div>
+                </div>
+                <div>
+                  <div className="uppercase tracking-wider text-slate-500">Highest Bid</div>
+                  <div className={`font-black ${b.highestBidEUR <= 0 ? 'text-slate-500' : b.highestBidEUR >= b.askingEUR ? 'text-emerald-300' : 'text-amber-300'}`}>
+                    {b.highestBidEUR > 0 ? fmtEUR(b.highestBidEUR) : 'No bids'}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[10px] font-bold text-amber-300">{b.daysLeft}d left</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setIgnored(prev => new Set(prev).add(b.id))}
+                    title="Hide this listing from the board"
+                    className="px-2.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[10px] font-black uppercase tracking-widest"
+                  >
+                    Ignore
+                  </button>
+                  <button
+                    onClick={() => setSelected(b)}
+                    disabled={!w.open}
+                    title={w.open ? 'Open negotiation modal' : 'Transfer window closed'}
+                    className="px-3 py-1.5 rounded-md bg-rose-500 hover:bg-rose-400 disabled:bg-slate-700 disabled:text-slate-500 text-white text-[10px] font-black uppercase tracking-widest"
+                  >
+                    Negotiate
+                  </button>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
 
-        <div className="bg-slate-800/40 rounded-2xl border border-slate-800/50 overflow-hidden">
+        <div className="hidden md:block bg-slate-800/40 rounded-2xl border border-slate-800/50 overflow-hidden">
           <div className="grid gap-2 px-4 py-2 bg-slate-900/60 text-[9px] uppercase tracking-wider text-slate-500 font-bold" style={{ gridTemplateColumns: browseGrid }}>
             <div>Player</div>
             <SortHead id="ovr" label="OVR" align="center" />
@@ -498,7 +626,29 @@ const BrowseMarketTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenP
               className="grid gap-2 px-4 py-3 items-center border-t border-slate-800/40 hover:bg-slate-800/30 transition-colors"
               style={{ gridTemplateColumns: browseGrid }}
             >
-              <div><PlayerCell p={b.player} small onOpen={onOpenPlayer} /></div>
+              <div className="flex items-center gap-3 min-w-0">
+                <img
+                  src={b.player.imgURL}
+                  alt=""
+                  className="w-8 h-8 rounded-full object-cover bg-slate-800 flex-shrink-0"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="min-w-0">
+                  {resolveMarketPlayer(state.players ?? [], b.player) ? (
+                    <PlayerNameWithHover
+                      player={resolveMarketPlayer(state.players ?? [], b.player)!}
+                      className="text-[11px] font-bold text-white truncate block"
+                    >
+                      {b.player.name}
+                    </PlayerNameWithHover>
+                  ) : (
+                    <div className="text-[11px] font-bold text-white truncate">{b.player.name}</div>
+                  )}
+                  <div className="text-[9px] text-slate-500 truncate">
+                    {b.player.flag} {b.player.position} · {b.player.age}y · {b.player.contractYearsLeft}y left
+                  </div>
+                </div>
+              </div>
               <div className="flex justify-center"><RatingBadge label="OVR" value={b.player.ovr} small /></div>
               <div className="flex justify-center"><RatingBadge label="POT" value={b.player.pot} small /></div>
               <div>

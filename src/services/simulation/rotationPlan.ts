@@ -25,18 +25,17 @@ function applyOrder(rotation: Player[], starterIds?: string[], benchOrder?: stri
   if (rotation.length === 0) return rotation;
 
   const byId = new Map(rotation.map(player => [player.internalId, player]));
-  const starters: Player[] = [];
   const starterSet = new Set<string>();
   const starterTarget = Math.min(5, rotation.length);
 
   for (const id of starterIds ?? []) {
     const player = byId.get(id);
     if (!player || starterSet.has(id)) continue;
-    starters.push(player);
     starterSet.add(id);
-    if (starters.length >= starterTarget) break;
+    if (starterSet.size >= starterTarget) break;
   }
 
+  const starters = rotation.filter(player => starterSet.has(player.internalId)).slice(0, starterTarget);
   for (const player of rotation) {
     if (starters.length >= starterTarget) break;
     if (starterSet.has(player.internalId)) continue;

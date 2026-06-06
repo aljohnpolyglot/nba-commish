@@ -238,6 +238,7 @@ const SigningModal: React.FC<SigningModalProps> = props => {
                   decSalaryProps={modal.decSalaryProps}
                   decYearsProps={modal.decYearsProps}
                   euroIsolated={modal.euroIsolated}
+                  pbaIsolated={modal.pbaIsolated}
                   formattedYears={modal.formattedYears}
                   gmSpending={modal.gmSpending}
                   hasOwnTeamBirdRights={modal.hasOwnTeamBirdRights}
@@ -247,6 +248,7 @@ const SigningModal: React.FC<SigningModalProps> = props => {
                   interest={modal.interest}
                   interestColor={modal.interestColor}
                   isOwnTeamGM={modal.isOwnTeamGM}
+                  isPbaImportSigning={modal.isPbaImportSigning}
                   isResign={modal.isResign}
                   isTrainingCampPeriod={modal.isTrainingCampPeriod}
                   leagueYear={modal.leagueStats?.year ?? new Date().getFullYear()}
@@ -296,6 +298,7 @@ const SigningModal: React.FC<SigningModalProps> = props => {
               autoAccept={modal.autoAccept}
               contractType={modal.contractType}
               euroIsolated={modal.euroIsolated}
+              pbaIsolated={modal.pbaIsolated}
               hasOwnTeamBirdRights={modal.hasOwnTeamBirdRights}
               isResign={modal.isResign}
               leagueYear={modal.leagueStats.year}

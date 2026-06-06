@@ -15,6 +15,7 @@ import { PersonalView } from '../personal/PersonalView';
 import { ScheduleView } from '../schedule/view/ScheduleView';
 import { AwardRacesView } from '../view/AwardRacesView';
 import { EuroAwardRacesView } from '../view/EuroAwardRacesView';
+import { PBAAwardRacesView } from '../view/PBAAwardRacesView';
 import { PlayersView } from '../players/PlayersView';
 import { FreeAgentsView } from '../players/view/FreeAgentsView';
 import { TransactionsView } from '../central/view/TransactionsView';
@@ -63,8 +64,6 @@ import { EuroTransferMarketView } from '../transferMarket/EuroTransferMarketView
 import { CompetitionCentralView } from '../competition/CompetitionCentralView';
 import { CompetitionHubLayout } from '../competition/CompetitionHubLayout';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
-import { PBAHubView } from '../pba/PBAHubView';
-import { PBAConferenceHubLayout } from '../pba/PBAConferenceHubLayout';
 import { isNoDraftLeague } from '../../services/offseason/offseasonState';
 import { Tab } from '../../types';
 
@@ -76,6 +75,7 @@ interface MainContentProps {
 export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewChange }) => {
   const { state } = useGame();
   const euroIsolated = isEuroIsolatedMode(state);
+  const pbaIsolated = isPbaIsolatedMode(state);
   const tradesDisabled = state.leagueStats?.tradesAllowed === false;
   const noDraft = isNoDraftLeague(state.leagueStats as any);
 
@@ -104,11 +104,13 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       return <TeamStatsView />;
     case 'Award Races':
       if (euroIsolated) return <EuroAwardRacesView />;
+      if (pbaIsolated) return <PBAAwardRacesView />;
       return <AwardRacesView />;
     case 'All-Star':
       return <AllStarView />;
     case 'NBA Cup':
       if (euroIsolated) return <CompetitionHubLayout specId="euroleague" />;
+      if (pbaIsolated) return <NBACentral />;
       return (
         <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
           <NBACupView />
@@ -121,6 +123,8 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'NBA Central':
       return euroIsolated
         ? <CompetitionHubLayout specId="endesa" />
+        : pbaIsolated
+          ? <NBACentral />
         : <NBACentral />;
     case 'Player Search':
       return <PlayersView />;
@@ -166,6 +170,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       );
     case 'Seasonal':
       if (euroIsolated) return <CompetitionHubLayout specId="euroleague" />;
+      if (pbaIsolated) return <NBACentral />;
       return (
         <div className="h-full overflow-hidden flex flex-col">
           <SeasonalView />
@@ -313,6 +318,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       );
     case 'Hall of Fame':
       if (euroIsolated) return <div className="p-8 text-slate-500">European legacy tracking will appear here after club history has enough seasons.</div>;
+      if (pbaIsolated) return <div className="p-8 text-slate-500">PBA legacy tracking lives in League History and Team History.</div>;
       return <HallofFameView />;
     case 'Front Office':
       return <FrontOfficeView initialSection="finances" />;
@@ -350,19 +356,17 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
               </div>
             ) : null;
           })();
-    case 'G-League Hub':
     case 'PBA Philippine Hub':
-      return <PBAConferenceHubLayout conference="philippine" />;
     case 'PBA Commissioners Hub':
-      return <PBAConferenceHubLayout conference="commissioners" />;
     case 'PBA Governors Hub':
-      return <PBAConferenceHubLayout conference="governors" />;
+      return <NBACentral />;
+    case 'G-League Hub':
     case 'WNBA Hub':
     case 'B-League Hub':
     case 'China CBA Hub':
     case 'NBL Australia Hub':
     case 'PBA Hub': {
-      if (isPbaIsolatedMode(state)) return <PBAConferenceHubLayout conference="philippine" />;
+      if (isPbaIsolatedMode(state)) return <NBACentral />;
       const league = HUB_TAB_TO_LEAGUE[currentView];
       return league ? (
         <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>

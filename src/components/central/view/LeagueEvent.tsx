@@ -3,6 +3,7 @@ import { useGame } from '../../../store/GameContext';
 import { BookOpen, Calendar, Gift, Utensils, Plane, Music, Star, Zap, AlertTriangle, Gavel, TrendingUp, Search, ArrowRightLeft, UserCheck, UserX, Users, UserPlus, FileCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 import { HistoryEntry } from '../../../types';
+import { normalizePersonnelRoleText } from './TransactionsShared';
 
 /**
  * Strip redundant "Commissioner [Name] has " / "The Commissioner has " prefixes
@@ -14,7 +15,8 @@ function normalizeEntryText(text: string): string {
   // "The Commissioner has finalized..." → "Finalized..."
   t = t.replace(/^The\s+Commissioner\s+has\s+/i, '');
   // Capitalise first letter in case it was lowered
-  return t.charAt(0).toUpperCase() + t.slice(1);
+  t = t.charAt(0).toUpperCase() + t.slice(1);
+  return normalizePersonnelRoleText(t);
 }
 
 function resolveEntry(raw: string | HistoryEntry | null | undefined, fallbackDate: string): HistoryEntry | null {

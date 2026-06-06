@@ -198,16 +198,16 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-2 sm:p-4 font-sans"
+        className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-2 font-sans sm:p-4"
       >
         <motion.div
           initial={{ scale: 0.95, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 20 }}
-          className="bg-[#0f172a] border border-slate-700 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] sm:max-h-[92vh] flex flex-col"
+          className="flex max-h-[calc(100vh-1rem)] w-full max-w-5xl flex-col rounded-2xl border border-slate-700 bg-[#0f172a] shadow-2xl sm:max-h-[calc(100vh-2rem)]"
         >
           {/* Header */}
-          <div className="p-4 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between rounded-t-2xl">
+          <div className="flex items-start justify-between gap-3 rounded-t-2xl border-b border-slate-800 bg-slate-900/50 p-4">
             <h3 className="text-lg font-black text-white uppercase tracking-tight">Trade Summary</h3>
             <button onClick={onClose} className="p-1.5 hover:bg-slate-700 rounded-md text-slate-400 hover:text-white transition-colors">
               <X size={18} />
@@ -228,7 +228,7 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
               ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
               : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
           }`}>
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3">
               {tradeIsValid ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
               <div>
                 <div className="text-sm font-black">
@@ -297,7 +297,7 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                     : 'Trade deadline has passed and salaries don\'t match. Force trade to override both.'}
               </p>
             )}
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <button onClick={onClose} className="px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest bg-slate-800 hover:bg-slate-700 text-white transition-colors">
                 Go Back
               </button>
@@ -305,7 +305,7 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                 // GM mode: no commissioner-style overrides, period. If the user
                 // reached this UI past the deadline, lock the action button so
                 // the league rule (no post-deadline trades) holds.
-                <span className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-slate-700/40 border border-slate-600/40 text-slate-300 cursor-not-allowed">
+                <span className="rounded-xl border border-slate-600/40 bg-slate-700/40 px-4 py-2 text-center text-[10px] font-black uppercase tracking-widest text-slate-300 cursor-not-allowed">
                   Trade Deadline Has Passed
                 </span>
               ) : tradeIsValid ? (
@@ -319,7 +319,7 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                   {isPastDeadline ? 'Override Deadline & Confirm' : 'Confirm Trade'}
                 </button>
               ) : isGM ? (
-                <span className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-rose-500/10 border border-rose-500/30 text-rose-300">
+                <span className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-center text-[10px] font-black uppercase tracking-widest text-rose-300">
                   Fix Salary to Proceed
                 </span>
               ) : (

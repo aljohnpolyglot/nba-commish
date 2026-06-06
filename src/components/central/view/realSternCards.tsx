@@ -110,7 +110,7 @@ export function PurchaseModal({
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative bg-white rounded-3xl overflow-hidden shadow-2xl max-w-2xl w-full flex flex-col sm:flex-row max-h-[90vh] overflow-y-auto"
+        className="relative bg-white rounded-3xl overflow-hidden shadow-2xl max-w-2xl w-full flex flex-col sm:flex-row max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] overflow-y-auto"
       >
         <div className="w-full sm:w-1/2 h-48 sm:h-auto flex-shrink-0">
           <img

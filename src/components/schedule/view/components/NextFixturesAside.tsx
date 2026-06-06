@@ -259,7 +259,7 @@ export const NextFixturesAside: React.FC<Props> = ({ state, onJumpToDate }) => {
             <button
               key={g.gid}
               onClick={() => onJumpToDate(g.date)}
-              className="text-left bg-[#121212] hover:bg-white/[0.04] border border-white/5 hover:border-white/10 rounded-xl p-3 transition-all group"
+              className="w-full text-left bg-[#121212] hover:bg-white/[0.04] border border-white/5 hover:border-white/10 rounded-xl p-3 transition-all group"
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">

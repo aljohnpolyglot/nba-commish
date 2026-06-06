@@ -137,6 +137,26 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
                 })
             : [];
 
+        const newFightToasts = (stateWithSim.gameMode === 'gm' && stateWithSim.userTeamId !== undefined)
+            ? simPatch.results
+                .flatMap((r: any) => {
+                    const fight = r.fight;
+                    if (!fight) return [];
+                    const userTid = stateWithSim.userTeamId;
+                    if (fight.player1TeamId !== userTid && fight.player2TeamId !== userTid) return [];
+                    const isPlayerOne = fight.player1TeamId === userTid;
+                    const playerName = isPlayerOne ? fight.player1Name : fight.player2Name;
+                    const opponentName = isPlayerOne ? fight.player2Name : fight.player1Name;
+                    const team = stateWithSim.teams.find(t => t.id === userTid);
+                    return [{
+                        playerName,
+                        opponentName,
+                        teamName: team?.name ?? '',
+                        severity: fight.severity,
+                    }];
+                })
+            : [];
+
         // Push coach message for star player injuries (>10 games out)
         if (newInjToasts.length > 0) {
             for (const inj of newInjToasts) {
@@ -295,7 +315,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         const applyPatchStart = perfNow();
         ({ stateWithSim, simPatch } = applyCupSimulationPass(stateWithSim, simPatch));
 
-        stateWithSim = applySimPatchState(stateWithSim, simPatch, justEliminated, newInjToasts, newFeatToasts);
+        stateWithSim = applySimPatchState(stateWithSim, simPatch, justEliminated, newInjToasts, newFightToasts, newFeatToasts);
 
         const datedSimResults = dateSimulationResults(stateWithSim, simPatch.results);
 

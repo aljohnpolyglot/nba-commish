@@ -21,6 +21,7 @@ export function generateCoordinatedStats(
   numQuarters: number = 4
 ): PlayerGameStats[] {
   const stats    = teamStats.map(s => ({ ...s }));
+  const baselineMinById = new Map<string, number>(teamStats.map(s => [s.playerId, Number(s.min ?? 0)]));
   const isEuroClubGame =
     quarterLength <= 10 &&
     ((team.id >= 1000 && team.id < 2000) || (team.id >= 5000 && team.id < 6000));
@@ -294,6 +295,41 @@ export function generateCoordinatedStats(
     s.min = Math.min(maxMins, Math.max(0, s.min));
     s.sec = Math.floor((s.min % 1) * 60);
   });
+
+  // ── Star-minute collapse guard ──────────────────────────────────────────────
+  // Rare edge case: post-adjustment minute math can collapse a healthy star into
+  // single-digit minutes despite a high pre-plan baseline. Keep a floor for core
+  // stars unless foul trouble or injury justifies it.
+  const coreCandidates = stats
+    .map(s => ({ s, base: baselineMinById.get(s.playerId) ?? 0 }))
+    .filter(({ base }) => base >= 30)
+    .sort((a, b) => b.base - a.base)
+    .slice(0, 2);
+
+  for (const { s, base } of coreCandidates) {
+    const player = rotation.find(p => p.internalId === s.playerId);
+    const injuryGames = player?.injury?.gamesRemaining ?? 0;
+    const foulTrouble = (s.pf ?? 0) >= 5;
+    if (injuryGames > 0 || foulTrouble) continue;
+
+    const minFloor = Math.max(20, Math.min(base * 0.72, base - 2));
+    if (s.min >= minFloor) continue;
+
+    let need = minFloor - s.min;
+    const donors = stats
+      .filter(row => row.playerId !== s.playerId)
+      .sort((a, b) => a.min - b.min);
+
+    for (const donor of donors) {
+      if (need <= 0) break;
+      const donorFloor = donor.min > 16 ? 8 : 6;
+      const give = Math.min(need, Math.max(0, donor.min - donorFloor));
+      if (give <= 0) continue;
+      donor.min -= give;
+      s.min += give;
+      need -= give;
+    }
+  }
 
   // ── Final minutes enforcer — hard cap above may clip players to maxMins, drifting total ──
   // Walk eligible players (highest first), give each as much of the remainder as their cap allows.

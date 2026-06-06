@@ -1,5 +1,6 @@
 import type { CompetitionSpec } from '../services/competition/types';
 import type { NBATeam, NonNBATeam, Game } from '../types';
+import { selectEuroleagueParticipants } from './euroleagueQualification';
 import { resolveAnyTeam } from './teamLookup';
 
 interface MinimalState {
@@ -113,17 +114,17 @@ export function getTeamsForLeagueTab(state: StateWithTeams, tabId: LeagueTabId):
   const tabs = getLeagueTabs(state);
   const tab = tabs.find(t => t.id === tabId);
   if (!tab || !tab.league) return [];
-  // Include BOTH the raw nonNBATeam tid AND the aliased tid (if any). Real
-  // Madrid lives in nonNBATeams as both league='Endesa' (tid 5xxx) and
-  // league='Euroleague' (tid 1xxx), and the clubAliasMap bridges the two.
-  // Returning both halves ensures players whose `tid` references either side
-  // are included when the user picks the corresponding hub.
-  const tids = (state.nonNBATeams ?? [])
-    .filter(t => t.league === tab.league)
-    .flatMap(t => {
-      const aliased = state.clubAliasMap?.[t.tid];
-      return aliased !== undefined ? [t.tid, aliased] : [t.tid];
-    });
+  const tids = tab.id === 'continental' && tab.competitionId === 'euroleague'
+    ? selectEuroleagueParticipants(state, getContinentalCompetition(state)?.teamCount).tids
+    : (state.nonNBATeams ?? [])
+      .filter(t => t.league === tab.league)
+      .flatMap(t => {
+        const aliased = state.clubAliasMap?.[t.tid];
+        return aliased !== undefined ? [t.tid, aliased] : [t.tid];
+      });
+  if (tab.id === 'continental') {
+    if (tab.competitionId !== 'euroleague') tids.push(...Object.values(state.clubAliasMap ?? {}));
+  }
   const uniq = Array.from(new Set(tids));
   return uniq
     .map(tid => resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []))

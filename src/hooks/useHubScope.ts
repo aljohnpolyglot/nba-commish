@@ -3,11 +3,12 @@ import { useGame } from '../store/GameContext';
 import { CompetitionHubLeagueTabContext } from '../components/competition/hubContext';
 import { getTeamsForLeagueTab } from '../utils/euroLeagueDefaults';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../utils/uiMode';
+import { getResolvedTeamLogoUrl } from '../utils/teamAssets';
 
 /**
  * Scope teams/players to the active competition context:
  * - Inside a CompetitionHubLayout: scoped to that hub's competition.
- * - PBA isolated mode: scoped to PBA teams (tid 2000-2099).
+ * - PBA isolated mode: scoped to PBA teams.
  * - Euro isolated mode: scoped to union of all Euro competitions.
  * - Otherwise (NBA / commissioner mode): full NBA pools unchanged.
  */
@@ -21,8 +22,16 @@ export function useHubScope() {
     if (hubTab) return getTeamsForLeagueTab(state as any, hubTab);
     if (pbaIsolated) {
       return ((state as any).nonNBATeams ?? [])
-        .filter((t: any) => t.tid >= 2000 && t.tid < 2100)
-        .map((t: any) => ({ ...t, id: t.tid ?? t.id }));
+        .filter((t: any) => t.league === 'PBA')
+        .map((t: any) => ({
+          ...t,
+          id: t.tid ?? t.id,
+          logoUrl: getResolvedTeamLogoUrl(t),
+          wins: Number(t.wins ?? t.won ?? 0),
+          losses: Number(t.losses ?? t.lost ?? 0),
+          strength: Number(t.strength ?? 50),
+          conference: 'PBA',
+        }));
     }
     if (euroIsolated) {
       const dom = getTeamsForLeagueTab(state as any, 'domestic');

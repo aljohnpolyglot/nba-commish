@@ -2,6 +2,7 @@ import type { NBAPlayer } from '../../../types';
 import { convertTo2KRating } from '../../../utils/helpers';
 import { getDisplayAge, estimatePotentialBbgm } from '../../../utils/playerRatings';
 import { matchProspectToGist, type GistProspect } from '../../../services/draftScoutingGist';
+import { isFilipino } from '../../../services/pba/importManager';
 
 export interface MockProspect extends NBAPlayer {
   displayOvr: number;
@@ -31,10 +32,19 @@ export const buildMockProspects = (
   currentLeagueYear: number,
   draftYear: number,
   gistData: GistProspect[] | null,
+  pbaMode = false,
 ): MockProspect[] => {
+  const matchesDraftYear = (player: NBAPlayer): boolean => {
+    const rawDraftYear = Number((player as any).draft?.year);
+    if (pbaMode) {
+      return !Number.isFinite(rawDraftYear) || rawDraftYear === draftYear;
+    }
+    return rawDraftYear === draftYear;
+  };
   const raw = players.filter((player) =>
     (player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect') &&
-    (player as any).draft?.year === draftYear,
+    (!pbaMode || isFilipino(player)) &&
+    matchesDraftYear(player),
   );
   if (raw.length === 0) return [];
   const enriched = raw.map((player) => {

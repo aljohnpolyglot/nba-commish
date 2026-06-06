@@ -23,6 +23,7 @@ function posBucket(pos: string | undefined): number {
 
 function getPlayerAttributes(p: NBAPlayer): Record<string, number> {
   const rating = p.ratings?.[p.ratings.length - 1] || {};
+  const pot = p.potential ?? rating.pot ?? 50;
   return {
     hgt: rating.hgt || 50,
     stre: rating.stre || 50,
@@ -40,7 +41,7 @@ function getPlayerAttributes(p: NBAPlayer): Record<string, number> {
     pss: rating.pss || 50,
     reb: rating.reb || 50,
     ovr: rating.ovr || 50,
-    pot: rating.pot || 50
+    pot
   };
 }
 

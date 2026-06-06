@@ -29,15 +29,77 @@ import {
   hasTransferMarketEngagement,
 } from './offseasonSidebarData';
 import {
+  getOffseasonCalendarYear,
   getSponsorCoverage,
   getStaffOpenByGroup,
   lsYearOf,
 } from './aufgabenShared';
+import { getEffectivePbaConference, type PbaConference } from '../../services/pba/importManager';
 export { OffseasonPhaseBadge, OffseasonNextActionButton } from './OffseasonHeader';
 export { OffseasonFATagFooter, OffseasonTransferMarketFooter, OffseasonTrainingCampFooter } from './OffseasonFooters'; export { OffseasonAufgabenMobileSheet } from './OffseasonMobileSheet';
 const ENDORSEMENT_SLOT_CAP = 4;
 type EuroSidebarSectionId = 'now' | 'opensSoon' | 'later' | 'resolved';
 const EURO_LATER_ROWS = new Set<OffseasonChecklistRow>(['youthPromotion', 'preseasonFriendlies', 'trainingCamp']);
+
+const pbaBriefingStorageKey = (saveId: string | undefined) => `pba-conference-briefings-${saveId ?? 'default'}`;
+
+type PbaBriefingState = {
+  seen: Partial<Record<PbaConference, true>>;
+  dismissedForever?: true;
+};
+
+const readPbaBriefingState = (saveId: string | undefined): PbaBriefingState => {
+  try {
+    const raw = window.localStorage.getItem(pbaBriefingStorageKey(saveId));
+    if (!raw) return { seen: {} };
+    const parsed = JSON.parse(raw) as PbaBriefingState;
+    return {
+      seen: parsed?.seen ?? {},
+      dismissedForever: parsed?.dismissedForever ? true : undefined,
+    };
+  } catch {
+    return { seen: {} };
+  }
+};
+
+const writePbaBriefingState = (saveId: string | undefined, value: PbaBriefingState) => {
+  try {
+    window.localStorage.setItem(pbaBriefingStorageKey(saveId), JSON.stringify(value));
+  } catch {}
+};
+
+const getPbaBriefingSpec = (conference: PbaConference) => {
+  if (conference === 'commissioners') {
+    return {
+      eyebrow: 'Conference Briefing',
+      title: "Welcome to the Commissioner's Cup",
+      body: "This conference opens the import market.\n\nYou can carry one unrestricted import, so your first stop is Import Search before opening night. Use this window to decide whether your roster needs a headline scorer, a rim protector, or a short-term fixer.",
+    };
+  }
+  if (conference === 'governors') {
+    return {
+      eyebrow: 'Conference Briefing',
+      title: "Welcome to the Governors' Cup",
+      body: "This conference also allows one import, but the pool is capped at 6'5\" and below.\n\nYour first move is Import Search. Make sure the player fits the height limit before you commit, because this conference is built around smaller, faster import profiles.",
+    };
+  }
+  return {
+    eyebrow: 'Conference Briefing',
+    title: 'Welcome to the Philippine Cup',
+    body: 'This is the all-Filipino conference.\n\nNo imports are allowed here. Start by handling local free agency, tighten the domestic roster, and get your core set before the conference opens.',
+  };
+};
+
+const isStaffRetirementForUiMode = (record: any, uiMode?: string): boolean => {
+  const teamId = Number(record?.teamId);
+  const leagueId = String(record?.leagueId ?? '').toLowerCase();
+  if (uiMode === 'pba_isolated') return (teamId >= 2000 && teamId < 2100) || leagueId === 'pba';
+  if (uiMode === 'euro_isolated') {
+    return (teamId >= 1000 && teamId < 1100) || (teamId >= 5000 && teamId < 5100) || leagueId === 'euroleague' || leagueId === 'endesa';
+  }
+  return !Number.isFinite(teamId) || (teamId >= 0 && teamId < 100);
+};
+
 export const OffseasonAufgabenSidebar: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const checklist = state.offseasonChecklist;
@@ -47,7 +109,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     [state.teams, state.nonNBATeams, state.userTeamId],
   );
   const visibleRows = React.useMemo(
-    () => getVisibleOffseasonRows(state.leagueStats, userTeam as any, state.date, (state as any).expansionSchedule),
+    () => getVisibleOffseasonRows(state.leagueStats, userTeam as any, state.date, (state as any).expansionSchedule, state.offseasonChecklist, { lotteryResolved: !!(state.draftLotteryResult && state.draftLotteryResult.length > 0), draftComplete: !!state.draftComplete }),
     [state.leagueStats, userTeam, state.date, (state as any).expansionSchedule],
   );
   const sponsorCoverage = getSponsorCoverage(userTeam as any, lsYearOf(state));
@@ -63,8 +125,16 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   const expiringCoachCount = openByGroup.coaching;
   const expiringStaffCount = openByGroup.support;
   const openStaffCount = expiringCoachCount + expiringStaffCount;
+  const staffRetirementCount = React.useMemo(() => {
+    const classYear = getOffseasonCalendarYear(state);
+    return (state.staffRetirementAnnouncements ?? []).filter((record: any) => {
+      const retiredYear = Number(String(record.retiredDate ?? '').slice(0, 4));
+      return (record.season === classYear || retiredYear === classYear)
+        && isStaffRetirementForUiMode(record, state.leagueStats?.uiMode);
+    }).length;
+  }, [state.staffRetirementAnnouncements, state.date, state.leagueStats?.year, state.leagueStats?.uiMode]);
   const isEuroMode = state.leagueStats?.uiMode === 'euro_isolated';
-  const EURO_PARALLEL_ROWS = new Set<OffseasonChecklistRow>(['transferMarket', 'sponsorRenewals', 'facilityUpgrades', 'staffSignings']);
+  const EURO_PARALLEL_ROWS = new Set<OffseasonChecklistRow>(['transferMarket', 'sponsorRenewals', 'facilityUpgrades', 'staffRetirements', 'staffSignings']);
   const confirmActionRef = useRef<(() => void) | null>(null);
   const [expansionProtectOpen, setExpansionProtectOpen] = useState(false);
   const [expansionDraftViewOpen, setExpansionDraftViewOpen] = useState(false);
@@ -86,9 +156,10 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     visibleRows,
     sponsorCoverage,
     openStaffCount,
+    staffRetirementCount,
     isEuroMode,
   });
-  if (!checklist) return null;
+  if (!checklist || visibleRows.length === 0) return null;
   const currentRow = firstUnfinishedRow(checklist, sidebarSignals, visibleRows);
   const orderedRows = React.useMemo(() => {
     if (!isEuroMode) return [...visibleRows];
@@ -157,11 +228,12 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   }, [isEuroMode, currentRow, orderedRows, checklist, transferWindowStatus?.open, budgetLockBlockedByTransfer]);
   const transferMarketCanComplete = React.useMemo(() => {
     if (!isEuroMode || !checklist) return true;
-    const required: OffseasonChecklistRow[] = ['sponsorRenewals', 'facilityUpgrades', 'staffSignings'];
+    const required: OffseasonChecklistRow[] = ['sponsorRenewals', 'facilityUpgrades', 'staffRetirements', 'staffSignings'];
     return required.every(row => checklist[row] === 'done' || checklist[row] === 'skipped');
-  }, [isEuroMode, checklist?.sponsorRenewals, checklist?.facilityUpgrades, checklist?.staffSignings]);
+  }, [isEuroMode, checklist?.sponsorRenewals, checklist?.facilityUpgrades, checklist?.staffRetirements, checklist?.staffSignings]);
   const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
   const [retiredReviewOpen, setRetiredReviewOpen] = useState(false);
+  const [staffRetirementsOpen, setStaffRetirementsOpen] = useState(false);
   const [hofCeremonyOpen, setHofCeremonyOpen] = useState(false);
   const [youthPromotionOpen, setYouthPromotionOpen] = useState(false);
   const [preseasonFriendliesOpen, setPreseasonFriendliesOpen] = useState(false);
@@ -171,6 +243,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
   const transferWindowSimPendingRef = useRef(false);
   const [autoResolveConfirmOpen, setAutoResolveConfirmOpen] = useState(false);
   const [stepConfirm, setStepConfirm] = useState<OffseasonConfirmSpec | null>(null);
+  const [briefingSpec, setBriefingSpec] = useState<{ eyebrow: string; title: string; body: string } | null>(null);
   const [rookieDisclaimerOpen, setRookieDisclaimerOpen] = useState(false);
   const previousTransferMarketStatusRef = useRef<OffseasonRowStatus | null>(checklist.transferMarket ?? null);
   const rookieDisclaimerKey = `rookie-disclaimer-${state.saveId ?? 'default'}-${state.leagueStats?.year ?? 0}`;
@@ -261,6 +334,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     openStaffCount,
     sponsorCoverage,
     dueSponsorCount,
+    staffRetirementCount,
     rfaCandidates,
     isEuroMode,
     expiringGate,
@@ -275,10 +349,38 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     setPreseasonFriendliesOpen,
     setSponsorModalOpen,
     setRetiredReviewOpen,
+    setStaffRetirementsOpen,
     setHofCeremonyOpen,
     openStepConfirm,
     simToDateIfBefore,
   });
+  const pendingBriefingActionRef = useRef<(() => void) | null>(null);
+  const pbaEffectiveConference = getEffectivePbaConference(state.leagueStats as any);
+  const shouldShowPbaBriefing = (row: OffseasonChecklistRow) => {
+    if (state.leagueStats?.uiMode !== 'pba_isolated') return false;
+    const triggerRow = pbaEffectiveConference === 'philippine' ? 'pbaDraft' : 'pbaImportSearch';
+    if (row !== triggerRow) return false;
+    const briefingState = readPbaBriefingState(state.saveId);
+    if (briefingState.dismissedForever) return false;
+    return !briefingState.seen[pbaEffectiveConference];
+  };
+  const openPbaBriefing = (row: OffseasonChecklistRow) => {
+    pendingBriefingActionRef.current = () => handleEnter(row);
+    setBriefingSpec(getPbaBriefingSpec(pbaEffectiveConference));
+  };
+  const closePbaBriefing = () => {
+    const next = pendingBriefingActionRef.current;
+    pendingBriefingActionRef.current = null;
+    setBriefingSpec(null);
+    return next;
+  };
+  const markPbaBriefingSeen = (dismissedForever?: boolean) => {
+    const current = readPbaBriefingState(state.saveId);
+    writePbaBriefingState(state.saveId, {
+      seen: { ...current.seen, [pbaEffectiveConference]: true },
+      dismissedForever: dismissedForever ? true : current.dismissedForever,
+    });
+  };
   useEffect(() => {
     if (!draftDone || state.gameMode !== 'gm') return;
     try {
@@ -326,6 +428,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
       pendingTeamOptionsLength: pendingTeamOptions.length,
       rfaCandidatesLength: rfaCandidates.length,
       expiringGateHasRows: expiringGate.hasRows,
+      staffRetirementCount,
       openStaffCount,
       sponsorCoverageComplete: sponsorCoverage.complete,
       transferWindowOpen: !!transferWindowStatus?.open,
@@ -333,7 +436,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     });
     const blocked = row === 'budgetLock' && budgetLockBlockedByTransfer;
     const blockedLabel = blocked ? 'After Market' : null;
-    const showMarkDone = (row === 'transferMarket' || row === 'sponsorRenewals')
+    const showMarkDone = (row === 'transferMarket' || row === 'sponsorRenewals' || row === 'pbaLocalFreeAgency' || row === 'pbaImportSearch')
       && !isResolved
       && (row !== 'transferMarket' || (!transferRowClosed && transferMarketCanComplete))
       && (row !== 'sponsorRenewals' || sponsorCoverage.complete);
@@ -360,6 +463,10 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         tmWindowCounter={row === 'transferMarket' ? tmWindowCounter : null}
         onPrimary={() => {
           if (transferRowClosed || blocked) return;
+          if (shouldShowPbaBriefing(row)) {
+            openPbaBriefing(row);
+            return;
+          }
                     openStepConfirm(getOffseasonStepConfirmSpec({
                       row,
                       status,
@@ -402,6 +509,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         tmWindowCounter={tmWindowCounter}
         transferWindowSimPending={transferWindowSimPending}
         retiredReviewOpen={retiredReviewOpen}
+        staffRetirementsOpen={staffRetirementsOpen}
         hofCeremonyOpen={hofCeremonyOpen}
         sponsorModalOpen={sponsorModalOpen}
         facilityReviewOpen={facilityReviewOpen}
@@ -421,12 +529,14 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
         preseasonFriendliesOpen={preseasonFriendliesOpen}
         preseasonGames={preseasonGames}
         stepConfirm={stepConfirm}
+        briefingSpec={briefingSpec}
         autoResolveConfirmOpen={autoResolveConfirmOpen}
         rookieDisclaimerOpen={rookieDisclaimerOpen}
         userTeamRookies={userTeamRookies}
         expansionProtectOpen={expansionProtectOpen}
         expansionDraftViewOpen={expansionDraftViewOpen}
         onRetiredClose={() => setRetiredReviewOpen(false)}
+        onStaffRetirementsClose={() => setStaffRetirementsOpen(false)}
         onHofClose={() => setHofCeremonyOpen(false)}
         onSponsorClose={() => {
           setSponsorModalOpen(false);
@@ -502,6 +612,16 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
           closeStepConfirm();
           action?.();
         }}
+        onBriefingConfirm={() => {
+          markPbaBriefingSeen(false);
+          const action = closePbaBriefing();
+          action?.();
+        }}
+        onBriefingDismissForever={() => {
+          markPbaBriefingSeen(true);
+          const action = closePbaBriefing();
+          action?.();
+        }}
         onAutoResolveCancel={() => setAutoResolveConfirmOpen(false)}
         onAutoResolveConfirm={() => {
           setAutoResolveConfirmOpen(false);
@@ -521,3 +641,4 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     </OffseasonSidebarShell>
   );
 };
+

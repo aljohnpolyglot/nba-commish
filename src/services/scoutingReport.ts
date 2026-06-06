@@ -623,57 +623,72 @@ export function getComparisonsWithSimilarity(
   if (!last) return [];
 
   const rawOvr = player.overallRating ?? last.ovr ?? 50;
-  const rawPot = Math.max(rawOvr, last.pot ?? rawOvr);
+  const rawPot = Math.max(rawOvr, player.potential ?? last.pot ?? rawOvr);
+  const growthRatio = rawPot > rawOvr ? rawPot / Math.max(rawOvr, 1) : 1;
 
-  // Aggressive ceiling projection: each attribute moves toward an elite target
-  // proportional to its current strength. Strong attrs become star-tier, weak
-  // attrs stay average. This lets a high-POT prospect's *profile shape* match
-  // against current NBA stars rather than collapsing into bench-tier clusters.
-  const projectAttr = (v: number | undefined): number => {
+  const scaleAttr = (v: number | undefined): number => {
     const val = v ?? 50;
-    const strength = Math.max(0, (val - 45) / 55); // 0..1, baseline = avg
-    const target = Math.min(99, rawPot + strength * 15); // strong attrs project past pot
-    if (target <= val) return val;
-    return Math.round(val + (target - val) * 0.85);
+    return Math.round(clamp(val * growthRatio, 25, 99));
   };
 
   const projectedRating = {
     ...last,
     hgt: last.hgt ?? 50, // height never projects
-    stre: projectAttr(last.stre),
-    spd:  projectAttr(last.spd),
-    jmp:  projectAttr(last.jmp),
-    endu: projectAttr(last.endu),
-    ins:  projectAttr(last.ins),
-    dnk:  projectAttr(last.dnk),
-    ft:   projectAttr(last.ft),
-    fg:   projectAttr(last.fg),
-    tp:   projectAttr(last.tp),
-    oiq:  projectAttr(last.oiq),
-    diq:  projectAttr(last.diq),
-    drb:  projectAttr(last.drb),
-    pss:  projectAttr(last.pss),
-    reb:  projectAttr(last.reb),
+    stre: scaleAttr(last.stre),
+    spd:  scaleAttr(last.spd),
+    jmp:  scaleAttr(last.jmp),
+    endu: scaleAttr(last.endu),
+    ins:  scaleAttr(last.ins),
+    dnk:  scaleAttr(last.dnk),
+    ft:   scaleAttr(last.ft),
+    fg:   scaleAttr(last.fg),
+    tp:   scaleAttr(last.tp),
+    oiq:  scaleAttr(last.oiq),
+    diq:  scaleAttr(last.diq),
+    drb:  scaleAttr(last.drb),
+    pss:  scaleAttr(last.pss),
+    reb:  scaleAttr(last.reb),
     ovr:  rawPot,
     pot:  rawPot,
   };
+  const targetK2 = convertTo2KRating(rawPot, last.hgt ?? 50, last.tp ?? 50);
   const projectedPlayer = {
     ...player,
     overallRating: rawPot,
     ratings: [...player.ratings!.slice(0, -1), projectedRating],
   } as NBAPlayer;
 
-  // Filter the comp pool to NBA rotation-quality players. End-of-bench rookies
-  // shouldn't dominate the top-3 slots when comparing against a prospect's peak.
-  // Fallback to the full pool if too few qualify (e.g., very early-season state).
-  const elite = activePlayers.filter(p => (p.overallRating ?? 0) >= 65);
-  const pool = elite.length >= 10 ? elite : activePlayers;
+  // Keep comps near the prospect's displayed ceiling. Draft comps are "at peak"
+  // comparisons, so current NBA OVR has to line up with the prospect's POT.
+  const toK2 = (p: NBAPlayer): number => {
+    const pr: any = p.ratings?.[p.ratings.length - 1] ?? {};
+    const compPot = p.potential ?? pr.pot ?? p.overallRating ?? pr.ovr ?? 50;
+    return convertTo2KRating(Math.max(p.overallRating ?? pr.ovr ?? 50, compPot), pr.hgt ?? 50, pr.tp ?? 50);
+  };
+  const withK2 = activePlayers
+    .map(p => {
+      const k2 = toK2(p);
+      return { player: p, gap: Math.abs(k2 - targetK2) };
+    })
+    .sort((a, b) => a.gap - b.gap);
+  const minCandidates = Math.min(activePlayers.length, Math.max(n, 8));
+  const strictBand = withK2.filter(row => row.gap <= 5).map(row => row.player);
+  const mediumBand = withK2.filter(row => row.gap <= 8).map(row => row.player);
+  const looseBand = withK2.filter(row => row.gap <= 10).map(row => row.player);
+  const closestBand = withK2.slice(0, minCandidates).map(row => row.player);
+  const pool =
+    strictBand.length >= minCandidates ? strictBand :
+    mediumBand.length >= minCandidates ? mediumBand :
+    looseBand.length >= minCandidates ? looseBand :
+    closestBand;
 
   const matches = findTopComparisons(projectedPlayer, pool, false);
   return matches.slice(0, n).map(m => ({
     comparison: m.comparison,
     // 1 decimal — multiple cosine sims at 1.000 would all round to 100% otherwise.
-    similarityPct: Math.round(clamp(m.similarity * 100, 0, 100) * 10) / 10,
+    similarityPct: Math.round(
+      clamp((m.similarity - Math.abs(toK2(m.comparison) - targetK2) * 0.012) * 100, 0, 100) * 10,
+    ) / 10,
   }));
 }
 

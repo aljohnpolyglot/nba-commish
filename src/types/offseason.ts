@@ -59,12 +59,18 @@ export interface AllStarState {
   celebrityTeams?: string[];
   dunkContestAnnounced?: boolean;
   threePointAnnounced?: boolean;
+  shootingStarsAnnounced?: boolean;
+  skillsChallengeAnnounced?: boolean;
+  horseAnnounced?: boolean;
   hasRiggedVoting?: boolean;
   roster: AllStarPlayer[];
   risingStarsRoster?: AllStarPlayer[];
   celebrityRoster?: string[];
   dunkContestContestants?: NBAPlayer[];
   threePointContestants?: NBAPlayer[];
+  shootingStarsContestants?: NBAPlayer[];
+  skillsChallengeContestants?: NBAPlayer[];
+  horseContestants?: NBAPlayer[];
   dunkContest?: {
     contestants: DunkContestEntry[];
     winnerId?: string;
@@ -79,16 +85,52 @@ export interface AllStarState {
     teams: Array<{ teamId: string; label: string; playerIds: string[]; playerNames: string[]; timeSec: number }>;
     winnerTeamId?: string;
     winnerLabel?: string;
+    log?: string[];
+    runs?: Array<{
+      teamId: string;
+      label: string;
+      round: 1 | 2;
+      timeSec: number;
+      stations: Array<{
+        shotIndex: number;
+        shotType: string;
+        shotLabel: string;
+        shooterId: string;
+        shooterName: string;
+        moveTimeSec: number;
+        timeSec: number;
+        attempts: Array<{ attempt: number; shooterId: string; shooterName: string; made: boolean; durationSec: number }>;
+      }>;
+    }>;
     complete: boolean;
   };
   skillsChallenge?: {
     contestants: Array<{ playerId: string; playerName: string; round1Time: number; finalTime: number | null; isWinner: boolean }>;
     winnerId?: string;
     winnerName?: string;
+    log?: string[];
+    runs?: Array<{
+      playerId: string;
+      playerName: string;
+      round: 1 | 2;
+      timeSec: number;
+      stations: Array<{
+        stationIndex: number;
+        stationType: string;
+        stationLabel: string;
+        moveTimeSec: number;
+        actionTimeSec: number;
+        timeSec: number;
+        attempts: Array<{ attempt: number; made: boolean; durationSec: number }>;
+      }>;
+    }>;
     complete: boolean;
   };
   horseTournament?: {
-    bracket: Array<{ round: number; matches: Array<{ p1Id: string; p1Name: string; p2Id: string; p2Name: string; winnerId: string }> }>;
+    contestants?: Array<{ playerId: string; playerName: string; letters: number; made: number; missed: number; isWinner: boolean; eliminated: boolean }>;
+    attempts?: Array<{ playerId: string; playerName: string; shotId: string; shotLabel: string; isSetting: boolean; made: boolean; lettersAfter: number; eliminated: boolean }>;
+    log?: string[];
+    bracket?: Array<{ round: number; matches: Array<{ p1Id: string; p1Name: string; p2Id: string; p2Name: string; winnerId: string }> }>;
     winnerId?: string;
     winnerName?: string;
     complete: boolean;
@@ -220,6 +262,7 @@ export interface ExpansionTeamSpec {
 
 export type OffseasonChecklistRow =
   | 'draftLottery'
+  | 'seasonSummary'
   | 'retiredPlayersReview'
   | 'expansionDraft'
   | 'options'
@@ -236,6 +279,7 @@ export type OffseasonChecklistRow =
   | 'hofCeremony'
   | 'trainingCamp'
   | 'coachingSignings'
+  | 'staffRetirements'
   | 'staffSignings'
   | 'youthPromotion'
   | 'pbaDraft'
@@ -315,3 +359,4 @@ export interface CommissionerLogEntry {
   coverStory: string;
   internalNote: string;
 }
+

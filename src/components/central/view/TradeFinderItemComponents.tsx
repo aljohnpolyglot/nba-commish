@@ -16,6 +16,49 @@ import { type FoundOffer, type TradeItem } from './TradeFinderTypes';
 
 const formatSalaryM = (n: number) => `$${(n / 1000).toFixed(1)}M`;
 
+function expiryTextClass(exp: number | undefined, currentYear: number): string {
+  return exp !== undefined && exp <= currentYear ? 'text-rose-400' : 'text-slate-500';
+}
+
+function requiredMatchPercent(reason: string | undefined): number | null {
+  const lower = (reason ?? '').toLowerCase();
+  const ratioMatch = (reason ?? '').match(/(\d+(?:\.\d+)?)×/);
+  if (ratioMatch) return Math.round(parseFloat(ratioMatch[1]) * 100);
+  if (lower.includes('2nd apron')) return 100;
+  return null;
+}
+
+function actualMatchPercent(mySalary: number, theirSalary: number, offendingSide?: 'A' | 'B'): number | null {
+  if (mySalary <= 0 || theirSalary <= 0) return null;
+  if (offendingSide === 'A') return Math.round((theirSalary / mySalary) * 100);
+  if (offendingSide === 'B') return Math.round((mySalary / theirSalary) * 100);
+  const larger = Math.max(mySalary, theirSalary);
+  const smaller = Math.min(mySalary, theirSalary);
+  return smaller > 0 ? Math.round((larger / smaller) * 100) : null;
+}
+
+function cbaBlockedLabel(reason: string | undefined, mySalary: number, theirSalary: number, offendingSide?: 'A' | 'B'): string {
+  const required = requiredMatchPercent(reason);
+  const actual = actualMatchPercent(mySalary, theirSalary, offendingSide);
+  if (required !== null && actual !== null) {
+    const lower = (reason ?? '').toLowerCase();
+    if (lower.includes('2nd apron')) return `2nd Apron ${actual}%/${required}%`;
+    if (lower.includes('1st apron')) return `1st Apron ${actual}%/${required}%`;
+    return `CBA Off ${actual}%/${required}%`;
+  }
+  const lower = (reason ?? '').toLowerCase();
+  if (lower.includes('sign-and-trade')) return '✗ Sign-and-Trade';
+  if (lower.includes('moratorium')) return '✗ Moratorium';
+  if (lower.includes('stepien')) return '✗ Stepien';
+  if (lower.includes('cash sends')) return '✗ Cash Blocked';
+  return '✗ CBA Blocked';
+}
+
+function salaryOffLabel(mySalary: number, theirSalary: number): string {
+  const actual = actualMatchPercent(mySalary, theirSalary, mySalary >= theirSalary ? 'B' : 'A');
+  return actual !== null ? `Salary Off ${actual}%/125%` : 'Salary Off';
+}
+
 function playerIndicators(player: NBAPlayer, team: NBATeam | undefined, dateStr: string): React.ReactNode {
   const { score } = computeMoodScore(player, team, dateStr);
   const emoji = score <= -3 ? '😤' : score >= 4 ? '😊' : '😐';
@@ -70,6 +113,7 @@ export const PlayerRow: React.FC<{
   const pot = calcPot2K(player, currentYear);
   const potColor = getPotColor(pot);
   const exp = player.contract?.exp ?? currentYear;
+  const expClass = expiryTextClass(player.contract?.exp, currentYear);
   const blocked = (!!walkingExpiring || !!recentlySigned) && !selected;
   const blockTitle = recentlySigned
     ? (tradeEligibleDate ? `Post-signing trade moratorium — eligible to trade ${tradeEligibleDate}.` : 'Recently signed — trade moratorium in effect.')
@@ -104,7 +148,7 @@ export const PlayerRow: React.FC<{
       <div className={`w-9 text-center text-xs font-bold tabular-nums ${potColor}`}>{pot}</div>
       <div className="w-[68px] text-right">
         <div className="text-xs font-bold text-white tabular-nums">{formatPlayerSalaryDisplay(player as any, currentYear, state.nonNBATeams ?? [])}</div>
-        <div className="text-[9px] text-slate-500 tabular-nums">{exp}</div>
+        <div className={`text-[9px] tabular-nums ${expClass}`}>{exp}</div>
       </div>
       {selected && <X size={11} className="text-indigo-400 flex-shrink-0" />}
       {cardPos && (
@@ -182,7 +226,7 @@ const OfferItemRow: React.FC<{ item: TradeItem; teams: NBATeam[]; nonNBATeams: a
             <div className="text-[10px] text-slate-500">{item.player.pos}{(() => { const age = getDisplayAge(item.player, currentYear); return age ? <span> · {age}Y</span> : null; })()}</div>
           </div>
           <div className="flex flex-col items-end flex-shrink-0"><div className={`text-xs font-black tabular-nums ${ovrText(item.ovr ?? 70)}`}>{item.ovr ?? '—'}</div><div className={`text-[10px] font-bold tabular-nums ${getPotColor(item.pot ?? 70)}`}>{item.pot ?? '—'}</div></div>
-          <div className="flex flex-col items-end flex-shrink-0 tabular-nums w-14"><div className="text-[11px] font-black text-white">{formatPlayerSalaryDisplay(item.player as any, currentYear, nonNBATeams)}</div>{item.player.contract?.exp && <div className="text-[10px] text-slate-500">{item.player.contract.exp}</div>}</div>
+          <div className="flex flex-col items-end flex-shrink-0 tabular-nums w-14"><div className="text-[11px] font-black text-white">{formatPlayerSalaryDisplay(item.player as any, currentYear, nonNBATeams)}</div>{item.player.contract?.exp && <div className={`text-[10px] ${expiryTextClass(item.player.contract.exp, currentYear)}`}>{item.player.contract.exp}</div>}</div>
         </>
       ) : (
         <>
@@ -217,18 +261,26 @@ export const OfferCard: React.FC<{
   const myDisplaySalaryUSD = sumPlayerCurrentSalariesUSD(myItems.filter(i => i.type === 'player').map(i => i.player!).filter(Boolean) as any[], currentYear);
   const theirDisplaySalaryUSD = sumPlayerCurrentSalariesUSD(offer.items.filter(i => i.type === 'player').map(i => i.player!).filter(Boolean) as any[], currentYear);
   const bothHavePlayers = myItems.some(i => i.type === 'player') && offer.items.some(i => i.type === 'player');
-  const ratioOk = !bothHavePlayers || isSalaryLegal(mySalary, theirSalary);
-  const capRoomK = capSpaceK ?? 0;
-  const capCoversGap = !ratioOk && bothHavePlayers && capRoomK > 0 && theirSalary <= mySalary + capRoomK + 0.1;
-  const salaryBadge = salaryBadgeOverride ?? (capCoversGap ? { label: '✓ Room OK', tone: 'warn' as const } : ratioOk || capCoversGap ? { label: '✓ Salary OK', tone: 'ok' as const } : { label: '⚠ Salary Off', tone: 'bad' as const });
+  const capAbsorbOnly = mySalary > 0 && theirSalary === 0;
+  const capAbsorbLegal = capAbsorbOnly && capSpaceK !== undefined && capSpaceK > 0 && mySalary <= capSpaceK + 0.1;
+  const ratioOk = bothHavePlayers ? isSalaryLegal(mySalary, theirSalary) : capAbsorbLegal;
+  const cbaBlocked = offer.cbaValid === false;
+  const primaryBadge = salaryBadgeOverride ?? (
+    capAbsorbOnly
+      ? (capAbsorbLegal
+          ? { label: 'Cap space available', tone: 'warn' as const }
+          : { label: 'Salary Off', tone: 'bad' as const })
+      : cbaBlocked && ratioOk
+        ? { label: cbaBlockedLabel(offer.cbaReason, mySalary, theirSalary, offer.cbaOffendingSide), tone: 'bad' as const }
+        : !ratioOk && bothHavePlayers
+          ? { label: salaryOffLabel(mySalary, theirSalary), tone: 'bad' as const }
+          : bothHavePlayers && ratioOk
+            ? { label: 'Salary OK', tone: 'ok' as const }
+            : null
+  );
   const badgeLabel = offer.strategyLabel ?? offer.outlook.label;
   const isAbsorb = offer.variant === 'absorb';
   const matchDeltaK = bothHavePlayers ? mySalary * 1.25 - theirSalary : null;
-  const capLabel = capCoversGap
-    ? (() => { const remainingCapK = mySalary + capRoomK - theirSalary; return remainingCapK >= 0 ? `+$${(remainingCapK / 1000).toFixed(1)}M post-trade room` : `-$${(-remainingCapK / 1000).toFixed(1)}M post-trade over`; })()
-    : matchDeltaK !== null
-      ? matchDeltaK >= 0 ? `+$${(matchDeltaK / 1000).toFixed(1)}M room` : `-$${(-matchDeltaK / 1000).toFixed(1)}M over limit`
-      : capSpaceK === undefined ? null : capSpaceK >= 0 ? `$${(capSpaceK / 1000).toFixed(1)}M avail` : `-$${(-capSpaceK / 1000).toFixed(1)}M over`;
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col">
@@ -244,8 +296,7 @@ export const OfferCard: React.FC<{
       </div>
       <div className="p-2.5 border-t border-slate-800/50 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 flex-wrap">
-          {isAbsorb ? <span className="text-[9px] font-bold px-2 py-1 rounded-lg bg-emerald-900/40 text-emerald-400">✓ Cap Absorbs</span> : bothHavePlayers ? <span className={`text-[9px] font-bold px-2 py-1 rounded-lg ${salaryBadge.tone === 'warn' ? 'bg-sky-900/40 text-sky-300' : salaryBadge.tone === 'ok' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-rose-900/40 text-rose-300'}`}>{salaryBadge.label}</span> : null}
-          {capLabel && <span className={`text-[9px] font-bold px-2 py-1 rounded-lg tabular-nums ${capCoversGap ? (capLabel.startsWith('+') ? 'bg-sky-900/40 text-sky-300' : 'bg-rose-900/40 text-rose-300') : matchDeltaK !== null ? matchDeltaK >= 0 ? 'bg-emerald-900/40 text-emerald-400' : 'bg-rose-900/40 text-rose-300' : (capSpaceK ?? 0) >= 0 ? 'bg-sky-900/40 text-sky-300' : 'bg-rose-900/40 text-rose-300'}`}>{capLabel}</span>}
+          {isAbsorb ? <span className="text-[9px] font-bold px-2 py-1 rounded-lg bg-emerald-900/40 text-emerald-400">✓ Cap Absorbs</span> : primaryBadge ? <span title={cbaBlocked ? (offer.cbaReason ?? 'CBA rule violation') : undefined} className={`text-[9px] font-bold px-2 py-1 rounded-lg ${primaryBadge.tone === 'warn' ? 'bg-sky-900/40 text-sky-300' : primaryBadge.tone === 'ok' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-rose-900/40 text-rose-300'}`}>{primaryBadge.label}</span> : null}
         </div>
         {!hideActions && <div className="flex items-center gap-1.5">{onReject && <button onClick={onReject} className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[10px] font-black uppercase tracking-wide transition-all"><X size={11} />Reject</button>}<button onClick={onManage} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-wide transition-all"><ArrowLeftRight size={11} />Manage</button></div>}
       </div>

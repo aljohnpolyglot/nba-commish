@@ -16,7 +16,7 @@ export interface PlayLine {
   gs: number;
   pts: number;
   desc: string;
-  type: 'jumpball' | 'made' | 'miss' | 'blk' | 'reb' | 'tov' | 'stl' | 'foul' | 'ft' | 'sub' | 'gameOver';
+  type: 'jumpball' | 'made' | 'miss' | 'blk' | 'reb' | 'tov' | 'stl' | 'foul' | 'ft' | 'sub' | 'gameOver' | 'injury' | 'fight';
   player?: PlayerPool;
   cs: number;
   ds: number;

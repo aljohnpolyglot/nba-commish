@@ -16,6 +16,29 @@ interface AllStarRosterModalProps {
 }
 
 export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, allStar, state, onClose, onGoToAllStar }) => {
+  const isPba = state.leagueStats?.uiMode === 'pba_isolated';
+  const isCaptainsDraft = state.leagueStats?.allStarFormat === 'captains_draft';
+  const getBucketLabel = (bucket: string) => {
+    if (isCaptainsDraft) {
+      const captain = allStar?.roster?.find((entry: any) => entry.conference === bucket && entry.isCaptain);
+      if (captain?.playerName) {
+        const parts = String(captain.playerName).trim().split(/\s+/);
+        return `Team ${parts[parts.length - 1]}`;
+      }
+      return bucket === 'East' ? (isPba ? 'Team A' : 'East All-Stars') : (isPba ? 'Team B' : 'West All-Stars');
+    }
+    if (bucket === 'East') return isPba ? 'Team A' : 'Eastern Conference';
+    if (bucket === 'West') return isPba ? 'Team B' : 'Western Conference';
+    return bucket;
+  };
+  const getBucketLogo = (bucket: string) => {
+    if (isCaptainsDraft) {
+      const captain = allStar?.roster?.find((entry: any) => entry.conference === bucket && entry.isCaptain);
+      const fullPlayer = state.players.find((player: NBAPlayer) => player.internalId === captain?.playerId);
+      if (fullPlayer?.imgURL) return fullPlayer.imgURL;
+    }
+    return bucket === 'West' ? WEST_LOGO_URL : EAST_LOGO_URL;
+  };
   
   return (
     <div className="fixed inset-0 z-[200] flex 
@@ -232,10 +255,14 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
           
           {tab === 'all-star' && (() => {
             const roster = allStar?.roster ?? [];
-            const east = roster.filter((p: any) => p.conference === 'East');
-            const west = roster.filter((p: any) => p.conference === 'West');
+            const order = ['East', 'West', 'USA1', 'USA2', 'WORLD', 'WORLD1', 'WORLD2'];
+            const buckets = Array.from(new Set(roster.map((p: any) => p.conference).filter(Boolean))) as string[];
+            buckets.sort((a, b) => order.indexOf(a) - order.indexOf(b));
             
-            const renderConferenceRoster = (label: string, players: any[], logo: string) => {
+            const renderConferenceRoster = (bucket: string) => {
+              const label = getBucketLabel(bucket);
+              const logo = getBucketLogo(bucket);
+              const players = roster.filter((p: any) => p.conference === bucket);
               const starters = players.filter(p => p.isStarter);
               const reserves = players.filter(p => !p.isStarter);
 
@@ -252,7 +279,7 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
                     {/* Starters */}
                     <div>
                       <div className="text-[9px] font-black text-amber-500/60 uppercase tracking-widest mb-2 flex items-center gap-1">
-                        <span className="text-xs">★</span> Starters (Fan Vote)
+                        <span className="text-xs">★</span> {isCaptainsDraft ? 'Top Picks' : 'Starters (Fan Vote)'}
                       </div>
                       <div className="space-y-2">
                         {starters.map((p: any) => {
@@ -291,7 +318,7 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
                     {/* Reserves */}
                     <div>
                       <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">
-                        Reserves (Coach Select)
+                        {isCaptainsDraft ? 'Drafted' : 'Reserves (Coach Select)'}
                       </div>
                       <div className="space-y-2">
                         {reserves.map((p: any) => {
@@ -332,9 +359,8 @@ export const AllStarRosterModal: React.FC<AllStarRosterModalProps> = ({ tab, all
             };
 
             return (
-              <div className="grid grid-cols-2 gap-6">
-                {renderConferenceRoster('Eastern Conference', east, EAST_LOGO_URL)}
-                {renderConferenceRoster('Western Conference', west, WEST_LOGO_URL)}
+              <div className={`grid grid-cols-1 gap-6 ${buckets.length === 2 ? 'md:grid-cols-2' : ''}`}>
+                {buckets.map(bucket => renderConferenceRoster(bucket))}
               </div>
             );
           })()}

@@ -25,13 +25,20 @@ export const assignDivisions = (teams: NBATeam[], divs: NBADiv[]): NBATeam[] => 
  * Computes clinch/elimination status for each team.
  * Should be called after standings are updated.
  */
-export const computeClinchStatus = (
-  teams: NBATeam[],
-  schedule: Game[]
-): NBATeam[] => {
+export const computeClinchStatus = <T extends NBATeam>(
+  teams: T[],
+  schedule: Game[],
+  seasonYear?: number
+): T[] => {
   const gamesRemaining = (tid: number) =>
-    schedule.filter(g => !g.played && !g.isPreseason && !g.isPlayoff && !g.isPlayIn &&
-      (g.homeTid === tid || g.awayTid === tid)).length;
+    schedule.filter(g => {
+      if (g.played || g.isPreseason || g.isPlayoff || g.isPlayIn) return false;
+      if ((g as any).isAllStar || (g as any).isRisingStars || (g as any).isCelebrityGame || (g as any).isExhibition || (g as any).isCupTBD) return false;
+      if (seasonYear != null && (g as any).season != null && Number((g as any).season) !== Number(seasonYear)) return false;
+      return g.homeTid === tid || g.awayTid === tid;
+    }).length;
+
+  const maxWinsByTid = new Map(teams.map(team => [team.id, team.wins + gamesRemaining(team.id)]));
 
   return teams.map(team => {
     const confTeams = [...teams]
@@ -43,27 +50,33 @@ export const computeClinchStatus = (
       });
 
     const teamRank = confTeams.findIndex(t => t.id === team.id) + 1;
-    const gr = gamesRemaining(team.id);
-    const maxWins = team.wins + gr;
+    const maxWins = maxWinsByTid.get(team.id) ?? team.wins;
+    const confRemaining = confTeams.reduce((sum, confTeam) => sum + gamesRemaining(confTeam.id), 0);
+    const regularSeasonComplete = confRemaining === 0 && confTeams.some(confTeam => confTeam.wins + confTeam.losses > 0);
 
-    // Check elimination: can't catch 10th-place team
-    const tenthPlace = confTeams[9];
-    const eliminated = tenthPlace
-      ? maxWins < tenthPlace.wins
-      : false;
-
-    // Check playoff clinch: 7th-place team can't catch us
-    const seventhPlace = confTeams[6];
-    const clinchedPlayoffs = seventhPlace
-      ? team.wins > (seventhPlace.wins + gamesRemaining(seventhPlace.id))
-      : false;
+    const eliminated = confTeams
+      .filter(confTeam => confTeam.id !== team.id && confTeam.wins > maxWins)
+      .length >= 10;
+    const clinchedTopSeed = teamRank === 1 && confTeams
+      .filter(confTeam => confTeam.id !== team.id)
+      .every(confTeam => team.wins > (maxWinsByTid.get(confTeam.id) ?? confTeam.wins));
+    const teamsThatCanTieOrPass = confTeams
+      .filter(confTeam => confTeam.id !== team.id && (maxWinsByTid.get(confTeam.id) ?? confTeam.wins) >= team.wins)
+      .length;
 
     let clinchedStatus: NBATeam['clinchedPlayoffs'] = undefined;
-    if (eliminated) {
+    if (regularSeasonComplete) {
+      if (teamRank === 1) clinchedStatus = 'z';
+      else if (teamRank <= 6) clinchedStatus = 'x';
+      else if (teamRank <= 10) clinchedStatus = 'w';
+      else clinchedStatus = 'o';
+    } else if (eliminated) {
       clinchedStatus = 'o';
-    } else if (clinchedPlayoffs && teamRank <= 6) {
+    } else if (clinchedTopSeed) {
+      clinchedStatus = 'z';
+    } else if (teamsThatCanTieOrPass <= 5) {
       clinchedStatus = 'x';
-    } else if (clinchedPlayoffs && teamRank <= 10) {
+    } else if (teamsThatCanTieOrPass <= 9) {
       clinchedStatus = 'w';
     }
 

@@ -204,17 +204,17 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 md:p-4"
         onClick={onClose}
       >
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-zinc-900 text-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden"
+          className="bg-zinc-900 text-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
-            <div>
+          <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 border-b border-zinc-800">
+            <div className="min-w-0">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <Shield className="w-5 h-5 text-indigo-400" /> Player Protection
               </h2>
@@ -222,13 +222,13 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
                 Protect up to {perTeamLimit} players per team. Unprotected players can be claimed by the {expansionTeamCount} expansion team{expansionTeamCount !== 1 ? 's' : ''}.
               </p>
             </div>
-            <button onClick={onClose} className="text-zinc-400 hover:text-white">
+            <button onClick={onClose} className="text-zinc-400 hover:text-white flex-shrink-0">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Team-Header */}
-          <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-zinc-950">
+          <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 border-b border-zinc-800 bg-zinc-950">
             {!isGM && (
               <button onClick={() => cycleTeam(-1)} className="p-1.5 hover:bg-zinc-800 rounded" title="Previous team">
                 <ChevronLeft className="w-4 h-4" />
@@ -250,7 +250,7 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
           </div>
 
           {/* Action-Bar */}
-          <div className="flex items-center justify-between px-6 py-2 border-b border-zinc-800">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-2 border-b border-zinc-800">
             <div className="text-xs text-zinc-400">
               {familyLocked.size > 0 && (
                 <span className="flex items-center gap-1">
@@ -258,7 +258,7 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
                 </span>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={handleReset}
                 className="px-3 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 rounded flex items-center gap-1"
@@ -352,8 +352,8 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-800 bg-zinc-950">
-            <div className="text-xs text-zinc-400">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-t border-zinc-800 bg-zinc-950">
+            <div className="text-xs text-zinc-400 text-center sm:text-left">
               {!canSubmit ? (
                 <span className="text-amber-400">
                   {isGM
@@ -368,12 +368,12 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
                 <span>All teams ready · {Object.keys(protections).length} rosters configured</span>
               )}
             </div>
-            <div className="flex gap-2">
-              <button onClick={onClose} className="px-4 py-2 text-sm text-zinc-300 hover:text-white">Cancel</button>
+            <div className="flex flex-col-reverse sm:flex-row gap-2">
+              <button onClick={onClose} className="w-full sm:w-auto px-4 py-2 text-sm text-zinc-300 hover:text-white">Cancel</button>
               <button
                 onClick={() => onConfirm(protections)}
                 disabled={!canSubmit}
-                className="px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 disabled:text-zinc-500 rounded font-semibold"
+                className="w-full sm:w-auto px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 disabled:text-zinc-500 rounded font-semibold"
               >
                 Advance to Draft
               </button>

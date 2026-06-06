@@ -4,6 +4,7 @@ import { NBAPlayer, NBATeam, NonNBATeam } from '../../../types';
 import { getCountryCode } from '../../../utils/helpers';
 import { getPlayerImage } from './bioCache';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
 
 interface PlayerSearchCardProps {
   player: NBAPlayer & { displayOvr: number; calculatedAge: number; extractedCountry: string };
@@ -14,17 +15,13 @@ interface PlayerSearchCardProps {
 }
 
 export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, teams, nonNBATeams, onClick, onTeamClick }) => {
-  const isNBA = !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '');
-  const team = isNBA ? teams.find(t => t.id === player.tid) : null;
-  const nonNBATeam = !isNBA ? nonNBATeams.find(t => t.tid === player.tid && t.league === player.status) : null;
+  const team = player.tid >= 0 ? resolveAnyTeam(player.tid, teams, nonNBATeams) : null;
 
   let teamName = 'Free Agent';
   if (player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect') {
     teamName = 'Draft Prospect';
   } else if (team) {
     teamName = team.name;
-  } else if (nonNBATeam) {
-    teamName = nonNBATeam.name;
   }
 
   const isInjured = player.injury && player.injury.type !== 'Healthy' && player.injury.gamesRemaining > 0;

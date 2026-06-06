@@ -1,8 +1,7 @@
 import { convertTo2KRating } from '../../utils/helpers';
 import { estimatePotentialBbgm } from '../../utils/playerRatings';
 import type { NBAPlayer } from '../../types';
-import type { DraftOrderTeam } from '../../services/draft/draftOrder';
-import { getPbaDraftPool, getPbaDraftOrder, PBA_DRAFT_ROUNDS } from '../../services/pba/draftRules';
+import { buildPbaDraftOrderTeams, getPbaDraftPool } from '../../services/pba/draftRules';
 
 const EXTERNAL_STATUSES = new Set([
   'Retired',
@@ -25,36 +24,7 @@ export type DraftSimulatorProspect = NBAPlayer & {
   pos: string;
 };
 
-export const buildPbaDraftOrderTeams = (nonNBATeams: any[]): DraftOrderTeam[] => {
-  const pbaTeams = nonNBATeams.filter((team: any) => team.league === 'PBA');
-  const pbaStandings = pbaTeams.map((team: any) => ({
-    tid: team.tid ?? team.id,
-    w: team.won ?? team.w ?? 0,
-    l: team.lost ?? team.l ?? 0,
-  }));
-  const pbaOrder = getPbaDraftOrder(pbaStandings, pbaTeams.map((team: any) => team.tid ?? team.id));
-  const order: DraftOrderTeam[] = [];
-
-  for (let round = 1; round <= PBA_DRAFT_ROUNDS; round++) {
-    for (const tid of pbaOrder) {
-      const team = pbaTeams.find((entry: any) => (entry.tid ?? entry.id) === tid);
-      if (!team) continue;
-      order.push({
-        ...team,
-        id: tid,
-        name: team.name ?? 'PBA Team',
-        abbrev: team.abbrev ?? '???',
-        _originalTid: tid,
-        _originalAbbrev: team.abbrev ?? '???',
-        _originalName: team.name ?? 'PBA Team',
-        _traded: false,
-        _r2: round === 2,
-      } as any);
-    }
-  }
-
-  return order;
-};
+export { buildPbaDraftOrderTeams };
 
 const toDraftProspect = (player: NBAPlayer): DraftSimulatorProspect => {
   const lastRatings = player.ratings?.[player.ratings.length - 1] ?? {};

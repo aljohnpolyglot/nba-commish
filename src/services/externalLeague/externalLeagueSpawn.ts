@@ -10,7 +10,7 @@ import {
 import type { LeagueWeightEntry } from '../../constants';
 import { getNameData } from '../../data/nameDataFetcher';
 import { generateDraftClassForGame, pickWeighted } from '../genDraftPlayers';
-import { getNewgenPortraitUrl } from '../../utils/newgenPortrait';
+import { getNewgenPortraitUrl, getRegenPortraitUrl } from '../../utils/newgenPortrait';
 import {
   ADULT_DIRECT_NATIONALITY,
   genderForLeague,
@@ -56,6 +56,12 @@ function deriveCollege(league: string, isYouth: boolean, team: any, country: str
 // after the standard ovrCap so this never breaks league-wide ceilings.
 const ACADEMY_TIER_OVR_BONUS: Record<number, number> = { 0: -3, 1: -1, 2: 0, 3: 2, 4: 4, 5: 6 };
 const ACADEMY_TIER_POT_BONUS: Record<number, number> = { 0: -3, 1: -1, 2: 0, 3: 3, 4: 6, 5: 9 };
+
+function academyYouthPotentialFloor(targetAge: number, academyBudget: number, targetOvr: number): number {
+  const base = 52 + academyBudget * 3;
+  const ageBonus = targetAge <= 15 ? 5 : targetAge === 16 ? 4 : targetAge === 17 ? 2 : 0;
+  return Math.max(targetOvr + 10, base + ageBonus);
+}
 
 export function spawnExternalPlayer(opts: {
   league: string;
@@ -123,7 +129,16 @@ export function spawnExternalPlayer(opts: {
     const potGap = Math.max(0, potCap - targetOvr);
     let targetPot = Math.min(potCap, targetOvr + Math.round(seededRandom(rngBase + '_pot') * potGap));
     if (isYouth) {
-      targetPot = Math.max(targetOvr, Math.min(potCap + 4, targetPot + (ACADEMY_TIER_POT_BONUS[academyBudget] ?? 0)));
+      targetPot = Math.max(
+        targetOvr,
+        Math.min(
+          potCap + 4,
+          Math.max(
+            targetPot + (ACADEMY_TIER_POT_BONUS[academyBudget] ?? 0),
+            academyYouthPotentialFloor(targetAge, academyBudget, targetOvr),
+          ),
+        ),
+      );
     }
 
     // ── Fix 4 + 5: Height ceiling + country multiplier ──────────────────────
@@ -167,7 +182,10 @@ export function spawnExternalPlayer(opts: {
     return {
       ...base,
       internalId: uniqueId,
-      imgURL: NEWGEN_SKIP_LEAGUES.has(league) ? (base as any).imgURL : getNewgenPortraitUrl(uniqueId, gender),
+      imgURL: NEWGEN_SKIP_LEAGUES.has(league)
+        ? (base as any).imgURL
+        : getRegenPortraitUrl(uniqueId, 'white', { nationality: country, bornLoc: country })
+          ?? getNewgenPortraitUrl(uniqueId, gender),
       name: `${firstName} ${lastName}`,
       firstName,
       lastName,

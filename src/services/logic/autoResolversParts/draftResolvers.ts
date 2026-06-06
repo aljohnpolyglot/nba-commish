@@ -9,6 +9,7 @@ import { buildDraftOrderFromState } from '../../draft/draftOrder';
 import { returnUndraftedToHomeLeague } from '../../externalLeagueSustainer';
 import { logPlanEvent } from '../../offseason/offseasonPlan';
 import { isNoDraftLeague } from '../../offseason/offseasonState';
+import { buildPbaDraftOrderTeams, getPbaDraftPool } from '../../pba/draftRules';
 
 function runWeightedLottery<T extends { originalSeed: number }>(
   teams: T[],
@@ -43,6 +44,7 @@ function runWeightedLottery<T extends { originalSeed: number }>(
 
 export const autoRunLottery = (state: GameState): Partial<GameState> => {
   logPlanEvent('autoResolvers.autoRunLottery', 'fire', `date=${state.date}`);
+  if (state.leagueStats?.uiMode === 'pba_isolated') return {};
   if (isNoDraftLeague(state.leagueStats)) return {};
   if ((state as any).draftLotteryResult) return {};
 
@@ -77,6 +79,7 @@ export const autoRunLottery = (state: GameState): Partial<GameState> => {
 
 export const autoRunDraft = (state: GameState): Partial<GameState> => {
   logPlanEvent('autoResolvers.autoRunDraft', 'fire', `date=${state.date}`);
+  const pbaIsolated = state.leagueStats?.uiMode === 'pba_isolated';
   if (isNoDraftLeague(state.leagueStats)) return {};
   if ((state as any).draftComplete) return {};
   if (isDraftBlockedByUnresolvedPlayoffs(state)) return { _deferred: true } as any;
@@ -88,24 +91,28 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   const restrictedFA: boolean = (state.leagueStats as any)?.rookieRestrictedFreeAgentEligibility ?? true;
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
 
+  const pbaDraftPool = pbaIsolated ? getPbaDraftPool(state.players) : [];
+  const pbaDraftPoolIds = new Set(pbaDraftPool.map(player => player.internalId));
   const draftOrder = (((state as any).activeDraftOrder?.length ?? 0) > 0
     ? (state as any).activeDraftOrder
-    : buildDraftOrderFromState(state)) as any[];
-  const prospects = state.players
-    .filter(p => {
-      const isProspect = p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect';
-      if (!isProspect) return false;
-      if (EXTERNAL_STATUSES.has(p.status ?? '')) return false;
-      const draftYear = (p as any).draft?.year;
-      if (draftYear != null && Number(draftYear) !== season) return false;
-      return true;
-    })
+    : pbaIsolated
+      ? buildPbaDraftOrderTeams((state as any).nonNBATeams ?? [], state.boxScores ?? [], season, pbaDraftPool.length)
+      : buildDraftOrderFromState(state)) as any[];
+  const prospects = (pbaIsolated ? pbaDraftPool : state.players.filter(p => {
+    const isProspect = p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect';
+    if (!isProspect) return false;
+    if (EXTERNAL_STATUSES.has(p.status ?? '')) return false;
+    const draftYear = (p as any).draft?.year;
+    if (draftYear != null && Number(draftYear) !== season) return false;
+    return true;
+  }))
     .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))
     .slice(0, 100);
 
   const assignedIds = new Set<string>();
-  const pickMap = new Map<number, { player: typeof state.players[0]; team: typeof state.teams[0] }>();
+  const pickMap = new Map<number, { player: typeof state.players[0]; team: any }>();
   const activeDraftPicks: Record<number, any> = (state as any).activeDraftPicks ?? {};
+  const passedSlots = new Set(Object.keys((state as any).activeDraftPassedPicks ?? {}).map(Number));
   for (const [slotKey, savedPlayer] of Object.entries(activeDraftPicks)) {
     const slot = Number(slotKey);
     const team = draftOrder[slot - 1];
@@ -115,7 +122,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     assignedIds.add(savedPlayer.internalId);
   }
   for (let slot = 1; slot <= draftOrder.length; slot++) {
-    if (pickMap.has(slot)) continue;
+    if (pickMap.has(slot) || passedSlots.has(slot)) continue;
     const team = draftOrder[slot - 1];
     const best = prospects.find(p => !assignedIds.has(p.internalId));
     if (!best) break;
@@ -150,13 +157,14 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   const updatedPlayers = state.players.map(p => {
     for (const [slot, { player, team }] of pickMap.entries()) {
       if (player.internalId !== p.internalId) continue;
-      const round = slot <= 30 ? 1 : 2;
-      const pickInRound = slot <= 30 ? slot : slot - 30;
-      const salaryAmount = computeRookieSalaryUSD(slot, state.leagueStats);
+      const roundSize = pbaIsolated ? (Number((team as any)._roundSize) || 12) : 30;
+      const round = pbaIsolated ? (Number((team as any)._round) || ((team as any)._r2 ? 2 : 1)) : (slot <= 30 ? 1 : 2);
+      const pickInRound = slot - ((round - 1) * roundSize);
+      const salaryAmount = computeRookieSalaryUSD(slot, state.leagueStats, roundSize);
       const baseYrs = round === 1 ? guaranteedYrs : 2;
       const optionYrs = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
       const totalYrs = baseYrs + optionYrs;
-      const r2NonGuaranteed = round === 2 && ((state.leagueStats as any)?.r2ContractsNonGuaranteed ?? true);
+      const r2NonGuaranteed = round >= 2 && ((state.leagueStats as any)?.r2ContractsNonGuaranteed ?? true);
       const contractYears = Array.from({ length: totalYrs }, (_, i) => {
         const yr = season + i;
         return {
@@ -168,9 +176,13 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
       return {
         ...p,
         tid: team.id,
-        status: 'Active' as const,
+        status: pbaIsolated ? 'PBA' as const : 'Active' as const,
         jerseyNumber: draftJerseyAssignments.get(p.internalId) ?? p.jerseyNumber,
         ...(r2NonGuaranteed && { nonGuaranteed: true }),
+        transactions: [
+          ...((p as any).transactions ?? []),
+          { season, tid: team.id, type: 'draft', phase: 0, pickNum: slot },
+        ],
         draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team.id },
         signedDate: state.date,
         contract: {
@@ -189,13 +201,22 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     }
     const draftYear = (p as any).draft?.year;
     const isCurrentClass = !draftYear || Number(draftYear) === season;
-    if (isCurrentClass && (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') && !assignedIds.has(p.internalId)) {
+    if (
+      isCurrentClass &&
+      (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') &&
+      (!pbaIsolated || pbaDraftPoolIds.has(p.internalId)) &&
+      !assignedIds.has(p.internalId)
+    ) {
       undrafted.push({ name: p.name, id: p.internalId });
       return {
         ...p,
         overallRating: Math.min(p.overallRating ?? 99, UNDRAFTED_OVR_CAP),
         tid: -1 as const,
         status: 'Free Agent' as const,
+        transactions: [
+          ...((p as any).transactions ?? []),
+          { season, tid: -1, type: 'draft', phase: 0, pickNum: 0 },
+        ],
         draft: { round: 0, pick: 0, year: season, tid: -1, originalTid: -1 },
       };
     }
@@ -210,7 +231,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   const draftHistoryEntries: Array<{ text: string; date: string; type: string; playerIds: string[] }> = [];
   for (const [slot, { player, team }] of pickMap.entries()) {
     draftHistoryEntries.push({
-      text: `The ${team.name} select ${player.name} as the ${ordinal(slot)} overall pick of the ${season} NBA Draft.`,
+      text: `The ${team.name} select ${player.name} as the ${ordinal(slot)} overall pick of the ${season} ${pbaIsolated ? 'PBA' : 'NBA'} Draft.`,
       date: state.date,
       type: 'Draft',
       playerIds: [player.internalId],
@@ -218,7 +239,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   }
   for (const u of undrafted) {
     draftHistoryEntries.push({
-      text: `${u.name} went undrafted in the ${season} NBA Draft.`,
+      text: `${u.name} went undrafted in the ${season} ${pbaIsolated ? 'PBA' : 'NBA'} Draft.`,
       date: state.date,
       type: 'Draft',
       playerIds: [u.id],
@@ -246,7 +267,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     history: state.history,
     targetTeamIds: draftedTeamIds,
   });
-  if (twoWayEnabled && maxTwoWay > 0) {
+  if (!pbaIsolated && twoWayEnabled && maxTwoWay > 0) {
     const TWO_WAY_OVR_CAP = 45;
     const twoWayPool = twoWayPlayers
       .filter(p => p.tid === -1 && p.status === 'Free Agent' && (p.overallRating ?? 99) <= TWO_WAY_OVR_CAP)
@@ -310,14 +331,16 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
         draftComplete: true,
         draftPicks: (state.draftPicks ?? []).filter(p => p.season !== season),
         activeDraftPicks: undefined,
+        activeDraftPassedPicks: undefined,
         activeDraftOrder: undefined,
         history: [...existingHistory, ...draftHistoryEntries, ...twoWayHistoryEntries],
       } as any;
     }
   }
 
-  const { players: playersAfterReturn, historyEntries: returnHistory } =
-    returnUndraftedToHomeLeague(twoWayPlayers, season, state as any);
+  const { players: playersAfterReturn, historyEntries: returnHistory } = pbaIsolated
+    ? { players: twoWayPlayers, historyEntries: [] }
+    : returnUndraftedToHomeLeague(twoWayPlayers, season, state as any);
   const existingHistory: any[] = (state.history as any[]) ?? [];
   return {
     players: normalizeTeamJerseyNumbers(playersAfterReturn, state.teams, season, {
@@ -327,6 +350,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     draftComplete: true,
     draftPicks: (state.draftPicks ?? []).filter(p => p.season !== season),
     activeDraftPicks: undefined,
+    activeDraftPassedPicks: undefined,
     activeDraftOrder: undefined,
     history: [...existingHistory, ...draftHistoryEntries, ...returnHistory],
   } as any;

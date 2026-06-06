@@ -36,8 +36,8 @@ export const PressConferenceModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-[145] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl rounded-2xl border border-violet-400/30 bg-slate-950 text-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-800 p-5">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-violet-400/30 bg-slate-950 text-white shadow-2xl">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-800 p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl border border-violet-400/40 bg-violet-400/10 flex items-center justify-center text-violet-200">
               <Mic2 size={22} />
@@ -49,7 +49,7 @@ export const PressConferenceModal: React.FC = () => {
           </div>
           <button onClick={() => respond()} className="w-10 h-10 rounded-xl border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><X size={18} /></button>
         </div>
-        <div className="p-6">
+        <div className="overflow-y-auto p-4 sm:p-6">
           <h3 className="text-2xl font-black tracking-tight">{press.headline}</h3>
           <p className="mt-3 text-sm leading-6 text-slate-300">{press.prompt}</p>
           <div className="mt-6 space-y-3">

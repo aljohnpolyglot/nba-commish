@@ -16,6 +16,7 @@ import {
   findTeamInText,
   getSeasonYear,
   LeagueFilter,
+  normalizePersonnelRoleText,
   SearchField,
 } from './TransactionsShared';
 import { getOwnTeamId } from '../../../utils/helpers';
@@ -74,9 +75,10 @@ export const TransactionsView: React.FC = () => {
       })
       .map(raw => {
         const entry = typeof raw === 'string' ? { text: raw, date: state.date, type: 'League Event' } : raw as { text: string; date: string; type?: string };
-        const text = entry.text || '';
+        const text = normalizePersonnelRoleText(entry.text || '');
         return {
           ...entry,
+          text,
           kind: detectType(text, entry.type),
           team: findTeamInText(text, state.teams),
           player: findPlayerInText(text, playerByName),

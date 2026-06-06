@@ -14,22 +14,42 @@ import { getTeamFullName } from '../../utils/teamNames';
 import { isOnRoster } from '../../utils/teamLookup';
 import { ClubChip, fmtEUR, OvrPotPair } from './EuroTransferMarketShared';
 
-export const ListPlayerModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+export const ListPlayerModal: React.FC<{ onClose: () => void; preselectedPlayerId?: string | null }> = ({ onClose, preselectedPlayerId = null }) => {
   const { state } = useGame() as any;
   const { userTid, listings, actions } = useTransferMarketContext();
   const currentYear: number = state.leagueStats?.year ?? new Date().getFullYear();
 
-  const alreadyListed = new Set(listings.map(l => l.player.id));
-  const eligible = (state.players ?? [])
-    .filter((p: any) => p.tid === userTid && isOnRoster(p) && !alreadyListed.has(p.internalId));
+  const alreadyListed = useMemo(
+    () => new Set(listings.map(l => l.player.id)),
+    [listings],
+  );
+  const eligible = useMemo(
+    () => (state.players ?? [])
+      .filter((p: any) => p.tid === userTid && isOnRoster(p) && !alreadyListed.has(p.internalId)),
+    [alreadyListed, state.players, userTid],
+  );
+  const eligibleIdsKey = useMemo(
+    () => eligible.map((p: any) => p.internalId).join('|'),
+    [eligible],
+  );
 
-  const [selPid, setSelPid] = useState<string | null>(eligible[0]?.internalId ?? null);
+  const preferredPlayerId = eligible.some((p: any) => p.internalId === preselectedPlayerId)
+    ? preselectedPlayerId
+    : null;
+  const [selPid, setSelPid] = useState<string | null>(preferredPlayerId ?? eligible[0]?.internalId ?? null);
   const selPlayer = eligible.find((p: any) => p.internalId === selPid);
   const suggested = selPlayer ? estimatePlayerValueEUR(selPlayer, currentYear) : 1_000_000;
   const [asking, setAsking] = useState<number>(suggested);
   const [days] = useState<number>(7);
 
   React.useEffect(() => { setAsking(suggested); }, [selPid, suggested]);
+  React.useEffect(() => {
+    setSelPid(prev => {
+      if (preferredPlayerId && prev !== preferredPlayerId) return preferredPlayerId;
+      if (prev && eligible.some((p: any) => p.internalId === prev)) return prev;
+      return eligible[0]?.internalId ?? null;
+    });
+  }, [preferredPlayerId, eligible, eligibleIdsKey]);
 
   const selectorItems: PlayerSelectorItem[] = React.useMemo(
     () => eligible.map((p: any) => ({
@@ -67,9 +87,9 @@ export const ListPlayerModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-black text-white">List Player For Transfer</h3>
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-6 max-w-2xl w-full max-h-[calc(100vh-2rem)] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 mb-4">
+          <h3 className="text-base sm:text-lg font-black text-white">List Player For Transfer</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white"><X size={18} /></button>
         </div>
 
@@ -95,9 +115,9 @@ export const ListPlayerModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
 
         <div className="space-y-3">
           <div>
-            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex justify-between items-center mb-2">
-              Asking Price
-              <div className="flex gap-3 text-[10px]">
+            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex flex-col gap-1.5 sm:flex-row sm:justify-between sm:items-center mb-2">
+              <span>Asking Price</span>
+              <div className="flex flex-wrap gap-3 text-[10px]">
                 <span className="text-amber-300">SUGG {fmtEUR(suggested)}</span>
                 <span className="text-white/50">MAX {fmtEUR(askMax)}</span>
               </div>
@@ -138,7 +158,7 @@ export const ListPlayerModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
                 title={`Engine suggestion: ${fmtEUR(suggested)}`}
               />
             </div>
-            <div className="flex justify-between text-[9px] font-bold uppercase text-white/30 tracking-widest mt-1">
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center text-[9px] font-bold uppercase text-white/30 tracking-widest mt-1">
               <span>Min {fmtEUR(askMin)}</span>
               <button onClick={() => setAsking(suggested)} className="text-amber-300 hover:text-amber-200 normal-case tracking-normal font-bold">
                 use suggestion ({fmtEUR(suggested)})
@@ -147,7 +167,7 @@ export const ListPlayerModal: React.FC<{ onClose: () => void }> = ({ onClose }) 
             </div>
           </div>
 
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
             <button
               onClick={onClose}
               className="flex-1 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold uppercase text-xs"
@@ -231,16 +251,16 @@ export const BidOnListingModal: React.FC<{
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.96 }}
             transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-            className="w-full max-w-3xl bg-slate-950 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden"
+            className="w-full max-w-3xl max-h-[calc(100vh-2rem)] overflow-y-auto bg-slate-950 rounded-2xl border border-slate-800 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between px-6 py-5 border-b border-slate-800">
-              <div className="flex items-center gap-4">
+            <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-800">
+              <div className="flex items-start gap-3 sm:gap-4 min-w-0">
                 <PlayerPortrait imgUrl={listing.player.imgURL} face={listing.player.face} playerName={listing.player.name} size={64} />
-                <div>
+                <div className="min-w-0">
                   <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 mb-1">Negotiate Transfer</div>
-                  <h2 className="text-2xl font-black text-white tracking-tight leading-none">{listing.player.name}</h2>
-                  <div className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-2">
+                  <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-none break-words">{listing.player.name}</h2>
+                  <div className="text-[11px] text-slate-400 mt-1.5 flex flex-wrap items-center gap-2">
                     <span>{listing.player.position}</span>
                     <span className="text-slate-700">•</span>
                     <span>{listing.player.age} years old</span>
@@ -253,8 +273,8 @@ export const BidOnListingModal: React.FC<{
               <button onClick={onClose} className="text-slate-500 hover:text-white p-1"><X size={20} /></button>
             </div>
 
-            <div className="p-6 grid grid-cols-2 gap-5 max-h-[68vh] overflow-y-auto">
-              <div className="bg-slate-900/60 rounded-2xl border border-slate-800/60 p-5 space-y-4">
+            <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+              <div className="bg-slate-900/60 rounded-2xl border border-slate-800/60 p-4 sm:p-5 space-y-4">
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-400">Offer Details</div>
                   <div className="text-[10px] text-slate-500 mt-0.5">Bid to {listing.club.name} for the transfer rights</div>
@@ -265,8 +285,8 @@ export const BidOnListingModal: React.FC<{
                     <span>Transfer Fee</span>
                     <span className="text-slate-400">Market Value: {fmtEUR(marketValueEUR)}</span>
                   </div>
-                  <div className="text-3xl font-black text-white tabular-nums mt-1">{fmtEUR(bidInput)}</div>
-                  <div className="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+                  <div className="text-2xl sm:text-3xl font-black text-white tabular-nums mt-1 break-words">{fmtEUR(bidInput)}</div>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px]">
                     <div className="rounded-lg border border-slate-800 bg-slate-950/70 px-2 py-1.5">
                       <div className="uppercase tracking-wider text-slate-500">Cash on Hand</div>
                       <div className={`font-black ${budget.cashEUR >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{fmtEUR(budget.cashEUR)}</div>
@@ -313,8 +333,8 @@ export const BidOnListingModal: React.FC<{
                 </div>
               </div>
 
-              <div className="space-y-5">
-                <div className="bg-slate-900/60 rounded-2xl border border-slate-800/60 p-5 space-y-4">
+              <div className="space-y-4 sm:space-y-5">
+                <div className="bg-slate-900/60 rounded-2xl border border-slate-800/60 p-4 sm:p-5 space-y-4">
                   <div>
                     <div className="text-[10px] font-black uppercase tracking-[0.3em] text-violet-400">Interest Levels</div>
                     <div className="text-[10px] text-slate-500 mt-0.5">Both club and player must be willing</div>
@@ -351,7 +371,7 @@ export const BidOnListingModal: React.FC<{
                   )}
                 </div>
 
-                <div className="bg-slate-900/60 rounded-2xl border border-slate-800/60 p-5 space-y-3">
+                <div className="bg-slate-900/60 rounded-2xl border border-slate-800/60 p-4 sm:p-5 space-y-3">
                   <div className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-400">
                     Other Offers <span className="text-slate-500">({otherOffers.length})</span>
                   </div>
@@ -386,45 +406,45 @@ export const BidOnListingModal: React.FC<{
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-slate-900/40 border-t border-slate-800">
+            <div className="px-4 sm:px-6 py-4 bg-slate-900/40 border-t border-slate-800">
               <div className="text-center text-[9px] font-black uppercase tracking-[0.3em] text-slate-500 mb-3">Current Contract (To Be Transferred)</div>
-              <div className="grid grid-cols-4 gap-4 text-center">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
                 <div>
                   <div className="text-[9px] uppercase tracking-wider text-slate-500 mb-1">Salary</div>
-                  <div className="text-xl font-black text-white tabular-nums">{fmtEUR(annualSalaryEUR)}</div>
+                  <div className="text-lg sm:text-xl font-black text-white tabular-nums break-words">{fmtEUR(annualSalaryEUR)}</div>
                   <div className="text-[9px] text-slate-500">per year</div>
                 </div>
                 <div>
                   <div className="text-[9px] uppercase tracking-wider text-slate-500 mb-1">Years Remaining</div>
-                  <div className="text-xl font-black text-white tabular-nums">{yearsLeft} {yearsLeft === 1 ? 'Year' : 'Years'}</div>
+                  <div className="text-lg sm:text-xl font-black text-white tabular-nums">{yearsLeft} {yearsLeft === 1 ? 'Year' : 'Years'}</div>
                   <div className="text-[9px] text-slate-500">({currentYear}/{String(currentYear + 1).slice(-2)} – {currentYear + yearsLeft - 1}/{String(currentYear + yearsLeft).slice(-2)})</div>
                 </div>
                 <div>
                   <div className="text-[9px] uppercase tracking-wider text-slate-500 mb-1">Contract Type</div>
-                  <div className="text-xl font-black text-white">{contractType}</div>
+                  <div className="text-lg sm:text-xl font-black text-white break-words">{contractType}</div>
                 </div>
                 <div>
                   <div className="text-[9px] uppercase tracking-wider text-slate-500 mb-1">Expires</div>
-                  <div className="text-xl font-black text-white">Jun 30, {expYear}</div>
+                  <div className="text-lg sm:text-xl font-black text-white">Jun 30, {expYear}</div>
                 </div>
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-slate-800 flex items-center gap-4">
+            <div className="px-4 sm:px-6 py-4 border-t border-slate-800 flex flex-col lg:flex-row items-stretch lg:items-center gap-3 lg:gap-4">
               <button
                 onClick={onClose}
-                className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold uppercase tracking-widest text-xs"
+                className="w-full lg:w-auto px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold uppercase tracking-widest text-xs"
               >
                 Cancel
               </button>
-              <p className="flex-1 text-[10px] text-slate-500 leading-snug">
+              <p className="flex-1 text-[10px] text-slate-500 leading-snug text-center lg:text-left">
                 You can make changes to your offer before submitting. Lowballs under 80% of asking are rejected on sight.
               </p>
               <button
                 onClick={() => onSubmit(bidInput)}
                 disabled={!windowOpen || blockedByCash}
                 title={!windowOpen ? 'Transfer window closed' : blockedByCash ? 'No cash for this transfer' : 'Submit offer'}
-                className="px-8 py-3 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-black uppercase tracking-widest text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full lg:w-auto px-8 py-3 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-black uppercase tracking-widest text-xs disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Submit Offer
               </button>

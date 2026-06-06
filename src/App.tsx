@@ -17,11 +17,12 @@ import { FinanceRecapModal } from './components/tycoon/FinanceRecapModal';
 import { PressConferenceModal } from './components/tycoon/PressConferenceModal';
 import { isEuroIsolatedMode } from './utils/uiMode';
 import { OffseasonNextActionButton, OffseasonPhaseBadge, OffseasonAufgabenSidebar, OffseasonAufgabenMobileSheet, OffseasonFATagFooter, OffseasonTrainingCampFooter, OffseasonTransferMarketFooter } from './components/offseason/OffseasonAufgaben';
+import { getVisibleOffseasonRows } from './services/offseason/offseasonState';
 import { TransferResolutionModal } from './components/transferMarket/EuroTransferMarketView';
 import { LazySimLoadingScreen } from './components/setup/LazySimLoadingScreen';
 import { LeagueTypeSelector, type LeagueType, type ModdedLeagueBase, type EuropeMarket } from './components/setup/LeagueTypeSelector';
 import { useLeagueLabels } from './utils/leagueLabels';
-import { Menu, X } from 'lucide-react';
+import { Menu, Trophy, X } from 'lucide-react';
 import { SaveManager } from './services/SaveManager';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
@@ -72,10 +73,54 @@ const EuroCashChip: React.FC<{ onClick: () => void }> = ({ onClick }) => {
   );
 };
 
+const EuroleagueWelcomeModal: React.FC = () => {
+  const { state, dispatchAction } = useGame();
+  const pending = state.pendingEuroleagueWelcome;
+  if (!pending || state.gameMode !== 'gm') return null;
+
+  const finishText = pending.endesaFinish ? `after finishing #${pending.endesaFinish} in Liga Endesa` : 'through your Liga Endesa finish';
+  const close = () => {
+    void dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingEuroleagueWelcome: undefined } });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm" onClick={close} />
+      <div className="relative w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl border border-amber-400/30 bg-slate-950 shadow-2xl">
+        <button onClick={close} className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+          <X size={18} />
+        </button>
+        <div className="p-6 sm:p-7">
+          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/20">
+            <Trophy size={28} />
+          </div>
+          <p className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-300">New Invitation</p>
+          <h2 className="mt-2 text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">Welcome to EuroLeague</h2>
+          <p className="mt-4 text-sm leading-relaxed text-slate-300">
+            {pending.teamName} earned Spain's open EuroLeague place {finishText}. Next season adds a continental calendar, tougher travel, and bigger nights before the Final Four.
+          </p>
+          <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-300">
+            Board target: prove this belongs. Compete at home, survive the EuroLeague regular season, and make the club harder to push out next summer.
+          </div>
+          <button
+            onClick={close}
+            className="mt-6 w-full rounded-2xl bg-amber-400 py-3 text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-amber-300 transition-colors"
+          >
+            Start The Season
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Lazy load mini-games
 const TheThroneView = React.lazy(() => import('./throne/components/TheThroneGame'));
 const DunkContestView = React.lazy(() => import('./minigames/dunk/DunkContestMiniGame'));
 const ThreePointContestView = React.lazy(() => import('./minigames/threepoint/ThreePointContestMiniGame'));
+const ShootingStarsView = React.lazy(() => import('./minigames/shootingstars/ShootingStarsMiniGame'));
+const SkillsChallengeView = React.lazy(() => import('./minigames/skills/SkillsChallengeMiniGame'));
+const HorseView = React.lazy(() => import('./minigames/horse/HorseMiniGame'));
 import { fetchStatmuseData } from './data/social/statmuseImages';
 import { fetchAvatarData } from './data/avatars';
 import { fetchCharaniaPhotos } from './services/social/charaniaphotos';
@@ -91,7 +136,7 @@ function GameLayout() {
   const [leagueType, setLeagueType] = useState<LeagueType | null>(null);
   const [moddedLeagueBase, setModdedLeagueBase] = useState<ModdedLeagueBase>('nba');
   const [europeMarket, setEuropeMarket] = useState<EuropeMarket | undefined>(undefined);
-  const [activeMiniGame, setActiveMiniGame] = useState<'throne' | 'dunk' | '3point' | null>(null);
+  const [activeMiniGame, setActiveMiniGame] = useState<'throne' | 'dunk' | '3point' | 'shooting-stars' | 'skills' | 'horse' | null>(null);
   const [tycoonWelcomeOpen, setTycoonWelcomeOpen] = useState(false);
   const { state, dispatchAction, currentView, setCurrentView } = useGame();
   const labels = useLeagueLabels();
@@ -99,6 +144,27 @@ function GameLayout() {
   const latestStateRef = useRef(state);
   const saveInFlightRef = useRef(false);
   const pendingSaveRef = useRef(false);
+  const hasOffseasonRows = React.useMemo(() => {
+    if (!state.offseasonChecklist) return false;
+    return getVisibleOffseasonRows(
+      state.leagueStats,
+      null,
+      state.date,
+      (state as any).expansionSchedule,
+      state.offseasonChecklist,
+      {
+        lotteryResolved: !!(state.draftLotteryResult && state.draftLotteryResult.length > 0),
+        draftComplete: !!state.draftComplete,
+      },
+    ).length > 0;
+  }, [
+    state.offseasonChecklist,
+    state.leagueStats,
+    state.date,
+    (state as any).expansionSchedule,
+    state.draftLotteryResult,
+    state.draftComplete,
+  ]);
 
   useEffect(() => {
     latestStateRef.current = state;
@@ -283,11 +349,21 @@ function GameLayout() {
       />;
     }
 
-    const miniGameNames: Record<string, string> = { throne: 'The Throne', dunk: 'Dunk Contest', '3point': '3-Point Contest' };
+    const miniGameNames: Record<string, string> = {
+      throne: 'The Throne',
+      dunk: 'Dunk Contest',
+      '3point': '3-Point Contest',
+      'shooting-stars': 'Shooting Stars',
+      skills: 'Skills Challenge',
+      horse: 'H-O-R-S-E',
+    };
     const miniGameComponents: Record<string, React.ReactNode> = {
       throne: <TheThroneView />,
       dunk: <DunkContestView />,
       '3point': <ThreePointContestView />,
+      'shooting-stars': <ShootingStarsView />,
+      skills: <SkillsChallengeView />,
+      horse: <HorseView />,
     };
 
     return (
@@ -337,7 +413,7 @@ function GameLayout() {
           >
             <Menu size={20} />
           </button>
-          {state.offseasonChecklist ? (
+          {hasOffseasonRows ? (
             <>
               <OffseasonNextActionButton setCurrentView={setCurrentView} />
               <OffseasonPhaseBadge />
@@ -350,7 +426,7 @@ function GameLayout() {
 
         {/* Desktop Play bar — same swap, calendar UI hidden when offseason. */}
         <div className="hidden md:flex px-4 py-2 bg-slate-900/50 border-b border-slate-800/60 items-center gap-3 shrink-0">
-          {state.offseasonChecklist ? (
+          {hasOffseasonRows ? (
             <>
               <OffseasonNextActionButton setCurrentView={setCurrentView} />
               <OffseasonPhaseBadge />
@@ -367,7 +443,7 @@ function GameLayout() {
           </div>
           {/* Global Offseason AUFGABEN rail — desktop only, always visible
               during offseason regardless of which view the user is on. */}
-          {state.offseasonChecklist && (
+          {hasOffseasonRows && (
             <div className="hidden lg:block w-[320px] shrink-0 border-l border-slate-800 overflow-y-auto scrollbar-hide p-3 bg-slate-950/40">
               <OffseasonAufgabenSidebar />
             </div>
@@ -385,6 +461,7 @@ function GameLayout() {
         <ToastNotifier />
         <RFAOfferSheetModal />
         <TycoonWelcomeModal open={tycoonWelcomeOpen} onClose={() => setTycoonWelcomeOpen(false)} />
+        <EuroleagueWelcomeModal />
         <EuroBankruptcyModal />
         <FinanceRecapModal />
         <PressConferenceModal />

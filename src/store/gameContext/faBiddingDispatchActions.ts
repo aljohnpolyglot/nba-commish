@@ -22,7 +22,7 @@ export function handleFaBiddingDispatchAction({
   stateRef,
 }: HandleFaBiddingDispatchActionArgs): boolean {
   if (action.type === 'SUBMIT_FA_BID') {
-    const { playerId, playerName, teamId, teamName, teamLogoUrl, salaryUSD, years, option } = action.payload as {
+    const { playerId, playerName, teamId, teamName, teamLogoUrl, salaryUSD, years, option, twoWay, nonGuaranteed } = action.payload as {
       playerId: string;
       playerName: string;
       teamId: number;
@@ -31,6 +31,8 @@ export function handleFaBiddingDispatchAction({
       salaryUSD: number;
       years: number;
       option: 'NONE' | 'PLAYER' | 'TEAM';
+      twoWay?: boolean;
+      nonGuaranteed?: boolean;
     };
     setState(prev => {
       if (prev.leagueStats?.uiMode === 'euro_isolated') return prev;
@@ -63,6 +65,8 @@ export function handleFaBiddingDispatchAction({
         salaryUSD,
         years,
         option,
+        ...(twoWay ? { twoWay: true } : {}),
+        ...(nonGuaranteed ? { nonGuaranteed: true } : {}),
         isUserBid: true,
         submittedDay: currentDay,
         expiresDay: decisionDay,

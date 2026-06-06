@@ -141,27 +141,27 @@ export const CelebrityRosterModal: React.FC<CelebrityRosterModalProps> = ({ onCl
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
+                className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-3 md:p-4"
             >
                 <motion.div 
                     initial={{ scale: 0.95, y: 20 }}
                     animate={{ scale: 1, y: 0 }}
                     exit={{ scale: 0.95, y: 20 }}
-                    className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+                    className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)]"
                 >
-                    <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-                        <div className="flex flex-col">
-                            <h3 className="text-xl font-black text-white uppercase tracking-tight">Celebrity Game Roster</h3>
+                    <div className="p-4 sm:p-6 border-b border-slate-800 flex items-start justify-between gap-3 bg-slate-900/50">
+                        <div className="flex min-w-0 flex-col">
+                            <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight leading-tight">Celebrity Game Roster</h3>
                             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">
                                 Selected: {selectedCelebrities.length} / {maxSelections}
                             </span>
                         </div>
-                        <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
+                        <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors flex-shrink-0">
                             <X size={20} />
                         </button>
                     </div>
 
-                    <div className="p-6 border-b border-slate-800 space-y-4">
+                    <div className="p-4 sm:p-6 border-b border-slate-800 space-y-4">
                         <div className="relative">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
                             <input
@@ -217,17 +217,17 @@ export const CelebrityRosterModal: React.FC<CelebrityRosterModalProps> = ({ onCl
                         </div>
                     </div>
 
-                    <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-3">
+                    <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex flex-col-reverse sm:flex-row justify-end gap-3">
                         <button
                             onClick={onClose}
-                            className="px-6 py-2 rounded-xl text-slate-400 font-bold hover:text-white hover:bg-slate-800 transition-colors"
+                            className="w-full sm:w-auto px-6 py-3 sm:py-2 rounded-xl text-slate-400 font-bold hover:text-white hover:bg-slate-800 transition-colors"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={() => onConfirm(selectedCelebrities)}
                             disabled={selectedCelebrities.length < 10}
-                            className="px-6 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
+                            className="w-full sm:w-auto px-6 py-3 sm:py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
                         >
                             Confirm Roster ({selectedCelebrities.length})
                         </button>

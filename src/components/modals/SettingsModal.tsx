@@ -61,11 +61,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
 
         {/* Header */}
-        <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50 shrink-0">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-800 bg-slate-900/50 p-4 shrink-0">
+          <h2 className="flex items-center gap-2 text-lg font-bold text-white">
             <Settings2 className="text-indigo-500" />
             Game Settings
           </h2>
@@ -75,28 +75,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         </div>
 
         {/* Body: sidebar + content */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
 
           {/* Sidebar nav */}
-          <div className="w-36 shrink-0 border-r border-slate-800 bg-slate-950/40 flex flex-col py-2 overflow-y-auto">
+          <div className="shrink-0 border-b border-slate-800 bg-slate-950/40 md:w-44 md:border-b-0 md:border-r">
+            <div className="flex gap-2 overflow-x-auto px-3 py-3 md:flex-col md:overflow-y-auto md:overflow-x-hidden md:px-0 md:py-2">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all text-left border-r-2 ${
+                className={`shrink-0 rounded-xl border px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider transition-all md:rounded-none md:border-0 md:border-r-2 ${
                   activeTab === tab.id
-                    ? 'text-indigo-400 bg-indigo-500/10 border-indigo-500'
-                    : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40 border-transparent'
+                    ? 'border-indigo-500/40 bg-indigo-500/10 text-indigo-400 md:border-indigo-500'
+                    : 'border-slate-800 text-slate-500 hover:bg-slate-800/40 hover:text-slate-300 md:border-transparent'
                 }`}
               >
                 {tab.icon}
                 {tab.label}
               </button>
             ))}
+            </div>
           </div>
 
           {/* Content */}
-          <div className="flex-1 p-6 overflow-y-auto custom-scrollbar flex flex-col gap-6">
+          <div className="custom-scrollbar flex flex-1 flex-col gap-5 overflow-y-auto p-4 sm:p-6">
 
           {/* ── Storage ────────────────────────────────────────────────── */}
           {activeTab === 'storage' && (
@@ -210,7 +212,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 <p className="text-xs text-slate-400 mb-4">
                   Choose what shows when you hover a player name (or tap the 📊 icon on mobile).
                 </p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {([
                     {
                       value: 'k2' as const,
@@ -316,7 +318,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   <p className="text-xs text-slate-400 leading-relaxed">
                     Sets the content volume and model tier. Fast generates the leanest output; Best goes all-out.
                   </p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {GAME_MODE_OPTIONS.map(opt => {
                       const isSelected = settings.llmPerformance === opt.value;
                       return (
@@ -377,7 +379,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   <Activity size={16} className="text-indigo-400" />
                   Game Simulator
                 </label>
-                <div className="flex gap-1 bg-slate-900/60 rounded-lg p-1">
+                <div className="flex flex-col gap-1 rounded-lg bg-slate-900/60 p-1 sm:flex-row">
                   <button
                     onClick={() => setSettings({ ...settings, simulatorMode: 'realistic' })}
                     className={`px-3 py-1 rounded text-xs font-black uppercase tracking-wider transition-all ${
@@ -698,16 +700,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         </div>{/* end body */}
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-3 shrink-0">
+        <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-slate-800 bg-slate-900/50 p-4 sm:flex-row sm:justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+            className="w-full px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:text-white sm:w-auto"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-6 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-indigo-500/20"
+            className="w-full rounded-lg bg-indigo-600 px-6 py-2 text-sm font-bold text-white transition-colors shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 sm:w-auto"
           >
             Save Settings
           </button>
@@ -716,12 +718,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
       {showFastSimWarning && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-amber-500/40 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
-            <div className="p-5 border-b border-slate-800 flex items-center gap-3">
+          <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-amber-500/40 bg-slate-900 shadow-2xl">
+            <div className="flex items-start gap-3 border-b border-slate-800 p-4 sm:p-5">
               <AlertTriangle size={22} className="text-amber-400 shrink-0" />
               <h3 className="text-base font-bold text-white">Switch to Fast Simulator?</h3>
             </div>
-            <div className="p-5 space-y-3 text-sm text-slate-300">
+            <div className="space-y-3 overflow-y-auto p-4 text-sm text-slate-300 sm:p-5">
               <p>You're about to disable the realistic possession engine. This affects every game from the next sim onward:</p>
               <ul className="list-disc list-inside space-y-1.5 text-xs text-slate-400">
                 <li>Advanced stats (PER, TS%, USG%, ORtg/DRtg) become less reliable</li>
@@ -731,10 +733,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
               </ul>
               <p className="text-xs text-slate-500">You can switch back to Realistic at any time.</p>
             </div>
-            <div className="p-4 border-t border-slate-800 flex justify-end gap-2">
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-800 p-4 sm:flex-row sm:justify-end">
               <button
                 onClick={() => setShowFastSimWarning(false)}
-                className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                className="w-full px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:text-white sm:w-auto"
               >
                 Keep Realistic
               </button>
@@ -743,7 +745,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   setSettings({ ...settings, simulatorMode: 'fast' });
                   setShowFastSimWarning(false);
                 }}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold rounded-lg transition-colors"
+                className="w-full rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-amber-500 sm:w-auto"
               >
                 Switch to Fast
               </button>

@@ -2,12 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { Briefcase, Search, Star, Users, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatCurrencyWithCode } from '../../../../../utils/helpers';
-import { getCountryFlag } from '../../../../../utils/countryFlags';
+import { getCountryFlag, normalizeNationality } from '../../../../../utils/countryFlags';
 import { getTeamFullName } from '../../../../../utils/teamNames';
 import { makePlaceholderCoach, makePlaceholderGM } from '../../../../../services/staff/staffFallback';
 import { MyFace, isRealFaceConfig } from '../../../../shared/MyFace';
 import { getStaffImageUrl, deterministicStaffImageId, resolveStaffImageId } from '../../../../../utils/staffPortrait';
-import { inferEuroStaffLeagueId } from '../../../../../services/euro/staffPool';
+import { inferEuroStaffLeagueId, normalizeStaffPoolRole } from '../../../../../services/euro/staffPool';
 import { fetchCoachData, getCoachBio, getNBA2KCoach, getTeamStaff, getCoachContractSnapshot, getStaffCareerSnapshot, OWNER_IMAGES } from '../../../../../services/staffService';
 import { ensureStaffPhotoData, resolveCoachPortrait, resolveStaffPortrait, useStaffPhotoStore } from '../../../../../store/staffPhotoStore';
 import { StaffSigningModal, type StaffCandidate } from '../StaffSigning/StaffSigningModal';
@@ -21,12 +21,15 @@ import {
   buildDisplayAttributes,
   seedForStaff,
   staffOverallFor,
+  resolveStaffRating,
   computeStaffOverall,
   attrsForCoach,
-  ROLE_DISPLAY_KEYS,
   STAFF_ATTRIBUTE_GROUPS,
+  getStaffAttributeTooltip,
 } from '../../../../../services/staff/displayAttributes';
 import { getStaffGameplayTooltip } from '../../../../../services/staff/staffGameplayEffects';
+import { parseCareerLines, resolveHistoryLogo, splitCoachingRow, splitPlayingRow } from '../shared/staffCareerUtils';
+import { getLocalRegenPortraitFallbackUrl } from '../../../../../utils/newgenPortrait';
 
 export const StaffSection: React.FC<{
   state: any;
@@ -35,12 +38,16 @@ export const StaffSection: React.FC<{
   onFireStaff: (role: string) => void;
   onPromoteStaff: (person: any, fromRole: string, toRole: string) => void;
 }> = ({ state, team, onHireStaff, onFireStaff, onPromoteStaff }) => {
+  const parseCareerLinesForYear = (value: string | undefined) =>
+    parseCareerLines(String(value ?? '').replace(/present/gi, String(currentYear)));
   const formatYearsLeftLabel = (years: number) => `${years} ${years === 1 ? 'Year' : 'Years'} Left`;
   const [signingOpen, setSigningOpen] = useState(false);
   const [signingMode, setSigningMode] = useState<'hire' | 'extension'>('hire');
   const [selectedRole, setSelectedRole] = useState('Head Coach');
   const [actionPerson, setActionPerson] = useState<{ role: string; person: any; years: number; salary: number } | null>(null);
+  const [fireConfirm, setFireConfirm] = useState<{ role: string; name: string } | null>(null);
   const [ratingsPerson, setRatingsPerson] = useState<{ role: string; person: any; years: number; salary: number } | null>(null);
+  const [ratingsTab, setRatingsTab] = useState<'attributes' | 'career'>('attributes');
   const [resignPool, setResignPool] = useState<any[] | null>(null);
   const [, setCoachDataVersion] = useState(0);
   const staffPhotoVersion = useStaffPhotoStore(s => s.version);
@@ -104,7 +111,7 @@ export const StaffSection: React.FC<{
     }, currentYear);
     return {
       ...person,
-      nationality: person?.nationality ?? nba2k?.nationality ?? bio?.nationality ?? person?.born?.loc ?? 'Unknown',
+      nationality: normalizeNationality(person?.nationality ?? nba2k?.nationality ?? bio?.nationality ?? person?.born?.loc ?? 'Unknown'),
       yearsWithTeam: person?.yearsWithTeam ?? career.yearsWithTeam,
       hiredYear: person?.hiredYear ?? career.hiredYear ?? (career.yearsWithTeam > 0 ? currentYear - career.yearsWithTeam : undefined),
       careerStartYear: person?.careerStartYear ?? career.careerStartYear ?? undefined,
@@ -136,7 +143,7 @@ export const StaffSection: React.FC<{
     const career = getStaffCareerSnapshot(c, currentYear);
     return {
       name: c.name,
-      nationality: c.nationality ?? 'American',
+      nationality: normalizeNationality(c.nationality ?? 'American'),
       position: c.position,
       playerPortraitUrl: resolveCoachPhoto(c.name, undefined),
       staffImageId: deterministicStaffImageId(c.name),
@@ -225,41 +232,64 @@ export const StaffSection: React.FC<{
   const dueRoleCount = openRoleCount + expiringRoleCount;
   const totalCost = rolesWithLiveSalaries.reduce((sum, r) => sum + (r.person ? r.salary : 0), 0);
   const avgSkill = Math.round(rolesWithLiveSalaries.reduce((sum, r) => sum + (r.person ? staffOverallFor(r.role, r.person) : 58), 0) / rolesWithLiveSalaries.length);
+  const needCandidatePools = signingOpen || !!actionPerson || !!resignPool;
   // Single source of truth for FA candidates: read from state.staffFreeAgents,
   // filter by user's league (so a Manresa GM never sees Euroleague-only FAs)
   // and target position. The pool is guaranteed depth=10 per position via
   // ensureStaffPoolDepth, so no on-the-fly emergency generation here.
   const userLeagueId = inferEuroStaffLeagueId(team.tid ?? team.id ?? 0);
   const candidatePool = useMemo(() => {
+    if (!needCandidatePools) return new Map<string, StaffCandidate[]>();
+    const normalizeNameKey = (value: string | undefined | null) => String(value ?? '').trim().toLowerCase();
+    const isAllowedNationality = (_nationalityRaw: unknown) => true;
+    const employedNames = new Set<string>();
+    for (const nbaTeam of (state.teams ?? []) as any[]) {
+      for (const member of (nbaTeam?.tycoon?.staffMembers ?? []) as any[]) {
+        const key = normalizeNameKey(member?.name);
+        if (key) employedNames.add(key);
+      }
+    }
+    for (const euroTeam of (state.nonNBATeams ?? []) as any[]) {
+      for (const member of (euroTeam?.tycoon?.staffMembers ?? []) as any[]) {
+        const key = normalizeNameKey(member?.name);
+        if (key) employedNames.add(key);
+      }
+    }
+    const occupiedStaffNames = new Set(
+      rolesWithLiveSalaries
+        .map(role => normalizeNameKey(role.person?.name))
+        .filter(Boolean),
+    );
     const map = new Map<string, StaffCandidate[]>();
     for (const r of rolesWithLiveSalaries) {
       // Assistant Coach 2/3 are slot variants — they share the 'Assistant Coach'
       // pool. The base role name is what the FA pool tracks.
       const poolRole = r.role.replace(/ \d+$/, '');
-      const generated = (state.staffFreeAgents ?? [])
+      const acceptedPoolRoles = poolRole === 'Head Coach'
+        ? new Set(['Head Coach', 'Assistant Coach'])
+        : new Set([poolRole]);
+      const fromFreeAgency = (state.staffFreeAgents ?? [])
         .filter((member: any) => {
-          if ((member.position ?? member.jobTitle) !== poolRole) return false;
+          if (employedNames.has(normalizeNameKey(member?.name))) return false;
+          const memberRole = normalizeStaffPoolRole(member.position ?? member.jobTitle ?? member.role);
+          if (!acceptedPoolRoles.has(memberRole)) return false;
           // Tolerate legacy save members without leagueId (pre-pool-refactor).
+          if (!member.leagueId && userLeagueId === 'pba') return false;
           if (member.leagueId && member.leagueId !== userLeagueId) return false;
-          if (userLeagueId === 'nba') {
-            const nationality = String(member.nationality ?? '').toLowerCase();
-            return !nationality
-              || nationality === 'usa'
-              || nationality === 'united states'
-              || nationality === 'american'
-              || nationality === 'spain'
-              || nationality === 'spanish';
-          }
-          return true;
+          return isAllowedNationality(member.nationality);
         })
         .map((member: any, index: number): StaffCandidate => {
           // Seed comes from the FA's stored identity (name + reputation), so
           // the attributes the modal shows here are the SAME attributes that
           // the card and ratings-modal will render after hire.
           const seed = seedForStaff(member);
-          const attrs = attrsForCoach(member.name, seed);
-          const rating = computeStaffOverall(r.role, attrs);
+          const attrs = attrsForCoach(member.name, seed, {
+            role: r.role,
+            attributeProfile: member.attributeProfile,
+            attributeOverrides: member.attributeOverrides,
+          });
           const career = getStaffCareerSnapshot(member, currentYear);
+          const rating = resolveStaffRating(r.role, { ...member, coachingYears: Math.max(1, career.yearsExperience), playingYears: 0 });
           const baseSalary = normalizeStaffSalary(
             tycoonTier,
             r.role,
@@ -275,29 +305,302 @@ export const StaffSection: React.FC<{
             id: member.id ?? `staff-fa-${r.role}-${member.name}-${index}`,
             role: r.role,
             name: member.name,
-            nationality: member.nationality ?? 'Unknown',
-            flag: getCountryFlag(member.nationality),
+            nationality: normalizeNationality(member.nationality ?? 'Unknown'),
+            flag: getCountryFlag(normalizeNationality(member.nationality ?? 'Unknown')),
+            teamLogoUrl: member.formerTeamLogoUrl ?? member.teamLogoUrl,
+            lastRole: member.formerRole ?? member.position ?? member.jobTitle ?? member.role ?? 'N/A',
+            lastTeam: member.formerTeam ?? member.team ?? 'N/A',
             salary: baseSalary,
             rating,
             years: Math.max(1, career.yearsExperience),
+            coachingYears: Math.max(1, career.yearsExperience),
+            playingYears: 0,
+            career_history: member.career_history ?? getNBA2KCoach(member.name)?.career_history,
+            coaching_career: member.coaching_career ?? getNBA2KCoach(member.name)?.coaching_career,
             face: member.face,
             staffImageId: resolveStaffImageId(member),
             playerPortraitUrl: member.playerPortraitUrl,
-            attributes: buildAttributes(r.role, seed, member.name),
+            attributeOverrides: member.attributeOverrides,
+            attributes: buildAttributes(r.role, seed, member.name, {
+              attributeProfile: member.attributeProfile,
+              attributeOverrides: member.attributeOverrides,
+            }),
           };
+        });
+      const fromDirectory = ((state.staff?.coaches ?? []) as any[])
+        .filter(member => {
+          if (userLeagueId === 'pba') return false;
+          if (!member?.name) return false;
+          if (employedNames.has(normalizeNameKey(member.name))) return false;
+          if (occupiedStaffNames.has(normalizeNameKey(member.name))) return false;
+          if (!isAllowedNationality(member.nationality)) return false;
+          const directoryRole = normalizeStaffPoolRole(member.role ?? member.jobTitle ?? member.position);
+          return directoryRole === poolRole;
         })
-        .sort((a: StaffCandidate, b: StaffCandidate) => b.rating - a.rating)
-        .slice(0, 12);
-      map.set(r.role, generated);
+        .map((member: any, index: number): StaffCandidate => {
+          const seed = seedForStaff(member);
+          const attrs = attrsForCoach(member.name, seed, {
+            role: r.role,
+            attributeProfile: member.attributeProfile,
+            attributeOverrides: member.attributeOverrides,
+          });
+          const career = getStaffCareerSnapshot(member, currentYear);
+          const rating = resolveStaffRating(r.role, { ...member, coachingYears: Math.max(1, career.yearsExperience), playingYears: 0 });
+          return {
+            id: member.id ?? `staff-dir-${poolRole.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${member.name}-${index}`,
+            role: r.role,
+            name: member.name,
+            nationality: normalizeNationality(member.nationality ?? 'Unknown'),
+            flag: getCountryFlag(normalizeNationality(member.nationality ?? 'Unknown')),
+            teamLogoUrl: member.formerTeamLogoUrl ?? member.teamLogoUrl,
+            lastRole: member.formerRole ?? member.jobTitle ?? member.role ?? member.position ?? 'N/A',
+            lastTeam: member.formerTeam ?? member.team ?? (typeof member.position === 'string' ? member.position : 'N/A'),
+            salary: normalizeStaffSalary(
+              tycoonTier,
+              r.role,
+              member.salary,
+              rating,
+              {
+                yearsExperience: career.yearsExperience,
+                yearsWithTeam: career.yearsWithTeam,
+                market: staffMarket,
+              },
+            ),
+            rating,
+            years: Math.max(1, career.yearsExperience),
+            coachingYears: Math.max(1, career.yearsExperience),
+            playingYears: 0,
+            career_history: member.career_history ?? getNBA2KCoach(member.name)?.career_history,
+            coaching_career: member.coaching_career ?? getNBA2KCoach(member.name)?.coaching_career,
+            face: member.face,
+            staffImageId: resolveStaffImageId(member),
+            playerPortraitUrl: member.playerPortraitUrl,
+            attributeOverrides: member.attributeOverrides,
+            attributes: buildAttributes(r.role, seed, member.name, {
+              attributeProfile: member.attributeProfile,
+              attributeOverrides: member.attributeOverrides,
+            }),
+          };
+        });
+      const fromRetiredJoins = ((state.players ?? []) as any[])
+        .filter((player: any) => {
+          if (!player?.name) return false;
+          if (!player?.postCareerStaffJoined) return false;
+          if (employedNames.has(normalizeNameKey(player.name))) return false;
+          if (occupiedStaffNames.has(normalizeNameKey(player.name))) return false;
+          const joinedRole = normalizeStaffPoolRole(player.postCareerStaffRole);
+          if (!acceptedPoolRoles.has(joinedRole)) return false;
+
+          // Keep league-scoped visibility using last known team tid footprint.
+          const statTids = (player.stats ?? [])
+            .filter((s: any) => !s.playoffs && typeof s.tid === 'number' && (s.gp ?? 0) > 0)
+            .map((s: any) => s.tid as number);
+          const txTids = (player.transactions ?? [])
+            .filter((tx: any) => typeof tx.tid === 'number')
+            .map((tx: any) => tx.tid as number);
+          const lastTid = [...statTids, ...txTids, player.draft?.tid]
+            .reverse()
+            .find((tid: any) => typeof tid === 'number' && tid >= 0);
+          const inferredLeagueId = (() => {
+            if (typeof lastTid !== 'number') return 'nba';
+            if (lastTid >= 0 && lastTid < 100) return 'nba';
+            if (lastTid >= 1000 && lastTid < 1100) return 'euroleague';
+            if (lastTid >= 5000 && lastTid < 5100) return 'endesa';
+            if (lastTid >= 2000 && lastTid < 2100) return 'pba';
+            if (lastTid >= 4000 && lastTid < 4100) return 'bleague';
+            if (lastTid >= 7000 && lastTid < 7100) return 'chinacba';
+            if (lastTid >= 8000 && lastTid < 8100) return 'nblaus';
+            return 'endesa';
+          })();
+          return inferredLeagueId === userLeagueId;
+        })
+        .map((player: any, index: number): StaffCandidate => {
+          const teamNameByTid = new Map<number, string>([
+            ...((state.teams ?? []) as any[]).map((t: any) => [Number(t.id ?? t.tid), getTeamFullName(t)] as const),
+            ...((state.nonNBATeams ?? []) as any[]).map((t: any) => [Number(t.tid ?? t.id), getTeamFullName(t)] as const),
+          ]);
+          const teamLogoByTid = new Map<number, string | undefined>([
+            ...((state.teams ?? []) as any[]).map((t: any) => [Number(t.id ?? t.tid), t.logoUrl ?? t.imgURL ?? t.teamLogoUrl] as const),
+            ...((state.nonNBATeams ?? []) as any[]).map((t: any) => [Number(t.tid ?? t.id), t.logoUrl ?? t.imgURL ?? t.teamLogoUrl] as const),
+          ]);
+          const playingTids = new Set<number>();
+          for (const stat of (player.stats ?? [])) {
+            const tid = Number(stat?.tid);
+            if ((stat?.gp ?? 0) > 0 && Number.isFinite(tid) && tid >= 0) playingTids.add(tid);
+          }
+          for (const tx of (player.transactions ?? [])) {
+            const tid = Number(tx?.tid);
+            if (Number.isFinite(tid) && tid >= 0) playingTids.add(tid);
+          }
+          if (Number.isFinite(Number(player?.draft?.tid)) && Number(player.draft.tid) >= 0) {
+            playingTids.add(Number(player.draft.tid));
+          }
+          const lastTeamTid = [...playingTids].reverse()[0];
+          const playingCareerTeams = [...playingTids]
+            .map(tid => teamNameByTid.get(tid))
+            .filter((name): name is string => !!name)
+            .slice(0, 12);
+          const regularStats = (player.stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0);
+          const byTid = new Map<number, any[]>();
+          for (const s of regularStats) {
+            const tid = Number(s?.tid);
+            if (!Number.isFinite(tid) || tid < 0) continue;
+            const arr = byTid.get(tid) ?? [];
+            arr.push(s);
+            byTid.set(tid, arr);
+          }
+          const playingCareerRows = [...byTid.entries()].map(([tid, rows]) => {
+            const seasons = rows.map(r => Number(r.season)).filter((n: number) => Number.isFinite(n)).sort((a: number, b: number) => a - b);
+            const first = seasons[0];
+            const last = seasons[seasons.length - 1];
+            const years = first && last ? `${first}-${last}` : '—';
+            return {
+              years,
+              team: teamNameByTid.get(tid) ?? 'Unknown Team',
+              position: player.pos ?? '—',
+            };
+          }).sort((a, b) => String(b.years).localeCompare(String(a.years)));
+          const totalGames = regularStats.reduce((sum: number, s: any) => sum + Number(s.gp ?? 0), 0);
+          const sumStat = (key: string) => regularStats.reduce((sum: number, s: any) => sum + Number(s[key] ?? 0), 0);
+          const perGame = (key: string) => totalGames > 0 ? sumStat(key) / totalGames : 0;
+          const madeFG = sumStat('fg');
+          const attFG = sumStat('fga');
+          const awardList: Array<{ type?: string }> = player.awards ?? [];
+          const countAward = (...types: string[]) => awardList.filter(a => types.includes(String(a.type ?? ''))).length;
+          const countAwardContains = (...tokens: string[]) => awardList.filter(a => tokens.some(t => String(a.type ?? '').includes(t))).length;
+          const awardsSummary = [
+            (() => { const n = countAward('Won Championship', 'Champion', 'NBA Champion'); return n > 0 ? `${n}x NBA Champion` : null; })(),
+            (() => { const n = countAward('Finals MVP'); return n > 0 ? `${n}x Finals MVP` : null; })(),
+            (() => { const n = countAward('All-Star'); return n > 0 ? `${n}x NBA All-Star` : null; })(),
+            (() => { const n = countAwardContains('All-NBA', 'All-League'); return n > 0 ? `${n}x All-NBA Team` : null; })(),
+            (() => { const n = countAward('All-Rookie First Team'); return n > 0 ? `${n}x NBA All-Rookie First Team` : null; })(),
+          ].filter((v): v is string => !!v);
+          const seed = seedForStaff(player);
+          const attrs = attrsForCoach(player.name, seed, {
+            role: r.role,
+            attributeOverrides: player.attributeOverrides,
+          });
+          const rating = resolveStaffRating(r.role, {
+            ...player,
+            ...attrs,
+            coachingYears: 0,
+            playingYears: Math.max(
+              1,
+              ((player.stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length) || 1,
+            ),
+          });
+          const yearsExperience = Math.max(
+            1,
+            ((player.stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length) || 1,
+          );
+          const playingYears = yearsExperience;
+          return {
+            id: player.internalId ? `retired-join-${player.internalId}` : `retired-join-${player.name}-${index}`,
+            role: r.role,
+            name: player.name,
+            nationality: normalizeNationality(player.born?.loc?.split(',').pop()?.trim() ?? player.nationality ?? 'Unknown'),
+            flag: getCountryFlag(normalizeNationality(player.born?.loc?.split(',').pop()?.trim() ?? player.nationality ?? 'Unknown')),
+            teamLogoUrl: (typeof lastTeamTid === 'number' ? teamLogoByTid.get(lastTeamTid) : undefined),
+            lastRole: 'Player',
+            lastTeam: (typeof lastTeamTid === 'number' ? teamNameByTid.get(lastTeamTid) : undefined) ?? 'Retired Player Pool',
+            playingCareerTeams,
+            playingCareerRows,
+            awardsSummary,
+            playingCareerStats: {
+              games: totalGames,
+              ppg: perGame('pts'),
+              rpg: perGame('trb'),
+              apg: perGame('ast'),
+              fgPct: attFG > 0 ? (madeFG / attFG) * 100 : 0,
+              seasons: regularStats.length,
+            },
+            salary: normalizeStaffSalary(
+              tycoonTier,
+              r.role,
+              getStaffMarketSalary(undefined, r.role, rating, {
+                market: staffMarket,
+                yearsExperience,
+                yearsWithTeam: 0,
+              }),
+              rating,
+              { yearsExperience, yearsWithTeam: 0, market: staffMarket },
+            ),
+            rating,
+            years: 0,
+            coachingYears: 0,
+            playingYears,
+            face: player.face,
+            staffImageId: player.staffImageId ?? deterministicStaffImageId(player.name),
+            playerPortraitUrl: player.imgURL,
+            attributeOverrides: player.attributeOverrides,
+            attributes: buildAttributes(r.role, seed, player.name, {
+              attributeOverrides: player.attributeOverrides,
+            }),
+          };
+        });
+      const dedupeByName = (arr: StaffCandidate[]) => {
+        const seen = new Set<string>();
+        return arr.filter(candidate => {
+          const key = normalizeNameKey(candidate.name);
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      };
+
+      const retiredBucket = dedupeByName(fromRetiredJoins).sort((a, b) => b.rating - a.rating);
+      const faBucket = dedupeByName(fromFreeAgency).sort((a, b) => b.rating - a.rating);
+      const directoryBucket = dedupeByName(fromDirectory).sort((a, b) => b.rating - a.rating);
+
+      const targetCountByRole: Record<string, number> = {
+        'Head Coach': 60,
+        'Assistant Coach': 48,
+        'Player Development Coach': 40,
+      };
+      const targetCount = targetCountByRole[poolRole] ?? 36;
+
+      // Keep all retired-join staff visible, then fill with strongest market FAs,
+      // then directory backfill only if still under target.
+      const keep: StaffCandidate[] = [...retiredBucket];
+      const seen = new Set(keep.map(candidate => normalizeNameKey(candidate.name)));
+      const pushUnique = (candidate: StaffCandidate) => {
+        const key = normalizeNameKey(candidate.name);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        keep.push(candidate);
+      };
+      for (const candidate of faBucket) {
+        if (keep.length >= targetCount) break;
+        pushUnique(candidate);
+      }
+      for (const candidate of directoryBucket) {
+        if (keep.length >= targetCount) break;
+        pushUnique(candidate);
+      }
+      map.set(r.role, keep);
     }
     return map;
-  }, [currentYear, staffMarket, state.staffFreeAgents, userLeagueId, teamName, tycoonTier]);
+  }, [currentYear, needCandidatePools, rolesWithLiveSalaries, staffMarket, state.players, state.staff?.coaches, state.staffFreeAgents, userLeagueId, tycoonTier]);
   const renderPortrait = (face: any, initials: string, size = 'w-16 h-20', staffImageId?: number, name?: string, portraitUrl?: string) => {
     const staffImg = resolveStaffPortrait({ name, savedPortrait: portraitUrl, staffImageId });
     return (
       <div className={`${size} rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0 relative`}>
         {staffImg ? (
-          <img src={staffImg} alt="" className="w-full h-full object-cover" loading="lazy" />
+          <img
+            src={staffImg}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={(event) => {
+              const img = event.currentTarget;
+              if (img.dataset.localRegenFallback === '1') return;
+              const fallback = getLocalRegenPortraitFallbackUrl(img.src);
+              if (fallback) {
+                img.dataset.localRegenFallback = '1';
+                img.src = fallback;
+              }
+            }}
+          />
         ) : isRealFaceConfig(face) ? (
           <div className="absolute left-1/2 top-1/2" style={{ width: '92%', height: '138%', transform: 'translate(-50%, -45%)' }}>
             <MyFace face={face} lazy style={{ width: '100%', height: '100%' }} />
@@ -335,14 +638,14 @@ export const StaffSection: React.FC<{
                   // values from nbacoachesratings; everyone else falls back
                   // to the local hashed-name seed.
                   const personSeed = item.person ? seedForStaff(item.person) : 0;
-                  const personAttrs = item.person ? attrsForCoach(item.person.name, personSeed) : null;
+                  const personAttrs = item.person ? attrsForCoach(item.person.name, personSeed, {
+                    role: item.role,
+                    attributeProfile: item.person.attributeProfile,
+                    attributeOverrides: item.person.attributeOverrides,
+                  }) : null;
                   const baseRole = item.role.replace(/ \d+$/, '');
-                  const displayKeys = ROLE_DISPLAY_KEYS[baseRole] ?? ROLE_DISPLAY_KEYS['Head Coach'];
-                  const attrs: Array<[string, number]> = personAttrs
-                    ? displayKeys.map(([k, label]) => [label, personAttrs[k]])
-                    : buildAttributes(item.role, personSeed, item.person?.name);
                   const initials = item.person?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) ?? '+';
-                  const rating = personAttrs ? computeStaffOverall(item.role, personAttrs) : 0;
+                  const rating = item.person ? resolveStaffRating(item.role, item.person) : 0;
                   const face = getStaffFace(item.person);
                   const open = !item.person;
                   const tooltip = getStaffGameplayTooltip(item.role, team);
@@ -361,7 +664,6 @@ export const StaffSection: React.FC<{
                         <div className="w-14 h-14 rounded-full border border-dashed border-slate-600 flex items-center justify-center text-2xl font-black text-slate-500">+</div>
                         <div className="mt-4 text-[10px] font-black uppercase tracking-widest text-amber-300">{item.role}</div>
                         <div className="mt-1 text-sm font-black text-slate-300">Open Position</div>
-                        <div className="mt-3 text-xs text-slate-500 leading-5 max-w-[220px]">{item.focus}</div>
                         <div className="mt-5 inline-flex items-center justify-center rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 h-9 text-[11px] font-black uppercase tracking-widest text-amber-200">{ctaLabel}</div>
                       </button>
                     );
@@ -392,16 +694,6 @@ export const StaffSection: React.FC<{
                           </div>
                           <div className="mt-2 text-xs text-slate-500">{item.person?.nationality}</div>
                         </div>
-                      </div>
-                      <div className="text-xs text-slate-400 mt-3 leading-5" title={tooltip}>{item.focus}</div>
-                      <div className="mt-4 space-y-2">
-                        {attrs.map(([label, value]) => (
-                          <div key={label} className="grid grid-cols-[96px_1fr_28px] gap-2 items-center">
-                            <span className="text-[10px] text-slate-500 truncate">{label}</span>
-                            <span className="h-1.5 rounded-full bg-slate-800 overflow-hidden"><span className="block h-full bg-amber-300" style={{ width: `${value}%` }} /></span>
-                            <span className="text-[10px] font-black text-slate-400 tabular-nums">{value}</span>
-                          </div>
-                        ))}
                       </div>
                       <div className="mt-4 flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
                         <span className={Number(item.years) <= 0 ? 'text-rose-300' : 'text-slate-500'}>{formatYearsLeftLabel(item.years)}</span>
@@ -523,6 +815,7 @@ export const StaffSection: React.FC<{
             const tid = team.id ?? team.tid;
             if (tid >= 0 && tid < 100) return ['American'];
             if (tid >= 1000 && tid < 1100) return ['Spain', 'France', 'Italy', 'Serbia', 'Greece', 'Turkey'];
+            if (tid >= 2000 && tid < 2100) return ['Philippines'];
             return undefined;
           })()}
           onClose={() => { setSigningOpen(false); setResignPool(null); setSigningMode('hire'); }}
@@ -564,7 +857,7 @@ export const StaffSection: React.FC<{
           'view_ratings',
           'view_candidates',
           ...(isAC && hcVacant ? ['promote_to_hc' as PersonnelActionType] : []),
-          'fire',
+          ...(!isExpiring ? ['fire' as PersonnelActionType] : []),
           // 'contact', // Direct Message — wire later
         ];
         return (
@@ -574,13 +867,20 @@ export const StaffSection: React.FC<{
             onClose={() => setActionPerson(null)}
             filterActions={filterActions}
             onActionSelect={(action) => {
-              if (action === 'fire') { onFireStaff(role); setActionPerson(null); }
+              if (action === 'fire') {
+                setFireConfirm({ role, name: person?.name ?? role });
+                setActionPerson(null);
+              }
               else if (action === 'promote_to_hc') { onPromoteStaff(person, role, 'Head Coach'); setActionPerson(null); }
               else if (action === 'resign_staff') {
                 const baseRole = role.replace(/ \d+$/, '');
                 const career = getStaffCareerSnapshot(member ?? person, currentYear);
-                const attrs = attrsForCoach(person?.name, seedForStaff(member ?? person));
-                const rating = computeStaffOverall(role, attrs);
+                const attrs = attrsForCoach(person?.name, seedForStaff(member ?? person), {
+                  role,
+                  attributeProfile: (member ?? person)?.attributeProfile,
+                  attributeOverrides: (member ?? person)?.attributeOverrides,
+                });
+                const rating = resolveStaffRating(role, member ?? person);
                 const baseSalary = getStaffMarketSalary(
                   tycoonTier,
                   role,
@@ -607,7 +907,9 @@ export const StaffSection: React.FC<{
                     savedPortrait: person?.playerPortraitUrl,
                     staffImageId: person?.staffImageId,
                   }),
-                  attributes: buildAttributes(baseRole, seedForStaff(member ?? person), person?.name),
+                  attributes: buildAttributes(baseRole, seedForStaff(member ?? person), person?.name, {
+                    attributeProfile: (member ?? person)?.attributeProfile,
+                  }),
                 };
                 const replacementPool = candidatePool.get(role) ?? [];
                 const mergedPool = [resignCandidate, ...replacementPool.filter(candidate =>
@@ -620,6 +922,7 @@ export const StaffSection: React.FC<{
                 setSigningOpen(true);
               }
               else if (action === 'view_ratings') {
+                setRatingsTab('attributes');
                 setRatingsPerson({ role, person, years, salary });
                 setActionPerson(null);
               }
@@ -645,11 +948,62 @@ export const StaffSection: React.FC<{
           // Curated gist entry first (Kerr 99 OFF, Rivers 58 TACT, …), local
           // seed fallback for fictional/Euro/unknown names. Always re-derive
           // the overall from these attrs so the header number matches the bars.
-          const attrs = attrsForCoach(person?.name, seed);
-          const rating = computeStaffOverall(role, attrs);
+          const attrs = attrsForCoach(person?.name, seed, {
+            role,
+            attributeProfile: person?.attributeProfile,
+            attributeOverrides: person?.attributeOverrides,
+          });
+          const rating = resolveStaffRating(role, person);
           const initials = person?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) ?? '?';
           const face = getStaffFace(person);
           const baseRole = role.replace(/ \d+$/, '');
+          const careerMeta = getNBA2KCoach(person?.name ?? '');
+          const rawCoaching = Array.from(new Set([
+            ...parseCareerLinesForYear(careerMeta?.career_history ?? careerMeta?.coaching_career),
+            ...parseCareerLinesForYear(person?.career_history ?? person?.coaching_career),
+          ]));
+          const rawPlaying = parseCareerLinesForYear(careerMeta?.playing_career);
+          const coachingHistory: string[] = [];
+          const playingFromCoaching: string[] = [];
+          let inPlayerSection = false;
+          for (const raw of rawCoaching) {
+            const line = raw.trim();
+            if (!line) continue;
+            const startsAsPlayer = /^\s*as player[:\s]/i.test(line);
+            if (startsAsPlayer) inPlayerSection = true;
+            const cleaned = line.replace(/^\s*as player[:\s]*/i, '').trim();
+            const isCoachRow = /\(([^)]+)\)\s*$/.test(cleaned) || /coach/i.test(cleaned);
+            if (isCoachRow) {
+              coachingHistory.push(cleaned);
+              inPlayerSection = false;
+            } else if (inPlayerSection) {
+              playingFromCoaching.push(cleaned);
+            }
+          }
+          const normalizeName = (value: string | undefined) => String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+          const matchedPlayer = (state.players ?? []).find((p: any) => normalizeName(p?.name) === normalizeName(person?.name));
+          const playingCareerRows = [...rawPlaying, ...playingFromCoaching]
+            .map(splitPlayingRow)
+            .filter(row => row.team && row.team !== '—');
+          const playerAwards: Array<{ type?: string; season?: number }> = matchedPlayer?.awards ?? [];
+          const countAwards = (...types: string[]) => playerAwards.filter(a => types.includes(String(a.type ?? ''))).length;
+          const countAwardsContains = (...tokens: string[]) =>
+            playerAwards.filter(a => tokens.some(token => String(a.type ?? '').includes(token))).length;
+          const awardsSummary = [
+            { label: 'NBA Champion', value: countAwards('Won Championship', 'Champion', 'NBA Champion') },
+            { label: 'MVP', value: countAwards('Most Valuable Player', 'MVP') },
+            { label: 'Finals MVP', value: countAwards('Finals MVP') },
+            { label: 'All-Star', value: countAwards('All-Star') },
+            { label: 'All-NBA', value: countAwardsContains('All-NBA', 'All-League') },
+            { label: 'DPOY', value: countAwards('Defensive Player of the Year', 'DPOY') },
+          ].filter(item => item.value > 0);
+          const retirementSeason = (() => {
+            const explicit = Number((matchedPlayer as any)?.retiredYear);
+            if (Number.isFinite(explicit) && explicit > 0) return explicit;
+            const seasons = (matchedPlayer?.stats ?? []).map((s: any) => Number(s?.season)).filter((s: number) => Number.isFinite(s) && s > 0);
+            if (seasons.length === 0) return null;
+            return Math.max(...seasons);
+          })();
 
           // ── Profile derivation ─────────────────────────────────────────
           // Tycoon staffMembers don't persist bornYear/careerStart, so we
@@ -683,7 +1037,7 @@ export const StaffSection: React.FC<{
             >
               <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setRatingsPerson(null)} />
               <motion.div
-                className="relative z-10 w-full max-w-2xl max-h-[88vh] overflow-y-auto scrollbar-hide bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl"
+                className="relative z-10 w-full md:min-w-[860px] max-w-5xl max-h-[88vh] overflow-y-auto scrollbar-hide bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl"
                 initial={{ opacity: 0, y: 24, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 16, scale: 0.98 }}
@@ -696,7 +1050,7 @@ export const StaffSection: React.FC<{
                       <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">{baseRole}</div>
                       <h2 className="text-2xl font-black text-white leading-tight mt-1">{person?.name}</h2>
                       {person?.nationality && (
-                        <div className="text-sm text-slate-400 mt-1">{getCountryFlag(person.nationality)} {person.nationality}</div>
+                        <div className="text-sm text-slate-400 mt-1">{getCountryFlag(person.nationality)} {normalizeNationality(person.nationality)}</div>
                       )}
                       <div className="mt-3 flex flex-wrap gap-2">
                         <div className="inline-flex items-center gap-2 rounded-lg border border-violet-400/40 bg-violet-400/10 px-3 py-1">
@@ -739,7 +1093,21 @@ export const StaffSection: React.FC<{
                       ))}
                     </div>
                   </section>
-                  {STAFF_ATTRIBUTE_GROUPS.map((group) => (
+                  <div className="mb-2 flex items-center gap-2">
+                    <button
+                      onClick={() => setRatingsTab('attributes')}
+                      className={`rounded-lg border px-3 py-1.5 text-[11px] font-black uppercase tracking-widest ${ratingsTab === 'attributes' ? 'border-amber-400/60 bg-amber-400/15 text-amber-300' : 'border-slate-700 bg-slate-900 text-slate-400 hover:text-white'}`}
+                    >
+                      Attributes
+                    </button>
+                    <button
+                      onClick={() => setRatingsTab('career')}
+                      className={`rounded-lg border px-3 py-1.5 text-[11px] font-black uppercase tracking-widest ${ratingsTab === 'career' ? 'border-amber-400/60 bg-amber-400/15 text-amber-300' : 'border-slate-700 bg-slate-900 text-slate-400 hover:text-white'}`}
+                    >
+                      Career
+                    </button>
+                  </div>
+                  {ratingsTab === 'attributes' ? STAFF_ATTRIBUTE_GROUPS.map((group) => (
                     <section key={group.label}>
                       <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">{group.label}</div>
                       <div className="grid sm:grid-cols-2 gap-3">
@@ -753,7 +1121,7 @@ export const StaffSection: React.FC<{
                           return (
                             <div key={key}>
                               <div className="flex justify-between text-xs mb-1">
-                                <span className="text-slate-400">{label}</span>
+                                <span className="text-slate-400" title={getStaffAttributeTooltip(key)}>{label}</span>
                                 <span className={`font-black ${textColor}`}>{value}</span>
                               </div>
                               <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
@@ -764,12 +1132,124 @@ export const StaffSection: React.FC<{
                         })}
                       </div>
                     </section>
-                  ))}
+                  )) : (
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Coaching History</div>
+                        {coachingHistory.length > 0 ? (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-[86px_minmax(0,1fr)_96px] gap-2 border-b border-slate-800 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                              <span>Years</span><span>Team</span><span>Role</span>
+                            </div>
+                            {coachingHistory.map((row, index) => {
+                              const parsed = splitCoachingRow(row);
+                              const displayTeam = parsed.team && parsed.team !== '—' ? parsed.team : (person?.team ?? '—');
+                              const logo = resolveHistoryLogo(displayTeam);
+                              return (
+                                <div key={`${row}-${index}`} className="grid grid-cols-[86px_minmax(0,1fr)_96px] gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-1.5 text-xs">
+                                  <div className="text-slate-400">{parsed.years}</div>
+                                  <div className="flex items-center gap-2 min-w-0 text-slate-200">
+                                    {logo ? <img src={logo} alt="" className="h-4 w-4 object-contain" /> : null}
+                                    <span className="truncate">{displayTeam}</span>
+                                  </div>
+                                  <div className="text-slate-300 truncate">{parsed.role}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-slate-500">No coaching-history rows available.</div>
+                        )}
+                      </section>
+                      <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Playing Career</div>
+                        {playingCareerRows.length > 0 ? (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-[86px_minmax(0,1fr)_70px] gap-2 border-b border-slate-800 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                              <span>Years</span><span>Team</span><span>Pos</span>
+                            </div>
+                            {playingCareerRows.map((parsed, index) => {
+                              const logo = resolveHistoryLogo(parsed.team);
+                              return (
+                                <div key={`${parsed.years}-${parsed.team}-${index}`} className="grid grid-cols-[86px_minmax(0,1fr)_70px] gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-1.5 text-xs">
+                                  <div className="text-slate-400">{parsed.years}</div>
+                                  <div className="flex items-center gap-2 min-w-0 text-slate-200">
+                                    {logo ? <img src={logo} alt="" className="h-4 w-4 object-contain" /> : null}
+                                    <span className="truncate">{parsed.team}</span>
+                                  </div>
+                                  <div className="text-slate-300 truncate">{parsed.position}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-slate-500">No playing-career rows available.</div>
+                        )}
+                      </section>
+                      <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Awards & Retirement</div>
+                        {awardsSummary.length > 0 ? (
+                          <ul className="space-y-1.5 text-xs text-slate-300">
+                            {awardsSummary.map(item => <li key={item.label}>• {item.label}: {item.value}</li>)}
+                          </ul>
+                        ) : (
+                          <div className="text-xs text-slate-500">No awards summary available.</div>
+                        )}
+                        <div className="mt-3 border-t border-slate-800 pt-2 text-xs">
+                          <div className="text-slate-500">Retirement</div>
+                          <div className="text-slate-300">{retirementSeason ? `Retired in ${retirementSeason}` : 'No retirement-season record'}</div>
+                        </div>
+                      </section>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </motion.div>
           );
         })()}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {fireConfirm && (
+          <motion.div
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setFireConfirm(null)} />
+            <motion.div
+              className="relative z-10 w-full max-w-md rounded-2xl border border-rose-500/40 bg-slate-900 shadow-2xl"
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+            >
+              <div className="p-6 border-b border-slate-800">
+                <div className="text-[10px] font-black uppercase tracking-widest text-rose-300">Confirm Staff Move</div>
+                <div className="mt-2 text-lg font-black text-white leading-tight">Fire {fireConfirm.name}?</div>
+                <div className="mt-2 text-sm text-slate-400">This will remove them from the {fireConfirm.role} role.</div>
+              </div>
+              <div className="p-5 flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setFireConfirm(null)}
+                  className="h-10 px-4 rounded-lg border border-slate-700 bg-slate-800 text-slate-200 text-xs font-black uppercase tracking-widest hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    onFireStaff(fireConfirm.role);
+                    setFireConfirm(null);
+                  }}
+                  className="h-10 px-4 rounded-lg border border-rose-500/40 bg-rose-500/15 text-rose-200 text-xs font-black uppercase tracking-widest hover:bg-rose-500/25"
+                >
+                  Confirm Fire
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

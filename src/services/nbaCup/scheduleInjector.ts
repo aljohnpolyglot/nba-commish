@@ -15,6 +15,17 @@ function getCupNightDates(prevYr: number): Date[] {
   return dates;
 }
 
+function forwardDateFallbacks(startDate: string, days: number): string[] {
+  const start = new Date(`${startDate}T00:00:00Z`);
+  const dates: string[] = [];
+  for (let offset = 0; offset <= days; offset++) {
+    const date = new Date(start);
+    date.setUTCDate(start.getUTCDate() + offset);
+    dates.push(date.toISOString().split('T')[0]);
+  }
+  return dates;
+}
+
 /** Round-robin pairings for 5 teams in a group (10 matchups). */
 function buildGroupPairings(group: NBACupGroup): Array<{ tid1: number; tid2: number; groupId: NBACupGroup['id'] }> {
   const pairs: Array<{ tid1: number; tid2: number; groupId: NBACupGroup['id'] }> = [];
@@ -237,7 +248,7 @@ export function trimAndPairReplacements(
   const fallbackDates: string[] = [];
   for (let n = 0; n <= 21; n++) {
     if (n === 0) fallbackDates.push(replacementDate);
-    else { fallbackDates.push(dayOffset(-n)); fallbackDates.push(dayOffset(n)); }
+    else { fallbackDates.push(dayOffset(n)); fallbackDates.push(dayOffset(-n)); }
   }
 
   const replacements: Game[] = [];
@@ -248,8 +259,7 @@ export function trimAndPairReplacements(
       if (used.has(j)) continue;
       if (owed[i].tid === owed[j].tid) continue;
       const candidates = [replacementDate, owed[i].date, owed[j].date, ...fallbackDates];
-      const slot = candidates.find(d => !dateBusy(d, owed[i].tid, owed[j].tid));
-      if (!slot) continue;
+      const slot = candidates.find(d => !dateBusy(d, owed[i].tid, owed[j].tid)) ?? replacementDate;
       const homeFirst = seededRandom(`cup_replacement_ha_${owed[i].tid}_${owed[j].tid}_${slot}`) > 0.5;
       const homeTid = homeFirst ? owed[i].tid : owed[j].tid;
       const awayTid = homeFirst ? owed[j].tid : owed[i].tid;
@@ -342,6 +352,7 @@ export function materializeTBDSlots(
   // 1. Materialize QF games on Dec 9 (preferring whichever TBD date is free).
   const qfPreferred = `${prevYr}-12-09`;
   const koCandidates = [`${prevYr}-12-09`, `${prevYr}-12-10`, `${prevYr}-12-11`];
+  const replacementFallbacks = forwardDateFallbacks(`${prevYr}-12-09`, 28);
   for (const m of qfMatchups) {
     const slot = koCandidates.find(d => !dateBusy(d, m.tid1, m.tid2)) ?? qfPreferred;
     const homeFirst = seededRandom(`cup_qf_ha_${saveId}_${prevYr}_${m.tid1}_${m.tid2}`) > 0.5;
@@ -375,9 +386,8 @@ export function materializeTBDSlots(
       const tbdB = tbdByTeam.get(tB);
       const dateA = tbdA ? String(tbdA.date).split('T')[0] : `${prevYr}-12-09`;
       const dateB = tbdB ? String(tbdB.date).split('T')[0] : `${prevYr}-12-10`;
-      const candidates = [dateA, dateB, ...koCandidates];
-      const slot = candidates.find(d => !dateBusy(d, tA, tB));
-      if (!slot) continue;
+      const candidates = [dateA, dateB, ...koCandidates, ...replacementFallbacks];
+      const slot = candidates.find(d => !dateBusy(d, tA, tB)) ?? dateA;
       const homeFirst = seededRandom(`cup_tbd_ha_${saveId}_${prevYr}_${tA}_${tB}`) > 0.5;
       const homeTid = homeFirst ? tA : tB;
       const awayTid = homeFirst ? tB : tA;

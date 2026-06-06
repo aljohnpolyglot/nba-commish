@@ -95,6 +95,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
   const quick = usePlayerQuickActions();
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const hideNbaContractBadges = isEuroIsolatedMode(state) || teamId >= 100;
+  const showNbaContractMix = !hideNbaContractBadges;
 
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const teamColor = team?.colors?.[0] ?? '#1a1a2e';
@@ -287,20 +288,24 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
         <div className="flex-1 min-w-0 flex flex-col gap-2">
           {/* Controls */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="text-[10px] text-slate-500 flex items-center gap-2">
-              <span>{rows.length} players</span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-sm bg-violet-500/50 border border-violet-500/60 inline-block" />
-                Two-Way
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-sm bg-amber-500/30 border border-amber-500/50 inline-block" />
-                Non-Guaranteed
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-sm bg-[#FDB927]/20 border border-[#FDB927]/30 inline-block" />
-                Starter
-              </span>
+          <div className="text-[10px] text-slate-500 flex items-center gap-2">
+            <span>{rows.length} players</span>
+            {showNbaContractMix && (
+              <>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-sm bg-violet-500/50 border border-violet-500/60 inline-block" />
+                  Two-Way
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-sm bg-amber-500/30 border border-amber-500/50 inline-block" />
+                  Non-Guaranteed
+                </span>
+              </>
+            )}
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-sm bg-[#FDB927]/20 border border-[#FDB927]/30 inline-block" />
+              Starter
+            </span>
             </div>
             {!starterOrder && (
               <button

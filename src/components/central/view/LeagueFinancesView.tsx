@@ -79,8 +79,16 @@ export const LeagueFinancesView: React.FC = () => {
     const topPlayer = [...players].sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))[0];
     const hasInjuredStar = !!topPlayer && (topPlayer.injury?.gamesRemaining ?? 0) >= 30;
     const mle = getMLEAvailability(team.id, payroll, 0, thresholds, state.leagueStats);
-    const mleAvailable = mle.type && !mle.blocked ? mle.available : 0;
-    const mleUsed = mle.type && !mle.blocked ? (mle.used ?? 0) : 0;
+    const reservedMleUSD = ((state.faBidding?.markets ?? []) as any[])
+      .filter(m => !m?.resolved)
+      .reduce((sum, market) => {
+        const topMine = (market.bids ?? [])
+          .filter((b: any) => b.teamId === team.id && b.status === 'active')
+          .sort((a: any, b: any) => (b.salaryUSD ?? 0) - (a.salaryUSD ?? 0))[0];
+        return sum + (topMine?.salaryUSD ?? 0);
+      }, 0);
+    const mleAvailable = mle.type && !mle.blocked ? Math.max(0, mle.available - reservedMleUSD) : 0;
+    const mleUsed = mle.type ? Math.min(mle.limit ?? 0, (mle.used ?? 0) + reservedMleUSD) : 0;
     const mleLimit = mle.type && !mle.blocked ? (mle.limit ?? 0) : 0;
     const mleType = mle.type === 'room' ? 'Room' : mle.type === 'taxpayer' ? 'Tax' : mle.type ? 'NT' : '—';
     const tpeTotalUSD = getTotalActiveTPE(team, state.date);
@@ -95,7 +103,7 @@ export const LeagueFinancesView: React.FC = () => {
       userTeamId: state.userTeamId,
     });
     return { team, payroll, expiringCount, standardCount, twoWayCount, confRank, gbFromLeader, effectiveWins, effectiveLosses, hasInjuredStar, mleAvailable, mleUsed, mleLimit, mleType, tpeTotalUSD, tpeCount, strategy };
-  }), [state.teams, state.players, seasonYear, confStandings, thresholds, state.leagueStats, state.gameMode, state.userTeamId, state.date]);
+  }), [state.teams, state.players, seasonYear, confStandings, thresholds, state.leagueStats, state.gameMode, state.userTeamId, state.date, state.faBidding?.markets]);
 
   const maxPayroll = useMemo(
     () => Math.max(...teamData.map(d => d.payroll), thresholds.secondApron * 1.05),

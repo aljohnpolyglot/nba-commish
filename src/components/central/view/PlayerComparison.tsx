@@ -6,7 +6,7 @@ import { NBAPlayer } from '../../../types';
 import { getDisplayOverall, getDisplayPotential } from '../../../utils/playerRatings';
 import { PlayerSelectorGrid, PlayerSelectorItem } from '../../shared/PlayerSelectorGrid';
 import { getDomesticPlayerStatus } from '../../../utils/euroLeagueDefaults';
-import { isEuroIsolatedMode } from '../../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import {
   ADV_METRICS,
   cn,
@@ -23,6 +23,7 @@ export const PlayerComparisonView: React.FC = () => {
   const { state } = useGame();
   const defaultModalLeague = (): ModalLeague => {
     const domestic = getDomesticPlayerStatus(state as any);
+    if (isPbaIsolatedMode(state) && MODAL_LEAGUES.includes('PBA')) return 'PBA';
     return isEuroIsolatedMode(state) && domestic && MODAL_LEAGUES.includes(domestic as ModalLeague)
       ? domestic as ModalLeague
       : 'NBA';

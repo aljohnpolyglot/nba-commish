@@ -14,7 +14,9 @@ import { seedEuroCareer, type EuroCareerSeed } from '../services/euro/careerSeed
 import type { NBAPlayer, NBATeam, NonNBATeam } from '../types';
 import { MyFace, isRealFaceConfig } from './shared/MyFace';
 import { getCountryFlag } from '../utils/countryFlags';
+import { isInitialSpanishEuroleagueWildcard, isLicensedSpanishEuroleagueClub } from '../utils/euroleagueQualification';
 import { getStaffImageUrl } from '../utils/staffPortrait';
+import { getResolvedTeamLogoUrl } from '../utils/teamAssets';
 
 const SIM_START_DATE = toISODateString(getSeasonSimStartDate(INITIAL_LEAGUE_STATS.year)); // e.g. '2025-08-06'
 // Euro saves open on July 1 — the real ACB transfer window opens then. Any
@@ -77,12 +79,8 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
   const [rosterLoading, setRosterLoading] = useState(true);
   const highlightedSpainTeamIds = React.useMemo(() => {
     if (!isSpainEuropeSetup) return [];
-    const euroleagueClubHints = ['real madrid', 'barcelona', 'baskonia', 'valencia', 'gran canaria'];
     return rosterTeams
-      .filter((team: any) => {
-        const full = `${team.region ?? ''} ${team.name ?? ''}`.toLowerCase();
-        return euroleagueClubHints.some(hint => full.includes(hint));
-      })
+      .filter((team: any) => isLicensedSpanishEuroleagueClub(team) || isInitialSpanishEuroleagueWildcard(team))
       .map((team: any) => team.id);
   }, [isSpainEuropeSetup, rosterTeams]);
   useEffect(() => {
@@ -107,7 +105,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
           name: team.name,
           abbrev: team.abbrev,
           colors: team.colors,
-          logoUrl: team.imgURL,
+          logoUrl: getResolvedTeamLogoUrl(team),
           pop: team.pop,
           stadiumCapacity: team.stadiumCapacity,
           wins: 0,
@@ -354,9 +352,9 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
               teams={rosterTeams}
               players={rosterPlayers}
               title={isSpainEuropeSetup ? 'Pick Your Endesa Club' : isPbaSetup ? 'Pick Your PBA Team' : undefined}
-              subtitle={isSpainEuropeSetup ? 'Spain setup path. Real Madrid and Barcelona remain selectable here, with Euroleague sister-league support reserved for later phases.' : isPbaSetup ? 'Three conferences per season. Philippine Cup, Commissioner\'s Cup, Governors\' Cup.' : undefined}
+              subtitle={isSpainEuropeSetup ? 'Spain setup path. Real Madrid, Barcelona and Baskonia are EuroLeague regulars; every other Endesa club is chasing the single Spanish wildcard.' : isPbaSetup ? 'Three conferences per season. Philippine Cup, Commissioner\'s Cup, Governors\' Cup.' : undefined}
               highlightedTeamIds={isSpainEuropeSetup ? highlightedSpainTeamIds : undefined}
-              highlightedLabel={isSpainEuropeSetup ? 'Euroleague' : undefined}
+              highlightedLabel={isSpainEuropeSetup ? 'EuroLeague' : undefined}
               onSelectTeam={(teamId) => {
                 setUserTeamId(teamId);
                 if (isPbaSetup) {
@@ -388,6 +386,13 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
     const teamColors = teamObj.colors ?? ['#10b981', '#1e293b'];
     const stadiumCap = (teamObj as any).stadiumCapacity as number | undefined;
     const academyLevel = euroCareerSeed.tier === 'Powerhouse' ? 5 : euroCareerSeed.tier === 'Established' ? 4 : euroCareerSeed.tier === 'MidTier' ? 3 : 2;
+    const isLicensedEuroleagueClub = isLicensedSpanishEuroleagueClub(teamObj as any);
+    const isCurrentWildcardClub = isInitialSpanishEuroleagueWildcard(teamObj as any);
+    const euroleagueGoal = isLicensedEuroleagueClub
+      ? 'Your club starts every season on the EuroLeague stage. The board expects a playoff push while you keep the domestic title race alive.'
+      : isCurrentWildcardClub
+        ? 'You open with Spain\'s current EuroLeague invitation. Keep your Endesa finish ahead of every other non-licensed Spanish club to hold that place next year.'
+        : 'Your route to Europe is domestic form. Finish as the highest non-licensed Spanish club in Liga Endesa and the next EuroLeague invitation is yours.';
 
     const STAFF_ROLE_ICONS: Record<string, React.ReactNode> = {
       'Head Coach': <Dumbbell size={18} className="text-emerald-400" />,
@@ -601,6 +606,13 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
                     </div>
                   ))}
                 </div>
+              </section>
+
+              <section className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-5">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-amber-300 mb-3">
+                  <Crosshair size={16} /> EuroLeague Goal
+                </div>
+                <p className="text-sm leading-relaxed text-slate-200">{euroleagueGoal}</p>
               </section>
 
               {/* Start Career */}

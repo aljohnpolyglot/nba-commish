@@ -184,6 +184,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   const isOwnTeam = isGM && teamId === state.userTeamId;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const hideNbaContractBadges = isEuroIsolatedMode(state) || teamId >= 100;
+  const showNbaContractMix = !hideNbaContractBadges;
 
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const teamColor = team?.colors?.[0] ?? '#552583';
@@ -483,7 +484,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         <div className="flex-1 min-w-0 flex flex-col gap-2">
           <div className="flex items-center gap-3 shrink-0 text-[10px] text-slate-500">
             <span>{rosterCounts.total} players</span>
-            {!isEuroIsolatedMode(state) && (
+            {showNbaContractMix && (
               <>
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-sm bg-emerald-500/50 border border-emerald-500/60 inline-block" />

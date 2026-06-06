@@ -11,24 +11,24 @@ interface ConfirmationModalProps {
 export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({ title, message, onConfirm, onCancel }) => {
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-white">{title}</h3>
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto p-4 sm:p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="flex items-start justify-between gap-3 mb-4">
+                    <h3 className="text-lg sm:text-xl font-bold text-white break-words">{title}</h3>
                     <button onClick={onCancel} className="text-slate-400 hover:text-white transition-colors">
                         <X size={20} />
                     </button>
                 </div>
                 <p className="text-slate-400 mb-6 text-sm leading-relaxed">{message}</p>
-                <div className="flex justify-end gap-3">
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                     <button
                         onClick={onCancel}
-                        className="px-4 py-2 rounded-xl text-sm font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                        className="w-full sm:w-auto px-4 py-2 rounded-xl text-sm font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={onConfirm}
-                        className="px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20"
+                        className="w-full sm:w-auto px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-500 transition-colors shadow-lg shadow-indigo-500/20"
                     >
                         Confirm
                     </button>

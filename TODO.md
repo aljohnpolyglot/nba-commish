@@ -14,8 +14,27 @@
 
 **Worktree follow-up 2026-05-20:** Euro offseason board is getting one more polish pass: `My Free Agents` should not start pre-skipped in the Euro checklist, and visible offseason copy should read like in-game summer tasks instead of internal dev labels.
 
+**Worktree follow-up 2026-06-04:** PBA schedule specs are simplified in worktree to avoid NBA-length 22-game cups: Philippine Cup 11 games, Commissioner's Cup 11 games with the current 12-team pool, Governors' Cup 10 games via shortened round-robin. Later implement the real 2025-26 details:
+- Commissioner's Cup guest-team mode with Macau Black Bears as a 13th team so each PBA team gets 12 regular-season games.
+- Governors' Cup two groups of six, double round-robin within group, 10 games per team, top four per group into crossover playoffs.
+- Blackout/window polish for FIBA qualifier breaks and compressed Wed/Fri/Sat/Sun double-header game days.
+
+**Worktree note 2026-06-05:** PBA history/awards surfaces got a copy cleanup pass. Player-facing text should not describe gist/archive/save merge mechanics; future PBA UI passes should keep the same rule.
+
 
 > Geshippte Sessions liegen in [CHANGELOG.md](./CHANGELOG.md). Dort prüfen, bevor ein Item unten als offen angenommen wird.
+
+---
+
+## ✅ FIXED — All-Star Weekend H-O-R-S-E Event
+
+**Status 2026-06-01:** Implemented in worktree. H-O-R-S-E is Commissioner-enabled, inactive by default, supports 3-10 contestants, player/global no-repeat rules, announcement, Saturday live view, LazySim auto-resolution, H-O-R-S-E winner awards, and a contest-results table matching the All-Star event views.
+
+---
+
+## ✅ FIXED — Spain EuroLeague Wildcard Path
+
+**Status 2026-05-30:** Implemented in worktree. Spain Euro GM mode now keeps Real Madrid, FC Barcelona, and Baskonia as permanent EuroLeague clubs, seeds Valencia as the current open Spanish wildcard on fresh saves, and then assigns the next season's open place to the highest Liga Endesa finisher outside the permanent trio. Endesa setup/briefing now tells non-licensed clubs their EuroLeague goal, and qualifying user clubs receive a “Welcome to EuroLeague” GM modal before the next season.
 
 ---
 
@@ -100,6 +119,17 @@
   - `src/services/euro/evaluateSeasonForOwner.ts`
   - `src/store/logic/seasonRollover.ts`
   - `src/store/logic/actions/playerActions.ts`
+
+---
+
+## 🟡 FOLLOW-UP — Post-Career Paths After Staff Join
+
+**Status 2026-05-28:** Retired-player staff-list joins are in-flight in worktree. Future paths should expand the same post-career review/pool model instead of bolting on separate hidden lists.
+
+**Status 2026-05-30:** Staff retirement/age-out model and offseason review UI are now worktree-only. Season rollover stores `staffRetirementAnnouncements`, clears retired staff from active roles, and shows a Staff Retirements task before Staff Signings. Euro isolated mode also has a custom retired-player summary without Hall of Fame or jersey retirement handling.
+
+- Add a broadcasting-list roll after retirements, shown beside HOF/jersey/staff outcomes.
+- Expand death probabilities/cause tables toward more realistic age-banded real-world distributions; current daily pass is date-based and save-stable, but the cause mix is still game-tuned rather than actuarial.
 
 ---
 

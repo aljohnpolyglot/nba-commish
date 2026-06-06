@@ -1,8 +1,7 @@
 import React from 'react';
 import { ArrowLeft, Plane } from 'lucide-react';
-// Added NBAPlayer and calculateTeamStrength import
 import { NBATeam, Game, NBAPlayer } from '../../../types';
-import { calculateTeamStrength } from '../../../utils/playerRatings';
+import { calculateDisplayTeamOverall } from '../../../utils/playerRatings';
 import { useGame } from '../../../store/GameContext';
 import { isOnRoster } from '../../../utils/teamLookup';
 
@@ -29,7 +28,7 @@ export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
   const isGM = state.gameMode === 'gm';
   const isNonNBA = team.id >= 100;
   const teamPlayers = players.filter(p => p.tid === team.id && (isNonNBA ? isOnRoster(p) : true));
-  const rawStrength = calculateTeamStrength(team.id, teamPlayers.length > 0 ? teamPlayers : players);
+  const rawStrength = calculateDisplayTeamOverall(team.id, players, teamPlayers.length > 0 ? teamPlayers : undefined);
   const strength = Number.isFinite(rawStrength) ? rawStrength : 40;
   const leagueLabel = isNonNBA ? team.conference : `${team.conference}ern Conf`;
   return (
@@ -84,7 +83,7 @@ export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
           </button>
           )}
         <div className="bg-slate-950 border border-slate-800 px-4 md:px-6 py-2 md:py-3 rounded-2xl flex flex-col items-end">
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Strength</span>
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Team OVR</span>
 
             <span className="text-lg md:text-xl font-black text-indigo-400 tracking-tighter">
                 {strength}

@@ -17,6 +17,15 @@ import { isPbaIsolatedMode } from '../../utils/uiMode';
 import { isEuroVisibleScheduleGame } from '../../utils/euroLeagueDefaults';
 import { generateForCompetition, selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
 import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
+import { requestLeagueHistorySeasonDetail } from '../../components/central/view/LeagueHistoryNav';
+import {
+  clearConferenceImports,
+  generateNextConferenceSchedule,
+  getConferenceStartDate,
+  getNextConference,
+  type PbaConference,
+} from '../../services/pba/conferenceTransition';
+import { applySeasonRollover } from '../../services/logic/seasonRollover';
 
 type SetGameState = Dispatch<SetStateAction<GameState>>;
 
@@ -37,9 +46,16 @@ export async function handleOffseasonDispatchAction({
 }: HandleOffseasonDispatchActionArgs): Promise<boolean> {
   if (action.type === 'OFFSEASON_ENTER_PHASE') {
     const row = (action.payload as { row: OffseasonChecklistRow }).row;
+    const reviewOnlyRow = row === 'seasonSummary' || row === 'pbaConferenceAwards';
+    if (row === 'seasonSummary') {
+      const season = stateRef.current.leagueStats?.year;
+      if (typeof season === 'number') {
+        requestLeagueHistorySeasonDetail(season);
+      }
+    }
     setState(prev => ({
       ...prev,
-      offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, 'in-progress'),
+      offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, reviewOnlyRow ? 'done' : 'in-progress'),
     }));
     const target = OFFSEASON_ROW_TAB[row];
     if (target) setCurrentView(target);
@@ -142,29 +158,39 @@ export async function handleOffseasonDispatchAction({
   if (action.type === 'OFFSEASON_EXIT') {
     if (isPbaIsolatedMode(stateRef.current)) {
       const leagueStats = stateRef.current.leagueStats as any;
-      const currentConference: import('../../services/pba/conferenceTransition').PbaConference = leagueStats?.pbaConference ?? 'philippine';
-      const { getNextConference, generateNextConferenceSchedule, clearConferenceImports, getConferenceStartDate } = require('../../services/pba/conferenceTransition');
+      const currentConference: PbaConference = leagueStats?.pbaConference ?? 'philippine';
       const nextConference = getNextConference(currentConference);
       if (!nextConference) {
-        const nextYear = (leagueStats?.year ?? new Date().getFullYear()) + 1;
+        const rolloverAlreadyPrepared = leagueStats?.pbaYearEndRolloverPreparedSeason != null;
+        const rolloverPatch = rolloverAlreadyPrepared ? {} : applySeasonRollover(stateRef.current);
+        const rolledState = { ...stateRef.current, ...rolloverPatch } as GameState;
+        const nextYear = (rolledState.leagueStats as any)?.year ?? ((leagueStats?.year ?? new Date().getFullYear()) + 1);
         const philSpec = PBA_COMPETITIONS[0];
-        const source = { nonNBATeams: stateRef.current.nonNBATeams as any, userTeamId: stateRef.current.userTeamId };
+        const source = { nonNBATeams: rolledState.nonNBATeams as any, userTeamId: rolledState.userTeamId };
         const tids = selectCompetitionTeamTids(philSpec, source);
         const start = new Date(Date.UTC(nextYear - 1, philSpec.seasonStart.month - 1, philSpec.seasonStart.day));
         const newGames = generateForCompetition(philSpec, tids.map((tid: number) => ({ tid })), start, 800_000);
-        const cleaned = clearConferenceImports(stateRef.current.players, currentConference);
+        const cleaned = clearConferenceImports((rolledState.players ?? stateRef.current.players) as any, currentConference);
         setState(prev => ({
           ...prev,
+          ...rolloverPatch,
           players: cleaned,
           leagueStats: {
-            ...prev.leagueStats,
+            ...((rolloverPatch.leagueStats ?? prev.leagueStats) as any),
+            ...((rolledState.leagueStats ?? {}) as any),
             year: nextYear,
             pbaConference: 'philippine',
             pbaConferencePhase: 'regularSeason',
+            pbaYearEndRolloverPreparedSeason: undefined,
           },
           date: `Oct 5, ${nextYear - 1}`,
-          schedule: [...(prev.schedule ?? []), ...newGames],
+          schedule: newGames,
           offseasonChecklist: undefined,
+          draftComplete: undefined,
+          activeDraftPicks: undefined,
+          activeDraftPassedPicks: undefined,
+          activeDraftOrder: undefined,
+          draftLotteryResult: undefined,
         }));
       } else {
         const newGames = generateNextConferenceSchedule(stateRef.current, nextConference);

@@ -27,17 +27,17 @@ export const RigVotingModal: React.FC<RigVotingModalProps> = ({ onClose, onConfi
   const previewTotal = selectedPlayer ? (selectedPlayer.votes + ghostVotes).toLocaleString() : '—';
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 md:p-4 z-50">
       <motion.div
         initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
-        className="bg-slate-900 border border-slate-800 rounded-[2rem] max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh]"
+        className="bg-slate-900 border border-slate-800 rounded-[2rem] max-w-lg w-full shadow-2xl flex flex-col max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)]"
       >
-        <div className="p-8 pb-4">
-          <div className="flex items-center gap-4 mb-2">
+        <div className="p-4 sm:p-8 pb-4">
+          <div className="flex items-start gap-4 mb-2">
             <div className="w-12 h-12 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400">
               <Star size={22} />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-xl font-black text-white uppercase tracking-widest">Rig All-Star Voting</h3>
               <p className="text-slate-400 text-xs">Inject ghost votes — one-time use</p>
             </div>
@@ -51,7 +51,7 @@ export const RigVotingModal: React.FC<RigVotingModalProps> = ({ onClose, onConfi
           />
         </div>
 
-        <div className="overflow-y-auto custom-scrollbar px-8 pb-4 space-y-1 flex-1">
+        <div className="overflow-y-auto custom-scrollbar px-4 sm:px-8 pb-4 space-y-1 flex-1">
           {sorted.map((v, i) => (
             <button
               key={v.playerId}
@@ -75,7 +75,7 @@ export const RigVotingModal: React.FC<RigVotingModalProps> = ({ onClose, onConfi
           )}
         </div>
 
-        <div className="p-8 pt-4 border-t border-slate-800 space-y-4">
+        <div className="p-4 sm:p-8 pt-4 border-t border-slate-800 space-y-4">
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Ghost Votes</span>
@@ -99,12 +99,12 @@ export const RigVotingModal: React.FC<RigVotingModalProps> = ({ onClose, onConfi
               {' '}{selectedPlayer.votes.toLocaleString()} → <span className="text-violet-400 font-bold">{previewTotal}</span>
             </div>
           )}
-          <div className="flex justify-end gap-3">
-            <button onClick={onClose} className="px-6 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-bold uppercase tracking-wider text-xs">Cancel</button>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3">
+            <button onClick={onClose} className="w-full sm:w-auto px-6 py-3 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 font-bold uppercase tracking-wider text-xs">Cancel</button>
             <button
               disabled={!selected}
               onClick={() => selected && selectedPlayer && onConfirm(selected, selectedPlayer.playerName, ghostVotes)}
-              className="px-6 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-500 font-bold uppercase tracking-wider text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-violet-600 text-white hover:bg-violet-500 font-bold uppercase tracking-wider text-xs disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Inject Votes
             </button>

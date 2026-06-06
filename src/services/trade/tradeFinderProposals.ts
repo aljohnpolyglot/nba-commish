@@ -19,7 +19,7 @@ import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 import { formatPickLabel } from '../draft/draftClassStrength';
 import { wouldStepienViolateForTid } from './stepienRule';
 import { generateCounterOffers } from './tradeFinderCore';
-import { EXTERNAL, roleToMode, type TradeOfferItem } from './tradeFinderShared';
+import { isTradeExcludedStatus, roleToMode, type TradeOfferItem } from './tradeFinderShared';
 
 export function generateAITradeProposal(input: {
   buyerTid: number;
@@ -38,8 +38,9 @@ export function generateAITradeProposal(input: {
   tradablePickWindow?: number;
   isPostDeadlinePreFA?: boolean;
   recentlySignedLockMs?: { currentDate: string; leagueStats?: LeagueStats };
+  allowPbaRoster?: boolean;
 }): { buyerGives: TradeOfferItem[]; sellerGives: TradeOfferItem[] } | null {
-  const { buyerTid, sellerTid, players, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks, tvContext, classStrengthByYear, lotterySlotByTid, stepienEnabled, tradablePickWindow, isPostDeadlinePreFA, recentlySignedLockMs } = input;
+  const { buyerTid, sellerTid, players, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks, tvContext, classStrengthByYear, lotterySlotByTid, stepienEnabled, tradablePickWindow, isPostDeadlinePreFA, recentlySignedLockMs, allowPbaRoster = false } = input;
 
   const sellerOutlook = teamOutlooks.get(sellerTid) ?? { role: 'neutral' };
   const buyerOutlook = teamOutlooks.get(buyerTid) ?? { role: 'neutral' };
@@ -49,7 +50,7 @@ export function generateAITradeProposal(input: {
   // Find a target player on the seller's team (non-untouchable, best TV).
   // Walking expirings and recently-signed players are excluded from proposals.
   const sellerRoster = players
-    .filter(p => p.tid === sellerTid && !EXTERNAL.has(p.status ?? '')
+    .filter(p => p.tid === sellerTid && !isTradeExcludedStatus(p.status, allowPbaRoster)
               && !isWalkingExpiring(p, currentYear, isPostDeadlinePreFA ?? false)
               && !(recentlySignedLockMs && isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats)))
     .sort((a, b) => calcPlayerTV(b, sellerMode, currentYear, tvContext) - calcPlayerTV(a, sellerMode, currentYear, tvContext));
@@ -79,6 +80,7 @@ export function generateAITradeProposal(input: {
     stepienEnabled,
     tradablePickWindow,
     isPostDeadlinePreFA,
+    allowPbaRoster,
   });
 
   if (counterOffers.length === 0) return null;

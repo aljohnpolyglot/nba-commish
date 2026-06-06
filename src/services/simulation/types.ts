@@ -64,6 +64,18 @@ export interface PlayerGameStats {
   _nightBallCtrl?: number;
 }
 
+export interface GameLiveEvent {
+  kind: 'injury' | 'fight';
+  team: 'HOME' | 'AWAY';
+  quarter: number;
+  gs: number;
+  clock: string;
+  playerId?: string;
+  playerName: string;
+  opponentName?: string;
+  description: string;
+}
+
 export interface FightResult {
   player1Id: string;
   player1Name: string;
@@ -90,6 +102,7 @@ export interface GameResult {
   playerDNPs?: Record<string, string>; // playerId → "DNP — Injury (Type)" | "DNP — Coach's Decision"
   playerInGameInjuries?: Record<string, { type: string; quarter: number }>; // playerId → injury + quarter exited for players who left mid-game
   playersPlayingHurt?: Record<string, string>; // playerId → injuryType for players who suited up already injured (played through pain)
+  liveEvents?: GameLiveEvent[];
   isAllStar?: boolean;
   isRisingStars?: boolean;
   gameWinner?: {

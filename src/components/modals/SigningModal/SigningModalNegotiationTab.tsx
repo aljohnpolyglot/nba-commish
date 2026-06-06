@@ -46,6 +46,7 @@ interface SigningModalNegotiationTabProps {
   decSalaryProps: HoldableButtonProps;
   decYearsProps: HoldableButtonProps;
   euroIsolated: boolean;
+  pbaIsolated: boolean;
   formattedYears: string;
   gmSpending: number;
   hasOwnTeamBirdRights: boolean;
@@ -55,6 +56,7 @@ interface SigningModalNegotiationTabProps {
   interest: number;
   interestColor: string;
   isOwnTeamGM: boolean;
+  isPbaImportSigning: boolean;
   isResign: boolean;
   isTrainingCampPeriod: boolean;
   leagueYear: number;
@@ -84,6 +86,7 @@ export default function SigningModalNegotiationTab({
   decSalaryProps,
   decYearsProps,
   euroIsolated,
+  pbaIsolated,
   formattedYears,
   gmSpending,
   hasOwnTeamBirdRights,
@@ -93,6 +96,7 @@ export default function SigningModalNegotiationTab({
   interest,
   interestColor,
   isOwnTeamGM,
+  isPbaImportSigning,
   isResign,
   isTrainingCampPeriod,
   leagueYear,
@@ -112,10 +116,21 @@ export default function SigningModalNegotiationTab({
   totalBuyoutPaidUSD,
   yearsTable,
 }: SigningModalNegotiationTabProps): ReactElement {
+  const nonNbaContractRules = euroIsolated || pbaIsolated;
+  const availableContractTypes = (
+    nonNbaContractRules
+      ? (['GUARANTEED'] as ContractType[])
+      : (['GUARANTEED', 'TWO_WAY', 'NON_GUARANTEED'] as ContractType[])
+  ).filter(type =>
+    type === 'GUARANTEED' ? (!roster.standardFull || isResign || teamHoldsBirdRights)
+      : type === 'TWO_WAY' ? canOfferTwoWay && !hasOwnTeamBirdRights && !roster.twoWayFull
+        : isTrainingCampPeriod && roster.standardCount >= 15,
+  );
+
   return (
-    <div className="space-y-8">
-      <div className="bg-white/[0.04] border border-white/[0.06] rounded-sm p-6">
-        <div className="flex items-center justify-between mb-4">
+    <div className="space-y-5 sm:space-y-8">
+      <div className="bg-white/[0.04] border border-white/[0.06] rounded-sm p-4 sm:p-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <TrendingUp size={15} className="text-[#e21d37]" />
             <span className="text-[10px] font-black uppercase tracking-widest text-white/50 italic">
@@ -145,12 +160,12 @@ export default function SigningModalNegotiationTab({
         const color = gmSpending >= 80 ? '#f59e0b' : gmSpending >= 60 ? '#8b949e' : '#38bdf8';
         const pctText = mult >= 1 ? `+${Math.round((mult - 1) * 100)}%` : `-${Math.round((1 - mult) * 100)}%`;
         return (
-          <div className="flex items-center gap-3 px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-sm">
             <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
             <p className="text-[9px] font-black uppercase tracking-widest" style={{ color }}>
               GM Style: {label}
             </p>
-            <p className="text-[9px] text-white/30 ml-auto">
+            <p className="text-[9px] text-white/30 sm:ml-auto">
               Opening offer {pctText} vs market · Spending {gmSpending}
             </p>
           </div>
@@ -168,8 +183,8 @@ export default function SigningModalNegotiationTab({
             ? 'Getting warmer — bump your contribution to close it out'
             : `${buyout.league} club not interested at this number`;
         return (
-          <div className="bg-white/[0.04] border border-white/[0.06] rounded-sm p-6">
-            <div className="flex items-center justify-between mb-4">
+          <div className="bg-white/[0.04] border border-white/[0.06] rounded-sm p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-2">
                 <TrendingUp size={15} style={{ color }} />
                 <span className="text-[10px] font-black uppercase tracking-widest text-white/50 italic">
@@ -195,22 +210,17 @@ export default function SigningModalNegotiationTab({
         );
       })()}
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        <div className="space-y-6">
-          <div>
-            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 mb-2">Contract Type</p>
-            <div className="flex border border-white/5 rounded-sm p-1 bg-black/60 gap-1">
-              {(euroIsolated ? (['GUARANTEED'] as ContractType[]) : (['GUARANTEED', 'TWO_WAY', 'NON_GUARANTEED'] as ContractType[]))
-                .filter(type =>
-                  type === 'GUARANTEED' ? (!roster.standardFull || isResign || teamHoldsBirdRights)
-                    : type === 'TWO_WAY' ? canOfferTwoWay && !hasOwnTeamBirdRights && !roster.twoWayFull
-                      : isTrainingCampPeriod && roster.standardCount >= 15,
-                )
-                .map(type => (
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 sm:gap-8">
+        <div className="space-y-5 sm:space-y-6">
+          {availableContractTypes.length > 1 && (
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 mb-2">Contract Type</p>
+              <div className="flex flex-wrap border border-white/5 rounded-sm p-1 bg-black/60 gap-1">
+                {availableContractTypes.map(type => (
                   <button
                     key={type}
                     onClick={() => setContractType(type)}
-                    className={`flex-1 py-2.5 text-[10px] font-black uppercase tracking-widest rounded-sm transition-all ${
+                    className={`flex-1 min-w-[120px] py-2.5 text-[10px] font-black uppercase tracking-widest rounded-sm transition-all ${
                       contractType === type
                         ? type === 'NON_GUARANTEED'
                           ? 'bg-amber-600 text-white shadow-lg'
@@ -221,13 +231,14 @@ export default function SigningModalNegotiationTab({
                     {type === 'NON_GUARANTEED' ? 'NG' : type.replace('_', ' ')}
                   </button>
                 ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
-            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex justify-between items-center mb-2">
-              Year 1 Salary
-              <div className="flex gap-3 text-[10px]">
+            <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex flex-col gap-1.5 sm:flex-row sm:justify-between sm:items-center mb-2">
+              <span>{isPbaImportSigning ? 'Conference Salary' : 'Year 1 Salary'}</span>
+              <div className="flex flex-wrap gap-3 text-[10px]">
                 <span className="text-[#e21d37]">MIN {money(minAllowed)}</span>
                 <span className="text-white/50">MAX {money(maxAllowed)}</span>
               </div>
@@ -242,7 +253,9 @@ export default function SigningModalNegotiationTab({
               </button>
               <div className="text-center">
                 <span className="text-2xl font-black italic text-white">{moneyPrecise(salary, 2)}</span>
-                <p className="text-[8px] font-bold uppercase text-white/30 tracking-widest mt-0.5">Starting Amount</p>
+                <p className="text-[8px] font-bold uppercase text-white/30 tracking-widest mt-0.5">
+                  {isPbaImportSigning ? 'Conference Deal' : 'Starting Amount'}
+                </p>
               </div>
               <button
                 {...incSalaryProps}
@@ -262,7 +275,7 @@ export default function SigningModalNegotiationTab({
             )}
           </div>
 
-          <div className={`grid gap-4 ${euroIsolated ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          <div className={`grid gap-4 ${nonNbaContractRules ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
             {[
               {
                 label: 'Years',
@@ -271,7 +284,7 @@ export default function SigningModalNegotiationTab({
                 incProps: incYearsProps,
                 disabled: false,
               },
-              ...(!euroIsolated ? [{
+              ...(!nonNbaContractRules ? [{
                 label: 'Incentive',
                 display: option === 'NONE' ? 'None' : `${option === 'PLAYER' ? 'Player' : 'Team'} Opt.`,
                 decProps: decOptionProps,
@@ -296,7 +309,7 @@ export default function SigningModalNegotiationTab({
             ))}
           </div>
 
-          {!euroIsolated && (() => {
+          {!nonNbaContractRules && (() => {
             const hasBird = hasOwnTeamBirdRights || !!(player as any).hasBirdRights;
             const svc = ((player as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
             const recent = ((player as any).awards ?? []).filter((a: any) => a.season && a.season >= leagueYear - 3);
@@ -304,7 +317,7 @@ export default function SigningModalNegotiationTab({
               .filter((a: any) => /all.nba|mvp|defensive player|dpoy/i.test(a.type ?? ''))
               .map((a: any) => a.type);
             return (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">Bird Rights</p>
                   <div className={`flex items-center justify-center h-12 bg-white/[0.04] border rounded-sm ${hasBird ? 'border-emerald-500/40' : 'border-white/10'}`}>
@@ -382,15 +395,15 @@ export default function SigningModalNegotiationTab({
         </div>
 
         <div className="bg-[#0d0d0d] border border-white/5 rounded-sm overflow-hidden">
-          <div className="bg-white/[0.04] px-6 py-4 border-b border-white/5 flex items-center justify-between">
+          <div className="bg-white/[0.04] px-4 sm:px-6 py-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span className="text-[9px] font-black uppercase tracking-widest italic text-white/40">
-              Cap Projection
+              {isPbaImportSigning ? 'Conference Contract' : pbaIsolated ? 'Salary Projection' : 'Cap Projection'}
             </span>
             <span className="text-[8px] font-bold uppercase text-emerald-400">+5% Escalator</span>
           </div>
           <div className="divide-y divide-white/[0.04]">
             {yearsTable.map((row, i) => (
-              <div key={row.year} className="grid grid-cols-3 px-6 py-4 hover:bg-white/[0.02] transition-colors">
+              <div key={row.year} className={`grid ${pbaIsolated ? 'grid-cols-2' : 'grid-cols-3'} px-4 sm:px-6 py-4 hover:bg-white/[0.02] transition-colors gap-2`}>
                 <div>
                   <p className="text-[8px] font-bold text-white/20 uppercase">Season {i + 1}</p>
                   <p className="text-xs font-black italic text-white/60">
@@ -401,13 +414,15 @@ export default function SigningModalNegotiationTab({
                   <p className="text-[8px] font-bold text-white/20 uppercase">Salary</p>
                   <p className="text-xs font-black italic text-white">{money(row.salary)}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-[8px] font-bold text-white/20 uppercase">Cap Rm</p>
-                  <p className={`text-xs font-black italic ${row.capRoom < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
-                    {row.capRoom < 0 ? '-' : ''}
-                    {money(Math.abs(row.capRoom))}
-                  </p>
-                </div>
+                {!pbaIsolated && (
+                  <div className="text-right">
+                    <p className="text-[8px] font-bold text-white/20 uppercase">Cap Rm</p>
+                    <p className={`text-xs font-black italic ${row.capRoom < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                      {row.capRoom < 0 ? '-' : ''}
+                      {money(Math.abs(row.capRoom))}
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -61,14 +61,14 @@ export const CurrentSponsorModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[60] flex items-center justify-center p-4">
-      <div className="bg-slate-950 border border-slate-800 rounded-2xl max-w-[1480px] w-full max-h-[94vh] overflow-y-auto shadow-2xl">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[1480px] flex-col overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
         {/* Header */}
-        <div className="px-7 pt-6 pb-5 border-b border-slate-800">
+        <div className="border-b border-slate-800 px-4 pb-5 pt-5 sm:px-7 sm:pt-6">
           <div className="flex items-start justify-between">
             <div className="text-xs font-black uppercase tracking-widest text-violet-300">Sponsor Details</div>
             <button onClick={onClose} aria-label="Close"><X size={20} className="text-slate-400 hover:text-white" /></button>
           </div>
-          <div className="mt-3 grid grid-cols-[auto_1fr_auto] gap-6 items-start">
+          <div className="mt-3 grid items-start gap-5 lg:grid-cols-[auto_1fr_auto] lg:gap-6">
             <SponsorLogo
               name={sponsor.sponsor}
               meta={getBrandMeta('spain', sponsor.sponsor)}
@@ -83,7 +83,7 @@ export const CurrentSponsorModal: React.FC<Props> = ({
               <div className="text-sm font-bold text-violet-300 mt-1">{SLOT_PLACEMENT_LABEL[slot]}</div>
               <p className="text-sm text-slate-400 mt-2 max-w-[640px]">{describeBrand(industry)}</p>
             </div>
-            <div className="grid grid-cols-5 gap-3 max-w-[820px]">
+            <div className="grid max-w-[820px] grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
               <KpiCell label="Value per Year" value={fmt(sponsor.valuePerYear)} sub="Fixed Fee" tint="text-emerald-300" />
               <KpiCell label="Contract Length" value={`${yearsRemaining} Years`} sub={`Ends Jun 30, ${contractEndYear}`} tint="text-white" />
               <KpiCell label="Total Contract Value" value={fmt(totalValue)} sub="" tint="text-sky-300" />
@@ -93,13 +93,13 @@ export const CurrentSponsorModal: React.FC<Props> = ({
           </div>
 
           {/* Sub-header row: Industry / HQ / Partner Since + Relationship card */}
-          <div className="mt-5 grid grid-cols-[1fr_2fr] gap-5">
-            <div className="grid grid-cols-3 gap-4">
+          <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_2fr]">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <SubFact icon={<ShoppingBag size={14} className="text-slate-400" />} label="Industry" value={INDUSTRY_PROFILE_LABEL[industry]} />
               <SubFact icon={<MapPin size={14} className="text-slate-400" />} label="Headquarters" value="—" />
               <SubFact icon={<Calendar size={14} className="text-slate-400" />} label="Partner Since" value={String(sponsor.signedYear)} />
             </div>
-            <div className="rounded-2xl border border-violet-500/30 bg-violet-500/5 p-4 flex items-center gap-4">
+            <div className="flex flex-col gap-4 rounded-2xl border border-violet-500/30 bg-violet-500/5 p-4 sm:flex-row sm:items-center">
               <div className="w-12 h-12 rounded-xl bg-violet-500/15 border border-violet-500/30 flex items-center justify-center">
                 <Handshake size={22} className="text-violet-300" />
               </div>
@@ -117,15 +117,15 @@ export const CurrentSponsorModal: React.FC<Props> = ({
         </div>
 
         {/* Body */}
-        <div className="px-7 py-6 space-y-5">
+        <div className="space-y-5 px-4 py-5 sm:px-7 sm:py-6">
           {(
             <>
               {/* Row 1: Sponsorship Asset / Sponsorship Impact / Deal Breakdown */}
-              <div className="grid lg:grid-cols-[1.2fr_1fr_1.2fr] gap-5">
+              <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr_1.2fr]">
                 {/* Sponsorship Asset */}
                 <Panel title="Sponsorship Asset">
-                  <div className="grid grid-cols-[180px_1fr] gap-4 items-start">
-                    <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 flex items-center justify-center min-h-[220px]">
+                  <div className="grid items-start gap-4 sm:grid-cols-[180px_1fr]">
+                    <div className="flex min-h-[220px] items-center justify-center rounded-xl border border-slate-800 bg-slate-950/70 p-3">
                       {jerseyPreview ?? (
                         <div className="w-full aspect-[3/4] rounded-lg border border-dashed border-slate-700 flex items-center justify-center text-[10px] text-slate-600 text-center px-2">
                           Jersey Preview
@@ -180,9 +180,9 @@ export const CurrentSponsorModal: React.FC<Props> = ({
               </div>
 
               {/* Row 2: Sponsor Benefits / Last Season Performance / Contract Terms */}
-              <div className="grid lg:grid-cols-[1.2fr_1fr_1fr] gap-5">
+              <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr_1fr]">
                 <Panel title="Sponsor Benefits">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {perks.slice(0, 6).map((p) => (
                       <div key={p} className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 flex items-start gap-2.5">
                         <div className="w-8 h-8 rounded-lg bg-violet-500/15 border border-violet-500/30 flex items-center justify-center shrink-0">
@@ -198,7 +198,7 @@ export const CurrentSponsorModal: React.FC<Props> = ({
                 </Panel>
 
                 <Panel title="Last Season Performance" right={<span className="text-[10px] text-slate-500 uppercase tracking-widest">vs. targets</span>}>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <PerformanceDonut label="Impressions" value="2.1M" pct={105} />
                     <PerformanceDonut label="Engagements" value="45K" pct={98} />
                     <PerformanceDonut label="Brand Lift" value="+18%" pct={110} />
@@ -223,7 +223,7 @@ export const CurrentSponsorModal: React.FC<Props> = ({
         </div>{/* /body */}
 
         {/* Footer */}
-        <div className="border-t border-slate-800 px-7 py-4 flex items-center gap-4">
+        <div className="flex flex-col gap-4 border-t border-slate-800 px-4 py-4 sm:px-7 lg:flex-row lg:items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
               <Smile size={18} className={satisfactionTint} />
@@ -234,7 +234,7 @@ export const CurrentSponsorModal: React.FC<Props> = ({
               <div className="text-[10px] text-slate-500">No current issues</div>
             </div>
           </div>
-          <div className="flex items-center gap-3 ml-5">
+          <div className="flex items-center gap-3 lg:ml-5">
             <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center">
               <Calendar size={16} className="text-slate-400" />
             </div>
@@ -244,13 +244,13 @@ export const CurrentSponsorModal: React.FC<Props> = ({
               <div className="text-[10px] text-slate-500 tabular-nums">{fmt(Math.round(sponsor.valuePerYear / 4))}</div>
             </div>
           </div>
-          <div className="flex-1 flex items-center justify-end gap-3">
+          <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
             {renewalWindowOpen && (
               <FooterButton icon={<RefreshCw size={14} />} label="Renegotiate Deal" onClick={onRenegotiate} hint="Contract ends this year — renewal window open" />
             )}
             <button
               onClick={onFindNewSponsors}
-              className="px-5 py-2.5 rounded-lg bg-violet-500 hover:bg-violet-400 text-white text-sm font-bold flex items-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-violet-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-violet-400 sm:w-auto"
             >
               <Search size={14} /> Replace Sponsor <ArrowRight size={14} />
             </button>
@@ -301,8 +301,8 @@ const RelationshipBar: React.FC<{ score: number }> = ({ score }) => {
 };
 
 const Panel: React.FC<{ title: string; right?: React.ReactNode; children: React.ReactNode }> = ({ title, right, children }) => (
-  <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-    <div className="flex items-center justify-between mb-4">
+  <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4 sm:p-5">
+    <div className="mb-4 flex items-center justify-between gap-3">
       <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">{title}</div>
       {right}
     </div>
@@ -311,9 +311,9 @@ const Panel: React.FC<{ title: string; right?: React.ReactNode; children: React.
 );
 
 const DetailRow: React.FC<{ k: string; v: string; tint?: string }> = ({ k, v, tint }) => (
-  <div className="flex items-center justify-between py-1.5 border-b border-slate-800 last:border-0">
-    <dt className="text-slate-500 text-sm">{k}</dt>
-    <dd className={`text-sm font-bold ${tint ?? 'text-slate-200'}`}>{v}</dd>
+  <div className="flex flex-col gap-1 border-b border-slate-800 py-1.5 last:border-0 sm:flex-row sm:items-center sm:justify-between">
+    <dt className="text-sm text-slate-500">{k}</dt>
+    <dd className={`text-sm font-bold sm:text-right ${tint ?? 'text-slate-200'}`}>{v}</dd>
   </div>
 );
 
@@ -342,7 +342,7 @@ const FooterButton: React.FC<{ icon: React.ReactNode; label: string; onClick?: (
   <button
     onClick={onClick}
     title={hint}
-    className="px-4 py-2.5 rounded-lg border border-slate-700 bg-slate-900 hover:border-slate-500 text-sm font-bold text-slate-300 flex items-center gap-2"
+    className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-bold text-slate-300 hover:border-slate-500 sm:w-auto"
   >
     {icon} {label}
   </button>

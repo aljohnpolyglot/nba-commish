@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { calculateTeamStrength } from '../../utils/playerRatings';
+import { calculateDisplayTeamOverall } from '../../utils/playerRatings';
 import { getActiveLeagueTeams, isOnRoster, resolveAnyTeam } from '../../utils/teamLookup';
 import { getTeamFullName } from '../../utils/teamNames';
 
@@ -22,7 +22,7 @@ export const TrainingFranchisePicker: React.FC<Props> = ({ onSelectTeam }) => {
   const teamData = useMemo(() => {
     return teams.map(team => {
       const roster = players.filter(p => p.tid === team.id && isOnRoster(p));
-      const ovr = calculateTeamStrength(team.id, players);
+      const ovr = calculateDisplayTeamOverall(team.id, players, roster);
       const planCount = Object.keys((team as any).trainingCalendar ?? {}).length;
       return { team, roster, ovr, planCount };
     });

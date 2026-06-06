@@ -1,12 +1,36 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Crown, ChevronRight, Star, Trophy, X } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import { careerWinShares, getHOFCeremonyDateString } from '../../../services/playerDevelopment/hofChecker';
 import { parseGameDate } from '../../../utils/dateUtils';
+import { normalizeDate } from '../../../utils/helpers';
+import { fetchHOFData, type ProcessedHOFPlayer } from '../../../data/HOFData';
 import type { NBAPlayer } from '../../../types';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { PlayerBioView } from '../../central/view/PlayerBioView';
+
+const normalizeName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+
+function adaptExternalPlayer(p: ProcessedHOFPlayer): NBAPlayer {
+  return {
+    internalId: `ext-${normalizeName(p.name)}`,
+    name: p.name,
+    tid: p.tid ?? -1,
+    pos: p.pos,
+    hgt: p.hgt,
+    weight: p.weight,
+    imgURL: p.imgURL,
+    born: p.born,
+    draft: p.draft as any,
+    awards: p.awards,
+    hof: true,
+    retiredYear: p.retiredYear,
+    hofInductionYear: p.inductionYear,
+    status: 'Retired',
+    overallRating: 0,
+  } as unknown as NBAPlayer;
+}
 
 function countAward(p: NBAPlayer, type: string): number {
   return (p.awards ?? []).filter(a => a.type === type).length;
@@ -50,6 +74,19 @@ function careerLine(p: NBAPlayer): { ppg: string; rpg: string; apg: string; year
   };
 }
 
+function isHofScopeTid(tid: number, teamsByTid: Map<number, any>, uiMode?: string): boolean {
+  if (uiMode === 'pba_isolated') {
+    return (tid >= 2000 && tid < 2100) || teamsByTid.get(tid)?.league === 'PBA';
+  }
+  return tid >= 0 && tid < 100;
+}
+
+function hasHofScopeCareer(player: NBAPlayer, teamsByTid: Map<number, any>, uiMode?: string): boolean {
+  return ((player.stats ?? []) as any[]).some((stat: any) =>
+    !stat.playoffs && (stat.gp ?? 0) > 0 && isHofScopeTid(Number(stat.tid), teamsByTid, uiMode)
+  );
+}
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -58,18 +95,57 @@ interface Props {
 export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
   const { state, dispatchAction } = useGame();
   const [drillPlayer, setDrillPlayer] = useState<NBAPlayer | null>(null);
+  const [externalInductees, setExternalInductees] = useState<ProcessedHOFPlayer[]>([]);
 
   const classYear = state.date
     ? parseGameDate(state.date).getUTCFullYear()
     : state.leagueStats?.year ?? new Date().getFullYear();
   const ceremonyDate = getHOFCeremonyDateString(classYear);
+  const currentDate = normalizeDate(state.date ?? ceremonyDate);
+  const isFictional = state.leagueType === 'fictional';
+  const uiMode = state.leagueStats?.uiMode;
+  const shouldLoadExternalHOF = !isFictional && uiMode !== 'pba_isolated' && uiMode !== 'euro_isolated';
+  const teamsByTid = useMemo(() => {
+    const map = new Map<number, any>();
+    for (const team of [...(state.teams ?? []), ...((state as any).nonNBATeams ?? [])] as any[]) {
+      map.set(team.id ?? team.tid, team);
+    }
+    return map;
+  }, [state.teams, (state as any).nonNBATeams]);
+
+  useEffect(() => {
+    if (!isOpen || !shouldLoadExternalHOF) return;
+    let cancelled = false;
+    fetchHOFData()
+      .then(data => {
+        if (!cancelled) setExternalInductees(data);
+      })
+      .catch(err => console.error('[HOF Ceremony] External fetch failed:', err));
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, shouldLoadExternalHOF]);
 
   const inductees = useMemo(() => {
     if (!isOpen) return [];
-    return (state.players ?? [])
+    const byName = new Map<string, NBAPlayer>();
+
+    if (shouldLoadExternalHOF && currentDate >= ceremonyDate) {
+      externalInductees.forEach(p => {
+        if (!p.name || p.inductionYear !== classYear) return;
+        byName.set(normalizeName(p.name), adaptExternalPlayer(p));
+      });
+    }
+
+    (state.players ?? [])
       .filter(p => p.hof === true && p.hofInductionYear === classYear)
-      .sort((a, b) => careerWinShares(b) - careerWinShares(a));
-  }, [isOpen, state.players, classYear]);
+      .filter(p => hasHofScopeCareer(p, teamsByTid, uiMode))
+      .forEach(p => {
+        byName.set(normalizeName(p.name), p);
+      });
+
+    return Array.from(byName.values()).sort((a, b) => careerWinShares(b) - careerWinShares(a));
+  }, [isOpen, shouldLoadExternalHOF, currentDate, ceremonyDate, externalInductees, state.players, classYear, teamsByTid, uiMode]);
 
   const firstBallot = inductees.filter(p => {
     const ws = careerWinShares(p);
@@ -98,7 +174,7 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[115] flex items-center justify-center p-2 md:p-6">
+        <div className="fixed inset-0 z-[115] flex items-center justify-center p-0 sm:p-2 md:p-6">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -110,10 +186,10 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
             initial={{ opacity: 0, scale: 0.97, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 12 }}
-            className="relative flex h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[20px] border border-amber-400/40 bg-regal-black shadow-2xl"
+            className="relative flex h-[100dvh] sm:h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-none sm:rounded-[20px] border-0 sm:border border-amber-400/40 bg-regal-black shadow-2xl"
           >
             {/* Hero header */}
-            <div className="relative shrink-0 overflow-hidden border-b border-amber-400/20 px-6 py-8">
+            <div className="relative shrink-0 overflow-hidden border-b border-amber-400/20 px-4 sm:px-6 py-6 sm:py-8">
               <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_50%_30%,rgba(212,175,55,0.18),transparent_60%)]" />
               <button onClick={onClose} className="absolute right-4 top-4 z-10 text-zinc-500 transition-colors hover:text-white">
                 <X size={18} />
@@ -123,7 +199,7 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
                 <span className="block text-[10px] font-bold uppercase tracking-[0.35em] text-amber-300/80">
                   Enshrinement Weekend · {ceremonyDate}
                 </span>
-                <h2 className="mt-2 font-display text-4xl font-black md:text-5xl">
+                <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl font-black">
                   CLASS OF <span className="bg-gradient-to-b from-amber-200 to-amber-500 bg-clip-text text-transparent">{classYear}</span>
                 </h2>
                 <p className="mx-auto mt-2 max-w-2xl text-xs italic text-zinc-400 md:text-sm">
@@ -143,7 +219,7 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
             </div>
 
             {/* Inductee grid */}
-            <div className="flex-1 overflow-y-auto px-6 py-6" style={{ scrollbarWidth: 'thin' }}>
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6" style={{ scrollbarWidth: 'thin' }}>
               {inductees.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/20 py-20 text-center">
                   <Trophy size={32} className="mx-auto mb-3 text-zinc-700" />
@@ -161,8 +237,8 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
             </div>
 
             {/* Footer */}
-            <div className="flex shrink-0 items-center justify-between gap-4 border-t border-zinc-800 bg-regal-black/95 px-6 py-3">
-              <span className="text-xs text-zinc-500">
+            <div className="flex shrink-0 flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 border-t border-zinc-800 bg-regal-black/95 px-4 sm:px-6 py-3">
+              <span className="text-xs text-zinc-500 text-center sm:text-left">
                 Closes Hall of Fame Weekend and clears the legacy step from your offseason checklist.
               </span>
               <button

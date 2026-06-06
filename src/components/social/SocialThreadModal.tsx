@@ -35,11 +35,11 @@ export const SocialThreadModal: React.FC<SocialThreadModalProps> = ({
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 50, opacity: 0 }}
-            className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            className="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
         >
-            <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-                <h3 className="text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-800 bg-slate-900/50 p-4 sm:p-6">
+                <h3 className="flex items-center gap-2 text-xl font-black uppercase tracking-tight text-white">
                     <MessageCircle size={20} className="text-indigo-500" />
                     Thread
                 </h3>
@@ -48,17 +48,17 @@ export const SocialThreadModal: React.FC<SocialThreadModalProps> = ({
                 </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+            <div className="custom-scrollbar flex-1 overflow-y-auto space-y-6 p-4 sm:p-6">
                 <div className="pointer-events-none">
                     <SocialPostCard post={selectedPost} />
                 </div>
                 
-                <div className="pl-8 border-l-2 border-slate-800 space-y-6">
+                <div className="space-y-6 border-l-2 border-slate-800 pl-4 sm:pl-8">
                     {selectedPost.replies?.map((reply, idx) => (
                         <div key={reply.id || `reply-${idx}-${reply.handle}`} className="space-y-4">
                             <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
-                                <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center gap-2">
+                                <div className="mb-2 flex items-start justify-between gap-3">
+                                    <div className="flex min-w-0 items-center gap-2">
                                         {reply.avatarUrl ? (
                                             <img src={reply.avatarUrl} alt={reply.author} className="h-6 w-6 rounded-full object-cover" referrerPolicy="no-referrer" />
                                         ) : reply.playerPortraitUrl ? (
@@ -70,7 +70,7 @@ export const SocialThreadModal: React.FC<SocialThreadModalProps> = ({
                                     <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Just now</span>
                                 </div>
                                 <p className="text-slate-300 text-sm">{reply.content}</p>
-                                <div className="mt-3 flex items-center gap-4 text-slate-500 text-xs font-bold">
+                                <div className="mt-3 flex flex-wrap items-center gap-4 text-xs font-bold text-slate-500">
                                     <span>{reply.likes} Likes</span>
                                     <span>{reply.retweets} Reposts</span>
                                     <button 
@@ -84,7 +84,7 @@ export const SocialThreadModal: React.FC<SocialThreadModalProps> = ({
                             
                             {/* Nested Replies */}
                             {reply.replies && reply.replies.length > 0 && (
-                                <div className="pl-6 border-l border-slate-800 space-y-4">
+                                <div className="space-y-4 border-l border-slate-800 pl-4 sm:pl-6">
                                     {reply.replies.map((nested, nIdx) => (
                                         <div key={nested.id || `nested-${nIdx}-${nested.handle}`} className="bg-slate-900/30 border border-slate-800/50 rounded-2xl p-3">
                                             <div className="flex items-center gap-2 mb-1">

@@ -48,6 +48,16 @@ interface DunkRatings {
   standingDunk: number;
 }
 
+interface CachedBadgeProbs {
+  aerialWizard: number;
+  posterizer: number;
+  layupMixmaster: number;
+  limitlessRange: number;
+  ankleAssassin: number;
+  breakStarter: number;
+  versatileVisionary: number;
+}
+
 let _dunkMapCache: Map<string, DunkRatings> | null = null;
 
 function buildDunkMap(): Map<string, DunkRatings> {
@@ -99,14 +109,30 @@ function standingP(r: number) {
   return 0.04;
 }
 
+function buildBadgeProbCache(stats: PlayerGameStats[]): Map<string, CachedBadgeProbs> {
+  const cache = new Map<string, CachedBadgeProbs>();
+  for (const player of stats) {
+    cache.set(player.playerId, {
+      aerialWizard: getBadgeProb(player.name, 'Aerial Wizard', 0.15),
+      posterizer: getBadgeProb(player.name, 'Posterizer', 0.15),
+      layupMixmaster: getBadgeProb(player.name, 'Layup Mixmaster', 0.15),
+      limitlessRange: getBadgeProb(player.name, 'Limitless Range', 0.15),
+      ankleAssassin: getBadgeProb(player.name, 'Ankle Assassin', 0.12),
+      breakStarter: getBadgeProb(player.name, 'Break Starter', 0.20),
+      versatileVisionary: getBadgeProb(player.name, 'Versatile Visionary', 0.12),
+    });
+  }
+  return cache;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // VICTIM / CONNECTOR HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Rim-defending big (C/PF) from the opposing team — posterizer victim */
-function pickRimDefender(oppStats: PlayerGameStats[], allPlayers: Player[]) {
+function pickRimDefender(oppStats: PlayerGameStats[], playerMap: Map<string, Player>) {
   const bigs = oppStats.filter(s => {
-    const p = allPlayers.find(pl => pl.internalId === s.playerId);
+    const p = playerMap.get(s.playerId);
     return p && (p.pos === 'C' || p.pos === 'PF');
   });
   const pool = bigs.length > 0 ? bigs : oppStats;
@@ -116,9 +142,9 @@ function pickRimDefender(oppStats: PlayerGameStats[], allPlayers: Player[]) {
 }
 
 /** Perimeter player (G/wing) from the opposing team — ankle breaker victim */
-function pickPerimeterDefender(oppStats: PlayerGameStats[], allPlayers: Player[]) {
+function pickPerimeterDefender(oppStats: PlayerGameStats[], playerMap: Map<string, Player>) {
   const guards = oppStats.filter(s => {
-    const p = allPlayers.find(pl => pl.internalId === s.playerId);
+    const p = playerMap.get(s.playerId);
     return p && (p.pos === 'PG' || p.pos === 'SG' || p.pos === 'SF' || p.pos === 'G');
   });
   const pool = guards.length > 0 ? guards : oppStats;
@@ -128,31 +154,18 @@ function pickPerimeterDefender(oppStats: PlayerGameStats[], allPlayers: Player[]
 }
 
 /** Best assister on the same team (throws the lob) */
-function pickTopAssister(stats: PlayerGameStats[], excludeId: string) {
-  return stats
-    .filter(s => s.playerId !== excludeId && s.ast > 0)
-    .sort((a, b) => b.ast - a.ast)[0] ?? null;
-}
-
-/** Player who started the fast break (most steals on team, excluding finisher) */
-function pickBreakStarter(stats: PlayerGameStats[], excludeId: string) {
-  return stats
-    .filter(s => s.playerId !== excludeId && s.stl > 0)
-    .sort((a, b) => b.stl - a.stl)[0] ?? null;
-}
-
-/** Best rim finisher on team (outlet pass target for break_starter) */
-function pickBreakFinisher(stats: PlayerGameStats[], excludeId: string) {
-  return stats
-    .filter(s => s.playerId !== excludeId && (s.fgAtRim ?? 0) > 0)
-    .sort((a, b) => (b.fgAtRim ?? 0) - (a.fgAtRim ?? 0))[0] ?? null;
-}
-
-/** Top scorer on team (receiver of versatile_visionary pass) */
-function pickTopScorer(stats: PlayerGameStats[], excludeId: string) {
-  return stats
-    .filter(s => s.playerId !== excludeId && s.pts > 0)
-    .sort((a, b) => b.pts - a.pts)[0] ?? null;
+function buildTopLookup(
+  stats: PlayerGameStats[],
+  value: (stat: PlayerGameStats) => number,
+): Map<string, PlayerGameStats | null> {
+  const ranked = [...stats]
+    .filter(stat => value(stat) > 0)
+    .sort((a, b) => value(b) - value(a));
+  const lookup = new Map<string, PlayerGameStats | null>();
+  for (const stat of stats) {
+    lookup.set(stat.playerId, ranked.find(candidate => candidate.playerId !== stat.playerId) ?? null);
+  }
+  return lookup;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -169,6 +182,7 @@ export class HighlightGenerator {
   ): GameHighlight[] {
     const highlights: GameHighlight[] = [];
     const dunkMap = buildDunkMap();
+    const playerMap = new Map(allPlayers.map(player => [player.internalId, player] as const));
 
     const sides = [
       { stats: homeStats, teamId: homeTeamId, oppStats: awayStats },
@@ -178,12 +192,18 @@ export class HighlightGenerator {
     for (const { stats, teamId, oppStats } of sides) {
       const teamStls = stats.reduce((sum, s) => sum + (s.stl ?? 0), 0);
       const totalPf  = stats.reduce((sum, s) => sum + (s.pf  ?? 0), 0);
+      const badgeProbCache = buildBadgeProbCache(stats);
+      const topAssisterByPlayer = buildTopLookup(stats, stat => stat.ast ?? 0);
+      const breakStarterByPlayer = buildTopLookup(stats, stat => stat.stl ?? 0);
+      const breakFinisherByPlayer = buildTopLookup(stats, stat => stat.fgAtRim ?? 0);
+      const topScorerByPlayer = buildTopLookup(stats, stat => stat.pts ?? 0);
 
       for (const p of stats) {
         const rimFgm     = p.fgAtRim    ?? 0;
         const lowPostFgm = p.fgLowPost  ?? 0;
         const midFgm     = p.fgMidRange ?? 0;
         const threePm    = p.threePm    ?? 0;
+        const badgeProbs = badgeProbCache.get(p.playerId);
 
         // ── RIM FINISHES (dunks, layups) ─────────────────────────────────
         if (rimFgm > 0) {
@@ -198,13 +218,13 @@ export class HighlightGenerator {
               // ── DRIVING DUNK zone ─────────────────────────────────────
               // Priority: alley_oop > fastbreak_dunk > driving_dunk (regular)
 
-              const aerialProb  = getBadgeProb(p.name, 'Aerial Wizard', 0.15);
+              const aerialProb  = badgeProbs?.aerialWizard ?? 0;
               const isFastBreak = teamStls >= 3 && Math.random() < 0.12;
               const isAlleyOop  = aerialProb > 0 && Math.random() < aerialProb;
 
               if (isAlleyOop) {
                 // ── Alley-oop: lob catch off teammate assist ───────────
-                const passer = pickTopAssister(stats, p.playerId);
+                const passer = topAssisterByPlayer.get(p.playerId) ?? null;
                 highlights.push({
                   type:         'alley_oop',
                   playerId:     p.playerId,
@@ -215,9 +235,9 @@ export class HighlightGenerator {
                 });
                 p.dunks = (p.dunks ?? 0) + 1;
                 // Alley-oops CAN posterize (Vince Carter vs France)
-                const posterProb = getBadgeProb(p.name, 'Posterizer', 0.15) * 0.55;
+                const posterProb = (badgeProbs?.posterizer ?? 0) * 0.55;
                 if (posterProb > 0 && Math.random() < posterProb) {
-                  const victim = pickRimDefender(oppStats, allPlayers);
+                  const victim = pickRimDefender(oppStats, playerMap);
                   highlights.push({
                     type:        'posterizer',
                     playerId:    p.playerId,
@@ -232,7 +252,7 @@ export class HighlightGenerator {
                 // ── Fast break dunk: transition finish ─────────────────
                 // 35% chance the steal-er and finisher are the same player
                 const selfFinish = (p.stl ?? 0) > 0 && Math.random() < 0.35;
-                const starter    = selfFinish ? null : pickBreakStarter(stats, p.playerId);
+                const starter    = selfFinish ? null : (breakStarterByPlayer.get(p.playerId) ?? null);
                 highlights.push({
                   type:         'fastbreak_dunk',
                   playerId:     p.playerId,
@@ -253,9 +273,9 @@ export class HighlightGenerator {
                 });
                 p.dunks = (p.dunks ?? 0) + 1;
                 // Posterizer sub-event: driving dunks only (not alley / fastbreak)
-                const posterProb = getBadgeProb(p.name, 'Posterizer', 0.15);
+                const posterProb = badgeProbs?.posterizer ?? 0;
                 if (posterProb > 0 && Math.random() < posterProb) {
-                  const victim = pickRimDefender(oppStats, allPlayers);
+                  const victim = pickRimDefender(oppStats, playerMap);
                   highlights.push({
                     type:        'posterizer',
                     playerId:    p.playerId,
@@ -280,7 +300,7 @@ export class HighlightGenerator {
 
             } else {
               // ── LAYUP zone — Layup Mixmaster (euro step, reverse, scoop) ─
-              const layupProb = getBadgeProb(p.name, 'Layup Mixmaster', 0.15);
+              const layupProb = badgeProbs?.layupMixmaster ?? 0;
               if (layupProb > 0 && Math.random() < layupProb) {
                 highlights.push({
                   type:       'layup_mixmaster',
@@ -295,7 +315,7 @@ export class HighlightGenerator {
 
         // ── LIMITLESS RANGE 3s ──────────────────────────────────────────
         if (threePm > 0) {
-          const baseProb = getBadgeProb(p.name, 'Limitless Range', 0.15);
+          const baseProb = badgeProbs?.limitlessRange ?? 0;
           if (baseProb > 0) {
             for (let i = 0; i < threePm; i++) {
               if (Math.random() < baseProb) {
@@ -314,11 +334,11 @@ export class HighlightGenerator {
         // ── ANKLE BREAKERS (mid / post makes — dribble crossover breakdown) ─
         const nonRimMakes = midFgm + lowPostFgm;
         if (nonRimMakes > 0) {
-          const baseProb = getBadgeProb(p.name, 'Ankle Assassin', 0.12);
+          const baseProb = badgeProbs?.ankleAssassin ?? 0;
           if (baseProb > 0) {
             for (let i = 0; i < nonRimMakes; i++) {
               if (Math.random() < baseProb) {
-                const victim = pickPerimeterDefender(oppStats, allPlayers);
+                const victim = pickPerimeterDefender(oppStats, playerMap);
                 highlights.push({
                   type:       'ankle_breaker',
                   playerId:   p.playerId,
@@ -335,11 +355,11 @@ export class HighlightGenerator {
         // ── BREAK STARTER (outlet pass off steal → transition) ──────────
         // Fires per steal; stores the break finisher (rim threat on team)
         if ((p.stl ?? 0) > 0) {
-          const breakProb = getBadgeProb(p.name, 'Break Starter', 0.20);
+          const breakProb = badgeProbs?.breakStarter ?? 0;
           if (breakProb > 0) {
             for (let i = 0; i < (p.stl ?? 0); i++) {
               if (Math.random() < breakProb) {
-                const finisher = pickBreakFinisher(stats, p.playerId);
+                const finisher = breakFinisherByPlayer.get(p.playerId) ?? null;
                 highlights.push({
                   type:         'break_starter',
                   playerId:     p.playerId,
@@ -355,11 +375,11 @@ export class HighlightGenerator {
 
         // ── VERSATILE VISIONARY (creative / cross-court pass) ───────────
         if ((p.ast ?? 0) > 0) {
-          const versatileProb = getBadgeProb(p.name, 'Versatile Visionary', 0.12);
+          const versatileProb = badgeProbs?.versatileVisionary ?? 0;
           if (versatileProb > 0) {
             for (let i = 0; i < (p.ast ?? 0); i++) {
               if (Math.random() < versatileProb) {
-                const recipient = pickTopScorer(stats, p.playerId);
+                const recipient = topScorerByPlayer.get(p.playerId) ?? null;
                 highlights.push({
                   type:         'versatile_visionary',
                   playerId:     p.playerId,

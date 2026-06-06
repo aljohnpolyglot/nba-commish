@@ -25,9 +25,9 @@ const SuspensionModal: React.FC<SuspensionModalProps> = ({ player, onClose, onCo
 
   return (
     <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50 transition-opacity" onClick={onClose}>
-      <div className="bg-slate-800 rounded-lg shadow-2xl w-full max-w-2xl transform transition-all" onClick={(e) => e.stopPropagation()}>
-        <div className="p-6 border-b border-slate-700">
-          <div className="flex justify-between items-start">
+      <div className="w-full max-w-2xl transform overflow-hidden rounded-lg bg-slate-800 shadow-2xl transition-all max-h-[calc(100vh-2rem)] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="border-b border-slate-700 p-4 sm:p-6">
+          <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
               <p className="text-sm text-red-400 font-semibold">PLAYER DISCIPLINE</p>
               <h2 className="text-2xl font-bold mt-1 text-white">Suspend {player.name}</h2>
@@ -37,7 +37,7 @@ const SuspensionModal: React.FC<SuspensionModalProps> = ({ player, onClose, onCo
           </div>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="space-y-4 overflow-y-auto p-4 sm:p-6">
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
               <Loader2 className="animate-spin text-indigo-500" size={48} />

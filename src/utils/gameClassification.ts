@@ -1,6 +1,10 @@
 import type { Game, GameResult, NBACupState, PlayoffBracket } from '../types';
 import { getOpeningNightDate } from './dateUtils';
 
+type LeagueCalendarLike = {
+  uiMode?: string | null;
+};
+
 type GameLike = Partial<GameResult> & {
   gameId?: number;
   gid?: number;
@@ -13,6 +17,8 @@ type GameLike = Partial<GameResult> & {
   isNBACup?: boolean;
   nbaCupRound?: 'group' | 'QF' | 'SF' | 'Final';
   excludeFromRecord?: boolean;
+  competitionId?: string;
+  competitionPhase?: string;
 };
 
 export interface GameClassification {
@@ -75,6 +81,20 @@ function inferCupRound(game: GameLike, cup?: NBACupState): GameClassification['c
   return group && inGroupWindow ? 'group' : undefined;
 }
 
+function isCompetitionPostseasonPhase(phase?: string): boolean {
+  return [
+    'play-in',
+    'qf',
+    'quarterfinals',
+    'sf',
+    'semifinals',
+    'final-four',
+    'final',
+    'finals',
+    'bronze',
+  ].includes(String(phase ?? '').toLowerCase());
+}
+
 export function classifyBoxScoreGame(
   game: GameLike,
   schedule: Game[] = [],
@@ -82,9 +102,14 @@ export function classifyBoxScoreGame(
   nbaCup?: NBACupState,
   nbaCupHistory?: Record<number, NBACupState>,
   fallbackYear = new Date().getFullYear(),
+  leagueStats?: LeagueCalendarLike,
 ): GameClassification {
   const gid = game.gameId ?? game.gid;
   const sched = schedule.find(g => g.gid === gid);
+  const competitionId = game.competitionId ?? sched?.competitionId;
+  const competitionPhase = game.competitionPhase ?? sched?.competitionPhase;
+  const isCompetitionGame = !!competitionId;
+  const isCompetitionPostseason = isCompetitionGame && isCompetitionPostseasonPhase(competitionPhase);
   const seasonYear = Number(game.season) || getGameSeasonYear(game.date, fallbackYear);
   const cup = cupForYear(seasonYear, nbaCup, nbaCupHistory);
   const cupRound = inferCupRound({ ...game, nbaCupRound: game.nbaCupRound ?? sched?.nbaCupRound }, cup);
@@ -101,15 +126,15 @@ export function classifyBoxScoreGame(
 
   const isAllStar = !!(sched?.isAllStar || game.isAllStar || game.isRisingStars || game.isCelebrityGame);
   const isPlayIn = !!(sched?.isPlayIn || game.isPlayIn || (gid != null && playInIds.has(gid)));
-  const isPlayoff = !!(sched?.isPlayoff || game.isPlayoff || (gid != null && playoffIds.has(gid)) || (!isPlayIn && lateSeasonNbaGame));
+  const isPlayoff = !!(sched?.isPlayoff || game.isPlayoff || (gid != null && playoffIds.has(gid)) || isCompetitionPostseason || (!isPlayIn && lateSeasonNbaGame));
   const isNBACup = !!(sched?.isNBACup || game.isNBACup || cupRound);
   const isCupFinal = isNBACup && cupRound === 'Final';
   const excludeFromRecord = !!(sched?.excludeFromRecord || game.excludeFromRecord || isCupFinal);
 
-  const openingNight = getOpeningNightDate(seasonYear).getTime();
+  const openingNight = getOpeningNightDate(seasonYear, leagueStats, schedule).getTime();
   const gameTime = validDate ? gameDate.getTime() : 0;
   const isPreseason = !!(sched?.isPreseason || game.isPreseason) ||
-    (!isPlayoff && !isPlayIn && !isAllStar && !isNBACup && gameTime > 0 && gameTime < openingNight);
+    (!isCompetitionGame && !isPlayoff && !isPlayIn && !isAllStar && !isNBACup && gameTime > 0 && gameTime < openingNight);
 
   return { seasonYear, isPreseason, isPlayoff, isPlayIn, isAllStar, isNBACup, cupRound, isCupFinal, excludeFromRecord };
 }

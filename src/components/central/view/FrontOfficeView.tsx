@@ -170,7 +170,6 @@ export const FrontOfficeView: React.FC<FrontOfficeViewProps> = ({ initialSection
           <Briefcase size={12} /> Front Office{tycoon?.tier ? ` · Tier ${tycoon.tier}` : ''}
         </div>
         <h1 className="text-3xl font-black tracking-tight mt-1">{getTeamFullName(selectedTeam as any)}</h1>
-        <p className="text-sm text-slate-400 mt-1">{tycoon ? 'Run the club budget, sponsors, facilities, travel, staff, and scouting.' : 'Manage your coaching, performance, and scouting staff.'}</p>
       </div>
     </div>
   );

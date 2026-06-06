@@ -151,12 +151,25 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
     () => getMLEAvailability(teamId, projectedPayrollUSD, 0, thresholds, state.leagueStats as any),
     [teamId, projectedPayrollUSD, thresholds, state.leagueStats],
   );
+  const reservedMleUSD = useMemo(() => {
+    if (mleAvail.blocked || mleAvail.type == null) return 0;
+    const markets = (state.faBidding?.markets ?? []) as FreeAgencyMarket[];
+    return markets
+      .filter(market => !market.resolved)
+      .reduce((sum, market) => {
+        const myTopActive = market.bids
+          .filter(bid => bid.teamId === teamId && bid.status === 'active')
+          .sort((a, b) => b.salaryUSD - a.salaryUSD)[0];
+        return sum + (myTopActive?.salaryUSD ?? 0);
+      }, 0);
+  }, [mleAvail.blocked, mleAvail.type, state.faBidding?.markets, teamId]);
+  const mleAvailableNetUSD = Math.max(0, (mleAvail.blocked ? 0 : mleAvail.available) - reservedMleUSD);
   const shortlistCommitUSD = useMemo(
     () => shortlistedPlayers.reduce((sum, player) => sum + computeContractOffer(player, state.leagueStats as any).salaryUSD, 0),
     [shortlistedPlayers, state.leagueStats],
   );
   const positiveCap = Math.max(0, capSpaceUSD);
-  const mleRoom = mleAvail.blocked ? 0 : mleAvail.available;
+  const mleRoom = mleAvailableNetUSD;
   const availableRoomUSD = positiveCap + mleRoom;
   const projectedRoomAfterShortlist = availableRoomUSD - shortlistCommitUSD;
 
@@ -297,7 +310,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
         {!euroIsolated && (
           <div className={`rounded-lg border border-[#30363d] bg-black/40 p-4 grid gap-4 ${isOffseasonView ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'}`}>
             <Stat label={isPreFA ? 'Projected cap (post-rollover)' : 'Cap Space'} value={fmtUSD(capSpaceUSD)} tone={capSpaceUSD < 0 ? 'red' : 'emerald'} />
-            <Stat label="MLE Available" value={mleAvail.blocked ? '—' : fmtUSD(mleAvail.available)} />
+            <Stat label="MLE Available" value={mleAvail.blocked ? '—' : fmtUSD(mleAvailableNetUSD)} />
             {isOffseasonView && (
               <>
                 <Stat label="Shortlist Commit" value={fmtUSD(shortlistCommitUSD)} tone={shortlistCommitUSD > availableRoomUSD ? 'amber' : undefined} />

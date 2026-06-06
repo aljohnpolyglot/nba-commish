@@ -30,17 +30,17 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-4 bg-black/90 backdrop-blur-sm"
     >
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-[#0a0a0a] border border-white/10 rounded-[32px] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+        className="bg-[#0a0a0a] border border-white/10 rounded-[32px] w-full max-w-4xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] overflow-hidden flex flex-col shadow-2xl"
       >
         {/* Header */}
-        <div className="p-6 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-slate-900 to-black">
-          <div className="flex items-center gap-4">
+        <div className="p-4 sm:p-6 border-b border-white/5 flex items-start justify-between gap-3 bg-gradient-to-r from-slate-900 to-black">
+          <div className="flex items-center gap-4 min-w-0">
             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${isDunk ? 'bg-orange-500/20 text-orange-400' : 'bg-indigo-500/20 text-indigo-400'}`}>
               {isDunk ? '🏀' : '🎯'}
             </div>
@@ -55,14 +55,14 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
           </div>
           <button 
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+            className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
           {isComplete ? (
             isDunk ? (
               // DUNK RESULTS — detailed like DunkContestView

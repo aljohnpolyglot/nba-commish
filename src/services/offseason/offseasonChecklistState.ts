@@ -24,6 +24,7 @@ export function isNoDraftLeague(
 
 export const OFFSEASON_ROW_ORDER: readonly OffseasonChecklistRow[] = [
   'draftLottery',
+  'seasonSummary',
   'expansionDraft',
   'draft',
   'rookieContracts',
@@ -36,6 +37,7 @@ export const OFFSEASON_ROW_ORDER: readonly OffseasonChecklistRow[] = [
   'transferMarket',
   'sponsorRenewals',
   'facilityUpgrades',
+  'staffRetirements',
   'staffSignings',
   'budgetLock',
   'youthPromotion',
@@ -49,26 +51,34 @@ export function getVisibleOffseasonRows(
   _userTeam?: { tycoon?: { sponsorships: { kit: unknown; sleeve: unknown; stadium: unknown } } } | null,
   _currentDate?: string | Date | null,
   expansionSchedule?: { year?: number } | null,
+  checklist?: Partial<OffseasonChecklist> | null,
+  draftState?: { lotteryResolved?: boolean; draftComplete?: boolean } | null,
 ): readonly OffseasonChecklistRow[] {
   if (isPbaIsolatedMode({ leagueStats })) {
     const phase = (leagueStats as any)?.pbaConferencePhase;
     if (phase === 'offseason') {
       const conf = (leagueStats as any)?.pbaConference;
       if (conf === 'governors') {
-        return ['pbaConferenceAwards', 'pbaDraft', 'pbaLocalFreeAgency', 'pbaOpeningCeremony', 'trainingCamp'];
+        return ['pbaConferenceAwards', 'retiredPlayersReview', 'hofCeremony', 'staffRetirements', 'staffSignings', 'draftLottery', 'pbaDraft', 'pbaLocalFreeAgency', 'pbaOpeningCeremony'];
       }
-      return ['pbaConferenceAwards', 'pbaImportSearch', 'pbaImportDecision', 'pbaOpeningCeremony', 'trainingCamp'];
+      return ['pbaConferenceAwards', 'pbaImportSearch', 'pbaImportDecision', 'pbaOpeningCeremony'];
     }
-    return ['trainingCamp'] as readonly OffseasonChecklistRow[];
+    return [] as readonly OffseasonChecklistRow[];
   }
   if (isEuroIsolatedMode({ leagueStats })) {
-    return ['myFAs', 'transferMarket', 'sponsorRenewals', 'facilityUpgrades', 'staffSignings', 'budgetLock', 'youthPromotion', 'preseasonFriendlies', 'trainingCamp'];
+    return ['myFAs', 'retiredPlayersReview', 'transferMarket', 'sponsorRenewals', 'facilityUpgrades', 'staffRetirements', 'staffSignings', 'budgetLock', 'youthPromotion', 'preseasonFriendlies', 'trainingCamp'];
   }
   const expansionThisOffseason = !!expansionSchedule?.year && expansionSchedule.year === leagueStats?.year;
+  const summaryAnchorReached =
+    !!draftState?.lotteryResolved ||
+    !!draftState?.draftComplete ||
+    checklist?.draftLottery === 'done' ||
+    checklist?.draft === 'done';
   const nbaRows = OFFSEASON_ROW_ORDER
     .filter((row) => !EURO_TASK_ROWS.includes(row))
     .filter((row) => row !== 'coachingSignings')
-    .filter((row) => row !== 'expansionDraft' || expansionThisOffseason);
+    .filter((row) => row !== 'expansionDraft' || expansionThisOffseason)
+    .filter((row) => row !== 'seasonSummary' || ((checklist?.seasonSummary ?? 'pending') !== 'skipped' && summaryAnchorReached));
   return isNoDraftLeague(leagueStats)
     ? nbaRows.filter((row) => !NO_DRAFT_ROWS.includes(row))
     : nbaRows;
@@ -76,6 +86,7 @@ export function getVisibleOffseasonRows(
 
 export const OFFSEASON_ROW_LABELS: Record<OffseasonChecklistRow, string> = {
   draftLottery: 'Draft Lottery',
+  seasonSummary: 'Season Summary',
   retiredPlayersReview: 'Retired Players',
   expansionDraft: 'Expansion Draft',
   options: 'Team / Player Options',
@@ -89,6 +100,7 @@ export const OFFSEASON_ROW_LABELS: Record<OffseasonChecklistRow, string> = {
   facilityUpgrades: 'Facilities',
   budgetLock: 'Season Budget',
   coachingSignings: 'Coaching Signings',
+  staffRetirements: 'Staff Retirements',
   staffSignings: 'Staff Hires',
   youthPromotion: 'Youth Promotion',
   preseasonFriendlies: 'Tune-Up Games',
@@ -105,7 +117,8 @@ export const OFFSEASON_ROW_LABELS: Record<OffseasonChecklistRow, string> = {
 };
 
 export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> = {
-  draftLottery: 'Watch the lottery draw to set this year\'s draft order.',
+  draftLottery: 'Review this year\'s draft order.',
+  seasonSummary: 'Take a quick look back at the completed season and open the full league history view before draft night.',
   retiredPlayersReview: 'Honor this season\'s retirees, see jerseys raised to the rafters, and check who\'s next for the Hall.',
   expansionDraft: 'Welcome new franchises into the league and stock their rosters.',
   options: 'Decide which team options to exercise and review player option outcomes.',
@@ -119,6 +132,7 @@ export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> =
   facilityUpgrades: 'Decide whether to improve training, recovery, and club facilities before camp.',
   budgetLock: 'Set next season\'s budget for tickets, travel, medical, scouting, and academy work.',
   coachingSignings: 'Sign or extend your head coach and assistants right after the season ends.',
+  staffRetirements: 'Review staff members who stepped away before filling open roles.',
   staffSignings: 'Fill open staff roles and settle expiring coaching, physio, scouting, or analytics deals before camp.',
   youthPromotion: 'Choose which academy players are ready for a senior-team spot.',
   preseasonFriendlies: 'Look over your preseason matchups and other tune-up games.',
@@ -136,6 +150,7 @@ export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> =
 
 export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab | null> = {
   draftLottery: 'Draft Lottery',
+  seasonSummary: 'League History',
   retiredPlayersReview: null,
   expansionDraft: 'Actions',
   options: 'Team Office',
@@ -149,6 +164,7 @@ export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab | null> = {
   facilityUpgrades: 'Front Office Facilities',
   budgetLock: null,
   coachingSignings: 'Front Office Staff',
+  staffRetirements: null,
   staffSignings: 'Front Office Staff',
   youthPromotion: null,
   preseasonFriendlies: null,
@@ -161,12 +177,13 @@ export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab | null> = {
   pbaMuseSelection: null,
   pbaOpeningCeremony: null,
   pbaAllStarWeekend: null,
-  pbaConferenceAwards: null,
+  pbaConferenceAwards: 'Award Races',
 };
 
 function baseOffseasonChecklist(): OffseasonChecklist {
   return {
     draftLottery: 'pending',
+    seasonSummary: 'pending',
     retiredPlayersReview: 'pending',
     expansionDraft: 'skipped',
     options: 'pending',
@@ -180,11 +197,12 @@ function baseOffseasonChecklist(): OffseasonChecklist {
     facilityUpgrades: 'pending',
     budgetLock: 'skipped',
     coachingSignings: 'skipped',
+    staffRetirements: 'skipped',
     staffSignings: 'skipped',
     youthPromotion: 'skipped',
     preseasonFriendlies: 'pending',
     hofCeremony: 'pending',
-    trainingCamp: 'pending',
+    trainingCamp: 'skipped',
     pbaDraft: 'skipped',
     pbaLocalFreeAgency: 'skipped',
     pbaImportSearch: 'skipped',
@@ -204,7 +222,7 @@ export function defaultOffseasonChecklist(
     return {
       ...checklist,
       draftLottery: 'skipped',
-      retiredPlayersReview: 'skipped',
+      retiredPlayersReview: 'pending',
       expansionDraft: 'skipped',
       options: 'skipped',
       qualifyingOffers: 'skipped',
@@ -217,6 +235,7 @@ export function defaultOffseasonChecklist(
   const nonEuroBase: OffseasonChecklist = {
     ...checklist,
     coachingSignings: 'skipped',
+    staffRetirements: 'pending',
     staffSignings: 'pending',
     transferMarket: 'skipped',
     sponsorRenewals: 'skipped',
@@ -237,10 +256,12 @@ export function initialEuroOffseasonChecklist(): OffseasonChecklist {
   return {
     ...defaultOffseasonChecklist({ uiMode: 'euro_isolated' }),
     myFAs: 'pending',
+    retiredPlayersReview: 'pending',
     coachingSignings: 'skipped',
     transferMarket: 'pending',
     sponsorRenewals: 'pending',
     facilityUpgrades: 'pending',
+    staffRetirements: 'pending',
     staffSignings: 'pending',
     budgetLock: 'pending',
     youthPromotion: 'pending',
@@ -253,6 +274,7 @@ export function initialPbaChecklist(): OffseasonChecklist {
   return {
     ...defaultOffseasonChecklist({ uiMode: 'pba_isolated' }),
     draftLottery: 'skipped',
+    seasonSummary: 'skipped',
     retiredPlayersReview: 'skipped',
     expansionDraft: 'skipped',
     options: 'skipped',
@@ -265,6 +287,7 @@ export function initialPbaChecklist(): OffseasonChecklist {
     sponsorRenewals: 'skipped',
     facilityUpgrades: 'skipped',
     coachingSignings: 'skipped',
+    staffRetirements: 'skipped',
     staffSignings: 'skipped',
     youthPromotion: 'skipped',
     preseasonFriendlies: 'skipped',
@@ -285,11 +308,10 @@ export function initialPbaInterConferenceChecklist(): OffseasonChecklist {
   const base = initialPbaChecklist();
   return {
     ...base,
-    pbaConferenceAwards: 'done',
+    pbaConferenceAwards: 'pending',
     pbaImportSearch: 'pending',
     pbaImportDecision: 'pending',
     pbaOpeningCeremony: 'pending',
-    trainingCamp: 'pending',
   };
 }
 
@@ -297,17 +319,21 @@ export function initialPbaEndOfSeasonChecklist(): OffseasonChecklist {
   const base = initialPbaChecklist();
   return {
     ...base,
-    pbaConferenceAwards: 'done',
+    pbaConferenceAwards: 'pending',
+    retiredPlayersReview: 'pending',
+    hofCeremony: 'pending',
+    staffRetirements: 'pending',
+    staffSignings: 'pending',
     pbaDraft: 'pending',
     pbaLocalFreeAgency: 'pending',
     pbaOpeningCeremony: 'pending',
-    trainingCamp: 'pending',
   };
 }
 
 export function initialPreseasonChecklist(): OffseasonChecklist {
   return {
     draftLottery: 'skipped',
+    seasonSummary: 'skipped',
     retiredPlayersReview: 'skipped',
     expansionDraft: 'skipped',
     options: 'skipped',
@@ -321,6 +347,7 @@ export function initialPreseasonChecklist(): OffseasonChecklist {
     facilityUpgrades: 'skipped',
     budgetLock: 'skipped',
     coachingSignings: 'skipped',
+    staffRetirements: 'skipped',
     staffSignings: 'skipped',
     youthPromotion: 'skipped',
     preseasonFriendlies: 'skipped',
@@ -389,3 +416,8 @@ export function setRowStatus(
   const base = checklist ?? defaultOffseasonChecklist();
   return { ...base, [row]: status };
 }
+
+
+
+
+

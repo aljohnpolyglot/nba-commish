@@ -15,13 +15,13 @@ export const OffseasonAufgabenMobileSheet: React.FC = () => {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="lg:hidden fixed bottom-4 right-4 z-[180] flex items-center gap-2 px-4 py-3 rounded-full bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-widest shadow-2xl transition-colors"
+        className="lg:hidden fixed bottom-4 right-4 z-[160] flex items-center gap-2 px-4 py-3 rounded-full bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-widest shadow-2xl transition-colors"
       >
         <ListChecks size={14} />
         Offseason · {remaining} left
       </button>
       {open && (
-        <div className="lg:hidden fixed inset-0 z-[190] flex">
+        <div className="lg:hidden fixed inset-0 z-[165] flex">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setOpen(false)} />
           <div className="relative ml-auto h-full w-[320px] max-w-[88vw] bg-slate-950 border-l border-slate-800 overflow-y-auto scrollbar-hide p-3">
             <button

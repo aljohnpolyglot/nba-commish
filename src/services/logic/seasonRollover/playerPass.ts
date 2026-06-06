@@ -1,5 +1,5 @@
 import { type GameState, type NBAPlayer } from '../../../types';
-import { runRetirementChecks, runFarewellTourChecks, runMortalityChecks, type RetireeRecord, type FarewellRecord, type MortalityRecord } from '../../playerDevelopment/retirementChecker';
+import { runRetirementChecks, runFarewellTourChecks, type RetireeRecord, type FarewellRecord, type MortalityRecord } from '../../playerDevelopment/retirementChecker';
 import { runHOFChecks, type HOFInduction } from '../../playerDevelopment/hofChecker';
 import { runJerseyRetirementChecks, type JerseyRetirementRecord } from '../../playerDevelopment/jerseyRetirementChecker';
 import { computeContractOffer, getContractLimits, isSupermaxAwardQualified } from '../../../utils/salaryUtils';
@@ -12,7 +12,11 @@ import { retireExternalLeaguePlayers, repopulateExternalLeagues, enforceExternal
 import { runExternalFreeAgency } from '../../externalFreeAgency';
 import { getActiveUserBidMarketPlayerIds } from '../../freeAgencyBidding';
 import { resolveSeasonRolloverOptionDecisions, type PendingOptionToast } from './optionDecisions';
+import { buildRetireeStaffCandidate } from '../../../utils/staffprobability';
+import { buildPbaCollegePoolFromSource } from '../../pba/collegeSources';
+import { tunePbaDraftProspects } from '../../pba/draftRules';
 type HistoryEntry = NonNullable<GameState['history']>[number];
+type StaffFreeAgent = NonNullable<GameState['staffFreeAgents']>[number];
 interface OptionExtension {
   newExp: number;
   newYears: number;
@@ -47,6 +51,7 @@ export interface SeasonRolloverPlayerPassResult {
   extRetireHistory: HistoryEntry[];
   extFAHistory: HistoryEntry[];
   newRetirees: RetireeRecord[];
+  newRetireeStaffCandidates: StaffFreeAgent[];
   newFarewells: FarewellRecord[];
   newInductees: HOFInduction[];
   newJerseyRetirements: JerseyRetirementRecord[];
@@ -442,25 +447,64 @@ export function runSeasonRolloverPlayerPass({
     currentYear,
     { protectedPlayerIds: protectedFAMarketPlayerIds },
   );
-  const { players: playersWithFarewells, newFarewells } = runFarewellTourChecks(playersAfterRetire, currentYear);
+  const retiredPlayersById = new Map(playersAfterRetire.map(player => [player.internalId, player]));
+  const newRetireeStaffCandidates = newRetirees
+    .map(record => retiredPlayersById.get(record.playerId))
+    .filter((player): player is NBAPlayer => !!player)
+    .map(player => buildRetireeStaffCandidate(player, currentYear))
+    .filter((candidate): candidate is StaffFreeAgent => !!candidate);
+  const staffJoinedByPlayerId = new Map(newRetireeStaffCandidates.map(candidate => [candidate.sourcePlayerId, candidate]));
+  const playersAfterStaffRolls = staffJoinedByPlayerId.size > 0
+    ? playersAfterRetire.map(player => {
+        const candidate = staffJoinedByPlayerId.get(player.internalId);
+        return candidate
+          ? {
+              ...player,
+              postCareerStaffJoined: true,
+              postCareerStaffRole: candidate.role ?? candidate.position ?? candidate.jobTitle ?? 'Staff',
+              postCareerStaffYear: currentYear,
+            } as NBAPlayer
+          : player;
+      })
+    : playersAfterRetire;
+  const { players: playersWithFarewells, newFarewells } = runFarewellTourChecks(playersAfterStaffRolls, currentYear);
   const hofThreshold = SettingsManager.getSettings().hofWSThreshold ?? 50;
   const { players: playersAfterHOF, newInductees } = runHOFChecks(playersWithFarewells, currentYear, hofThreshold);
   const { teams: teamsAfterJerseyRetirements, newRetirements: newJerseyRetirements } =
     runJerseyRetirementChecks(playersAfterHOF, state.teams, currentYear, { leagueStartYear });
-  const { players: playersAfterMortality, deaths } = runMortalityChecks(playersAfterHOF, currentYear);
-  const fillResult = ensureDraftClasses(playersAfterMortality, nextYear, state.leagueStats.draftEligibilityRule);
+  const deaths: MortalityRecord[] = [];
+  const portraitMode = state.leagueType === 'fictional' ? 'facesjs_only' : 'regen_pack';
+  const pbaCollegePool = state.leagueStats?.uiMode === 'pba_isolated'
+    ? buildPbaCollegePoolFromSource(playersAfterHOF)
+    : undefined;
+  const fillResult = ensureDraftClasses(
+    playersAfterHOF,
+    nextYear,
+    state.leagueStats.draftEligibilityRule,
+    portraitMode,
+    pbaCollegePool
+      ? {
+          collegePool: pbaCollegePool,
+          nationalityOverride: 'Philippines',
+          forceCollegePath: true,
+        }
+      : undefined,
+  );
   const playersWithYouth = fillResult.additions.length > 0
-    ? [...playersAfterMortality, ...fillResult.additions]
-    : playersAfterMortality;
+    ? [...playersAfterHOF, ...fillResult.additions]
+    : playersAfterHOF;
+  const tunedPlayersWithYouth = state.leagueStats?.uiMode === 'pba_isolated'
+    ? tunePbaDraftProspects(playersWithYouth as any, nextYear, state.leagueStats)
+    : playersWithYouth;
   const { additions: extRepopPlayers } = repopulateExternalLeagues(
-    { ...state, players: playersWithYouth } as any,
+    { ...state, players: tunedPlayersWithYouth } as any,
     extRetirees,
     currentYear,
     nextYear,
   );
   const postRepopPlayers = extRepopPlayers.length > 0
-    ? [...playersWithYouth, ...extRepopPlayers]
-    : playersWithYouth;
+    ? [...tunedPlayersWithYouth, ...extRepopPlayers]
+    : tunedPlayersWithYouth;
   const { additions: safetyPlayers } = enforceExternalMinRoster(
     { ...state, players: postRepopPlayers } as any,
     nextYear,
@@ -481,6 +525,7 @@ export function runSeasonRolloverPlayerPass({
     extRetireHistory,
     extFAHistory,
     newRetirees,
+    newRetireeStaffCandidates,
     newFarewells,
     newInductees,
     newJerseyRetirements,

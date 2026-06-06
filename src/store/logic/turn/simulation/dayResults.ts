@@ -1,11 +1,13 @@
 import { GameState } from '../../../../types';
 import { injectCompetitionPostseasonGames, injectSingleEliminationProgression } from '../../../../services/competition/competitionResolver';
+import { applyPbaConferenceLifecycle } from '../../../../services/pba/conferenceTransition';
 
 export function applySimPatchState(
     stateWithSim: GameState,
     simPatch: any,
     justEliminated: boolean,
     newInjToasts: any[],
+    newFightToasts: any[],
     newFeatToasts: any[],
 ): GameState {
     return {
@@ -15,6 +17,7 @@ export function applySimPatchState(
         ...(simPatch.headToHead ? { headToHead: simPatch.headToHead } : {}),
         ...(justEliminated ? { pendingElimToast: true } : {}),
         ...(newInjToasts.length > 0 ? { pendingInjuryToasts: [...(stateWithSim.pendingInjuryToasts ?? []), ...newInjToasts] } : {}),
+        ...(newFightToasts.length > 0 ? { pendingFightToasts: [...(stateWithSim.pendingFightToasts ?? []), ...newFightToasts] } : {}),
         ...(newFeatToasts.length > 0 ? { pendingFeatToasts: [...(stateWithSim.pendingFeatToasts ?? []), ...newFeatToasts] } : {}),
     };
 }
@@ -38,19 +41,24 @@ export function applyCompetitionProgression(
         boxScores: [...(stateWithSim.boxScores ?? []), ...allSimResults],
     };
 
-    return {
+    const schedule = injectSingleEliminationProgression(
+        {
+            ...stateWithSim,
+            schedule: injectCompetitionPostseasonGames(
+                stateWithBatchCompetitionResults,
+                activeCompetitions,
+                seasonYear,
+            ),
+        },
+        activeCompetitions,
+        seasonYear,
+    );
+    const nextState = {
         ...stateWithSim,
-        schedule: injectSingleEliminationProgression(
-            {
-                ...stateWithSim,
-                schedule: injectCompetitionPostseasonGames(
-                    stateWithBatchCompetitionResults,
-                    activeCompetitions,
-                    seasonYear,
-                ),
-            },
-            activeCompetitions,
-            seasonYear,
-        ),
+        schedule,
+    };
+    return {
+        ...nextState,
+        ...applyPbaConferenceLifecycle(nextState, allSimResults),
     };
 }

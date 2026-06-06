@@ -1,6 +1,7 @@
 import { NBATeam as Team, NBAPlayer as Player, Game, LeagueStats } from '../../../types';
 import { StatGenerator } from '../StatGenerator';
 import { GameResult } from '../types';
+import { GameLiveEvent } from '../types';
 import { InjurySystem, enforceSeasonEndingMinimum } from '../InjurySystem';
 import { calcTeamRatings, expectedTeamScore } from '../teamratinghelper';
 import { normalRandom } from '../utils';
@@ -701,6 +702,7 @@ export class GameSimulator {
     // Iron man (35+) → 0.6% chance
     const injuryDefs = getInjuries();
     const playerInGameInjuries: Record<string, { type: string; quarter: number }> = {};
+    const liveEvents: GameLiveEvent[] = [];
     // Detect international preseason: one side is a non-NBA team (tid ≥ 100).
     // `game` is not in scope here — derive from homeTeam/awayTeam ids that were passed in.
     const isIntlPreseason = homeTeam.id >= 100 || awayTeam.id >= 100;
@@ -765,6 +767,21 @@ export class GameSimulator {
         if (gamesRemaining > 0) {
           const quarter = Math.max(1, Math.min(4, Math.ceil(Math.max(1, stat.min) / 12)));
           playerInGameInjuries[player.internalId] = { type: drawn.name, quarter };
+          const team = isHome ? 'HOME' : 'AWAY';
+          const quarterLengthMinutes = Math.max(1, ((homeKnobsFinal.quarterLength ?? 12) + (awayKnobsFinal.quarterLength ?? 12)) / 2);
+          const clockSeconds = Math.max(0, Math.round(quarterLengthMinutes * 60 - ((Math.max(1, stat.min) - ((quarter - 1) * quarterLengthMinutes)) * 60)));
+          const mm = Math.floor(clockSeconds / 60);
+          const ss = String(clockSeconds % 60).padStart(2, '0');
+          liveEvents.push({
+            kind: 'injury',
+            team,
+            quarter,
+            gs: ((quarter - 1) * quarterLengthMinutes * 60) + ((quarterLengthMinutes * 60) - clockSeconds),
+            clock: `${mm}:${ss}`,
+            playerId: player.internalId,
+            playerName: player.name,
+            description: `${player.name} is down and will be evaluated for a ${drawn.name.toLowerCase()}.`,
+          });
         }
       }
     }
@@ -777,8 +794,41 @@ export class GameSimulator {
           availablePlayers,
           [homeTeam, awayTeam] as any,
           date,
-        ) ?? undefined
+      ) ?? undefined
       : undefined;
+    if (fight) {
+      const involvedStats = [...homeStatsFinal, ...awayStatsFinal].filter(
+        stat => stat.playerId === fight.player1Id || stat.playerId === fight.player2Id,
+      );
+      const avgMinutes = involvedStats.length > 0
+        ? involvedStats.reduce((sum, stat) => sum + (stat.min ?? 0), 0) / involvedStats.length
+        : 24;
+      const quarterLengthMinutes = Math.max(1, ((homeKnobsFinal.quarterLength ?? 12) + (awayKnobsFinal.quarterLength ?? 12)) / 2);
+      const fightQuarter = Math.max(1, Math.min(4, Math.ceil(Math.max(1, avgMinutes) / quarterLengthMinutes)));
+      const clockSeconds = Math.max(0, Math.round(quarterLengthMinutes * 60 - ((Math.max(1, avgMinutes) - ((fightQuarter - 1) * quarterLengthMinutes)) * 60)));
+      const mm = Math.floor(clockSeconds / 60);
+      const ss = String(clockSeconds % 60).padStart(2, '0');
+      const team = fight.player1TeamId === homeTeam.id ? 'HOME' : 'AWAY';
+      const playerId = team === 'HOME' ? fight.player1Id : fight.player2Id;
+      const playerName = team === 'HOME' ? fight.player1Name : fight.player2Name;
+      const opponentName = team === 'HOME' ? fight.player2Name : fight.player1Name;
+      const fightLabel = fight.severity === 'brawl'
+        ? `${playerName} and ${opponentName} are going at it. Benches are clearing.`
+        : fight.severity === 'ejection'
+          ? `${playerName} and ${opponentName} square up after the whistle. This is getting ugly.`
+          : `${playerName} gets into it with ${opponentName} after the play.`;
+      liveEvents.push({
+        kind: 'fight',
+        team,
+        quarter: fightQuarter,
+        gs: ((fightQuarter - 1) * quarterLengthMinutes * 60) + ((quarterLengthMinutes * 60) - clockSeconds),
+        clock: `${mm}:${ss}`,
+        playerId,
+        playerName,
+        opponentName,
+        description: fightLabel,
+      });
+    }
 
     const highlights = HighlightGenerator.processGame(
       homeStatsFinal,
@@ -809,6 +859,7 @@ export class GameSimulator {
       playerDNPs,
       playerInGameInjuries,
       playersPlayingHurt,
+      liveEvents,
       fight,
       highlights,
       // Snapshot records at tip-off (before this game's result is applied)

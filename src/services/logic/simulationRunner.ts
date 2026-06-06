@@ -6,12 +6,13 @@ import { computeClinchStatus } from '../../utils/standingsUtils';
 
 export const simulateDayGames = async (state: GameState, watchedGameResult?: any, riggedForTid?: number, onGame?: (result: any) => void): Promise<{ teams: NBATeam[], schedule: Game[], results: any[], headToHead?: HeadToHead }> => {
     const dates = getAllStarWeekendDates(state.leagueStats.year);
+    const usesNbaAllStarBreak = state.leagueStats?.uiMode !== 'euro_isolated' && state.leagueStats?.uiMode !== 'pba_isolated';
 
     // Timezone-safe All-Star break check using normalized YYYY-MM-DD strings
     const normalizedCurrent = normalizeDate(state.date);
     const breakStartNorm = normalizeDate(dates.breakStart.toISOString());
     const breakEndNorm = normalizeDate(dates.breakEnd.toISOString());
-    const isAllStarBreak = normalizedCurrent >= breakStartNorm && normalizedCurrent <= breakEndNorm;
+    const isAllStarBreak = usesNbaAllStarBreak && normalizedCurrent >= breakStartNorm && normalizedCurrent <= breakEndNorm;
 
     // Simulate games for the current day.
     // The watched game is included even if already marked `played: true` (by RECORD_WATCHED_GAME)

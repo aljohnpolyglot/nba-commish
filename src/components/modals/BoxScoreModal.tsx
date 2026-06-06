@@ -5,6 +5,8 @@ import { NBATeam, Game, GameResult, PlayerGameStats, NBAPlayer, PlayoffBracket }
 import { useGame } from '../../store/GameContext';
 import { getGameTimingConfig } from '../../utils/gameClock';
 import { isFourPointEnabled } from '../../utils/ruleFlags';
+import { getTeamFullName } from '../../utils/teamNames';
+import { normalizeDate } from '../../utils/helpers';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { BoxScoreQuarterlyScores, BoxScoreTeamComparison } from './BoxScoreSummary';
 
@@ -22,6 +24,12 @@ interface BoxScoreModalProps {
 }
 
 type SortKey = keyof PlayerGameStats | 'fgp' | 'tpp' | 'ftp';
+
+function isBoxScoreRosterPlayer(player: NBAPlayer, teamId: number): boolean {
+  if (player.tid !== teamId) return false;
+  const status = player.status ?? 'Active';
+  return status !== 'Retired' && status !== 'Free Agent' && status !== 'Draft Prospect' && status !== 'Prospect';
+}
 
 export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
   game, result, homeTeam, awayTeam, players, onClose, onPlayerClick, onTeamClick, playoffs, schedule
@@ -51,10 +59,71 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
     return { homeLabel: `${homeSeriesW}`, awayLabel: `${awaySeriesW}`, sub };
   }, [game, playoffs, homeTeam, awayTeam]);
   const isIntraSquad = game.homeTid === game.awayTid;
-  const awayDisplayName = isIntraSquad ? `${awayTeam.name} B` : awayTeam.name;
-  const homeDisplayName = isIntraSquad ? `${homeTeam.name} A` : homeTeam.name;
+  const awayBaseName = getTeamFullName(awayTeam) || awayTeam.name;
+  const homeBaseName = getTeamFullName(homeTeam) || homeTeam.name;
+  const awayDisplayName = isIntraSquad ? `${awayBaseName} B` : awayBaseName;
+  const homeDisplayName = isIntraSquad ? `${homeBaseName} A` : homeBaseName;
   const awayAbbrevLabel = isIntraSquad ? `${awayTeam.abbrev} B` : awayTeam.abbrev;
   const homeAbbrevLabel = isIntraSquad ? `${homeTeam.abbrev} A` : homeTeam.abbrev;
+  const datedRecords = useMemo(() => {
+    if (seriesInfo) return null;
+    const targetSeason = result?.season ?? state.leagueStats?.year;
+    const targetDate = normalizeDate(result?.date || game.date);
+    const currentPhase = String((game as any).competitionPhase ?? '').toLowerCase();
+    const isCompetitionRegular = !game.competitionId || ['group', 'league', 'regular'].includes(currentPhase);
+    const isStandingsGame = !game.isPreseason && !game.isPlayoff && !game.isPlayIn && !(result as any)?.excludeFromRecord && isCompetitionRegular;
+    if (!isStandingsGame) return null;
+
+    let homeWins = 0;
+    let homeLosses = 0;
+    let awayWins = 0;
+    let awayLosses = 0;
+    const allResults = [...(state.boxScores ?? [])];
+    if (!allResults.some((box: any) => box.gameId === game.gid) && result) {
+      allResults.push({ ...result, gameId: game.gid, date: result.date ?? game.date, season: targetSeason, competitionId: game.competitionId, competitionPhase: (game as any).competitionPhase });
+    }
+
+    const relevantGames = allResults
+      .filter((box: any) => {
+        if (box.homeTeamId < 0 || box.awayTeamId < 0) return false;
+        if ((box.season ?? targetSeason) !== targetSeason) return false;
+        if (normalizeDate(box.date) > targetDate) return false;
+        const scheduleGame = schedule?.find(g => g.gid === box.gameId);
+        const boxCompetitionId = box.competitionId ?? scheduleGame?.competitionId;
+        const boxPhase = String(box.competitionPhase ?? (scheduleGame as any)?.competitionPhase ?? '').toLowerCase();
+        const excludeFromRecord = box.excludeFromRecord === true || (scheduleGame as any)?.excludeFromRecord === true;
+        if (excludeFromRecord) return false;
+        if (scheduleGame?.isPreseason || scheduleGame?.isPlayoff || scheduleGame?.isPlayIn) return false;
+        if (game.competitionId) {
+          return boxCompetitionId === game.competitionId && ['group', 'league', 'regular'].includes(boxPhase);
+        }
+        return !boxCompetitionId;
+      })
+      .sort((a: any, b: any) => {
+        const dateCmp = normalizeDate(a.date).localeCompare(normalizeDate(b.date));
+        if (dateCmp !== 0) return dateCmp;
+        return (a.gameId ?? 0) - (b.gameId ?? 0);
+      });
+
+    for (const box of relevantGames) {
+      const homeWon = (box.homeScore ?? 0) > (box.awayScore ?? 0);
+      if (box.homeTeamId === homeTeam.id) {
+        if (homeWon) homeWins++; else homeLosses++;
+      } else if (box.awayTeamId === homeTeam.id) {
+        if (homeWon) homeLosses++; else homeWins++;
+      }
+      if (box.homeTeamId === awayTeam.id) {
+        if (homeWon) awayWins++; else awayLosses++;
+      } else if (box.awayTeamId === awayTeam.id) {
+        if (homeWon) awayLosses++; else awayWins++;
+      }
+    }
+
+    return {
+      homeLabel: `${homeWins}–${homeLosses}`,
+      awayLabel: `${awayWins}–${awayLosses}`,
+    };
+  }, [awayTeam.id, game, homeTeam.id, result, schedule, seriesInfo, state.boxScores, state.leagueStats?.year]);
 
   // Style + label per "fake-team" archetype for All-Star / Rising Stars / Celebrity placeholders.
   const FAKE_TEAM_STYLES = {
@@ -75,7 +144,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
     // Prefer threaded-through logoUrl whenever present.
     if (team.logoUrl) {
       const sizeCls = team.id < 0 ? 'w-16 h-16 md:w-24 md:h-24' : 'w-12 h-12 md:w-24 md:h-24';
-      return <img src={team.logoUrl} alt={team.name} className={`${sizeCls} object-contain drop-shadow-2xl group-hover:scale-110 transition-transform`} referrerPolicy="no-referrer" />;
+      return <img src={team.logoUrl} alt={getTeamFullName(team) || team.name} className={`${sizeCls} object-contain drop-shadow-2xl group-hover:scale-110 transition-transform`} referrerPolicy="no-referrer" />;
     }
     if (team.id < 0) {
       const { cls, label } = FAKE_TEAM_STYLES[classifyFakeTeam(team)];
@@ -126,6 +195,18 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
     const p = players.find(p => p.internalId === playerId);
     return p?.pos || 'N/A';
   };
+
+  const getDnpReason = React.useCallback((player: NBAPlayer) => {
+    const explicit = result?.playerDNPs?.[player.internalId];
+    if (explicit) return explicit;
+    if ((player.injury?.gamesRemaining ?? 0) > 0) {
+      return `DNP — Injury (${player.injury!.type})`;
+    }
+    if ((game.isPlayoff || game.isPlayIn) && (player as any).twoWay) {
+      return 'DNP — Two Way';
+    }
+    return "DNP — Coach's Decision";
+  }, [game.isPlayIn, game.isPlayoff, result?.playerDNPs]);
 
   const renderStatsTable = (stats: PlayerGameStats[], teamId: number) => {
     const sortedStats = [...stats].sort((a, b) => {
@@ -258,8 +339,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
         </table>
       {(() => {
         const dnpPlayers = players.filter(p =>
-          p.tid === teamId &&
-          p.status === 'Active' &&
+          isBoxScoreRosterPlayer(p, teamId) &&
           !stats.some(s => s.playerId === p.internalId)
         );
         if (dnpPlayers.length === 0) return null;
@@ -279,12 +359,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   </td>
                   <td className="px-2 py-2 font-mono text-slate-500">{p.pos || 'N/A'}</td>
                   <td colSpan={fourPointEnabled ? 16 : 15} className="px-2 py-2 text-slate-500 italic font-mono text-[11px] uppercase tracking-widest">
-                    {result?.playerDNPs?.[p.internalId] ??
-                      ((p.injury?.gamesRemaining ?? 0) > 0
-                        ? `DNP — Injury (${p.injury!.type})`
-                        : ((game.isPlayoff || game.isPlayIn) && (p as any).twoWay
-                          ? 'DNP — Two Way'
-                          : "DNP — Coach's Decision"))}
+                    {getDnpReason(p)}
                   </td>
                 </tr>
               ))}
@@ -302,7 +377,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative bg-[#0a0a0a] border border-white/10 rounded-[24px] md:rounded-[32px] w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden"
+        className="relative bg-[#0a0a0a] border border-white/10 rounded-[24px] md:rounded-[32px] w-full max-w-5xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] flex flex-col shadow-2xl overflow-hidden"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-[#111]">
@@ -335,11 +410,11 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{awayDisplayName}</div>
                   {awayTeam.id >= 0 && (
                     <div className="text-[11px] font-bold text-slate-500 tracking-widest mt-0.5">
-                      {seriesInfo
-                        ? seriesInfo.awayLabel
-                        : (typeof result?.awayWins === 'number' && typeof result?.awayLosses === 'number')
+                      {seriesInfo?.awayLabel
+                        ?? datedRecords?.awayLabel
+                        ?? (typeof result?.awayWins === 'number' && typeof result?.awayLosses === 'number'
                           ? `${result.awayWins}–${result.awayLosses}`
-                          : '—'}
+                          : '—')}
                     </div>
                   )}
                 </div>
@@ -367,11 +442,11 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                   <div className="font-black text-xs md:text-2xl text-white tracking-tight group-hover:text-indigo-400 transition-colors">{homeDisplayName}</div>
                   {homeTeam.id >= 0 && (
                     <div className="text-[11px] font-bold text-slate-500 tracking-widest mt-0.5">
-                      {seriesInfo
-                        ? seriesInfo.homeLabel
-                        : (typeof result?.homeWins === 'number' && typeof result?.homeLosses === 'number')
+                      {seriesInfo?.homeLabel
+                        ?? datedRecords?.homeLabel
+                        ?? (typeof result?.homeWins === 'number' && typeof result?.homeLosses === 'number'
                           ? `${result.homeWins}–${result.homeLosses}`
-                          : '—'}
+                          : '—')}
                     </div>
                   )}
                 </div>

@@ -17,6 +17,7 @@ export const AwardWinner: React.FC<{ label: string; award: any; isCurrent: boole
         face={award.face}
         name={award.name}
         subtitle={award.team}
+        teamLogoUrl={award.teamLogoUrl}
         stats={award.statLine ? [
           { label: 'PPG', val: award.statLine.split(' / ')[0] ?? '' },
           { label: 'RPG', val: award.statLine.split(' / ')[1] ?? '' },
@@ -47,6 +48,7 @@ export const COYWinner: React.FC<{ award: any; isCurrent: boolean; winCount?: nu
         face={award.face}
         name={award.name}
         subtitle={award.team}
+        teamLogoUrl={award.teamLogoUrl}
         accentColor="amber"
         animDelay={0}
       />
@@ -234,6 +236,85 @@ export const ChampionHeroSection: React.FC<{
   </div>
 );
 
+export const PbaConferenceChampionsSection: React.FC<{
+  champions: {
+    key: string;
+    label: string;
+    accent: string;
+    team: any | null;
+    record?: any | null;
+    count: number;
+  }[];
+  isCurrent: boolean;
+}> = ({ champions, isCurrent }) => (
+  <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 md:p-5">
+    <div className="flex items-center gap-2 mb-4">
+      <Trophy size={13} className="text-amber-400" />
+      <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Conference Champions</span>
+      <span className="ml-auto text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">3 Conferences</span>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {champions.map((card) => {
+        const border = card.accent === 'sky'
+          ? 'border-sky-500/20'
+          : card.accent === 'emerald'
+            ? 'border-emerald-500/20'
+            : 'border-amber-500/20';
+        const gradient = card.accent === 'sky'
+          ? 'from-sky-950/30'
+          : card.accent === 'emerald'
+            ? 'from-emerald-950/30'
+            : 'from-amber-950/30';
+        const badge = card.accent === 'sky'
+          ? 'text-sky-300 bg-sky-400/10 border-sky-400/20'
+          : card.accent === 'emerald'
+            ? 'text-emerald-300 bg-emerald-400/10 border-emerald-400/20'
+            : 'text-amber-300 bg-amber-400/10 border-amber-400/20';
+        return (
+          <div key={card.key} className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br ${gradient} via-slate-900 to-slate-900 p-4 ${border}`}>
+            <div className="absolute inset-x-0 top-0 h-px bg-white/10" />
+            <div className="absolute -right-10 -top-10 w-28 h-28 rounded-full bg-white/5 blur-3xl pointer-events-none" />
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <div className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500 mb-1">{card.label}</div>
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-[0.18em]">
+                  {card.team ? 'Conference winner' : isCurrent ? 'Season in progress' : 'No champion data'}
+                </div>
+              </div>
+              <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-2 py-1 rounded-full border shrink-0 ${badge}`}>
+                {card.team ? `${card.count}×` : isCurrent ? 'TBA' : '—'}
+              </span>
+            </div>
+            {card.team ? (
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
+                  {card.team.logoUrl ? (
+                    <img src={card.team.logoUrl} alt={card.team.abbrev ?? card.team.name ?? 'Team'} className="w-11 h-11 object-contain" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="text-sm font-black text-slate-500">{card.team.abbrev ?? '—'}</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-lg font-black text-white leading-tight truncate">{card.team.name ?? card.team.abbrev ?? 'Team'}</div>
+                  {card.record && (
+                    <div className="text-sm text-slate-400 font-semibold">
+                      {card.record.won ?? card.record.wins ?? 0}-{card.record.lost ?? card.record.losses ?? 0}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-700/80 bg-slate-950/30 px-4 py-5 text-sm italic text-slate-500">
+                {isCurrent ? 'Waiting on the champion.' : 'Champion data not available.'}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
 export const BestRecordsSection: React.FC<{ bestRecords: { conference: string; team: any; ts: any }[] }> = ({ bestRecords }) => {
   if (!bestRecords.length) return null;
   return (
@@ -248,7 +329,11 @@ export const BestRecordsSection: React.FC<{ bestRecords: { conference: string; t
           const losses = ts.lost ?? 0;
           const total = wins + losses || 82;
           const pct = (wins / total * 100).toFixed(0);
-          const conferenceLabel = conference === 'East' || conference === 'Eastern' ? 'Eastern' : 'Western';
+          const conferenceLabel = conference === 'East' || conference === 'Eastern'
+            ? 'Eastern Conference'
+            : conference === 'West' || conference === 'Western'
+              ? 'Western Conference'
+              : conference;
           return (
             <div key={conference} className="relative bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 flex items-center gap-4 overflow-hidden transition-colors">
               {team.logoUrl && (
@@ -267,7 +352,7 @@ export const BestRecordsSection: React.FC<{ bestRecords: { conference: string; t
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-0.5">
-                  {conferenceLabel} Conference
+                  {conferenceLabel}
                 </div>
                 <div className="text-base font-black text-white truncate leading-tight">{team.name}</div>
                 <div className="flex items-center gap-2 mt-1">
@@ -300,6 +385,7 @@ export const SemifinalsMvpsSection: React.FC<{ semifinalsMvps: any[]; onPlayerSe
             face={award.face}
             name={award.name}
             subtitle={`${award.team}${award.statLine ? ` · ${award.statLine}` : ''}`}
+            teamLogoUrl={award.teamLogoUrl}
             accentColor="indigo"
             animDelay={index * 0.04}
             onClick={() => award.playerRef ? onPlayerSelect(award.playerRef as NBAPlayer) : onPlayerMissing(award.name)}
@@ -313,6 +399,24 @@ export const SemifinalsMvpsSection: React.FC<{ semifinalsMvps: any[]; onPlayerSe
 const EAST_LOGO = 'https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748';
 const WEST_LOGO = 'https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726';
 
+const buildAllStarSnap = (entry: any, players: any[], teams: any[], season: number, countAllStar: (playerName: string | undefined) => number) => {
+  const player = players.find((candidate: any) => String(candidate.internalId) === String(entry.playerId));
+  const stats = player?.stats?.filter((stat: any) => Number(stat.season) === Number(season) && !stat.playoffs && (stat.tid ?? -1) >= 0) ?? [];
+  const tid = stats.length ? stats.reduce((left: any, right: any) => (left.gp >= right.gp ? left : right)).tid : player?.tid;
+  const team = teams.find((candidate: any) => candidate.id === tid) ?? teams.find((candidate: any) => candidate.abbrev === entry.teamAbbrev);
+  const snapOvr = player?.ratings?.find((rating: any) => Number(rating.season) === Number(season))?.ovr ?? player?.overallRating ?? 0;
+  const snapRatings = player?.ratings?.filter((rating: any) => Number(rating.season) === Number(season));
+  return {
+    player,
+    team,
+    teamColor: team?.colors?.[0] ?? '#64748b',
+    snapOvr,
+    snapRatings,
+    pos: (player as any)?.pos ?? '—',
+    count: countAllStar(entry.playerName),
+  };
+};
+
 const AllStarConferenceSection: React.FC<{ conference: string; logo: string; roster: any[]; players: any[]; teams: any[]; season: number; countAllStar: (playerName: string | undefined) => number; onPlayerSelect: (player: NBAPlayer) => void; onPlayerMissing: (name: string) => void }> = ({ conference, logo, roster, players, teams, season, countAllStar, onPlayerSelect, onPlayerMissing }) => {
   if (!roster.length) return null;
   const starters = roster.filter((entry: any) => entry.isStarter);
@@ -321,24 +425,6 @@ const AllStarConferenceSection: React.FC<{ conference: string; logo: string; ros
   const confText = isEast ? 'text-blue-400' : 'text-red-400';
   const confBorder = isEast ? 'border-blue-500/20' : 'border-red-500/20';
   const confFrom = isEast ? 'from-blue-950/20' : 'from-red-950/20';
-
-  const getSnap = (entry: any) => {
-    const player = players.find((candidate: any) => String(candidate.internalId) === String(entry.playerId));
-    const stats = player?.stats?.filter((stat: any) => Number(stat.season) === Number(season) && !stat.playoffs && (stat.tid ?? -1) >= 0) ?? [];
-    const tid = stats.length ? stats.reduce((left: any, right: any) => (left.gp >= right.gp ? left : right)).tid : player?.tid;
-    const team = teams.find((candidate: any) => candidate.id === tid) ?? teams.find((candidate: any) => candidate.abbrev === entry.teamAbbrev);
-    const snapOvr = player?.ratings?.find((rating: any) => Number(rating.season) === Number(season))?.ovr ?? player?.overallRating;
-    const snapRatings = player?.ratings?.filter((rating: any) => Number(rating.season) === Number(season));
-    return {
-      player,
-      team,
-      teamColor: team?.colors?.[0] ?? '#64748b',
-      snapOvr,
-      snapRatings,
-      pos: (player as any)?.pos ?? '—',
-      count: countAllStar(entry.playerName),
-    };
-  };
 
   return (
     <div className={`rounded-2xl border ${confBorder} bg-gradient-to-b ${confFrom} via-slate-900/80 to-slate-900 overflow-hidden`}>
@@ -359,7 +445,7 @@ const AllStarConferenceSection: React.FC<{ conference: string; logo: string; ros
           </div>
           <div className="grid grid-cols-5 gap-2">
             {starters.map((entry: any) => {
-              const { player, team, teamColor, snapOvr, snapRatings, pos, count } = getSnap(entry);
+              const { player, team, teamColor, snapOvr, snapRatings, pos, count } = buildAllStarSnap(entry, players, teams, season, countAllStar);
               return (
                 <div
                   key={entry.playerId}
@@ -373,15 +459,15 @@ const AllStarConferenceSection: React.FC<{ conference: string; logo: string; ros
                     <span className="text-[7px] font-black text-amber-400 uppercase tracking-wide">Starter</span>
                   </div>
                   <div className="mt-1">
-                    <PlayerPortrait
-                      imgUrl={resolveLeagueHistoryPortraitUrl(player, entry.playerName)}
-                      face={(player as any)?.face}
-                      playerName={entry.playerName}
-                      teamLogoUrl={team?.logoUrl}
-                      overallRating={snapOvr}
-                      ratings={snapRatings}
-                      size={56}
-                    />
+                <PlayerPortrait
+                  imgUrl={resolveLeagueHistoryPortraitUrl(player, entry.playerName)}
+                  face={(player as any)?.face}
+                  playerName={entry.playerName}
+                  teamLogoUrl={team?.logoUrl}
+                  overallRating={snapOvr}
+                  ratings={snapRatings}
+                  size={56}
+                />
                   </div>
                   <div className="text-center w-full mt-0.5">
                     <div className="text-[11px] font-black text-white leading-tight truncate px-1">{entry.playerName}</div>
@@ -406,7 +492,7 @@ const AllStarConferenceSection: React.FC<{ conference: string; logo: string; ros
           )}
           <div className="p-3 space-y-1.5">
             {reserves.map((entry: any) => {
-              const { player, team, snapOvr, snapRatings, pos, count } = getSnap(entry);
+              const { player, team, snapOvr, snapRatings, pos, count } = buildAllStarSnap(entry, players, teams, season, countAllStar);
               return (
                 <div
                   key={entry.playerId}
@@ -441,8 +527,13 @@ const AllStarConferenceSection: React.FC<{ conference: string; logo: string; ros
   );
 };
 
-export const AllStarSection: React.FC<{ allStarRoster: any[] | null; players: any[]; teams: any[]; season: number; countAllStar: (playerName: string | undefined) => number; onPlayerSelect: (player: NBAPlayer) => void; onPlayerMissing: (name: string) => void }> = ({ allStarRoster, players, teams, season, countAllStar, onPlayerSelect, onPlayerMissing }) => {
+export const AllStarSection: React.FC<{ allStarRoster: any[] | null; players: any[]; teams: any[]; season: number; countAllStar: (playerName: string | undefined) => number; onPlayerSelect: (player: NBAPlayer) => void; onPlayerMissing: (name: string) => void; groupByConference?: boolean }> = ({ allStarRoster, players, teams, season, countAllStar, onPlayerSelect, onPlayerMissing, groupByConference = true }) => {
   if (!allStarRoster?.length) return null;
+  const rankedRoster = [...allStarRoster].sort((left: any, right: any) => {
+    const leftSnap = buildAllStarSnap(left, players, teams, season, countAllStar);
+    const rightSnap = buildAllStarSnap(right, players, teams, season, countAllStar);
+    return (rightSnap.snapOvr - leftSnap.snapOvr) || String(left.playerName ?? '').localeCompare(String(right.playerName ?? ''));
+  });
   const eastRoster = allStarRoster.filter((entry: any) => entry.conference === 'East' || entry.conference === 'Eastern' || entry.conference?.startsWith('East'));
   const westRoster = allStarRoster.filter((entry: any) => entry.conference === 'West' || entry.conference === 'Western' || entry.conference?.startsWith('West'));
   return (
@@ -453,30 +544,64 @@ export const AllStarSection: React.FC<{ allStarRoster: any[] | null; players: an
           All-Stars ({allStarRoster.length})
         </span>
       </div>
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <AllStarConferenceSection
-          conference="East"
-          logo={EAST_LOGO}
-          roster={eastRoster}
-          players={players}
-          teams={teams}
-          season={season}
-          countAllStar={countAllStar}
-          onPlayerSelect={onPlayerSelect}
-          onPlayerMissing={onPlayerMissing}
-        />
-        <AllStarConferenceSection
-          conference="West"
-          logo={WEST_LOGO}
-          roster={westRoster}
-          players={players}
-          teams={teams}
-          season={season}
-          countAllStar={countAllStar}
-          onPlayerSelect={onPlayerSelect}
-          onPlayerMissing={onPlayerMissing}
-        />
-      </div>
+      {groupByConference ? (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <AllStarConferenceSection
+            conference="East"
+            logo={EAST_LOGO}
+            roster={eastRoster}
+            players={players}
+            teams={teams}
+            season={season}
+            countAllStar={countAllStar}
+            onPlayerSelect={onPlayerSelect}
+            onPlayerMissing={onPlayerMissing}
+          />
+          <AllStarConferenceSection
+            conference="West"
+            logo={WEST_LOGO}
+            roster={westRoster}
+            players={players}
+            teams={teams}
+            season={season}
+            countAllStar={countAllStar}
+            onPlayerSelect={onPlayerSelect}
+            onPlayerMissing={onPlayerMissing}
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {rankedRoster.map((entry: any) => {
+            const { player, team, snapOvr, snapRatings, pos, count } = buildAllStarSnap(entry, players, teams, season, countAllStar);
+            return (
+              <div
+                key={entry.playerId}
+                className="flex items-center gap-2 bg-slate-900/60 rounded-xl px-2.5 py-2 border border-slate-800 cursor-pointer hover:border-slate-600 hover:bg-slate-800/60 transition-colors"
+                onClick={() => player ? onPlayerSelect(player as NBAPlayer) : onPlayerMissing(entry.playerName)}
+              >
+                <PlayerPortrait
+                  imgUrl={resolveLeagueHistoryPortraitUrl(player, entry.playerName)}
+                  face={(player as any)?.face}
+                  playerName={entry.playerName}
+                  teamLogoUrl={team?.logoUrl}
+                  overallRating={snapOvr}
+                  ratings={snapRatings}
+                  size={40}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-white truncate">{entry.playerName}</div>
+                  <div className="text-[10px] text-slate-500 uppercase font-bold">
+                    {pos !== '—' ? `${pos} · ` : ''}{entry.teamAbbrev || team?.abbrev || '—'}
+                  </div>
+                </div>
+                <span className="text-[9px] font-black text-amber-400/80 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-full shrink-0">
+                  {count}×
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

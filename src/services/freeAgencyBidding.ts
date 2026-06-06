@@ -21,6 +21,7 @@ export interface FreeAgentBid {
   expiresDay: number;
   status: 'active' | 'accepted' | 'rejected' | 'withdrawn' | 'outbid';
   /** AI camp-invite bid: one-year, zero-guarantee deal that can be released free. */
+  twoWay?: boolean;
   nonGuaranteed?: boolean;
 }
 

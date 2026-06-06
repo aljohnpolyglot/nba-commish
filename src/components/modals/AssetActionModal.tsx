@@ -107,13 +107,13 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
           initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }}
           animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
           exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-40%' }}
-          className="fixed top-1/2 left-1/2 bg-white rounded-3xl overflow-hidden w-[95%] max-w-md z-[111] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)] flex flex-col"
+          className="fixed left-1/2 top-1/2 z-[111] flex max-h-[calc(100vh-2rem)] w-[95%] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-3xl bg-white shadow-[0_32px_64px_-12px_rgba(0,0,0,0.4)]"
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center p-2 flex-shrink-0">
+          <div className="flex items-start justify-between gap-3 border-b border-gray-100 p-4 sm:p-6">
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-gray-50 p-2 sm:h-16 sm:w-16">
                 <img
                   src={asset.product.image}
                   alt={asset.product.title}
@@ -121,7 +121,7 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
                   referrerPolicy="no-referrer"
                 />
               </div>
-              <div>
+              <div className="min-w-0">
                 <h2 className="font-black text-gray-900 text-sm leading-tight line-clamp-2">
                   {asset.product.title}
                 </h2>
@@ -131,7 +131,7 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
               </div>
             </div>
             <button
-              className="text-gray-400 hover:text-gray-600 transition-colors self-start"
+              className="self-start text-gray-400 transition-colors hover:text-gray-600"
               onClick={innerView === 'menu' ? onClose : () => setInnerView('menu')}
             >
               <X size={24} />
@@ -139,14 +139,14 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
           </div>
 
           {/* Body */}
-          <div className="p-6">
+          <div className="overflow-y-auto p-4 sm:p-6">
             {/* Quantity selector (menu view only) */}
             {innerView === 'menu' && asset.quantity > 1 && (
               <div className="mb-6">
                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 text-center">
                   HOW MANY?
                 </div>
-                <div className="flex items-center justify-center gap-6">
+                <div className="flex items-center justify-center gap-4 sm:gap-6">
                   <button
                     onClick={() => setQty(q => Math.max(1, q - 1))}
                     className="w-10 h-10 rounded-full border-2 border-gray-200 flex items-center justify-center hover:border-nba-blue hover:text-nba-blue transition-all font-bold text-xl"
@@ -172,7 +172,7 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
                 {/* GIFT */}
                 <button
                   onClick={() => setInnerView('gift_select')}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-2xl transition-all"
+                  className="w-full rounded-2xl bg-blue-600 p-4 text-white transition-all hover:bg-blue-700"
                 >
                   <div className="flex items-center justify-center gap-2 font-black text-base">
                     <span>🎁</span> GIFT
@@ -182,7 +182,7 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
                 {/* SELL */}
                 <button
                   onClick={handleSell}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl transition-all"
+                  className="w-full rounded-2xl bg-green-600 p-4 text-white transition-all hover:bg-green-700"
                 >
                   <div className="flex flex-col items-center justify-center gap-0.5">
                     <div className="flex items-center gap-2 font-black text-base">
@@ -197,7 +197,7 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
                 {/* DISCARD */}
                 <button
                   onClick={handleDiscard}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white p-4 rounded-2xl transition-all"
+                  className="w-full rounded-2xl bg-red-600 p-4 text-white transition-all hover:bg-red-700"
                 >
                   <div className="flex items-center justify-center gap-2 font-black text-base">
                     <span>🗑</span> DISCARD
@@ -207,7 +207,7 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
                 {/* DEPLOY */}
                 <button
                   onClick={() => setInnerView('deploy_input')}
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-2xl transition-all"
+                  className="w-full rounded-2xl bg-purple-600 p-4 text-white transition-all hover:bg-purple-700"
                 >
                   <div className="flex items-center justify-center gap-2 font-black text-base">
                     <span>🤖</span> USE / DEPLOY
@@ -234,7 +234,7 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
                 <button
                   onClick={handleDeploySubmit}
                   disabled={!deployText.trim() || isProcessing}
-                  className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white p-4 rounded-2xl font-black text-base transition-all flex items-center justify-center gap-2"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-purple-600 p-4 text-base font-black text-white transition-all hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                 >
                   {isProcessing ? (
                     <>
