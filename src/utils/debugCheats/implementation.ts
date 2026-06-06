@@ -1061,6 +1061,26 @@ function formatTpAuditTsv(rows: any[]): string {
   ].join('\n');
 }
 
+async function runPbaQfRepair(ctx: CheatContext): Promise<CheatResult> {
+  const state = getLive(ctx);
+  if ((state.leagueStats as any)?.uiMode !== 'pba_isolated') {
+    return { title: 'PBAQFREPAIR', body: 'Current save is not pba_isolated; no changes made.', ok: false };
+  }
+  const season = state.leagueStats?.year ?? new Date().getFullYear();
+  const specs = (state as any).activeCompetitions ?? [];
+  const oldLen = (state.schedule ?? []).length;
+  const newSchedule = injectCompetitionPostseasonGames(state as any, specs, season);
+  const diff = newSchedule.length - oldLen;
+  if (diff <= 0) {
+    return { title: 'PBAQFREPAIR', body: 'No missing quarterfinal games detected; nothing changed.', ok: true };
+  }
+  await ctx.dispatchAction({ type: 'UPDATE_STATE', payload: { schedule: newSchedule } } as any);
+  console.group('%c🛠️ PBAQFREPAIR', 'color:#ef4444;font-weight:bold');
+  console.log(`Inserted ${diff} game(s) into schedule for PBA quarterfinal repair.`);
+  console.groupEnd();
+  return { title: 'PBAQFREPAIR', body: `Inserted ${diff} schedule game(s). Run Sim Round or reload UI.`, ok: true };
+}
+
 async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult> {
   const { state, dispatchAction, healPlayer } = ctx;
 
