@@ -83,6 +83,10 @@ export const autoLockThroneField = async (state: GameState): Promise<Partial<Gam
 export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<GameState>> => {
   logPlanEvent('autoResolvers.autoSimAllStarWeekend', 'fire', `date=${state.date}`);
   if (state.leagueStats?.uiMode === 'pba_isolated') {
+    const offseasonTaskState = state.offseasonChecklist?.pbaAllStarWeekend;
+    if (offseasonTaskState === 'pending' || offseasonTaskState === 'in-progress') {
+      return { _deferred: true } as any;
+    }
     const leagueStats = buildPbaAllStarLeagueStats(state.leagueStats);
     const { stripUnsupportedPbaAllStarGames } = await import('../../pba/allStar');
     const cleanedSchedule = stripUnsupportedPbaAllStarGames(

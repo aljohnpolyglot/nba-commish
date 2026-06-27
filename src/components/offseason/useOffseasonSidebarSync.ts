@@ -271,6 +271,19 @@ export function useOffseasonSidebarSync({
   ]);
 
   useEffect(() => {
+    if (!checklist || state.leagueStats?.uiMode !== 'pba_isolated') return;
+    const isUnresolved = (s: OffseasonRowStatus) => s === 'pending' || s === 'in-progress';
+    if (!isUnresolved(checklist.pbaAllStarWeekend)) return;
+    if (!(state.allStar as any)?.weekendComplete) return;
+    dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'pbaAllStarWeekend' } } as any);
+  }, [
+    checklist?.pbaAllStarWeekend,
+    state.leagueStats?.uiMode,
+    (state.allStar as any)?.weekendComplete,
+    dispatchAction,
+  ]);
+
+  useEffect(() => {
     if (!checklist) return;
     const schedule = (state as any).expansionSchedule;
     const lsYear = state.leagueStats?.year;

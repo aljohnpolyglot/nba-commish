@@ -142,7 +142,7 @@ export class AllStarWeekendOrchestrator {
         fakeTeams as any,
         allPlayers as any,
         [game],
-        state.date,
+        game.date,
         99,
         undefined,
         undefined,
@@ -153,7 +153,7 @@ export class AllStarWeekendOrchestrator {
         undefined,
         undefined,
         season,
-        rsRules,
+        leagueStats,
       );
       const raw = results[0];
       if (!raw) return null;
@@ -343,7 +343,7 @@ export class AllStarWeekendOrchestrator {
         fakeTeams as any,
         allBucketPlayers as any,
         [game],
-        state.date,
+        game.date,
         99,
         undefined,
         undefined,
@@ -354,7 +354,7 @@ export class AllStarWeekendOrchestrator {
         undefined,
         undefined,
         leagueStats.year,
-        allStarRules,
+        leagueStats,
       );
       const result = results[0];
       if (!result) return null;

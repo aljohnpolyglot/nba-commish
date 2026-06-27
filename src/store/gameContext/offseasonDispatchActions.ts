@@ -51,7 +51,7 @@ export async function handleOffseasonDispatchAction({
     const row = (action.payload as { row: OffseasonChecklistRow }).row;
     if (row === 'pbaAllStarWeekend' && isPbaIsolatedMode(stateRef.current)) {
       const season = stateRef.current.leagueStats?.year ?? new Date(stateRef.current.date).getUTCFullYear();
-      const targetDate = toISODateString(getAllStarWeekendDates(season, { uiMode: 'pba_isolated' }).allStarGame);
+      const targetDate = toISODateString(getAllStarWeekendDates(season, { uiMode: 'pba_isolated' }).breakStart);
       const currentDate = normalizeDate(stateRef.current.date);
       setState(prev => ({
         ...prev,
@@ -60,13 +60,9 @@ export async function handleOffseasonDispatchAction({
       if (currentDate < targetDate) {
         await dispatchAction({
           type: 'SIMULATE_TO_DATE',
-          payload: { targetDate },
+          payload: { targetDate, stopBefore: true },
         } as any);
       }
-      setState(prev => ({
-        ...prev,
-        offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, 'done'),
-      }));
       setCurrentView('All-Star');
       return true;
     }

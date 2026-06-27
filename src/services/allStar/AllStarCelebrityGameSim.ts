@@ -130,7 +130,6 @@ export class AllStarCelebrityGameSim {
       isCelebrityGame: true,
     };
 
-    const celebRules = resolveExhibitionRules(state.leagueStats as any, 'celebrity');
     const simResult = await simulateGames(
       [fakeTeam1, fakeTeam2] as any,
       [...team1Players, ...team2Players] as any,
@@ -140,7 +139,7 @@ export class AllStarCelebrityGameSim {
       undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined,
       state.leagueStats.year,
-      celebRules
+      state.leagueStats
     );
 
     const result = simResult.results[0];
