@@ -14,6 +14,16 @@ export function resolveExhibitionRules(
   leagueStats: Partial<LeagueStats> | any = {},
   event: ExhibitionEvent,
 ): ExhibitionRulesPack {
+  if (event === 'allStar' && leagueStats?.uiMode === 'pba_isolated') {
+    return {
+      gameFormat: 'timed',
+      targetScore: 100,
+      quarterLength: 12,
+      numQuarters: 4,
+      overtimeDuration: 5,
+    };
+  }
+
   const config = {
     allStar: {
       mirror: leagueStats.allStarMirrorLeagueRules,

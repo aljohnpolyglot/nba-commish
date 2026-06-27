@@ -15,12 +15,13 @@ import { WatchGamePreviewModal } from '../../modals/WatchGamePreviewModal';
 import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import { useDraftEventGate } from '../../../hooks/useDraftEventGate';
-import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaActiveConferenceMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import { isEuroVisibleScheduleGame } from '../../../utils/euroLeagueDefaults';
 import { ShootingStarsLiveContest } from '../../../minigames/shootingstars/ShootingStarsLiveContest';
 import { SkillsChallengeLiveContest } from '../../../minigames/skills/SkillsChallengeLiveContest';
 import { HorseLiveContest } from '../../../minigames/horse/HorseLiveContest';
 import { buildShootingStarsLiveTeams, buildSkillsLiveTeams } from '../../../minigames/shared/liveContestBuilders';
+import { findBoxScoreForGame } from '../../../utils/boxScoreLookup';
 
 // Sub-components
 import { AllStarDayView } from './components/AllStarDayView';
@@ -115,7 +116,20 @@ export const ScheduleView: React.FC = () => {
   const visibleSchedule = useMemo(() => {
     const schedule = state.schedule ?? [];
     if (euroIsolated) return schedule.filter(g => isEuroVisibleScheduleGame(euroScheduleState as any, g));
-    if (pbaIsolated) return schedule.filter(g => g.homeTid >= 2000 && g.homeTid < 2100);
+    if (pbaIsolated) {
+      return schedule.filter(g =>
+        (g.homeTid >= 2000 && g.homeTid < 2100) ||
+        !!(g as any).isAllStar ||
+        !!(g as any).isRisingStars ||
+        !!(g as any).isCelebrityGame ||
+        !!(g as any).isDunkContest ||
+        !!(g as any).isThreePointContest ||
+        !!(g as any).isShootingStars ||
+        !!(g as any).isSkillsChallenge ||
+        !!(g as any).isHorseContest ||
+        !!(g as any).isThroneEvent
+      );
+    }
     return schedule;
   }, [state.schedule, euroIsolated, pbaIsolated, euroScheduleState]);
 
@@ -146,7 +160,7 @@ export const ScheduleView: React.FC = () => {
     // Calendar advance is paused during offseason — user steps through
     // phases via the AUFGABEN sidebar instead. Avoids dual-driver bugs
     // where ADVANCE_DAY skips past Tag-counter ticks or option deadlines.
-    if (state.offseasonChecklist) {
+    if (state.offseasonChecklist && !isPbaActiveConferenceMode(state)) {
       setOffseasonBlockOpen(true);
       return;
     }
@@ -154,7 +168,7 @@ export const ScheduleView: React.FC = () => {
   };
 
   const simulateToDate = async (targetDateStr: string) => {
-    if (state.offseasonChecklist) {
+    if (state.offseasonChecklist && !isPbaActiveConferenceMode(state)) {
       setOffseasonBlockOpen(true);
       return;
     }
@@ -641,17 +655,16 @@ export const ScheduleView: React.FC = () => {
         {selectedBoxScoreGame && (
           <BoxScoreModal
             game={selectedBoxScoreGame}
-            result={state.boxScores.find(b => b.gameId === selectedBoxScoreGame.gid)}
+            result={findBoxScoreForGame(state.boxScores, selectedBoxScoreGame.gid, selectedBoxScoreGame.date)}
             homeTeam={(() => {
               const tid = selectedBoxScoreGame.homeTid;
               if (tid >= 100) {
-                const t = state.nonNBATeams?.find((t: any) => t.tid === tid);
-                return t ? { id: tid, name: t.name, abbrev: t.abbrev, logoUrl: t.imgURL, conference: t.league } as any : getTeamForGame(tid, state.teams);
+                return resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []) ?? getTeamForGame(tid, state.teams);
               }
               // For fake/exhibition teams (tid < 0), prefer the name stored in the box score
               // so Rising Stars bracket teams show their real names (Team Melo, G League, etc.)
               if (tid < 0) {
-                const bs = state.boxScores.find((b: any) => b.gameId === selectedBoxScoreGame.gid);
+                const bs = findBoxScoreForGame(state.boxScores, selectedBoxScoreGame.gid, selectedBoxScoreGame.date);
                 const base = getTeamForGame(tid, state.teams);
                 if (bs?.homeTeamName) return { ...base, name: bs.homeTeamName, abbrev: bs.homeTeamAbbrev ?? base.abbrev };
                 return base;
@@ -661,11 +674,10 @@ export const ScheduleView: React.FC = () => {
             awayTeam={(() => {
               const tid = selectedBoxScoreGame.awayTid;
               if (tid >= 100) {
-                const t = state.nonNBATeams?.find((t: any) => t.tid === tid);
-                return t ? { id: tid, name: t.name, abbrev: t.abbrev, logoUrl: t.imgURL, conference: t.league } as any : getTeamForGame(tid, state.teams);
+                return resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []) ?? getTeamForGame(tid, state.teams);
               }
               if (tid < 0) {
-                const bs = state.boxScores.find((b: any) => b.gameId === selectedBoxScoreGame.gid);
+                const bs = findBoxScoreForGame(state.boxScores, selectedBoxScoreGame.gid, selectedBoxScoreGame.date);
                 const base = getTeamForGame(tid, state.teams);
                 if (bs?.awayTeamName) return { ...base, name: bs.awayTeamName, abbrev: bs.awayTeamAbbrev ?? base.abbrev };
                 return base;

@@ -6,7 +6,7 @@ import { NavigationMenu } from './sidebar/NavigationMenu';
 import { ApprovalsWidget } from './sidebar/ApprovalsWidget';
 import { FinancesWidget } from './sidebar/FinancesWidget';
 import { SettingsModal } from './modals/SettingsModal';
-import { parseGameDate } from '../utils/dateUtils';
+import { formatGameDateShort, parseGameDate } from '../utils/dateUtils';
 import { useLeagueLabels } from '../utils/leagueLabels';
 
 const GAME_LOGO_URL = 'https://i.imgur.com/66dyyIO.png';
@@ -57,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, isO
           <div>
             <h1 className="text-sm font-black text-white tracking-tight leading-none">{labels.appTitle}</h1>
             <p className="text-[8px] text-slate-500 mt-0.5 uppercase tracking-widest font-bold">
-              {state.date} • {seasonLabel}
+              {formatGameDateShort(state.date)} • {seasonLabel}
             </p>
           </div>
         </div>

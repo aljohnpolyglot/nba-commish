@@ -441,6 +441,18 @@ export const CHARANIA_TEMPLATES: SocialTemplate[] = [
  * Build a Shams-style transaction tweet (signings, trades, extensions).
  * Only fires for notable players (K2 ≥ 78) to avoid noise.
  */
+function formatTransactionTotal(amountM?: number, years?: number): string | null {
+    if (!amountM || !years) return null;
+    const totalUSD = amountM * 1_000_000 * years;
+    if (totalUSD >= 1_000_000) {
+        const millions = totalUSD / 1_000_000;
+        const display = millions >= 10 ? Math.round(millions).toString() : millions.toFixed(1).replace(/\.0$/, '');
+        return `$${display}M`;
+    }
+    if (totalUSD >= 1_000) return `$${Math.round(totalUSD / 1_000)}K`;
+    return `$${Math.round(totalUSD)}`;
+}
+
 function buildShamsTransactionPost(opts: {
     type: 'signing' | 'trade' | 'extension';
     playerName: string;
@@ -454,8 +466,9 @@ function buildShamsTransactionPost(opts: {
     const { type, playerName, teamName, amount, years, hasPlayerOption, otherTeamName } = opts;
 
     if (type === 'signing') {
-        const dealStr = amount && years
-            ? `${years}-year, $${Math.round(amount * (years ?? 1))}M deal`
+        const total = formatTransactionTotal(amount, years);
+        const dealStr = total && years
+            ? `${years}-year, ${total} deal`
             : 'a deal';
         const optStr = hasPlayerOption ? ' with a player option on the final year' : '';
         const variants = [
@@ -476,8 +489,9 @@ function buildShamsTransactionPost(opts: {
     }
 
     // extension
-    const dealStr = amount && years
-        ? `${years}-year, $${Math.round(amount * (years ?? 1))}M extension`
+    const total = formatTransactionTotal(amount, years);
+    const dealStr = total && years
+        ? `${years}-year, ${total} extension`
         : 'a contract extension';
     const variants = [
         `${playerName} has agreed to ${dealStr} with the ${teamName}, ${src}`,

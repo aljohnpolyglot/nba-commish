@@ -13,11 +13,19 @@ import {
   autoSelectThreePointContestants,
   autoSelectShootingStarsContestants,
   autoSelectSkillsChallengeContestants,
+  autoSimBackgroundNbaVotes,
+  autoAnnounceBackgroundNbaStarters,
+  autoAnnounceBackgroundNbaReserves,
+  autoSelectBackgroundNbaDunkContestants,
+  autoSelectBackgroundNbaThreePointContestants,
+  autoSelectBackgroundNbaShootingStarsContestants,
+  autoSelectBackgroundNbaSkillsChallengeContestants,
   autoOpenThroneSignups,
   autoCloseThroneSignups,
   autoOpenThroneVoting,
   autoLockThroneField,
   autoSimAllStarWeekend,
+  autoSimBackgroundNbaAllStarWeekend,
   autoRunLottery,
   autoRunDraft,
   autoInductHOFClass,
@@ -28,7 +36,16 @@ import { NewsGenerator } from '../news/NewsGenerator';
 import { initialEuroOffseasonChecklist } from '../offseason/offseasonState';
 import { DEFAULT_MEDIA_RIGHTS, attachBroadcastersToGames } from '../../utils/broadcastingUtils';
 import { injectCompetitionPostseasonGames } from '../competition/competitionResolver';
-import { repairCompetitionSchedules } from '../competition/competitionScheduler';
+import { generateForCompetition, repairCompetitionSchedules, selectCompetitionTeamTids } from '../competition/competitionScheduler';
+import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
+import {
+  clearConferenceImports,
+  generateNextConferenceSchedule,
+  getConferenceStartIso,
+  getNextConference,
+  type PbaConference,
+} from '../pba/conferenceTransition';
+import { autoManagePbaImports } from '../pba/importAutomation';
 
 type PlayoffMvpBag = {
   pid: string; gp: number; pts: number; reb: number; ast: number;
@@ -65,6 +82,15 @@ export function hasDueUnplayedEuroCompetitionGames(state: GameState, currentNorm
   );
 }
 
+export function hasDueUnplayedPbaCompetitionGames(state: GameState, currentNorm: string): boolean {
+  if (state.leagueStats?.uiMode !== 'pba_isolated') return false;
+  return (state.schedule ?? []).some(game =>
+    String(game.competitionId ?? '').startsWith('pba-') &&
+    !game.played &&
+    normalizeDate(game.date) <= currentNorm,
+  );
+}
+
 export function autoResolveEuroSetupOffseasonTasks(state: GameState, enabled: boolean): GameState {
   if (!enabled || state.leagueStats?.uiMode !== 'euro_isolated') return state;
   const currentNorm = normalizeDate(state.date);
@@ -90,6 +116,80 @@ export function autoResolveEuroSetupOffseasonTasks(state: GameState, enabled: bo
   }
 
   return changed ? { ...state, offseasonChecklist: checklist } : state;
+}
+
+export function autoSignPbaImportsForLazySim(state: GameState, conference: PbaConference): GameState {
+  return autoManagePbaImports(state, conference, {
+    fillMissingTeams: true,
+  });
+}
+
+export function autoResolvePbaSetupOffseasonTasks(state: GameState, enabled: boolean, targetDate?: string): GameState {
+  if (!enabled || state.leagueStats?.uiMode !== 'pba_isolated') return state;
+  const leagueStats = state.leagueStats as any;
+  if (leagueStats?.pbaConferencePhase !== 'offseason' || !state.offseasonChecklist) return state;
+  const current = (leagueStats.pbaConference ?? 'philippine') as PbaConference;
+  const nextConference = getNextConference(current);
+  const playersAfterClear = clearConferenceImports(state.players, current);
+  let nextState = { ...state, players: playersAfterClear };
+
+  if (nextConference) {
+    nextState = autoSignPbaImportsForLazySim(nextState, nextConference);
+    const newGames = generateNextConferenceSchedule(nextState, nextConference);
+    return {
+      ...nextState,
+      leagueStats: {
+        ...nextState.leagueStats,
+        pbaConference: nextConference,
+        pbaConferencePhase: 'regularSeason',
+      },
+      date: normalizeDate(nextState.date) < getConferenceStartIso(nextConference, leagueStats.year ?? new Date().getFullYear())
+        ? getConferenceStartIso(nextConference, leagueStats.year ?? new Date().getFullYear())
+        : normalizeDate(nextState.date),
+      schedule: [...(nextState.schedule ?? []), ...newGames],
+      offseasonChecklist: undefined,
+    };
+  }
+
+  const preparedSeason = Number(leagueStats?.pbaYearEndRolloverPreparedSeason);
+  const nextYear = Number.isFinite(preparedSeason)
+    ? preparedSeason + 1
+    : (leagueStats.year ?? new Date().getFullYear()) + 1;
+  const nextSeasonStart = getConferenceStartIso('philippine', nextYear);
+  const targetNorm = targetDate ? normalizeDate(targetDate) : null;
+  if (targetNorm && targetNorm < nextSeasonStart) return nextState;
+
+  if (!nextState.draftComplete) {
+    const draftPatch = autoRunDraft(nextState);
+    if (!(draftPatch as any)?._deferred && Object.keys(draftPatch).length > 0) {
+      nextState = { ...nextState, ...draftPatch } as GameState;
+    }
+  }
+  const philSpec = PBA_COMPETITIONS[0];
+  const tids = selectCompetitionTeamTids(philSpec, nextState as any);
+  const start = new Date(Date.UTC(nextYear - 1, philSpec.seasonStart.month - 1, philSpec.seasonStart.day));
+  const newGames = generateForCompetition(philSpec, tids.map((tid: number) => ({ tid })), start, 800_000);
+  const preservedBackgroundSchedule = (nextState.schedule ?? []).filter((game: any) =>
+    !String(game?.competitionId ?? '').startsWith('pba-'),
+  );
+  return {
+    ...nextState,
+    leagueStats: {
+      ...nextState.leagueStats,
+      pbaConference: 'philippine',
+      pbaConferencePhase: 'regularSeason',
+      pbaYearEndRolloverPreparedSeason: undefined,
+      pbaDraftComplete: nextState.draftComplete || (nextState.leagueStats as any)?.pbaDraftComplete,
+      pbaDraftCompleteSeason: nextState.draftComplete ? nextYear : (nextState.leagueStats as any)?.pbaDraftCompleteSeason,
+    },
+    date: normalizeDate(nextState.date) < getConferenceStartIso('philippine', nextYear)
+      ? getConferenceStartIso('philippine', nextYear)
+      : normalizeDate(nextState.date),
+    schedule: [...preservedBackgroundSchedule, ...newGames].sort((a: any, b: any) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime(),
+    ),
+    offseasonChecklist: undefined,
+  } as GameState;
 }
 
 const PLAYOFF_MVP_LEAGUE_TS = 0.57;
@@ -184,12 +284,20 @@ export const buildAutoResolveEvents = (y: number, leagueStats?: any): AutoResolv
   if (pbaIsolated) {
     return [
       { date: `${y1}-08-14`, key: 'schedule_generation', resolver: autoGenerateSchedule, phase: 'Generating background schedule...' },
+      { date: `${y}-01-14`, key: 'background_nba_allstar_votes', resolver: autoSimBackgroundNbaVotes, phase: 'Simulating background NBA All-Star voting...' },
+      { date: `${y}-01-22`, key: 'background_nba_allstar_starters', resolver: autoAnnounceBackgroundNbaStarters, phase: 'Announcing background NBA All-Star starters...' },
+      { date: `${y}-01-29`, key: 'background_nba_allstar_reserves', resolver: autoAnnounceBackgroundNbaReserves, phase: 'Announcing background NBA All-Star reserves...' },
+      { date: `${y}-02-05`, key: 'background_nba_dunk_contestants', resolver: autoSelectBackgroundNbaDunkContestants, phase: 'Selecting background NBA Dunk Contest field...' },
+      { date: `${y}-02-08`, key: 'background_nba_threepoint_contestants', resolver: autoSelectBackgroundNbaThreePointContestants, phase: 'Selecting background NBA 3-Point Contest field...' },
+      { date: `${y}-02-09`, key: 'background_nba_shooting_stars_contestants', resolver: autoSelectBackgroundNbaShootingStarsContestants, phase: 'Selecting background NBA Shooting Stars field...' },
+      { date: `${y}-02-10`, key: 'background_nba_skills_challenge_contestants', resolver: autoSelectBackgroundNbaSkillsChallengeContestants, phase: 'Selecting background NBA Skills Challenge field...' },
+      { date: `${y}-02-13`, key: 'background_nba_allstar_weekend', resolver: autoSimBackgroundNbaAllStarWeekend, phase: 'Simulating background NBA All-Star Weekend...' },
       { date: `${y}-03-01`, key: 'allstar_votes', resolver: autoSimVotes, phase: 'Selecting PBA All-Star captains...' },
       { date: `${y}-03-01`, key: 'allstar_reserves', resolver: autoAnnounceReserves, phase: 'Setting PBA All-Star rosters...' },
       { date: `${y}-03-03`, key: 'dunk_contestants', resolver: autoSelectDunkContestants, phase: 'Selecting PBA Dunk Contest field...' },
       { date: `${y}-03-03`, key: 'threepoint_contestants', resolver: autoSelectThreePointContestants, phase: 'Selecting PBA 3-Point Contest field...' },
       { date: `${y}-03-03`, key: 'skills_challenge_contestants', resolver: autoSelectSkillsChallengeContestants, phase: 'Selecting PBA Skills Challenge field...' },
-      { date: `${y}-03-06`, key: 'allstar_weekend', resolver: autoSimAllStarWeekend, phase: 'Simulating PBA All-Star Weekend...' },
+      { date: `${y}-03-08`, key: 'allstar_weekend', resolver: autoSimAllStarWeekend, phase: 'Simulating PBA All-Star Weekend...' },
       ...awardEvents,
     ];
   }
@@ -228,14 +336,16 @@ export const buildAutoResolveEvents = (y: number, leagueStats?: any): AutoResolv
 
 export function buildAutoNews(eventKey: string, state: GameState) {
   const date = state.date;
+  const season = state.leagueStats?.year ?? new Date().getFullYear();
+  const autoId = (suffix: string) => `auto-news-${season}-${suffix}`;
   const map: Record<string, any> = {
-    christmas_games: { id: `auto-xmas-${Date.now()}`, headline: 'Christmas Day Games Set', content: 'The NBA has finalized its Christmas Day slate.', date },
-    throne_signups_open: { id: `auto-throne-open-${Date.now()}`, headline: 'THE THRONE — Sign-Ups Open', content: 'The 1v1 tournament throne is up for grabs. Sign-ups are live through January 15.', date },
-    throne_signups_close: { id: `auto-throne-close-${Date.now()}`, headline: 'THE THRONE — Sign-Ups Closed', content: 'Sign-ups have closed. Composite vote opens January 16.', date },
-    throne_field_reveal: { id: `auto-throne-reveal-${Date.now()}`, headline: 'THE THRONE — Field of 16 Revealed', content: 'The composite vote has spoken. The 16 players who will fight for the crown have been chosen.', date },
-    allstar_starters: { id: `auto-starters-${Date.now()}`, headline: 'All-Star Starters Announced', content: 'Fan voting has concluded. The All-Star starters have been revealed.', date },
+    christmas_games: { id: autoId('christmas-games'), headline: 'Christmas Day Games Set', content: 'The NBA has finalized its Christmas Day slate.', date },
+    throne_signups_open: { id: autoId('throne-signups-open'), headline: 'THE THRONE — Sign-Ups Open', content: 'The 1v1 tournament throne is up for grabs. Sign-ups are live through January 15.', date },
+    throne_signups_close: { id: autoId('throne-signups-closed'), headline: 'THE THRONE — Sign-Ups Closed', content: 'Sign-ups have closed. Composite vote opens January 16.', date },
+    throne_field_reveal: { id: autoId('throne-field-reveal'), headline: 'THE THRONE — Field of 16 Revealed', content: 'The composite vote has spoken. The 16 players who will fight for the crown have been chosen.', date },
+    allstar_starters: { id: autoId('nba-allstar-starters'), headline: 'All-Star Starters Announced', content: 'Fan voting has concluded. The All-Star starters have been revealed.', date },
     allstar_reserves: {
-      id: `auto-reserves-${Date.now()}`,
+      id: autoId(state.leagueStats?.uiMode === 'pba_isolated' ? 'pba-allstar-rosters' : 'nba-allstar-rosters'),
       headline: state.leagueStats?.uiMode === 'pba_isolated' ? 'PBA All-Star Rosters Set' : 'Full All-Star Rosters Set',
       content: state.leagueStats?.uiMode === 'pba_isolated'
         ? 'The captain-draft rosters are set for PBA All-Star Weekend.'
@@ -243,17 +353,20 @@ export function buildAutoNews(eventKey: string, state: GameState) {
       date,
     },
     allstar_weekend: {
-      id: `auto-asw-${Date.now()}`,
+      id: autoId(state.leagueStats?.uiMode === 'pba_isolated' ? 'pba-allstar-weekend' : 'nba-allstar-weekend'),
       headline: state.leagueStats?.uiMode === 'pba_isolated' ? 'PBA All-Star Weekend Complete' : 'All-Star Weekend Complete',
       content: state.leagueStats?.uiMode === 'pba_isolated'
         ? 'The PBA All-Star Game and weekend contests have concluded. Check the All-Star tab for results.'
         : 'The NBA All-Star Weekend has concluded. Check the All-Star tab for results.',
       date,
     },
+    background_nba_allstar_starters: { id: autoId('background-nba-allstar-starters'), headline: 'NBA All-Star Starters Announced', content: 'Fan voting has concluded. The NBA All-Star starters have been revealed.', date },
+    background_nba_allstar_reserves: { id: autoId('background-nba-allstar-rosters'), headline: 'NBA All-Star Rosters Set', content: 'Coaches have made their picks. The complete NBA All-Star rosters are finalized.', date },
+    background_nba_allstar_weekend: { id: autoId('background-nba-allstar-weekend'), headline: 'NBA All-Star Weekend Complete', content: 'The NBA All-Star Game and weekend contests have concluded.', date },
     award_coy: null, award_smoy: null, award_mip: null,
     award_dpoy: null, award_roy: null, award_allnba: null, award_mvp: null,
-    draft_lottery: { id: `auto-lottery-${Date.now()}`, headline: 'Draft Lottery Complete', content: 'The NBA Draft Lottery has concluded. View the Draft Lottery tab for full results.', date },
-    draft_execute: { id: `auto-draft-${Date.now()}`, headline: 'NBA Draft Complete', content: 'The NBA Draft has concluded. All prospects have been assigned to teams. Undrafted players are now free agents.', date },
+    draft_lottery: { id: autoId('draft-lottery'), headline: 'Draft Lottery Complete', content: 'The NBA Draft Lottery has concluded. View the Draft Lottery tab for full results.', date },
+    draft_execute: { id: autoId('draft-complete'), headline: 'NBA Draft Complete', content: 'The NBA Draft has concluded. All prospects have been assigned to teams. Undrafted players are now free agents.', date },
     hof_induction: null,
   };
   return map[eventKey] ?? null;
@@ -442,12 +555,13 @@ export const getPhaseLabel = (dateStr: string, year: number, leagueStats?: { uiM
     if (dateStr < `${year}-01-28`) return 'Philippine Cup Playoffs...';
     if (dateStr < `${year}-03-06`) return 'PBA All-Star Build-Up...';
     if (dateStr < `${year}-03-11`) return 'PBA All-Star Weekend...';
-    if (dateStr < `${year}-07-01`) return "Commissioner's Cup...";
-    if (dateStr < `${year}-08-08`) return "Commissioner's Cup Playoffs...";
-    if (dateStr < `${year}-09-10`) return "Governors' Cup Setup...";
-    if (dateStr < `${year}-11-10`) return "Governors' Cup...";
-    if (dateStr < `${year}-12-14`) return "Governors' Cup Playoffs...";
-    if (dateStr < `${year}-12-28`) return 'PBA Season Awards...';
+    if (dateStr < `${year}-06-03`) return "Commissioner's Cup...";
+    if (dateStr < `${year}-07-08`) return "Commissioner's Cup Playoffs...";
+    if (dateStr < `${year}-07-10`) return "Governors' Cup Setup...";
+    if (dateStr < `${year}-08-28`) return "Governors' Cup...";
+    if (dateStr < `${year}-10-01`) return "Governors' Cup Playoffs...";
+    if (dateStr < `${year}-10-05`) return 'PBA Season Awards...';
+    if (dateStr < `${year}-12-15`) return 'Philippine Cup...';
     return 'PBA Offseason...';
   }
   const y1 = year - 1;

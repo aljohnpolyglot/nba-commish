@@ -29,6 +29,7 @@ export function getSeasonYear(dateStr: string): number {
 
 export function detectType(text: string, type?: string) {
   const lowered = text.toLowerCase();
+  if (type === 'Personnel') return 'Personnel';
   if (type === 'Training Camp Release' || lowered.includes('released from training camp')) return 'Training Camp Release';
   if (type === 'G-League Assignment' || lowered.includes('assigned to g-league')) return 'G-League Assignment';
   if (type === 'G-League Callup' || lowered.includes('recalled from g-league')) return 'G-League Callup';
@@ -42,7 +43,7 @@ export function detectType(text: string, type?: string) {
   if (type === 'Signing' || lowered.includes('signed') || lowered.includes('signs with')) return 'Signing';
   if (type === 'Waive' || lowered.includes('waived')) return 'Waive';
   if (type === 'Suspension' || lowered.includes('suspended')) return 'Suspension';
-  if (type === 'Personnel' || lowered.includes('fired') || lowered.includes('hired')) return 'Personnel';
+  if (lowered.includes('fired') || lowered.includes('hired')) return 'Personnel';
   return 'League Event';
 }
 

@@ -9,7 +9,7 @@ import { buildDraftOrderFromState } from '../../draft/draftOrder';
 import { returnUndraftedToHomeLeague } from '../../externalLeagueSustainer';
 import { logPlanEvent } from '../../offseason/offseasonPlan';
 import { isNoDraftLeague } from '../../offseason/offseasonState';
-import { buildPbaDraftOrderTeams, getPbaDraftPool } from '../../pba/draftRules';
+import { buildPbaDraftOrderTeams, getPbaDraftPool, tunePbaDraftProspects } from '../../pba/draftRules';
 
 function runWeightedLottery<T extends { originalSeed: number }>(
   teams: T[],
@@ -82,7 +82,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   const pbaIsolated = state.leagueStats?.uiMode === 'pba_isolated';
   if (isNoDraftLeague(state.leagueStats)) return {};
   if ((state as any).draftComplete) return {};
-  if (isDraftBlockedByUnresolvedPlayoffs(state)) return { _deferred: true } as any;
+  if (!pbaIsolated && isDraftBlockedByUnresolvedPlayoffs(state)) return { _deferred: true } as any;
 
   const season = getLsYear(state);
   const guaranteedYrs = state.leagueStats?.rookieContractLength ?? 2;
@@ -91,14 +91,15 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   const restrictedFA: boolean = (state.leagueStats as any)?.rookieRestrictedFreeAgentEligibility ?? true;
   const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
 
-  const pbaDraftPool = pbaIsolated ? getPbaDraftPool(state.players) : [];
+  const tunedPlayers = pbaIsolated ? tunePbaDraftProspects(state.players, season, state.leagueStats) : state.players;
+  const pbaDraftPool = pbaIsolated ? getPbaDraftPool(tunedPlayers, season, state.leagueStats) : [];
   const pbaDraftPoolIds = new Set(pbaDraftPool.map(player => player.internalId));
   const draftOrder = (((state as any).activeDraftOrder?.length ?? 0) > 0
     ? (state as any).activeDraftOrder
     : pbaIsolated
       ? buildPbaDraftOrderTeams((state as any).nonNBATeams ?? [], state.boxScores ?? [], season, pbaDraftPool.length)
       : buildDraftOrderFromState(state)) as any[];
-  const prospects = (pbaIsolated ? pbaDraftPool : state.players.filter(p => {
+  const prospects = (pbaIsolated ? pbaDraftPool : tunedPlayers.filter(p => {
     const isProspect = p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect';
     if (!isProspect) return false;
     if (EXTERNAL_STATUSES.has(p.status ?? '')) return false;
@@ -154,6 +155,7 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
   }
 
   const undrafted: Array<{ name: string; id: string }> = [];
+  const tunedById = new Map(tunedPlayers.map(player => [player.internalId, player]));
   const updatedPlayers = state.players.map(p => {
     for (const [slot, { player, team }] of pickMap.entries()) {
       if (player.internalId !== p.internalId) continue;
@@ -175,6 +177,10 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
       });
       return {
         ...p,
+        overallRating: player.overallRating,
+        potential: player.potential,
+        ratings: player.ratings,
+        pbaDraftTunedVersion: (player as any).pbaDraftTunedVersion,
         tid: team.id,
         status: pbaIsolated ? 'PBA' as const : 'Active' as const,
         jerseyNumber: draftJerseyAssignments.get(p.internalId) ?? p.jerseyNumber,
@@ -207,10 +213,14 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
       (!pbaIsolated || pbaDraftPoolIds.has(p.internalId)) &&
       !assignedIds.has(p.internalId)
     ) {
+      const tuned = tunedById.get(p.internalId);
       undrafted.push({ name: p.name, id: p.internalId });
       return {
         ...p,
-        overallRating: Math.min(p.overallRating ?? 99, UNDRAFTED_OVR_CAP),
+        overallRating: Math.min(tuned?.overallRating ?? p.overallRating ?? 99, UNDRAFTED_OVR_CAP),
+        potential: tuned?.potential ?? p.potential,
+        ratings: tuned?.ratings ?? p.ratings,
+        pbaDraftTunedVersion: (tuned as any)?.pbaDraftTunedVersion ?? (p as any).pbaDraftTunedVersion,
         tid: -1 as const,
         status: 'Free Agent' as const,
         transactions: [

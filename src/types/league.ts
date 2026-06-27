@@ -247,6 +247,7 @@ export interface LeagueStats {
   taxpayerMlePercentage?: number;
   biannualPercentage?: number;
   mleUsage?: Record<number, { type: 'room' | 'non_taxpayer' | 'taxpayer'; usedUSD: number }>;
+  backgroundNbaMleUsage?: Record<number, { type: 'room' | 'non_taxpayer' | 'taxpayer'; usedUSD: number }>;
   deadMoneyEnabled?: boolean;
   ngGuaranteeDeadlineMonth?: number;
   ngGuaranteeDeadlineDay?: number;

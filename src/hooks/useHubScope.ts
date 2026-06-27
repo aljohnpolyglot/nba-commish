@@ -47,9 +47,23 @@ export function useHubScope() {
   const tids = useMemo(() => new Set(teams.map(t => t.id)), [teams]);
 
   const isScoped = hubTab !== null || euroIsolated || pbaIsolated;
+  const pbaBoxScorePlayerIds = useMemo(() => {
+    if (!pbaIsolated) return new Set<string>();
+    const ids = new Set<string>();
+    for (const box of (state.boxScores ?? []) as any[]) {
+      if (!String(box?.competitionId ?? '').startsWith('pba-')) continue;
+      for (const line of [...(box.homeStats ?? []), ...(box.awayStats ?? [])]) {
+        if (line?.playerId) ids.add(line.playerId);
+      }
+    }
+    return ids;
+  }, [pbaIsolated, state.boxScores]);
+
   const players = useMemo(
-    () => isScoped ? state.players.filter(p => tids.has(p.tid)) : state.players,
-    [isScoped, state.players, tids],
+    () => isScoped
+      ? state.players.filter(p => tids.has(p.tid) || (pbaIsolated && pbaBoxScorePlayerIds.has(p.internalId)))
+      : state.players,
+    [isScoped, pbaBoxScorePlayerIds, pbaIsolated, state.players, tids],
   );
 
   return { hubTab, teams, tids, players, isScoped, euroIsolated, pbaIsolated };

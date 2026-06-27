@@ -87,8 +87,9 @@ export const LeagueLeadersView: React.FC = () => {
   }, [euroIsolated, pbaIsolated, scopedPlayers]);
 
   useEffect(() => {
-    if (!pbaIsolated || pbaCompetitionFilter === PBA_COMBINED_FILTER || pbaCompetitionFilter === currentPbaCompetitionId) return;
-    setPbaCompetitionFilter(currentPbaCompetitionId);
+    if (!pbaIsolated) return;
+    const valid = new Set([PBA_COMBINED_FILTER, ...PBA_COMPETITIONS.map(spec => spec.id)]);
+    if (!valid.has(pbaCompetitionFilter)) setPbaCompetitionFilter(currentPbaCompetitionId);
   }, [currentPbaCompetitionId, pbaCompetitionFilter, pbaIsolated]);
 
   const pbaCompetitionOptions = useMemo(() => [

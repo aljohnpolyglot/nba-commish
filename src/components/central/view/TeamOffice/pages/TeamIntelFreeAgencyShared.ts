@@ -128,6 +128,7 @@ export function hasBirdRightsResolved(player: NBAPlayer): boolean {
 }
 
 export function fmtUSD(value: number): string {
+  if (!Number.isFinite(value)) return 'No Cap';
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : '';
   if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;

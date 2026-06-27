@@ -1,5 +1,6 @@
 import type { NBAPlayer } from '../../types';
 import { EXTERNAL_SALARY_SCALE } from '../../constants';
+import { computeLocalPBASalaryUSD, getPBARosterEconomyConfig } from '../../services/externalRosterService.shared';
 import { isPbaRosterLocal } from '../../services/pba/importManager';
 import { getDisplayAge } from '../../store/playerRatingStore';
 import { convertTo2KRating } from '../helpers';
@@ -32,6 +33,17 @@ function isPbaImportLike(player: NBAPlayer, leagueStats?: ContractLeagueStats): 
   const nationality = String((born as any).country ?? (player as any).nationality ?? '').toLowerCase();
   const loc = String((born as any).loc ?? '').toLowerCase();
   return !nationality.includes('philippines') && !loc.includes('philippines');
+}
+
+function computePbaLocalContractOfferUSD(
+  player: NBAPlayer,
+  leagueStats: ContractLeagueStats,
+  currentSeason: number,
+): number {
+  const lastRating = (player as any).ratings?.[(player as any).ratings?.length - 1];
+  const pbaOvr = lastRating?.ovr ?? player.overallRating ?? 40;
+  const economy = getPBARosterEconomyConfig(leagueStats, 'pba_isolated');
+  return computeLocalPBASalaryUSD(pbaOvr, economy, player as any, currentSeason);
 }
 
 export type ContractLeagueStats = Pick<
@@ -165,6 +177,12 @@ export function computeContractOffer(
   }
   if (isPbaImportLike(player, leagueStats)) {
     salaryUSD = Math.max(salaryUSD, getPbaImportSalaryFloorUSD(salaryCapUSD, minSalaryUSD, maxContractUSD));
+  } else if (leagueStats.uiMode === 'pba_isolated') {
+    salaryUSD = computePbaLocalContractOfferUSD(
+      player,
+      leagueStats,
+      playerCurrentSeason || new Date().getFullYear(),
+    );
   }
   salaryUSD = Math.max(minSalaryUSD, salaryUSD);
 

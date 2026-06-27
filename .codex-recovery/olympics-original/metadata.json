@@ -1,0 +1,8 @@
+{
+  "name": "Olympic Games",
+  "description": "Watch your favorite stars compete for gold in a variety of Olympic events.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

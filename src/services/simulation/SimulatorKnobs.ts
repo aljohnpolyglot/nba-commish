@@ -367,26 +367,23 @@ export const KNOBS_EURO_CLUB_COMPETITION: SimulatorKnobs = {
 };
 
 /**
- * PBA — calibrated from real international data.
- * Serbia (BA-caliber) beat Philippines 126–67 in FIBA 40-min.
- * Japan beat Philippines 102–81. PBA style: inside-heavy (16.7% 3P vs Serbia),
- * low FG% (37.3% vs Serbia), physical with FTs, FT%: ~66-72%.
- * PBA cannot compete with NBA — no upset potential. Knobs set realistic style;
- * outcomes driven by pre-scaled attributes at 0.54×.
+ * PBA — tuned for league play, not FIBA mismatch games.
+ * Current reference shape: low-to-mid 100s scoring, slightly lower efficiency than
+ * NBA, physical whistle, moderate 3PA, and a low-volume but real 4-point line.
  */
 export const KNOBS_PBA: SimulatorKnobs = {
   ...KNOBS_PRESEASON,
   quarterLength:         12,    // NBA preseason uses NBA rules
-  paceMultiplier:        0.82,  // slow, methodical — not a high-pace league
-  efficiencyMultiplier:  0.83,  // FG% ~37-44% vs strong opposition
-  threePointRateMult:    0.72,  // inside-heavy but not allergic — real PBA team avg 15-22 3PA/game
+  paceMultiplier:        0.92,  // slightly slower than NBA, but not FIBA-mismatch slow
+  efficiencyMultiplier:  0.95,  // lower than NBA, still league-play realistic
+  threePointRateMult:    0.92,  // moderate volume; below NBA, above old inside-only preset
   fourPointAvailable:    true,
-  fourPointRateMult:     0.95,
-  fourPointEfficiencyMult: 0.92,
-  ftRateMult:            1.25,  // very physical → high FTA
-  ftEfficiencyMult:      0.92,  // FT% ~66-72% — below NBA average
-  tovMult:               1.10,  // more turnovers under pressure vs superior athletes
-  rotationDepthOverride: 12,
+  fourPointRateMult:     0.78,
+  fourPointEfficiencyMult: 0.88,
+  ftRateMult:            1.08,  // physical, but not extreme FIBA-upset whistle inflation
+  ftEfficiencyMult:      0.96,
+  tovMult:               1.03,
+  rotationDepthOverride: 11,
 };
 
 /** FIBA-style: 10-min quarters, no 3PT (hypothetical rule experiment). */

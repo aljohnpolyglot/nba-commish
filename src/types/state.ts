@@ -93,7 +93,7 @@ export interface GameState {
   leagueType?: 'fictional' | 'modded';
   moddedLeagueBase?: 'nba' | 'europe' | 'philippines';
   europeMarket?: 'spain';
-  pendingFAToasts?: { playerName: string; accepted: boolean; winnerTeamName?: string; annualM: number; years: number; rejectionReason?: string }[];
+  pendingFAToasts?: { playerName: string; accepted: boolean; winnerTeamName?: string; annualM: number; salaryUSD?: number; years: number; rejectionReason?: string }[];
   pendingTransferToasts?: { playerName: string; accepted: boolean; sellerTeamName: string; feeEUR: number; reason?: string; userInitiated?: boolean }[];
   pendingElimToast?: boolean;
   pendingInjuryToasts?: { playerName: string; injuryType: string; gamesRemaining: number; pos?: string; teamName?: string }[];
@@ -103,7 +103,7 @@ export interface GameState {
   pendingRecoveryToasts?: { playerName: string; teamName: string; pos: string }[];
   pendingAwardToasts?: { playerName: string; teamName: string; teamAbbrev: string; awardLabel: string }[];
   pendingPlayoffsToasts?: { teamName: string; body: string }[];
-  pendingOptionToasts?: { playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number }[];
+  pendingOptionToasts?: { playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number; amountUSD?: number }[];
   pendingDeathToasts?: { entityType: 'player' | 'staff'; playerName: string; teamName: string; roleLabel?: string; cause: string; deathType: 'natural' | 'tragic' }[];
   pendingDraftCombineToast?: { year: number } | null;
   draftCombineResultsAvailableYear?: number;

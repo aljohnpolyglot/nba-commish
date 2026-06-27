@@ -46,6 +46,8 @@ npm run dev
 
 **UI copy rule (June 5, 2026):** visible in-game text should describe the basketball meaning of a screen, not the app's data plumbing. Avoid provenance/process wording like "loaded from gist", "blended with your save", "synced", or "written into history" on player-facing surfaces.
 
+**PBA calendar status (June 11, 2026):** PBA isolated mode now uses compressed conference windows in both live scheduling and jumpstart. The long March-to-August Commissioner's Cup / September-to-December Governors' Cup placeholder timeline has been replaced by a tighter one-season flow.
+
 
 ## Architektur in einer Minute
 

@@ -29,6 +29,18 @@ export function dateForRound(season: number, month: number, day: number): string
   return new Date(Date.UTC(month >= 9 ? season - 1 : season, month - 1, day)).toISOString();
 }
 
+export function dateForCompetitionSeason(spec: CompetitionSpec, season: number, month: number, day: number): string {
+  if (!spec.id.startsWith('pba-')) return dateForRound(season, month, day);
+  const crossesCalendarYear =
+    spec.seasonStart.month > spec.seasonEnd.month ||
+    (spec.seasonStart.month === spec.seasonEnd.month && spec.seasonStart.day > spec.seasonEnd.day);
+  const onOrAfterStart =
+    month > spec.seasonStart.month ||
+    (month === spec.seasonStart.month && day >= spec.seasonStart.day);
+  const year = crossesCalendarYear && onOrAfterStart ? season - 1 : season;
+  return new Date(Date.UTC(year, month - 1, day)).toISOString();
+}
+
 export function matchesBoxScoreSeason(game: GameResult, season?: number): boolean {
   if (season == null) return true;
   if (typeof game.season === 'number') return game.season === season;
@@ -43,11 +55,13 @@ export function matchesScheduleSeason(game: Game, season: number): boolean {
   return Number.isFinite(year) && (year === season || year === season - 1);
 }
 
-export function roundStartDate(season: number, round: { start: { month: number; day: number } }): string {
+export function roundStartDate(season: number, round: { start: { month: number; day: number } }, spec?: CompetitionSpec): string {
+  if (spec) return dateForCompetitionSeason(spec, season, round.start.month, round.start.day);
   return dateForRound(season, round.start.month, round.start.day);
 }
 
-export function roundEndDate(season: number, round: { end: { month: number; day: number } }): string {
+export function roundEndDate(season: number, round: { end: { month: number; day: number } }, spec?: CompetitionSpec): string {
+  if (spec) return dateForCompetitionSeason(spec, season, round.end.month, round.end.day);
   return dateForRound(season, round.end.month, round.end.day);
 }
 
@@ -67,11 +81,11 @@ function playoffStartDateForSeason(spec: CompetitionSpec, season: number): strin
     entry.phase === 'final',
   );
   if (!round) return null;
-  return dateForRound(season, round.start.month, round.start.day).slice(0, 10);
+  return dateForCompetitionSeason(spec, season, round.start.month, round.start.day).slice(0, 10);
 }
 
 function seasonEndDateForSeason(spec: CompetitionSpec, season: number): string {
-  return dateForRound(season, spec.seasonEnd.month, spec.seasonEnd.day).slice(0, 10);
+  return dateForCompetitionSeason(spec, season, spec.seasonEnd.month, spec.seasonEnd.day).slice(0, 10);
 }
 
 function hasCompetitionSeasonMaterial(state: EuroSeasonCompletionState, spec: CompetitionSpec, season: number): boolean {
@@ -98,7 +112,7 @@ function hasCompetitionPostseasonMaterial(state: EuroSeasonCompletionState, spec
 }
 
 function isRegularSeasonPhase(phase?: string): boolean {
-  return !phase || phase === 'regular-season' || phase === 'regular';
+  return !phase || phase === 'regular-season' || phase === 'regular' || phase === 'group' || phase.startsWith('r');
 }
 
 function regularSeasonMaterialized(state: EuroSeasonCompletionState, spec: CompetitionSpec, season: number): boolean {

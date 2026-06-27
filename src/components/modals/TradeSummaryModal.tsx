@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { NBAPlayer, DraftPick, NBATeam } from '../../types';
 import { useGame } from '../../store/GameContext';
-import { normalizeDate } from '../../utils/helpers';
+import { formatCurrencyWithCode, getLeagueCurrencyCode, normalizeDate } from '../../utils/helpers';
 import { compareGameDates, getDraftDate, getTradeDeadlineDate, toISODateString } from '../../utils/dateUtils';
 import {
   calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV,
@@ -27,6 +27,7 @@ import { getMaxTradableSeason } from '../../services/draft/DraftPickGenerator';
 import { teamPowerRanks } from '../../services/trade/tradeFinderEngine';
 import { isPbaIsolatedMode } from '../../utils/uiMode';
 import { getActiveLeagueTeams, isOnRoster } from '../../utils/teamLookup';
+import { isPbaTradeWindowOpen } from '../../services/pba/tradeWindow';
 
 interface TradeSummaryModalProps {
   isOpen: boolean;
@@ -130,8 +131,12 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   const tradeDeadline = toISODateString(getTradeDeadlineDate(seasonYear, state.leagueStats));
   const draftDate = toISODateString(getDraftDate(seasonYear, state.leagueStats));
   const currentDateNorm = normalizeDate(state.date);
-  const isPastDeadline = compareGameDates(currentDateNorm, tradeDeadline) > 0
+  const nbaDeadlineClosed = !pbaMode
+    && compareGameDates(currentDateNorm, tradeDeadline) > 0
     && compareGameDates(currentDateNorm, draftDate) < 0;
+  const pbaTradeWindowClosed = pbaMode && !isPbaTradeWindowOpen(state);
+  const tradeWindowClosed = nbaDeadlineClosed || pbaTradeWindowClosed;
+  const currencyCode = getLeagueCurrencyCode(state.leagueStats);
 
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
 
@@ -215,10 +220,10 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
           </div>
 
           {/* Past Trade Deadline Banner */}
-          {isPastDeadline && (
+          {tradeWindowClosed && (
             <div className="px-4 py-2 border-b border-amber-500/20 bg-amber-500/10 text-amber-400 flex items-center gap-2">
               <Clock size={14} />
-              <span className="text-xs font-bold uppercase tracking-wide">Past Trade Deadline ({tradeDeadline})</span>
+              <span className="text-xs font-bold uppercase tracking-wide">{pbaTradeWindowClosed ? 'PBA Trade Window Closed' : `Past Trade Deadline (${tradeDeadline})`}</span>
             </div>
           )}
 
@@ -233,8 +238,8 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
               <div>
                 <div className="text-sm font-black">
                   {tradeIsValid
-                    ? isPastDeadline ? 'Salaries Match — Past Deadline' : 'Trade Valid'
-                    : isPastDeadline ? 'Past Deadline + Salary Mismatch' : 'Salary Mismatch'}
+                    ? tradeWindowClosed ? 'Trade Window Closed' : 'Trade Valid'
+                    : tradeWindowClosed ? 'Trade Window Closed + Salary Mismatch' : 'Salary Mismatch'}
                 </div>
                 {salaryMismatchInfo?.message && (
                   <div className="text-xs mt-0.5 opacity-80">{salaryMismatchInfo.message}</div>
@@ -246,10 +251,10 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
           {(tradeDetails.teamACashUSD || tradeDetails.teamBCashUSD) ? (
             <div className="px-4 py-2 border-b border-slate-800 bg-slate-900/30 flex items-center justify-between text-[11px] font-bold tracking-wide">
               <div className="text-emerald-300">
-                {tradeDetails.teamACashUSD ? `${teamA.abbrev} sends $${(tradeDetails.teamACashUSD / 1_000_000).toFixed(2)}M cash` : null}
+                {tradeDetails.teamACashUSD ? `${teamA.abbrev} sends ${formatCurrencyWithCode(tradeDetails.teamACashUSD, currencyCode, false)} cash` : null}
               </div>
               <div className="text-emerald-300">
-                {tradeDetails.teamBCashUSD ? `${teamB.abbrev} sends $${(tradeDetails.teamBCashUSD / 1_000_000).toFixed(2)}M cash` : null}
+                {tradeDetails.teamBCashUSD ? `${teamB.abbrev} sends ${formatCurrencyWithCode(tradeDetails.teamBCashUSD, currencyCode, false)} cash` : null}
               </div>
             </div>
           ) : null}
@@ -288,10 +293,10 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
 
           {/* Footer buttons */}
           <div className="p-4 border-t border-slate-800 bg-slate-900/50 rounded-b-2xl">
-            {isPastDeadline && (
+            {tradeWindowClosed && (
               <p className="text-amber-400/70 text-xs text-center mb-2">
                 {isGM
-                  ? 'Trade deadline has passed. No further trades can be made until the offseason.'
+                  ? pbaTradeWindowClosed ? 'PBA trades are closed during the current conference stage.' : 'Trade deadline has passed. No further trades can be made until the offseason.'
                   : tradeIsValid
                     ? 'Trade deadline has passed. Proceeding requires commissioner override.'
                     : 'Trade deadline has passed and salaries don\'t match. Force trade to override both.'}
@@ -301,7 +306,7 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
               <button onClick={onClose} className="px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest bg-slate-800 hover:bg-slate-700 text-white transition-colors">
                 Go Back
               </button>
-              {isGM && isPastDeadline ? (
+              {isGM && tradeWindowClosed ? (
                 // GM mode: no commissioner-style overrides, period. If the user
                 // reached this UI past the deadline, lock the action button so
                 // the league rule (no post-deadline trades) holds.
@@ -313,10 +318,10 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                   onClick={() => { if (submitting) return; setSubmitting(true); onConfirmTrade(); }}
                   disabled={submitting}
                   className={`px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest text-white transition-colors ${
-                    isPastDeadline ? 'bg-amber-600 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500'
+                    tradeWindowClosed ? 'bg-amber-600 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500'
                   } ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {isPastDeadline ? 'Override Deadline & Confirm' : 'Confirm Trade'}
+                  {tradeWindowClosed ? 'Override Trade Window & Confirm' : 'Confirm Trade'}
                 </button>
               ) : isGM ? (
                 <span className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-center text-[10px] font-black uppercase tracking-widest text-rose-300">
@@ -328,7 +333,7 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                   disabled={submitting}
                   className={`px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest bg-rose-600 hover:bg-rose-500 text-white transition-colors ${submitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {isPastDeadline ? 'Force Trade (Override All)' : 'Force Trade'}
+                  {tradeWindowClosed ? 'Force Trade (Override All)' : 'Force Trade'}
                 </button>
               )}
             </div>

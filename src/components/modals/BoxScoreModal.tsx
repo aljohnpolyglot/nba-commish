@@ -31,6 +31,16 @@ function isBoxScoreRosterPlayer(player: NBAPlayer, teamId: number): boolean {
   return status !== 'Retired' && status !== 'Free Agent' && status !== 'Draft Prospect' && status !== 'Prospect';
 }
 
+const collapseRepeatedLabel = (label?: string) => {
+  const parts = (label ?? '').trim().split(/\s+/).filter(Boolean);
+  for (let size = 1; size <= Math.floor(parts.length / 2); size += 1) {
+    if (parts.slice(0, size).join(' ').toLowerCase() === parts.slice(size, size * 2).join(' ').toLowerCase()) {
+      return parts.slice(0, size).join(' ');
+    }
+  }
+  return parts.join(' ');
+};
+
 export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
   game, result, homeTeam, awayTeam, players, onClose, onPlayerClick, onTeamClick, playoffs, schedule
 }) => {
@@ -59,18 +69,27 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
     return { homeLabel: `${homeSeriesW}`, awayLabel: `${awaySeriesW}`, sub };
   }, [game, playoffs, homeTeam, awayTeam]);
   const isIntraSquad = game.homeTid === game.awayTid;
-  const awayBaseName = getTeamFullName(awayTeam) || awayTeam.name;
-  const homeBaseName = getTeamFullName(homeTeam) || homeTeam.name;
+  const displayTeamName = (team: NBATeam) => collapseRepeatedLabel(team.id < 0 ? team.name : (getTeamFullName(team) || team.name));
+  const awayBaseName = displayTeamName(awayTeam);
+  const homeBaseName = displayTeamName(homeTeam);
   const awayDisplayName = isIntraSquad ? `${awayBaseName} B` : awayBaseName;
   const homeDisplayName = isIntraSquad ? `${homeBaseName} A` : homeBaseName;
   const awayAbbrevLabel = isIntraSquad ? `${awayTeam.abbrev} B` : awayTeam.abbrev;
   const homeAbbrevLabel = isIntraSquad ? `${homeTeam.abbrev} A` : homeTeam.abbrev;
   const datedRecords = useMemo(() => {
     if (seriesInfo) return null;
-    const targetSeason = result?.season ?? state.leagueStats?.year;
     const targetDate = normalizeDate(result?.date || game.date);
+    const inferredPbaSeason = (() => {
+      if (!String(game.competitionId ?? '').startsWith('pba-')) return null;
+      const [year, month] = targetDate.split('-').map(Number);
+      if (!Number.isFinite(year) || !Number.isFinite(month)) return null;
+      return month >= 10 ? year + 1 : year;
+    })();
+    const targetSeason = result?.season ?? (game as any).season ?? inferredPbaSeason ?? state.leagueStats?.year;
     const currentPhase = String((game as any).competitionPhase ?? '').toLowerCase();
-    const isCompetitionRegular = !game.competitionId || ['group', 'league', 'regular'].includes(currentPhase);
+    const isRegularCompetitionPhase = (phase: string) =>
+      ['group', 'league', 'regular', 'regular-season'].includes(phase) || phase.startsWith('r');
+    const isCompetitionRegular = !game.competitionId || isRegularCompetitionPhase(currentPhase);
     const isStandingsGame = !game.isPreseason && !game.isPlayoff && !game.isPlayIn && !(result as any)?.excludeFromRecord && isCompetitionRegular;
     if (!isStandingsGame) return null;
 
@@ -94,9 +113,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
         const excludeFromRecord = box.excludeFromRecord === true || (scheduleGame as any)?.excludeFromRecord === true;
         if (excludeFromRecord) return false;
         if (scheduleGame?.isPreseason || scheduleGame?.isPlayoff || scheduleGame?.isPlayIn) return false;
-        if (game.competitionId) {
-          return boxCompetitionId === game.competitionId && ['group', 'league', 'regular'].includes(boxPhase);
-        }
+        if (game.competitionId) return boxCompetitionId === game.competitionId && isRegularCompetitionPhase(boxPhase);
         return !boxCompetitionId;
       })
       .sort((a: any, b: any) => {
@@ -144,7 +161,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
     // Prefer threaded-through logoUrl whenever present.
     if (team.logoUrl) {
       const sizeCls = team.id < 0 ? 'w-16 h-16 md:w-24 md:h-24' : 'w-12 h-12 md:w-24 md:h-24';
-      return <img src={team.logoUrl} alt={getTeamFullName(team) || team.name} className={`${sizeCls} object-contain drop-shadow-2xl group-hover:scale-110 transition-transform`} referrerPolicy="no-referrer" />;
+      return <img src={team.logoUrl} alt={displayTeamName(team)} className={`${sizeCls} object-contain drop-shadow-2xl group-hover:scale-110 transition-transform`} referrerPolicy="no-referrer" />;
     }
     if (team.id < 0) {
       const { cls, label } = FAKE_TEAM_STYLES[classifyFakeTeam(team)];

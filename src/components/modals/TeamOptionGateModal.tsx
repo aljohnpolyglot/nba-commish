@@ -2,6 +2,7 @@ import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Bot, CheckCircle, Eye, X } from 'lucide-react';
 import type { NBAPlayer } from '../../types';
+import { formatContractUSD } from '../../utils/salaryUtils';
 
 interface TeamOptionGateModalProps {
   isOpen: boolean;
@@ -65,7 +66,7 @@ export const TeamOptionGateModal: React.FC<TeamOptionGateModalProps> = ({
                   <div key={p.internalId} className="px-3 py-2 flex items-center justify-between gap-3 text-sm">
                     <span className="font-bold text-white truncate flex-1">{p.name}</span>
                     <span className="text-emerald-300 tabular-nums shrink-0">
-                      ${(((p.contract?.amount ?? 0) * 1000) / 1_000_000).toFixed(1)}M
+                      {formatContractUSD((p.contract?.amount ?? 0) * 1000)}
                     </span>
                     {(onExerciseOne || onDeclineOne) && (
                       decided ? (

@@ -12,6 +12,7 @@ import {
   scaleRatings,
 } from './externalRosterService.shared';
 import { attachPbaStaffToTeam } from './pba/staffSources';
+import { getPbaRosterPortrait } from './pba/portraits';
 
 export const fetchEuroleagueRoster = async (): Promise<{ players: NBAPlayer[], teams: NonNBATeam[] }> => {
   console.log('RosterService: Fetching Euroleague roster (euroleagueratings + euroleaguebio + teamdata)...');
@@ -194,7 +195,7 @@ export const fetchPBARoster = async (economy: PBAEconomyConfig): Promise<{ playe
             overallRating: pbaOvr,
             ratings: scaledRatings,
             stats: item.stats || [],
-            imgURL: resolveImgURL(item.imgURL),
+            imgURL: resolveImgURL(item.imgURL) ?? getPbaRosterPortrait(playerName),
             pos: item.pos || 'GF',
             hgt: item.hgt,
             weight: item.weight,
@@ -210,9 +211,10 @@ export const fetchPBARoster = async (economy: PBAEconomyConfig): Promise<{ playe
             }),
             injury: item.injury || { type: 'Healthy', gamesRemaining: 0 },
             status: 'PBA',
+            pbaLocalEligible: true,
             hof: false,
             jerseyNumber: extractJerseyNumber(item),
-          });
+          } as NBAPlayer);
         } else {
           skippedNoName++;
         }

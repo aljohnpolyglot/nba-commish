@@ -1,5 +1,5 @@
 import { NBAPlayer as Player, NBATeam as Team } from '../../types';
-import { getGameplan } from '../../store/gameplanStore';
+import { clearGameplan, getGameplan } from '../../store/gameplanStore';
 import { getIdealRotation, reconcileIdealMinutes } from '../../store/idealRotationStore';
 import { MinutesPlayedService } from './MinutesPlayedService';
 import { SimulatorKnobs, isEuroClubCompetitionGame } from './SimulatorKnobs';
@@ -65,6 +65,16 @@ function applyOrder(rotation: Player[], starterIds?: string[], benchOrder?: stri
   return [...starters, ...orderedBench];
 }
 
+function isClearlyBrokenSavedPlan(rotation: Player[], minuteTargets: number[]): boolean {
+  if (rotation.length < 5 || minuteTargets.length < 5) return false;
+  const starterMinutes = minuteTargets.slice(0, 5);
+  const benchMinutes = minuteTargets.slice(5);
+  const veryLowStarters = starterMinutes.filter(value => value < 6).length;
+  const lowStarters = starterMinutes.filter(value => value < 12).length;
+  const playableBench = benchMinutes.filter(value => value >= 18).length;
+  return veryLowStarters >= 2 || (lowStarters >= 3 && playableBench >= 2);
+}
+
 export function resolveRotationPlan(
   team: Team,
   allPlayers: Player[],
@@ -94,6 +104,7 @@ export function resolveRotationPlan(
   const savedPlan = overridePlayers ? null : getGameplan(team.id);
   const idealPlan = overridePlayers ? null : getIdealRotation(team.id);
   const useIdeal = !!idealPlan?.locked;
+  const autoRotation = rotation;
 
   rotation = applyOrder(
     rotation,
@@ -123,9 +134,30 @@ export function resolveRotationPlan(
       const value = savedPlan.minuteOverrides[player.internalId];
       return typeof value === 'number' ? value : baseMinutes[index];
     });
+    const normalized = normalizeMinutes(overridden, targetTotal);
+    if (isClearlyBrokenSavedPlan(rotation, normalized)) {
+      clearGameplan(team.id);
+      const { minutes: autoMinutes } = MinutesPlayedService.allocateMinutes(
+        autoRotation,
+        season,
+        lead,
+        0,
+        knobs.starMpgOverride ?? rotResult.starMpgTarget,
+        !!knobs.isPlayoffs,
+        knobs.quarterLength,
+        overtimeDuration,
+        numQuarters,
+        minuteProfile,
+      );
+      return {
+        rotation: autoRotation,
+        minuteTargets: autoMinutes,
+        starMpgTarget: rotResult.starMpgTarget,
+      };
+    }
     return {
       rotation,
-      minuteTargets: normalizeMinutes(overridden, targetTotal),
+      minuteTargets: normalized,
       starMpgTarget: rotResult.starMpgTarget,
     };
   }

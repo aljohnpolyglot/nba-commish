@@ -4,6 +4,19 @@ import { simulateGames } from '../simulationService';
 import { getAllStarWeekendDates } from '../allStar/AllStarWeekendOrchestrator';
 import { computeClinchStatus } from '../../utils/standingsUtils';
 
+const isAllStarWeekendEventGame = (game: Game): boolean =>
+    !!(
+        game.isAllStar ||
+        game.isRisingStars ||
+        game.isCelebrityGame ||
+        game.isDunkContest ||
+        game.isThreePointContest ||
+        (game as any).isShootingStars ||
+        (game as any).isSkillsChallenge ||
+        (game as any).isHorseContest ||
+        game.isThroneEvent
+    );
+
 export const simulateDayGames = async (state: GameState, watchedGameResult?: any, riggedForTid?: number, onGame?: (result: any) => void): Promise<{ teams: NBATeam[], schedule: Game[], results: any[], headToHead?: HeadToHead }> => {
     const dates = getAllStarWeekendDates(state.leagueStats.year);
     const usesNbaAllStarBreak = state.leagueStats?.uiMode !== 'euro_isolated' && state.leagueStats?.uiMode !== 'pba_isolated';
@@ -34,6 +47,7 @@ export const simulateDayGames = async (state: GameState, watchedGameResult?: any
         ? gamesToday.filter(g => g.isAllStar || g.isRisingStars || g.isPlayoff || g.isPlayIn)
         : gamesToday
     ).filter(g => {
+        if (g.gid !== watchedGameId && isAllStarWeekendEventGame(g)) return false;
         // Cup TBD placeholders are not real games — they get materialized into
         // QF/RS games when the group stage resolves. If a TBD slot reaches its
         // own date without being converted (e.g. group stage didn't finish in

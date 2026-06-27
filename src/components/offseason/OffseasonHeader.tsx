@@ -197,14 +197,14 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
     preseasonFriendlies: 'Review Tune-Ups',
     hofCeremony: 'Attend Ceremony',
     trainingCamp: state.leagueStats?.uiMode === 'euro_isolated' ? 'Finish Camp' : 'Open Training Camp',
-    pbaDraft: 'Run PBA Draft',
+    pbaDraft: state.offseasonChecklist?.pbaDraft === 'in-progress' ? 'Resume PBA Draft' : 'Run PBA Draft',
     pbaLocalFreeAgency: 'Enter Free Agency',
     pbaImportSearch: 'Search Imports',
     pbaImportDecision: 'Decide Import',
     pbaMuseSelection: 'Choose Muse',
     pbaOpeningCeremony: 'Watch Opening',
     pbaAllStarWeekend: 'All-Star Weekend',
-    pbaConferenceAwards: 'View Awards',
+    pbaConferenceAwards: 'Review Season',
   };
   const label = labelForRow[currentRow];
 
@@ -248,7 +248,7 @@ export const OffseasonNextActionButton: React.FC<NextActionButtonProps> = ({ set
     } else if (currentRow === 'hofCeremony') {
       simIfBefore(getHOFCeremonyDateString(getOffseasonCalendarYear(state)));
     }
-    if (currentRow === 'pbaImportDecision' || currentRow === 'pbaOpeningCeremony' || currentRow === 'pbaAllStarWeekend') {
+    if (currentRow === 'pbaImportDecision' || currentRow === 'pbaOpeningCeremony') {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: currentRow } } as any);
       return;
     }

@@ -159,9 +159,15 @@ export function usePlayerStatsDerivedData({
       if (boxScoreStatsByPlayer || externalStatsByPlayer) {
         const archiveStats = (phase === 'playoffs' ? [] : externalStatsByPlayer?.get(player.internalId) ?? []);
         const boxStats = boxScoreStatsByPlayer?.get(player.internalId) ?? [];
-        const boxSeasons = new Set(boxStats.map(stat => stat.season));
+        const statKey = (stat: NBAGMStat) => [
+          stat.season,
+          stat.tid,
+          stat.playoffs ? 1 : 0,
+          (stat as any).competitionId ?? (stat as any)._archiveCompetitionId ?? '',
+        ].join('|');
+        const boxKeys = new Set(boxStats.map(statKey));
         const stats = [
-          ...archiveStats.filter(stat => !boxSeasons.has(stat.season)),
+          ...archiveStats.filter(stat => !boxKeys.has(statKey(stat))),
           ...boxStats,
         ];
         if (!stats.length) continue;

@@ -29,12 +29,32 @@ const SigningModal: React.FC<SigningModalProps> = props => {
     return (
       <SigningModalOverLimitOverlay
         action={modal.overLimitAction}
+        guaranteedCount={modal.guaranteedCount}
+        maxGuaranteed={modal.maxGuaranteed}
         onCancel={() => modal.setOverLimitAction(null)}
         onContinue={action => {
           modal.setOverLimitAction(null);
           if (action === 'sign') modal.submitSigning(true);
           else modal.setShowResponse(true);
         }}
+      />
+    );
+  }
+
+  if (!modal.pbaSigningGate.allowed && modal.pbaSigningGate.reason) {
+    return (
+      <SigningModalPreflightOverlay
+        autoAccept={false}
+        onAcknowledge={modal.onClose}
+        onForce={() => {}}
+        player={modal.player}
+        playerFace={modal.playerFace}
+        portraitFallback={modal.portraitFallback}
+        preflightMessage={{
+          title: 'Import Not Eligible',
+          body: modal.pbaSigningGate.reason,
+        }}
+        teamColors={modal.teamColors}
       />
     );
   }
@@ -204,6 +224,7 @@ const SigningModal: React.FC<SigningModalProps> = props => {
             portraitFallback={modal.portraitFallback}
             realAge={modal.realAge}
             seasonYear={modal.seasonYear}
+            state={modal.state}
             team={modal.team}
             teamColors={modal.teamColors}
           />
@@ -278,7 +299,7 @@ const SigningModal: React.FC<SigningModalProps> = props => {
                   initialOffer={modal.initialOffer}
                   mle={modal.mle}
                   money={modal.money}
-                  playerOverallRating={modal.player.overallRating}
+                  playerOverallRating={modal.scoutedPlayerOverall}
                   teamPayroll={modal.teamPayroll}
                   thresholds={modal.thresholds}
                 />

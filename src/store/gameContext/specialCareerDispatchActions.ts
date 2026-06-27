@@ -20,7 +20,7 @@ import {
   initialPbaInterConferenceChecklist,
   initialPbaEndOfSeasonChecklist,
 } from '../../services/offseason/offseasonState';
-import { getNextConference, type PbaConference } from '../../services/pba/conferenceTransition';
+import { getConferenceStartIso, getNextConference, type PbaConference } from '../../services/pba/conferenceTransition';
 import {
   buildSetupSponsorships,
   EURO_TRANSFER_MARKET_DEFAULTS,
@@ -68,11 +68,17 @@ export async function handleSpecialCareerDispatchAction({
   }
 
   if (action.type === 'INIT_PBA_CAREER') {
-    const { teamId } = action.payload as { teamId: number };
+    const { teamId, startDate, assistantGM } = action.payload as {
+      teamId: number;
+      startDate?: string;
+      assistantGM?: boolean;
+    };
+    const initialSeasonYear = stateRef.current.leagueStats?.year ?? new Date().getFullYear() + 1;
+    const pbaStartIso = `${initialSeasonYear - 1}-10-05`;
     setState(prev => {
       const seasonYear = prev.leagueStats?.year ?? new Date().getFullYear() + 1;
       const signedYear = seasonYear - 1;
-      const pbaStartDate = `Oct 5, ${signedYear}`;
+      const pbaStartDate = getConferenceStartIso('philippine', seasonYear);
       const philCupSpec = PBA_COMPETITIONS[0];
       const source = { nonNBATeams: prev.nonNBATeams as any, userTeamId: teamId };
       const tids = selectCompetitionTeamTids(philCupSpec, source);
@@ -103,6 +109,20 @@ export async function handleSpecialCareerDispatchAction({
         isProcessing: false,
       };
     });
+    const targetStart = startDate ? normalizeDate(startDate) : null;
+    if (targetStart && targetStart > pbaStartIso) {
+      window.setTimeout(() => {
+        dispatchAction({
+          type: 'SIMULATE_TO_DATE',
+          payload: {
+            targetDate: targetStart,
+            stopBefore: true,
+            assistantGM: assistantGM === true,
+            autoResolveOffseasonTasks: true,
+          },
+        } as any);
+      }, 50);
+    }
     return { handled: true };
   }
 
@@ -121,7 +141,7 @@ export async function handleSpecialCareerDispatchAction({
       return {
         ...prev,
         leagueStats: { ...prev.leagueStats, pbaConferencePhase: 'offseason' },
-        offseasonChecklist: initialPbaInterConferenceChecklist(),
+        offseasonChecklist: initialPbaInterConferenceChecklist(current),
       };
     });
     return { handled: true };

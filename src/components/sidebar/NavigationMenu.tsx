@@ -14,6 +14,7 @@ import { Tab } from '../../types';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
 import { compareGameDates, getTradeDeadlineDate, getCurrentOffseasonEffectiveFAStart, getOpeningNightDate, getDraftDate, parseGameDate, toISODateString } from '../../utils/dateUtils';
 import { isNoDraftLeague } from '../../services/offseason/offseasonState';
+import { isPbaTradeWindowOpen } from '../../services/pba/tradeWindow';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
 import { userQualifiesForContinental } from '../../utils/euroLeagueDefaults';
 
@@ -60,6 +61,8 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
   const draftDate = toISODateString(getDraftDate(seasonYear, state.leagueStats));
   const isDraftDayOrLater = currentDateNorm >= draftDate;
   const isPastTradeDeadline = isGM && !finalsOver && !isDraftDayOrLater && currentDateNorm > tradeDeadline && currentDateNorm < faStart;
+  const pbaTradeWindowClosed = pbaIsolated && !isPbaTradeWindowOpen(state);
+  const tradeNavOpen = !tradesDisabled && !pbaTradeWindowClosed && (!isPastTradeDeadline || pbaIsolated);
   const isFreeAgencyPeriod = currentDateNorm >= faStart && currentDateNorm < faEnd;
   // Year-round regular-season FA: between opening night and next FA start
   const regularSeasonFAEnabled = state.leagueStats?.regularSeasonFAEnabled ?? true;
@@ -262,11 +265,11 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
         { id: 'NBA Central' as Tab,      label: labels.central,    icon: Trophy },
         { id: 'Standings' as Tab,        label: 'Standings',       icon: Table2 },
         { id: 'Transactions' as Tab,     label: 'Transactions',    icon: ArrowRightLeft },
-        ...(!tradesDisabled && !isPastTradeDeadline ? [
-          { id: 'Trade Machine' as Tab,    label: isPastTradeDeadline ? 'Trade Machine (Locked)' : 'Trade Machine',   icon: Cpu },
+        ...(tradeNavOpen ? [
+          { id: 'Trade Machine' as Tab,    label: !pbaIsolated && isPastTradeDeadline ? 'Trade Machine (Locked)' : 'Trade Machine',   icon: Cpu },
           { id: 'Trade Finder' as Tab,     label: 'Trade Finder',    icon: Search },
         ] : []),
-        ...(isGM && !tradesDisabled && !isPastTradeDeadline ? [{ id: 'Trade Proposals' as Tab, label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) }] : []),
+        ...(isGM && tradeNavOpen ? [{ id: 'Trade Proposals' as Tab, label: 'Trade Proposals', icon: GitPullRequest, badge: fmt(pendingTradesCount) }] : []),
         { id: 'Player Search' as Tab,    label: 'Player Search',   icon: Search },
         { id: 'Player Bios' as Tab,        label: 'Player Bios',       icon: Users },
         { id: 'Player Comparison' as Tab,  label: 'Player Comparison', icon: ArrowLeftRight },
@@ -325,7 +328,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ currentView, onV
           { id: 'League Settings' as Tab,  label: 'League Settings', icon: Settings2 },
           { id: 'Broadcasting' as Tab,     label: 'Broadcasting',    icon: Tv, badge: broadcastingBadge },
         ] : []),
-        { id: 'League Finances' as Tab,  label: 'Team Finances',   icon: DollarSign },
+        ...(!pbaIsolated ? [{ id: 'League Finances' as Tab, label: 'Team Finances', icon: DollarSign }] : []),
       ],
     },
     ...(!isGM ? [

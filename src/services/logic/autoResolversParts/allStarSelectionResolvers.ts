@@ -1,27 +1,60 @@
 import type { GameState } from '../../../types';
 import {
   backfillPbaAllStarAwards,
+  buildPbaAllStarLeagueStats,
   buildPbaAllStarPatch,
   buildPbaContestPatch,
+  emptyPbaAllStarState,
+  hasReachedPbaAllStarContestAnnouncement,
+  hasReachedPbaAllStarRosterAnnouncement,
+  isPbaAllStarStateLocal,
 } from '../../pba/allStar';
 
 const skipIsolatedNonNbaAllStar = (state: GameState) =>
   state.leagueStats?.uiMode === 'euro_isolated';
 
 const buildPbaAllStarSelection = async (state: GameState): Promise<Partial<GameState>> => {
-  return buildPbaAllStarPatch(state, state.players) ?? {};
+  const leagueStats = buildPbaAllStarLeagueStats(state.leagueStats);
+  const stateForPba = { ...state, leagueStats } as GameState;
+  if (!hasReachedPbaAllStarRosterAnnouncement(stateForPba)) {
+    return {
+      leagueStats,
+      allStar: emptyPbaAllStarState(leagueStats.year) as any,
+    };
+  }
+  const patch = buildPbaAllStarPatch(stateForPba, state.players);
+  return {
+    ...(patch ?? {}),
+    leagueStats,
+  };
 };
 
 const buildPbaContestSelection = async (state: GameState): Promise<Partial<GameState>> => {
-  const basePatch: Partial<Pick<GameState, 'players' | 'allStar'>> = state.allStar?.reservesAnnounced
+  const leagueStats = buildPbaAllStarLeagueStats(state.leagueStats);
+  const stateForPba = { ...state, leagueStats } as GameState;
+  if (!hasReachedPbaAllStarRosterAnnouncement(stateForPba)) {
+    return {
+      leagueStats,
+      allStar: emptyPbaAllStarState(leagueStats.year) as any,
+    };
+  }
+  const basePatch: Partial<Pick<GameState, 'players' | 'allStar'>> = stateForPba.allStar?.reservesAnnounced && isPbaAllStarStateLocal(stateForPba, stateForPba.allStar)
     ? {}
-    : buildPbaAllStarPatch(state, state.players) ?? {};
+    : buildPbaAllStarPatch(stateForPba, stateForPba.players) ?? {};
   const players = basePatch.players ?? state.players;
   const allStar = (basePatch.allStar ?? state.allStar) as any;
-  if (!allStar?.reservesAnnounced) return basePatch;
+  if (!allStar?.reservesAnnounced) {
+    return {
+      ...basePatch,
+      leagueStats,
+    };
+  }
   return {
     ...basePatch,
-    allStar: buildPbaContestPatch({ ...state, players, allStar } as GameState, players, allStar),
+    leagueStats,
+    allStar: hasReachedPbaAllStarContestAnnouncement({ ...stateForPba, players, allStar } as GameState)
+      ? buildPbaContestPatch({ ...stateForPba, players, allStar } as GameState, players, allStar)
+      : allStar,
   };
 };
 
@@ -344,3 +377,55 @@ export function backfillAllStarAwards(state: GameState): Partial<GameState> {
   });
   return { players: updatedPlayers };
 }
+
+const asBackgroundNbaAllStarState = (state: GameState): GameState => ({
+  ...state,
+  leagueStats: { ...state.leagueStats, uiMode: 'nba' } as any,
+  allStar: (state as any).backgroundNbaAllStar,
+});
+
+const remapBackgroundNbaAllStarPatch = (state: GameState, patch: Partial<GameState>): Partial<GameState> => {
+  if (!patch || Object.keys(patch).length === 0) return {};
+  const next: any = { ...patch };
+  if ('allStar' in next) {
+    next.backgroundNbaAllStar = next.allStar;
+    delete next.allStar;
+  }
+  if ('leagueStats' in next) {
+    next.leagueStats = state.leagueStats;
+  }
+  return next;
+};
+
+const runBackgroundNbaAllStarResolver = async (
+  state: GameState,
+  resolver: (state: GameState) => Promise<Partial<GameState>> | Partial<GameState>,
+): Promise<Partial<GameState>> => {
+  if (state.leagueStats?.uiMode !== 'pba_isolated') return {};
+  const patch = await resolver(asBackgroundNbaAllStarState(state));
+  return remapBackgroundNbaAllStarPatch(state, patch);
+};
+
+export const autoSimBackgroundNbaVotes = (state: GameState): Promise<Partial<GameState>> =>
+  runBackgroundNbaAllStarResolver(state, autoSimVotes);
+
+export const autoAnnounceBackgroundNbaStarters = (state: GameState): Promise<Partial<GameState>> =>
+  runBackgroundNbaAllStarResolver(state, autoAnnounceStarters);
+
+export const autoAnnounceBackgroundNbaReserves = (state: GameState): Promise<Partial<GameState>> =>
+  runBackgroundNbaAllStarResolver(state, autoAnnounceReserves);
+
+export const autoSelectBackgroundNbaDunkContestants = (state: GameState): Promise<Partial<GameState>> =>
+  runBackgroundNbaAllStarResolver(state, autoSelectDunkContestants);
+
+export const autoSelectBackgroundNbaThreePointContestants = (state: GameState): Promise<Partial<GameState>> =>
+  runBackgroundNbaAllStarResolver(state, autoSelectThreePointContestants);
+
+export const autoSelectBackgroundNbaShootingStarsContestants = (state: GameState): Promise<Partial<GameState>> =>
+  runBackgroundNbaAllStarResolver(state, autoSelectShootingStarsContestants);
+
+export const autoSelectBackgroundNbaSkillsChallengeContestants = (state: GameState): Promise<Partial<GameState>> =>
+  runBackgroundNbaAllStarResolver(state, autoSelectSkillsChallengeContestants);
+
+export const backfillBackgroundNbaAllStarAwards = (state: GameState): Promise<Partial<GameState>> =>
+  runBackgroundNbaAllStarResolver(state, backfillAllStarAwards);

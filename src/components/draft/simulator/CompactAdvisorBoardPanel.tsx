@@ -8,8 +8,10 @@ import { useGame } from '../../../store/GameContext';
 import { calcOvr2K, calcPot2K, type TeamMode } from '../../../services/trade/tradeValueEngine';
 import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2, resolveManualOutlook } from '../../../utils/salaryUtils';
 import { getLsYear } from '../../../utils/leagueYear';
-import { fuzzRatingValue } from '../../../utils/scoutingFuzz';
-import { isOnRoster } from '../../../utils/teamLookup';
+import { fuzzDraftRatingValue } from '../../../utils/scoutingFuzz';
+import { isOnRoster, resolveAnyTeam } from '../../../utils/teamLookup';
+import { isPbaIsolatedMode } from '../../../utils/uiMode';
+import { getPbaDraftPool, tunePbaDraftProspects } from '../../../services/pba/draftRules';
 
 interface CompactAdvisorBoardProps {
   teamId: number;
@@ -18,7 +20,8 @@ interface CompactAdvisorBoardProps {
 
 export const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ teamId, draftedIds }) => {
   const { state } = useGame();
-  const team = state.teams.find(t => t.id === teamId);
+  const pbaMode = isPbaIsolatedMode(state);
+  const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const currentYear = getLsYear(state);
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
 
@@ -71,17 +74,21 @@ export const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ t
   }, [state.players, teamId]);
 
   const prospects = useMemo(() => {
-    return state.players
-      .filter(p => p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect')
-      .filter(p => {
-        const draftYear = (p as any).draft?.year;
-        return draftYear == null || Number(draftYear) === currentYear;
-      })
+    const tunedPlayers = pbaMode ? tunePbaDraftProspects(state.players, currentYear, state.leagueStats) : state.players;
+    const pool = pbaMode
+      ? getPbaDraftPool(tunedPlayers, currentYear, state.leagueStats)
+      : tunedPlayers
+        .filter(p => p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect')
+        .filter(p => {
+          const draftYear = (p as any).draft?.year;
+          return draftYear == null || Number(draftYear) === currentYear;
+        });
+    return pool
       .map(p => {
         const baseOvr = calcOvr2K(p);
         const basePot = calcPot2K(p, currentYear);
-        const ovr = fuzzRatingValue(baseOvr, state, p, 'compact-board-ovr');
-        const pot = fuzzRatingValue(basePot, state, p, 'compact-board-pot');
+        const ovr = fuzzDraftRatingValue(baseOvr, state, p, 'ovr');
+        const pot = fuzzDraftRatingValue(basePot, state, p, 'pot');
         const pos = p.pos ?? 'F';
         const posGroup = pos.includes('G') || pos === 'PG' || pos === 'SG' ? 'Guard'
           : pos.includes('C') || pos === 'FC' ? 'Center' : 'Forward';
@@ -96,7 +103,7 @@ export const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ t
       })
       .sort((a, b) => b.score - a.score)
       .slice(0, 12);
-  }, [state.players, currentYear, teamMode, weakPositions]);
+  }, [currentYear, pbaMode, state.leagueStats, state.players, teamMode, weakPositions, state]);
 
   const modeLabel = teamMode === 'contend' ? 'Win-Now' : teamMode === 'presti' ? 'Future' : 'Balanced';
   const modeColor = teamMode === 'contend' ? 'text-emerald-400' : teamMode === 'presti' ? 'text-purple-400' : 'text-amber-400';

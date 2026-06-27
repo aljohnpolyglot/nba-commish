@@ -7,6 +7,7 @@ import { SettingsManager } from '../../services/SettingsManager';
 import { calcOvr2K, calcPot2K, getPotColor } from '../../services/trade/tradeValueEngine';
 import { formatPickLabel } from '../../services/draft/draftClassStrength';
 import type { DraftPick, NBAPlayer, NBATeam } from '../../types';
+import { getPlayerContractExpiryDisplay } from '../../utils/salaryUtils';
 
 const ovrTextColor = (v: number): string => {
   if (v >= 95) return 'text-violet-300';
@@ -96,7 +97,8 @@ export const PlayerRow = ({
   const apg = gp > 0 ? ((seasonStats!.ast ?? 0) / gp).toFixed(1) : '—';
   const ovr = calcOvr2K(player);
   const pot = calcPot2K(player, currentSeason ?? new Date().getFullYear());
-  const expClass = expiryTextClass(player.contract?.exp, currentSeason);
+  const expiry = getPlayerContractExpiryDisplay(player as any, currentSeason ?? new Date().getFullYear());
+  const expClass = expiry.isConferenceDeal ? 'text-amber-300' : expiryTextClass(player.contract?.exp, currentSeason);
   const rowRef = useRef<HTMLDivElement>(null);
   const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
 
@@ -137,7 +139,7 @@ export const PlayerRow = ({
       />
       <div className="flex-1 ml-4 min-w-0">
         <div className="text-sm font-black text-white truncate group-hover:text-blue-400 transition-colors">{player.name}</div>
-        <div className={`text-[10px] font-bold uppercase tracking-wider ${expClass}`}>{player.pos} • {player.contract?.exp} YRS</div>
+        <div className={`text-[10px] font-bold uppercase tracking-wider ${expClass}`}>{player.pos} • {expiry.label}</div>
         {moratoriumLockedUntil && (
           <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-amber-300">
             Moratorium until {moratoriumLockedUntil}
@@ -156,7 +158,7 @@ export const PlayerRow = ({
         </div>
         <div className="text-right">
           <div className="text-sm font-black text-white">{formatContract(player)}</div>
-          <div className={`text-[10px] font-bold ${expClass}`}>{player.contract?.exp} YRS LEFT</div>
+          <div className={`text-[10px] font-bold ${expClass}`}>{expiry.isConferenceDeal ? 'Conference deal' : `${expiry.label} YRS LEFT`}</div>
         </div>
         <MoreVertical size={16} className="text-slate-600 group-hover:text-slate-400" />
       </div>

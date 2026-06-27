@@ -31,6 +31,9 @@ import {
 import { getGameDateParts } from '../../../utils/dateUtils';
 import { tradeRoleToTeamMode } from '../../../utils/teamStrategy';
 import { AwardService } from '../../../services/logic/AwardService';
+import { getPbaTradeTeams } from '../../../services/pba/tradeWindow';
+import { isOnRoster } from '../../../utils/teamLookup';
+import { isPbaIsolatedMode } from '../../../utils/uiMode';
 
 // ── Status tab pill ──────────────────────────────────────────────────────────
 
@@ -144,8 +147,20 @@ function buildMyItemsFromProposal(
 
 export const TradeProposalsView: React.FC = () => {
   const { state, dispatchAction } = useGame();
-  const { players, teams, draftPicks = [] } = state;
+  const { players: rawPlayers, teams: rawTeams, draftPicks = [] } = state;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const pbaMode = isPbaIsolatedMode(state);
+  const teams = useMemo(
+    () => pbaMode ? getPbaTradeTeams(state) : rawTeams,
+    [pbaMode, rawTeams, state.nonNBATeams, state.userTeamId, state.leagueStats],
+  );
+  const teamIds = useMemo(() => new Set(teams.map(team => team.id)), [teams]);
+  const players = useMemo(
+    () => pbaMode
+      ? rawPlayers.filter(player => teamIds.has(Number(player.tid)) && isOnRoster(player))
+      : rawPlayers,
+    [pbaMode, rawPlayers, teamIds],
+  );
 
   const userTid = (state as any).userTeamId;
   const [statusFilter, setStatusFilter] = React.useState<TradeProposal['status'] | ''>('');
@@ -174,11 +189,11 @@ export const TradeProposalsView: React.FC = () => {
       if (pr.status !== 'pending') return false;
       for (const pid of pr.playersOffered) {
         const pl = byId.get(pid);
-        if (!pl || pl.tid !== pr.proposingTeamId || pl.status !== 'Active') return true;
+        if (!pl || pl.tid !== pr.proposingTeamId || !isOnRoster(pl)) return true;
       }
       for (const pid of pr.playersRequested) {
         const pl = byId.get(pid);
-        if (!pl || pl.tid !== pr.receivingTeamId || pl.status !== 'Active') return true;
+        if (!pl || pl.tid !== pr.receivingTeamId || !isOnRoster(pl)) return true;
       }
       return false;
     });
@@ -213,8 +228,8 @@ export const TradeProposalsView: React.FC = () => {
     [players, currentYear, state.leagueStats?.tradableDraftPickSeasons],
   );
   const lotterySlotByTid = useMemo(
-    () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
-    [(state as any).draftLotteryResult, state.teams],
+    () => buildFullDraftSlotMap((state as any).draftLotteryResult, teams),
+    [(state as any).draftLotteryResult, teams],
   );
   const powerRanks = useMemo(
     () => teamPowerRanks(teams, currentYear),
@@ -224,8 +239,9 @@ export const TradeProposalsView: React.FC = () => {
   // Conference standings for outlook computation (same approach as TradeFinderView).
   const confStandings = useMemo(() => {
     const map = new Map<number, { confRank: number; gbFromLeader: number }>();
-    for (const conf of ['East', 'West']) {
-      const confTeams = teams.filter(t => t.conference === conf).map(t => ({
+    const groups = Array.from(new Set(teams.map(t => String(t.conference ?? '').trim()).filter(Boolean)));
+    for (const conf of groups.length > 0 ? groups : ['']) {
+      const confTeams = teams.filter(t => (String(t.conference ?? '').trim() || '') === conf).map(t => ({
         t, rec: effectiveRecord(t, currentYear),
       })).sort((a, b) => (b.rec.wins - b.rec.losses) - (a.rec.wins - a.rec.losses));
       const leader = confTeams[0];

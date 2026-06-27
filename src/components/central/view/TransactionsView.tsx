@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRightLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
@@ -22,18 +22,28 @@ import {
 import { getOwnTeamId } from '../../../utils/helpers';
 import { getDomesticPlayerStatus } from '../../../utils/euroLeagueDefaults';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
 
 export const TransactionsView: React.FC = () => {
   const { state } = useGame();
   const ownTid = getOwnTeamId(state);
-  const ownTeam = ownTid !== null ? state.teams.find(team => team.id === ownTid) ?? null : null;
+  const allTeams = useMemo(() => {
+    const resolvedNonNBA = ((state as any).nonNBATeams ?? [])
+      .map((team: any) => resolveAnyTeam(Number(team?.tid ?? team?.id), state.teams, (state as any).nonNBATeams ?? []))
+      .filter((team: any) => team && !(state.teams ?? []).some(nbaTeam => nbaTeam.id === team.id));
+    return [...(state.teams ?? []), ...resolvedNonNBA];
+  }, [state.teams, (state as any).nonNBATeams]);
+  const ownTeam = ownTid !== null
+    ? (allTeams.find((team: any) => Number(team?.id ?? team?.tid) === ownTid) as any) ?? null
+    : null;
   const getDefaultFilterLeague = (): LeagueFilter => {
     if (isPbaIsolatedMode(state)) return 'PBA';
     const domestic = getDomesticPlayerStatus(state as any);
     return isEuroIsolatedMode(state) && domestic && EXTERNAL_LEAGUES.includes(domestic as any) ? domestic as LeagueFilter : 'nba';
   };
+  const defaultFilterLeague = getDefaultFilterLeague();
 
-  const [filterLeague, setFilterLeague] = useState<LeagueFilter>(getDefaultFilterLeague);
+  const [filterLeague, setFilterLeague] = useState<LeagueFilter>(defaultFilterLeague);
   const [filterType, setFilterType] = useState('');
   const [filterTeam, setFilterTeam] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
@@ -43,10 +53,16 @@ export const TransactionsView: React.FC = () => {
   const [selectedTrade, setSelectedTrade] = useState<{ text: string; date: string; legs?: { text: string; date: string }[] } | null>(null);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(30);
+  const lastDefaultLeagueRef = useRef<LeagueFilter>(defaultFilterLeague);
 
   useEffect(() => {
     setSelectedYear(state.leagueStats?.year ?? new Date().getFullYear());
   }, [state.leagueStats?.year]);
+
+  useEffect(() => {
+    setFilterLeague(previous => previous === lastDefaultLeagueRef.current ? defaultFilterLeague : previous);
+    lastDefaultLeagueRef.current = defaultFilterLeague;
+  }, [defaultFilterLeague]);
 
   const availableYears = useMemo(() => {
     const set = new Set<number>();
@@ -65,6 +81,11 @@ export const TransactionsView: React.FC = () => {
     state.players.forEach(player => map.set(player.name.toLowerCase(), player));
     return map;
   }, [state.players]);
+  const playerById = useMemo(() => {
+    const map = new Map<string, typeof state.players[0]>();
+    state.players.forEach(player => map.set(player.internalId, player));
+    return map;
+  }, [state.players]);
 
   const enrichedHistory = useMemo<EnrichedEntry[]>(() => (
     [...(state.history || [])]
@@ -76,34 +97,51 @@ export const TransactionsView: React.FC = () => {
       .map(raw => {
         const entry = typeof raw === 'string' ? { text: raw, date: state.date, type: 'League Event' } : raw as { text: string; date: string; type?: string };
         const text = normalizePersonnelRoleText(entry.text || '');
+        const player = Array.isArray((entry as any).playerIds)
+          ? ((entry as any).playerIds as string[])
+            .map(playerId => playerById.get(playerId))
+            .find(Boolean) ?? null
+          : null;
+        const team = Number.isFinite(Number((entry as any).tid))
+          ? allTeams.find((candidate: any) => Number(candidate?.id ?? candidate?.tid) === Number((entry as any).tid)) ?? null
+          : null;
         return {
           ...entry,
           text,
           kind: detectType(text, entry.type),
-          team: findTeamInText(text, state.teams),
-          player: findPlayerInText(text, playerByName),
+          league: (entry as any).league ?? (team as any)?.league,
+          team: team ?? findTeamInText(text, allTeams as any),
+          player: player ?? findPlayerInText(text, playerByName),
         };
       })
-  ), [playerByName, state.date, state.history, state.teams]);
+  ), [allTeams, playerById, playerByName, state.date, state.history]);
 
   const availableTeamsForFilter = useMemo(() => {
-    if (filterLeague === 'nba' || filterLeague === 'all') return state.teams;
-    return [];
-  }, [filterLeague, state.teams]);
+    if (filterLeague === 'all') return allTeams;
+    return allTeams.filter((team: any) => {
+      const teamId = Number(team?.id ?? team?.tid ?? -1);
+      const teamLeague = String(team?.league ?? team?.conference ?? '');
+      if (filterLeague === 'nba') return teamId >= 0 && teamId < 100;
+      return teamLeague === filterLeague;
+    });
+  }, [allTeams, filterLeague]);
 
   const filteredHistory = useMemo(() => enrichedHistory.filter(entry => {
     if (entry.kind === 'League Event') return false;
     const text = entry.text || '';
+    const looksLikePbaConferenceMove = /commissioner's cup|governors' cup|philippine cup/i.test(text);
     if (selectedYear && getSeasonYear(entry.date || '') !== selectedYear) return false;
     if (searchQuery && !text.toLowerCase().includes(searchQuery.toLowerCase())) return false;
 
     const entryLeague = (entry as any).league as string | undefined;
     if (filterLeague === 'nba') {
       if (entryLeague && EXTERNAL_LEAGUES.includes(entryLeague as any)) return false;
-      if (!entryLeague && EXTERNAL_LEAGUES.some(league => text.includes(league))) return false;
+      if (!entryLeague && (EXTERNAL_LEAGUES.some(league => text.includes(league)) || looksLikePbaConferenceMove)) return false;
     } else if (filterLeague !== 'all') {
       if (entryLeague) {
         if (entryLeague !== filterLeague) return false;
+      } else if (filterLeague === 'PBA') {
+        if (!looksLikePbaConferenceMove && !text.includes(filterLeague)) return false;
       } else if (!text.includes(filterLeague)) {
         return false;
       }
@@ -112,17 +150,25 @@ export const TransactionsView: React.FC = () => {
     if (filterType) {
       const lowered = text.toLowerCase();
       if (filterType === 'AwardOnWaivers') { if (!lowered.includes('claimed off waivers')) return false; }
-      else if (filterType === 'Waive') { if (!lowered.includes('waived')) return false; }
-      else if (filterType === 'Signing') { if (!lowered.includes('signed') && !lowered.includes('re-signed') && !lowered.includes('signs with') && !lowered.includes('signs overseas') && !lowered.includes('extension')) return false; }
-      else if (filterType === 'Trade') { if (!lowered.includes('trade')) return false; }
+      else if (filterType === 'Signing') { if (entry.kind !== 'Signing' && entry.kind !== 'Re-signing') return false; }
+      else if (filterType === 'Trade') { if (entry.kind !== 'Trade') return false; }
+      else if (filterType === 'Waive') { if (entry.kind !== 'Waive') return false; }
       else if (filterType === 'Retirement') { if (entry.kind !== 'Retirement') return false; }
       else if (filterType === 'Jersey Retirement') { if (entry.kind !== 'Jersey Retirement') return false; }
       else if (entry.kind !== filterType) return false;
     }
 
-    if (filterTeam && (filterLeague === 'nba' || filterLeague === 'all')) {
-      const team = state.teams.find(entryTeam => entryTeam.id === parseInt(filterTeam, 10));
-      if (team && !text.toLowerCase().includes(team.name.toLowerCase()) && !text.toLowerCase().includes(team.abbrev.toLowerCase())) return false;
+    if (filterTeam) {
+      const selectedTeamId = parseInt(filterTeam, 10);
+      const team = allTeams.find((entryTeam: any) => Number(entryTeam?.id ?? entryTeam?.tid) === selectedTeamId) as any;
+      if (team) {
+        const entryTeamId = Number((entry.team as any)?.id ?? (entry.team as any)?.tid ?? NaN);
+        if (
+          entryTeamId !== selectedTeamId &&
+          !text.toLowerCase().includes(String(team.name ?? '').toLowerCase()) &&
+          !text.toLowerCase().includes(String(team.abbrev ?? '').toLowerCase())
+        ) return false;
+      }
     }
 
     if (filterMonth) {
@@ -132,7 +178,7 @@ export const TransactionsView: React.FC = () => {
     }
 
     return true;
-  }), [enrichedHistory, filterLeague, filterMonth, filterTeam, filterType, searchQuery, selectedYear, state.teams]);
+  }), [allTeams, enrichedHistory, filterLeague, filterMonth, filterTeam, filterType, searchQuery, selectedYear]);
 
   const displayItems = useMemo<DisplayItem[]>(() => buildDisplayItems(filteredHistory), [filteredHistory]);
   const totalPages = Math.max(1, Math.ceil(displayItems.length / itemsPerPage));
@@ -201,7 +247,7 @@ export const TransactionsView: React.FC = () => {
             {availableTeamsForFilter.length > 0 && (
               <FilterSelect label="Team" value={filterTeam} onChange={setFilterTeam}>
                 <option value="">All Teams</option>
-                {[...availableTeamsForFilter].sort((left, right) => left.name.localeCompare(right.name)).map(team => (
+                {[...availableTeamsForFilter].sort((left, right) => left.name.localeCompare(right.name)).map((team: any) => (
                   <option key={team.id} value={team.id}>{team.name}</option>
                 ))}
               </FilterSelect>
@@ -212,8 +258,8 @@ export const TransactionsView: React.FC = () => {
                 <option key={month} value={index + 1}>{month}</option>
               ))}
             </FilterSelect>
-            {(filterLeague !== 'nba' || filterType || filterTeam || filterMonth || searchQuery) && (
-              <button onClick={() => { setFilterLeague('nba'); setFilterType(''); setFilterTeam(''); setFilterMonth(''); setSearchQuery(''); }} className="mt-5 text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors shrink-0 whitespace-nowrap pr-4 sm:pr-0">
+            {(filterLeague !== defaultFilterLeague || filterType || filterTeam || filterMonth || searchQuery) && (
+              <button onClick={() => { setFilterLeague(defaultFilterLeague); setFilterType(''); setFilterTeam(''); setFilterMonth(''); setSearchQuery(''); }} className="mt-5 text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors shrink-0 whitespace-nowrap pr-4 sm:pr-0">
                 Clear all filters
               </button>
             )}
@@ -222,7 +268,7 @@ export const TransactionsView: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 sm:p-8 custom-scrollbar">
-        <LeagueTransactionsFeed visibleItems={visibleItems} teams={state.teams} ownTid={ownTid} ownTeam={ownTeam} setSelectedTrade={setSelectedTrade} setViewingPlayer={setViewingPlayer} />
+        <LeagueTransactionsFeed visibleItems={visibleItems} teams={allTeams as any} ownTid={ownTid} ownTeam={ownTeam as any} setSelectedTrade={setSelectedTrade} setViewingPlayer={setViewingPlayer} />
       </div>
 
       <TransactionsPagination displayCount={displayItems.length} page={page} totalPages={totalPages} itemsPerPage={itemsPerPage} setItemsPerPage={setItemsPerPage} setPage={setPage} />

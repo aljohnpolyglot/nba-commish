@@ -436,7 +436,7 @@ export const OffseasonAufgabenSidebar: React.FC = () => {
     });
     const blocked = row === 'budgetLock' && budgetLockBlockedByTransfer;
     const blockedLabel = blocked ? 'After Market' : null;
-    const showMarkDone = (row === 'transferMarket' || row === 'sponsorRenewals' || row === 'pbaLocalFreeAgency' || row === 'pbaImportSearch')
+    const showMarkDone = (row === 'transferMarket' || row === 'sponsorRenewals' || row === 'pbaLocalFreeAgency')
       && !isResolved
       && (row !== 'transferMarket' || (!transferRowClosed && transferMarketCanComplete))
       && (row !== 'sponsorRenewals' || sponsorCoverage.complete);

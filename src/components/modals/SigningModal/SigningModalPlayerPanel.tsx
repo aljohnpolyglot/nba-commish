@@ -1,10 +1,9 @@
 import type { ReactElement } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { convertTo2KRating } from '../../../utils/helpers';
-import { getDisplayPotential } from '../../../utils/playerRatings';
+import { getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../../utils/scoutingFuzz';
 import { getNonNBAGistData } from '../../central/view/nonNBACache';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
-import type { NBAPlayer, NBATeam } from '../../../types';
+import type { GameState, NBAPlayer, NBATeam } from '../../../types';
 
 const formatPos = (pos = '') => {
   const p = pos.toUpperCase().trim();
@@ -32,6 +31,7 @@ interface SigningModalPlayerPanelProps {
   portraitFallback?: string | null;
   realAge: number;
   seasonYear: number;
+  state: GameState;
   team: NBATeam;
   teamColors?: [string, string, string];
 }
@@ -47,6 +47,7 @@ export default function SigningModalPlayerPanel({
   portraitFallback,
   realAge,
   seasonYear,
+  state,
   team,
   teamColors,
 }: SigningModalPlayerPanelProps): ReactElement {
@@ -119,17 +120,11 @@ export default function SigningModalPlayerPanel({
         <div className="relative z-20 w-full px-4 sm:px-6 pb-5 sm:pb-8 flex justify-center gap-2 items-end">
           {[
             (() => {
-              const lastR = (player as any).ratings?.[(player as any).ratings?.length - 1];
-              const hgt = lastR?.hgt ?? 50;
-              const tp = lastR?.tp;
-              const ovr2K = convertTo2KRating(player.overallRating ?? lastR?.ovr ?? 60, hgt, tp);
+              const ovr2K = getScoutedDisplayOverall(state, player, seasonYear);
               return { label: 'Rating', value: ovr2K, accent: '#e21d37' };
             })(),
             (() => {
-              const ageNow = realAge > 0 ? realAge : (player.age ?? 25);
-              const yearProxy = new Date().getFullYear() - ageNow + ((player as any).born?.year ? 0 : ageNow);
-              const currentYear = (player as any).born?.year ? ((player as any).born.year + ageNow) : yearProxy;
-              const pot2K = getDisplayPotential(player, currentYear);
+              const pot2K = getScoutedDisplayPotential(state, player, seasonYear, seasonYear);
               return { label: 'Potential', value: pot2K, accent: null as string | null };
             })(),
           ].map(({ label, value, accent }) => (

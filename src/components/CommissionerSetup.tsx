@@ -192,15 +192,16 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
       .join(' ');
     const date = overrideDate ?? chosenDate;
-    const selectedTeamId = overrideTeamId ?? userTeamId;
+    const fallbackPbaTeamId = isPbaSetup ? rosterTeams[0]?.id : undefined;
+    const selectedTeamId = overrideTeamId ?? userTeamId ?? fallbackPbaTeamId;
     const selectedEuroSeed = overrideEuroSeed ?? (isEuroSetup ? euroCareerSeed : null);
     onStart({
       name: nameCase,
       startScenario: 'regular_season',
       skipLLM: !settings.enableLLM,
       startDate: date,
-      // Euro mode skips the NBA lazy-sim; later Euro starts are simulated after INIT_EURO_CAREER.
-      jumpRequired: isEuroSetup ? false : date > SIM_START_DATE,
+      // Isolated leagues initialize their own calendar after START_GAME.
+      jumpRequired: (isEuroSetup || isPbaSetup) ? false : date > SIM_START_DATE,
       gameMode,
       userTeamId: gameMode === 'gm' ? selectedTeamId : undefined,
       assistantGM: gameMode === 'gm' ? (assistantGM ?? false) : false,

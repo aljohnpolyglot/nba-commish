@@ -1,5 +1,5 @@
 import type { OffseasonChecklist, OffseasonChecklistRow, OffseasonRowStatus, Tab } from '../../types';
-import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode, isPbaOffseasonMode } from '../../utils/uiMode';
 
 const NO_DRAFT_ROWS: readonly OffseasonChecklistRow[] = [
   'draftLottery',
@@ -55,13 +55,15 @@ export function getVisibleOffseasonRows(
   draftState?: { lotteryResolved?: boolean; draftComplete?: boolean } | null,
 ): readonly OffseasonChecklistRow[] {
   if (isPbaIsolatedMode({ leagueStats })) {
-    const phase = (leagueStats as any)?.pbaConferencePhase;
-    if (phase === 'offseason') {
+    if (isPbaOffseasonMode({ leagueStats })) {
       const conf = (leagueStats as any)?.pbaConference;
       if (conf === 'governors') {
         return ['pbaConferenceAwards', 'retiredPlayersReview', 'hofCeremony', 'staffRetirements', 'staffSignings', 'draftLottery', 'pbaDraft', 'pbaLocalFreeAgency', 'pbaOpeningCeremony'];
       }
-      return ['pbaConferenceAwards', 'pbaImportSearch', 'pbaImportDecision', 'pbaOpeningCeremony'];
+      if (conf === 'philippine') {
+        return ['pbaAllStarWeekend', 'pbaImportSearch', 'pbaImportDecision', 'pbaOpeningCeremony'];
+      }
+      return ['pbaImportSearch', 'pbaImportDecision', 'pbaOpeningCeremony'];
     }
     return [] as readonly OffseasonChecklistRow[];
   }
@@ -113,7 +115,7 @@ export const OFFSEASON_ROW_LABELS: Record<OffseasonChecklistRow, string> = {
   pbaMuseSelection: 'Muse Selection',
   pbaOpeningCeremony: 'Opening Ceremony',
   pbaAllStarWeekend: 'All-Star Weekend',
-  pbaConferenceAwards: 'Conference Awards',
+  pbaConferenceAwards: 'Season Review',
 };
 
 export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> = {
@@ -145,7 +147,7 @@ export const OFFSEASON_ROW_DESCRIPTIONS: Record<OffseasonChecklistRow, string> =
   pbaMuseSelection: 'Choose your team muse for the conference opening.',
   pbaOpeningCeremony: 'Watch the conference opening ceremony.',
   pbaAllStarWeekend: 'The PBA All-Star Weekend — captain draft, 3-point contest, and the main event.',
-  pbaConferenceAwards: 'Review conference awards and champion.',
+  pbaConferenceAwards: 'Review the season awards and all three conference champions.',
 };
 
 export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab | null> = {
@@ -176,8 +178,8 @@ export const OFFSEASON_ROW_TAB: Record<OffseasonChecklistRow, Tab | null> = {
   pbaImportDecision: null,
   pbaMuseSelection: null,
   pbaOpeningCeremony: null,
-  pbaAllStarWeekend: null,
-  pbaConferenceAwards: 'Award Races',
+  pbaAllStarWeekend: 'All-Star',
+  pbaConferenceAwards: 'League History',
 };
 
 function baseOffseasonChecklist(): OffseasonChecklist {
@@ -304,11 +306,12 @@ export function initialPbaChecklist(): OffseasonChecklist {
   };
 }
 
-export function initialPbaInterConferenceChecklist(): OffseasonChecklist {
+export function initialPbaInterConferenceChecklist(completedConference: 'philippine' | 'commissioners' | 'governors' = 'philippine'): OffseasonChecklist {
   const base = initialPbaChecklist();
   return {
     ...base,
-    pbaConferenceAwards: 'pending',
+    pbaConferenceAwards: 'skipped',
+    pbaAllStarWeekend: completedConference === 'philippine' ? 'pending' : 'skipped',
     pbaImportSearch: 'pending',
     pbaImportDecision: 'pending',
     pbaOpeningCeremony: 'pending',

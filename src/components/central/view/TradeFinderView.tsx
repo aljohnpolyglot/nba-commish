@@ -24,6 +24,7 @@ import { AssetSelectorPanel, TradeFinderResultsPanel } from './TradeFinderPanels
 import { OfferCard } from './TradeFinderItemComponents';
 import { TradeFinderModalStack } from './TradeFinderModalStack';
 import { type FoundOffer, type ManageTradeState, type TradeItem } from './TradeFinderTypes';
+import { isPbaImportTradeLocked } from './TradeFinderGuards';
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -196,6 +197,17 @@ export const TradeFinderView: React.FC = () => {
 
   const basketIds = useMemo(() => new Set(basket.map(i => i.id)), [basket]);
 
+  React.useEffect(() => {
+    if (!pbaMode) return;
+    const hasLockedImport = basket.some(item => item.type === 'player' && item.player && isPbaImportTradeLocked(item.player, true));
+    if (!hasLockedImport) return;
+    setBasket(current => {
+      const filtered = current.filter(item => item.type !== 'player' || !item.player || !isPbaImportTradeLocked(item.player, true));
+      return filtered.length === current.length ? current : filtered;
+    });
+    setFoundOffers(null);
+  }, [pbaMode, basket]);
+
   const mySalary = useMemo(() =>
     basket.filter(i => i.type === 'player').reduce((s, i) => s + (i.player?.contract?.amount ?? 0), 0),
   [basket]);
@@ -211,6 +223,7 @@ export const TradeFinderView: React.FC = () => {
   const isReverseMode = isGM && state.userTeamId != null && selectedTid !== state.userTeamId;
 
   const addPlayer = (player: NBAPlayer) => {
+    if (isPbaImportTradeLocked(player, pbaMode)) return;
     if (basketIds.has(player.internalId)) return removeItem(player.internalId);
     let val = calcPlayerTV(player, myMode, currentYear, tvContext);
     if (isReverseMode && isUntouchable(player, myMode, currentYear, tvContext.mvpRank)) {
@@ -257,7 +270,7 @@ export const TradeFinderView: React.FC = () => {
     const pre = (state as any).tradeFinderPreselect as { tid: number; playerId: string } | undefined;
     if (!pre) return;
     const player = players.find(p => p.internalId === pre.playerId && p.tid === pre.tid);
-    if (player) {
+    if (player && !isPbaImportTradeLocked(player, pbaMode)) {
       setSelectedTid(pre.tid);
       setBasket([{
         id: player.internalId,
@@ -322,7 +335,7 @@ export const TradeFinderView: React.FC = () => {
         allowLifers,
         stepienEnabled: state.leagueStats?.stepienRuleEnabled !== false,
         tradablePickWindow: state.leagueStats?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS,
-        isPostDeadlinePreFA: isInPostDeadlinePreFAWindow(state.date, currentYear, state.leagueStats as any),
+        isPostDeadlinePreFA: !pbaMode && isInPostDeadlinePreFAWindow(state.date, currentYear, state.leagueStats as any),
         recentlySignedLockMs: {
           currentDate: state.date ?? '',
           leagueStats: state.leagueStats as any,
@@ -458,6 +471,7 @@ export const TradeFinderView: React.FC = () => {
           capSpaces={capSpaces}
           currentYear={currentYear}
           stateDate={state.date ?? ''}
+          currencyCode={state.leagueStats?.currency ?? 'USD'}
           nonNBATeams={state.nonNBATeams ?? []}
           handleManageTrade={handleManageTrade}
         />

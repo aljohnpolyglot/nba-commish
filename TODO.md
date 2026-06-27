@@ -14,7 +14,7 @@
 
 **Worktree follow-up 2026-05-20:** Euro offseason board is getting one more polish pass: `My Free Agents` should not start pre-skipped in the Euro checklist, and visible offseason copy should read like in-game summer tasks instead of internal dev labels.
 
-**Worktree follow-up 2026-06-04:** PBA schedule specs are simplified in worktree to avoid NBA-length 22-game cups: Philippine Cup 11 games, Commissioner's Cup 11 games with the current 12-team pool, Governors' Cup 10 games via shortened round-robin. Later implement the real 2025-26 details:
+**Status 2026-06-11:** PBA schedule specs are now compressed in worktree so the isolated-mode calendar does not stretch the Commissioner's Cup across most of the year. Philippine Cup stays 11 games, Commissioner's Cup runs on an 11-game compact window, and Governors' Cup runs on a 10-game compact window. Later implement the real 2025-26 details:
 - Commissioner's Cup guest-team mode with Macau Black Bears as a 13th team so each PBA team gets 12 regular-season games.
 - Governors' Cup two groups of six, double round-robin within group, 10 games per team, top four per group into crossover playoffs.
 - Blackout/window polish for FIBA qualifier breaks and compressed Wed/Fri/Sat/Sun double-header game days.

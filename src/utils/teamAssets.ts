@@ -6,6 +6,13 @@ const isUsableLogoUrl = (value: unknown): value is string => {
   return !!url && !/footer_fb|blank|placeholder/i.test(url);
 };
 
+const buildBadgeDataUrl = (label: string, color: string): string => {
+  const safeLabel = String(label || '?').slice(0, 4).toUpperCase();
+  const safeColor = String(color || '#1e293b');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="18" fill="${safeColor}"/><rect x="4" y="4" width="88" height="88" rx="14" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="2"/><text x="48" y="56" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#ffffff">${safeLabel}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
 const PBA_PREFERRED_MARKS: Array<{ keys: string[]; url: string }> = [
   {
     keys: ['meralcobolts', 'meralco', 'bolts', 'mer'],
@@ -57,17 +64,24 @@ export function getResolvedTeamLogoUrl(team: any): string {
   );
 
   if (isPbaTeam) {
+    for (const value of [team?.logoUrl, team?.imgURL, team?.teamLogo, team?.teamLogoUrl, team?.imgURLSmall]) {
+      if (isUsableLogoUrl(value)) return String(value).trim();
+    }
+    const localMark = PBA_LOCAL_MARKS.find(mark =>
+      keys.some(key => mark.keys.includes(key) || mark.keys.some(alias => key.includes(alias))),
+    );
+    if (localMark) return localMark.url;
     const preferred = PBA_PREFERRED_MARKS.find(mark =>
       keys.some(key => mark.keys.includes(key) || mark.keys.some(alias => key.includes(alias))),
     );
     if (preferred) return preferred.url;
+    return buildBadgeDataUrl(team?.abbrev ?? team?.name ?? team?.region ?? 'PBA', getTeamPrimaryColor(team));
   }
 
   for (const value of [team?.logoUrl, team?.imgURL, team?.teamLogo, team?.teamLogoUrl, team?.imgURLSmall]) {
     if (isUsableLogoUrl(value)) return String(value).trim();
   }
-  if (!isPbaTeam) return '';
-  return PBA_LOCAL_MARKS.find(mark => keys.some(key => mark.keys.includes(key) || mark.keys.some(alias => key.includes(alias))))?.url ?? '';
+  return '';
 }
 
 export function getTeamPrimaryColor(team: any): string {

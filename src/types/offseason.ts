@@ -348,6 +348,11 @@ export interface HistoricalAward {
   name: string;
   pid?: string;
   tid?: number;
+  uiMode?: string;
+  competitionId?: string;
+  source?: string;
+  conference?: string;
+  team?: string;
 }
 
 export interface CommissionerLogEntry {

@@ -3,6 +3,8 @@ import { Star, Trophy, Zap } from 'lucide-react';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { normalizeDate, getPlayerHeadshot, getTeamLogo, extractTeamId, extractNbaId } from '../../utils/helpers';
 import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
+import { findBoxScoreForGame } from '../../utils/boxScoreLookup';
+import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
 
 interface AllStarGameViewProps {
   allStar: any;
@@ -12,10 +14,38 @@ interface AllStarGameViewProps {
 }
 
 export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state, onWatchGame, onViewBoxScore }) => {
-  const boxScore = state.boxScores?.find((b: any) => b.gameId === allStar?.allStarGameId || (b.homeTeamId === -1 && b.awayTeamId === -2));
-  const game = state.schedule?.find((g: any) => g.gid === allStar?.allStarGameId);
+  const resolveScheduledGame = React.useCallback((gameMeta: any) => {
+    if (!gameMeta) return undefined;
+    const candidates = (state.schedule ?? []).filter((g: any) => g.gid === gameMeta.gid);
+    if (candidates.length === 0) return undefined;
+    const exact = candidates.find((g: any) =>
+      g.homeTid === gameMeta.homeTid &&
+      g.awayTid === gameMeta.awayTid &&
+      !!g.isAllStar
+    );
+    if (exact) return exact;
+    const dated = [...candidates]
+      .filter((g: any) => !!g.isAllStar)
+      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return dated[0] ?? candidates[candidates.length - 1];
+  }, [state.schedule]);
+  const finalBracketGame = allStar?.bracket?.games?.find((g: any) => g.round === 'final')
+    ?? allStar?.bracket?.games?.find((g: any) => g.gid === allStar?.allStarGameId);
+  const game = resolveScheduledGame(finalBracketGame)
+    ?? resolveScheduledGame({ gid: allStar?.allStarGameId, homeTid: undefined, awayTid: undefined });
+  const homeBracketTeam = allStar?.bracket?.teams?.find((team: any) => team.tid === game?.homeTid);
+  const awayBracketTeam = allStar?.bracket?.teams?.find((team: any) => team.tid === game?.awayTid);
+  const boxScore = game ? findBoxScoreForGame(state.boxScores, game.gid, game.date, {
+    homeTid: game.homeTid,
+    awayTid: game.awayTid,
+    homeTeamName: homeBracketTeam?.name,
+    awayTeamName: awayBracketTeam?.name,
+  }) : undefined;
   const isPba = state.leagueStats?.uiMode === 'pba_isolated';
   const isCaptainsDraft = state.leagueStats?.allStarFormat === 'captains_draft';
+  const allStarDateLabel = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats)
+    .allStarGame
+    .toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' });
   const allTeams = React.useMemo(
     () => [
       ...(state.teams ?? []),
@@ -77,7 +107,7 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
             {isPba ? 'PBA All-Star Game' : 'The 75th All-Star Game'}
           </h3>
           <p className="text-slate-400 text-sm">
-            Sunday, Feb 15 · {formatLabel}
+            {allStarDateLabel} · {formatLabel}
           </p>
           
           {canWatch && (
@@ -224,7 +254,11 @@ export const AllStarGameView: React.FC<AllStarGameViewProps> = ({ allStar, state
 
           {game && (
             <button
-              onClick={() => onViewBoxScore?.(game)}
+              onClick={() => onViewBoxScore?.({
+                ...game,
+                expectedHomeTeamName: homeBracketTeam?.name,
+                expectedAwayTeamName: awayBracketTeam?.name,
+              })}
               className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-bold transition-all"
             >
               View Box Score

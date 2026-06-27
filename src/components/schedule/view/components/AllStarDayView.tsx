@@ -4,6 +4,7 @@ import { Game } from '../../../../types';
 import { normalizeDate } from '../../../../utils/helpers';
 import { useLeagueLabels } from '../../../../utils/leagueLabels';
 import { AllStarSaturdayCards } from './AllStarSaturdayCards';
+import { findBoxScoreForGame } from '../../../../utils/boxScoreLookup';
 
 const EAST_LOGO_URL = 'https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748';
 const WEST_LOGO_URL = 'https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726';
@@ -49,16 +50,9 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
 }) => {
   const labels = useLeagueLabels();
   const allStarGameTitle = labels.finals === 'League Finals' ? 'All-Star Game' : 'NBA All-Star Game';
-  const allStarGames = state.schedule.filter((g: Game) => g.isAllStar);
-  const allStarGame = allStarGames[0];
   const bracket = allStar?.bracket;
   const risingStarsBracket = allStar?.risingStarsBracket;
   const rsIsTournament = !!risingStarsBracket;
-  const risingStarsGames: Game[] = rsIsTournament
-    ? state.schedule.filter((g: Game) => (g as any).isRisingStars)
-    : [];
-  const risingStarsGame = rsIsTournament ? null : state.schedule.find((g: Game) => g.isRisingStars);
-  const celebrityGame = state.schedule.find((g: Game) => (g as any).isCelebrityGame);
 
   const stateDateNorm = normalizeDate(state.date);
   const y = selectedDateObj.getUTCFullYear();
@@ -66,17 +60,25 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
   const d = String(selectedDateObj.getUTCDate()).padStart(2, '0');
   const selectedDateNorm = `${y}-${m}-${d}`;
   const isActuallyToday = selectedDateNorm === stateDateNorm;
+  const isOnSelectedDate = (game: Game) => normalizeDate(game.date) === selectedDateNorm;
+  const allStarGames = state.schedule.filter((g: Game) => g.isAllStar && isOnSelectedDate(g));
+  const allStarGame = allStarGames[0];
+  const risingStarsGames: Game[] = rsIsTournament
+    ? state.schedule.filter((g: Game) => (g as any).isRisingStars && isOnSelectedDate(g))
+    : [];
+  const risingStarsGame = rsIsTournament ? null : state.schedule.find((g: Game) => g.isRisingStars && isOnSelectedDate(g));
+  const celebrityGame = state.schedule.find((g: Game) => (g as any).isCelebrityGame && isOnSelectedDate(g));
 
   // Box scores — only match by current season's game IDs (no hardcoded team ID fallbacks,
   // which would match stale box scores from previous seasons after allStar state is cleared)
   const risingStarsBoxScore = allStar?.risingStarsGameId
-    ? state.boxScores?.find((b: any) => b.gameId === allStar.risingStarsGameId)
+    ? risingStarsGame ? findBoxScoreForGame(state.boxScores, allStar.risingStarsGameId, risingStarsGame.date) : undefined
     : null;
   const allStarBoxScore = allStar?.allStarGameId
-    ? state.boxScores?.find((b: any) => b.gameId === allStar.allStarGameId)
+    ? allStarGame ? findBoxScoreForGame(state.boxScores, allStar.allStarGameId, allStarGame.date) : undefined
     : null;
   const celebrityBoxScore = allStar?.celebrityGameId
-    ? state.boxScores?.find((b: any) => b.gameId === allStar.celebrityGameId)
+    ? celebrityGame ? findBoxScoreForGame(state.boxScores, allStar.celebrityGameId, celebrityGame.date) : undefined
     : null;
   const celebrityGameResult = allStar?.celebrityGameResult || (celebrityBoxScore ? {
     homeScore: celebrityBoxScore.homeScore,
@@ -114,11 +116,11 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
                 </button>
               </div>
               {risingStarsBracket.games.map((g: any) => {
-                const bs = state.boxScores?.find((b: any) => b.gameId === g.gid);
                 const homeT = risingStarsBracket.teams?.find((t: any) => t.tid === g.homeTid);
                 const awayT = risingStarsBracket.teams?.find((t: any) => t.tid === g.awayTid);
                 const isFinal = g.round === 'final';
                 const schedGame = risingStarsGames.find((sg: any) => sg.gid === g.gid);
+                const bs = findBoxScoreForGame(state.boxScores, g.gid, schedGame?.date);
                 return (
                   <div key={g.gid} className={`bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border ${isFinal ? 'border-sky-400/40' : 'border-blue-500/20'} rounded-2xl p-5`}>
                     <div className="flex items-center justify-between mb-3">
@@ -342,7 +344,7 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
 
         {/* ── ALL-STAR BRACKET GAMES (Sunday) ── multi-card iterator for round-robin / knockout */}
         {isAllStarGameDay && allStarGames.length > 1 && allStarGames.map((g: any) => {
-          const bs = state.boxScores?.find((b: any) => b.gameId === g.gid);
+          const bs = findBoxScoreForGame(state.boxScores, g.gid, g.date);
           const homeT = bracket?.teams?.find((t: any) => t.tid === g.homeTid);
           const awayT = bracket?.teams?.find((t: any) => t.tid === g.awayTid);
           const homeName = homeT?.name ?? (g.homeTid === -1 ? 'East' : 'TBD');

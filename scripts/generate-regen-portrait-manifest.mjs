@@ -120,6 +120,8 @@ const contents = `// AUTO-GENERATED from NG_Regens_MainPack + nba-store-data mer
 // Do not edit by hand. Re-run scripts/generate-regen-portrait-manifest.mjs.
 
 export const REGEN_PORTRAIT_BASE = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/playerfaces_regen_replacements';
+export const REGEN_ASIAN_BASE = 'https://raw.githubusercontent.com/aljohnpolyglot/ng-regens-asia/refs/heads/main';
+export const REGEN_BROWN_BASE = 'https://raw.githubusercontent.com/aljohnpolyglot/ng-regens-brown/refs/heads/main';
 export const REGEN_FILIPINO_BASE = 'https://raw.githubusercontent.com/aljohnpolyglot/ng-regens-filipino/refs/heads/main';
 
 ${formatArray('REGEN_BLACK_PATHS', black)}

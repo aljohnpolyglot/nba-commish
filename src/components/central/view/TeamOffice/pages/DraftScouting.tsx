@@ -34,11 +34,10 @@ import type { NBAPlayer } from '../../../../../types';
 import { isNoDraftLeague } from '../../../../../services/offseason/offseasonState';
 import { getDraftCombineStartDate, toISODateString } from '../../../../../utils/dateUtils';
 import { normalizeDate } from '../../../../../utils/helpers';
-import { fuzzRatingValue } from '../../../../../utils/scoutingFuzz';
+import { fuzzDraftRatingValue } from '../../../../../utils/scoutingFuzz';
 import { isPbaIsolatedMode } from '../../../../../utils/uiMode';
-import { isFilipino } from '../../../../../services/pba/importManager';
 import { isOnRoster, resolveAnyTeam } from '../../../../../utils/teamLookup';
-import { getPbaComparisonPool } from '../../../../../services/pba/draftRules';
+import { getPbaComparisonPool, getPbaDraftPool, tunePbaDraftProspects } from '../../../../../services/pba/draftRules';
 
 interface DraftScoutingProps {
   teamId: number;
@@ -72,7 +71,7 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
   const nextDraftYear = currentYear; // draft happens in the current leagueStats.year
   const currentDateNorm = normalizeDate(state.date ?? '');
   const currentCombineDate = toISODateString(getDraftCombineStartDate(currentYear, state.leagueStats as any));
-  const showCombineTab = pbaMode || currentDateNorm >= currentCombineDate;
+  const showCombineTab = currentDateNorm >= currentCombineDate;
   const lotterySlotByTid = useMemo(
     () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
     [(state as any).draftLotteryResult, state.teams],
@@ -158,20 +157,20 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
 
   // Draft prospects (tid === -2)
   const prospects = useMemo(() => {
-    return state.players
-      .filter(p => {
-        const isProspect = p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect';
-        if (!isProspect) return false;
-        if (pbaMode && !isFilipino(p)) return false;
-        const draftYear = Number((p as any).draft?.year);
-        if (pbaMode) return !Number.isFinite(draftYear) || draftYear === nextDraftYear;
-        return Number.isFinite(draftYear) && draftYear === nextDraftYear;
-      })
+    const tunedPlayers = pbaMode ? tunePbaDraftProspects(state.players, nextDraftYear, state.leagueStats) : state.players;
+    return (pbaMode
+      ? getPbaDraftPool(tunedPlayers, nextDraftYear, state.leagueStats)
+      : tunedPlayers.filter(p => {
+          const isProspect = p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect';
+          if (!isProspect) return false;
+          const draftYear = Number((p as any).draft?.year);
+          return Number.isFinite(draftYear) && draftYear === nextDraftYear;
+        }))
       .map(p => {
         const baseOvr = calcOvr2K(p);
         const basePot = calcPot2K(p, currentYear);
-        const ovr = fuzzRatingValue(baseOvr, state, p, 'draft-board-ovr');
-        const pot = fuzzRatingValue(basePot, state, p, 'draft-board-pot');
+        const ovr = fuzzDraftRatingValue(baseOvr, state, p, 'ovr');
+        const pot = fuzzDraftRatingValue(basePot, state, p, 'pot');
         const pos = p.pos ?? 'F';
         const posGroup = pos.includes('G') || pos === 'PG' || pos === 'SG' ? 'Guard'
           : pos.includes('C') || pos === 'FC' ? 'Center' : 'Forward';
@@ -189,7 +188,7 @@ export function DraftScouting({ teamId }: DraftScoutingProps) {
         return { player: p, ovr, pot, score, posGroup, fitBonus: fitBonus > 0 };
       })
       .sort((a, b) => b.score - a.score);
-  }, [state.players, currentYear, teamMode, weakPositions, nextDraftYear, pbaMode]);
+  }, [state.players, currentYear, teamMode, weakPositions, nextDraftYear, pbaMode, state.leagueStats]);
 
   // Pick projection for the team
   const projection = team ? projectPickRange(team.wins, team.losses, state.teams.length) : 'mid-first';

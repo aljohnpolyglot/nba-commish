@@ -7,8 +7,9 @@ export function runTwoWayAndCampPasses(
   isPreseasonWindow: boolean,
   maxCampRoster: number,
 ) {
-  const maxTwoWay = ctx.state.leagueStats.maxTwoWayPlayersPerTeam ?? 3;
-  const twoWayEnabled = (ctx.state.leagueStats as any).twoWayContractsEnabled ?? true;
+  const nbaBackgroundInPbaMode = (ctx.state.leagueStats as any).uiMode === 'pba_isolated';
+  const maxTwoWay = nbaBackgroundInPbaMode ? 3 : ctx.state.leagueStats.maxTwoWayPlayersPerTeam ?? 3;
+  const twoWayEnabled = nbaBackgroundInPbaMode || ((ctx.state.leagueStats as any).twoWayContractsEnabled ?? true);
   const TWO_WAY_OVR_CAP = 60;
   const TWO_WAY_SALARY_USD = 625_000;
 

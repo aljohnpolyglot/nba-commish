@@ -13,7 +13,7 @@ import {
   resolvePlayerRatingBundle,
   usePlayerRatingStore,
 } from '../../../store/playerRatingStore';
-import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { isOnRoster, resolveAnyTeam } from '../../../utils/teamLookup';
 const CAT_CONFIG = [
   { key: 'OS' as const, label: 'SCR', full: 'Outside Scoring' },
   { key: 'AT' as const, label: 'ATH', full: 'Athleticism' },
@@ -119,6 +119,10 @@ export const PlayerRatingsView: React.FC = () => {
   const season = state.leagueStats?.year ?? new Date().getFullYear();
 
   const currentYear = season;
+  const scopedTeamIds = useMemo(
+    () => new Set(scopedTeams.map(team => Number(team.id))),
+    [scopedTeams],
+  );
   const sourcePlayers = useMemo(() => {
     if (!pbaIsolated) {
       return state.players.filter(p =>
@@ -129,15 +133,9 @@ export const PlayerRatingsView: React.FC = () => {
     }
 
     return state.players.filter(p =>
-      p.status === 'PBA'
-      || (p.tid >= 2000 && p.tid < 2100)
-      || p.status === 'Free Agent'
-      || p.tid === -1
-      || p.tid === -2
-      || p.status === 'Prospect'
-      || p.status === 'Draft Prospect',
+      scopedTeamIds.has(Number(p.tid)) && isOnRoster(p),
     );
-  }, [pbaIsolated, euroIsolated, state.players]);
+  }, [pbaIsolated, euroIsolated, state.players, scopedTeamIds]);
 
   const rows: RowData[] = useMemo(() => {
     return sourcePlayers.map(player => {
@@ -272,8 +270,8 @@ export const PlayerRatingsView: React.FC = () => {
           className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 max-w-xs"
         >
           <option value="all">All Teams</option>
-          <option value="-1">Free Agents</option>
-          <option value="-2">Draft Prospects</option>
+          {!pbaIsolated && <option value="-1">Free Agents</option>}
+          {!pbaIsolated && <option value="-2">Draft Prospects</option>}
           {displayTeams.map(t => (
             <option key={t.id} value={t.id}>{t.name}</option>
           ))}

@@ -22,10 +22,10 @@ import { FullDraftTable } from './simulator/FullDraftTable';
 import { isPbaIsolatedMode } from '../../utils/uiMode';
 import { buildDraftProspects, buildPbaDraftOrderTeams, type DraftSimulatorProspect } from './DraftSimulatorView.helpers';
 import { DraftBoardSection, PreDraftProspectsPanel } from './DraftSimulatorViewSections';
-import { fuzzRatingValue } from '../../utils/scoutingFuzz';
+import { fuzzDraftRatingValue } from '../../utils/scoutingFuzz';
 import { isOnRoster } from '../../utils/teamLookup';
 import { getTeamFullName } from '../../utils/teamNames';
-import { getPbaComparisonPool, getPbaDraftPool } from '../../services/pba/draftRules';
+import { getPbaComparisonPool, getPbaDraftPool, tunePbaDraftProspects } from '../../services/pba/draftRules';
 
 interface DraftSimulatorViewProps {
   onViewChange?: (view: string) => void;
@@ -49,11 +49,11 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     ? (state.leagueStats as any)?.pbaConferencePhase === 'offseason'
     : today >= draftDate && !isDraftBlockedByUnresolvedPlayoffs(state);
   const isDraftDone = !!(state as any).draftComplete;
-  const showCombineTab = pbaMode || today >= combineDate;
+  const showCombineTab = today >= combineDate;
 
   const pbaDraftPoolCount = useMemo(
-    () => pbaMode ? getPbaDraftPool(state.players).length : 0,
-    [pbaMode, state.players],
+    () => pbaMode ? getPbaDraftPool(state.players, leagueYear, state.leagueStats).length : 0,
+    [leagueYear, pbaMode, state.leagueStats, state.players],
   );
 
   const computedDraftOrder = useMemo(() => {
@@ -75,8 +75,8 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   }, [pbaMode, state.teams, (state as any).nonNBATeams]);
 
   const allProspects = useMemo(
-    () => buildDraftProspects(state.players, leagueYear, pbaMode).slice(0, MAX_DRAFT_POOL_SIZE),
-    [state.players, leagueYear, pbaMode],
+    () => buildDraftProspects(state.players, leagueYear, pbaMode, state.leagueStats).slice(0, MAX_DRAFT_POOL_SIZE),
+    [state.players, leagueYear, pbaMode, state.leagueStats],
   );
 
   const activePlayers = useMemo(
@@ -146,14 +146,14 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     const pool = allProspects.filter(player => !draftedSet.has(player.internalId));
     if (sortBy === 'pot') {
       return [...pool].sort((a, b) =>
-        fuzzRatingValue((b.displayPot ?? 0), state, b as NBAPlayer, 'draft-view-pot') -
-        fuzzRatingValue((a.displayPot ?? 0), state, a as NBAPlayer, 'draft-view-pot'),
+        fuzzDraftRatingValue((b.displayPot ?? 0), state, b as NBAPlayer, 'pot') -
+        fuzzDraftRatingValue((a.displayPot ?? 0), state, a as NBAPlayer, 'pot'),
       );
     }
     if (sortBy === 'ovr') {
       return [...pool].sort((a, b) =>
-        fuzzRatingValue((b.displayOvr ?? 0), state, b as NBAPlayer, 'draft-view-ovr') -
-        fuzzRatingValue((a.displayOvr ?? 0), state, a as NBAPlayer, 'draft-view-ovr'),
+        fuzzDraftRatingValue((b.displayOvr ?? 0), state, b as NBAPlayer, 'ovr') -
+        fuzzDraftRatingValue((a.displayOvr ?? 0), state, a as NBAPlayer, 'ovr'),
       );
     }
     return [...pool].sort(
@@ -304,7 +304,17 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         const nextTransactions = hasDraftTx
           ? existingTx
           : [...existingTx, { season: draftSeason, tid: teamId, type: 'draft', phase: 0, pickNum: pickSlot }];
-        return { ...entry, ...update, jerseyNumber, signedDate: state.date, transactions: nextTransactions };
+        return {
+          ...entry,
+          overallRating: player.overallRating,
+          potential: player.potential,
+          ratings: player.ratings,
+          pbaDraftTunedVersion: (player as any).pbaDraftTunedVersion,
+          ...update,
+          jerseyNumber,
+          signedDate: state.date,
+          transactions: nextTransactions,
+        };
       });
       const round = getDraftRoundForPick(pickSlot, team);
       const originalTid = (team as any)?._originalTid ?? teamId;
@@ -563,15 +573,26 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   const finalizeDraft = useCallback(() => {
     const leagueStats = state.leagueStats ?? {};
     const season = getLsYear({ leagueStats } as any);
+    const tunedPlayers = pbaMode
+      ? getPbaDraftPool(tunePbaDraftProspects(state.players, season, leagueStats as any), season, leagueStats as any)
+      : state.players;
     const pbaDraftPoolIds = pbaMode
-      ? new Set(getPbaDraftPool(state.players).map(player => player.internalId))
+      ? new Set(tunedPlayers.map(player => player.internalId))
       : null;
     const updatedPlayers = state.players.map(player => {
       const pickEntry = Object.entries(drafted).find(([, draftedPlayer]) => draftedPlayer.internalId === player.internalId);
       if (!pickEntry) return player;
       const pickSlot = Number(pickEntry[0]);
+      const draftedPlayer = pickEntry[1];
       const fields = computeDraftPickFields(pickSlot, draftOrder[pickSlot - 1], leagueStats);
-      return fields ? { ...player, ...fields } : player;
+      return fields ? {
+        ...player,
+        overallRating: draftedPlayer.overallRating,
+        potential: draftedPlayer.potential,
+        ratings: draftedPlayer.ratings,
+        pbaDraftTunedVersion: (draftedPlayer as any).pbaDraftTunedVersion,
+        ...fields,
+      } : player;
     });
     const draftedIds = new Set(Object.values(drafted).map(player => player.internalId));
     const finalPlayers = updatedPlayers.map(player => {

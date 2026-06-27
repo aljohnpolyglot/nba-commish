@@ -4,6 +4,7 @@ import { getLsYear } from '../../../utils/leagueYear';
 import { getPlayerImage } from '../../central/view/bioCache';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 import { getTeamFullName } from '../../../utils/teamNames';
+import { fuzzDraftRatingValue } from '../../../utils/scoutingFuzz';
 
 interface FullDraftTableProps {
   drafted: Record<number, any>;
@@ -126,7 +127,7 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, passedP
                     <>
                       <p className="font-black text-white text-base truncate uppercase tracking-tight">{player.name}</p>
                       <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
-                        {player.pos} · {player.born?.year ? leagueYear - player.born.year : (player.age ?? '?')}y · {player.displayOvr} · {player.displayPot} POT
+                        {player.pos} · {player.born?.year ? leagueYear - player.born.year : (player.age ?? '?')}y · OVR {fuzzDraftRatingValue(player.displayOvr ?? 0, _ftState, player, 'ovr')} · POT {fuzzDraftRatingValue(player.displayPot ?? 0, _ftState, player, 'pot')}
                         {player.college && ` · ${player.college}`}
                       </div>
                     </>

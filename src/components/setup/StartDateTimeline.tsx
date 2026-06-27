@@ -6,9 +6,8 @@ import {
   EURO_TIMELINE_MIN, EURO_TIMELINE_MAX, EURO_TIMELINE_DISPLAY_END,
   ZONE_COLORS, ZONE_LABELS, PBA_ZONE_COLORS, PBA_ZONE_LABELS, EURO_ZONE_COLORS, EURO_ZONE_LABELS,
   DateZone, PbaDateZone, KeyDate,
+  getPbaDateContext, getPbaSeasonLabel,
 } from './keyDates';
-
-const INPUT_MAX = '2035-09-30';
 
 interface StartDateTimelineProps {
   onSelect: (date: string) => void;
@@ -46,12 +45,13 @@ const NBA_ZONE_SEGMENTS: { start: string; end: string; zone: DateZone }[] = [
   { start: '2026-04-16', end: TIMELINE_DISPLAY_END, zone: 'late' },
 ];
 
-// PBA-specific zone segments — 3 conferences spanning ~15 months
+// PBA-specific zone segments — compressed three-conference season
 const PBA_ZONE_SEGMENTS: { start: string; end: string; zone: PbaDateZone }[] = [
-  { start: '2025-10-05', end: '2026-02-28', zone: 'philippineCup' },
-  { start: '2026-03-01', end: '2026-03-10', zone: 'allstar' },
-  { start: '2026-03-11', end: '2026-08-31', zone: 'commissionersCup' },
-  { start: '2026-09-01', end: '2026-12-28', zone: 'governorsCup' },
+  { start: '2025-10-05', end: '2026-03-05', zone: 'philippineCup' },
+  { start: '2026-03-06', end: '2026-03-10', zone: 'allstar' },
+  { start: '2026-03-11', end: '2026-07-09', zone: 'commissionersCup' },
+  { start: '2026-07-10', end: '2026-09-30', zone: 'governorsCup' },
+  { start: '2026-10-01', end: '2026-10-04', zone: 'offseason' },
 ];
 
 const EURO_ZONE_SEGMENTS = [
@@ -74,7 +74,7 @@ const NBA_MONTH_TICKS: { date: string; label: string }[] = [
   { date: '2026-06-01', label: 'JUN' }, { date: '2026-07-01', label: 'JUL' },
 ];
 
-// PBA month ticks — Oct 2025 through Jan 2027
+// PBA month ticks — Oct 2025 through Oct 2026
 const PBA_MONTH_TICKS: { date: string; label: string }[] = [
   { date: '2025-10-01', label: 'OCT' }, { date: '2025-11-01', label: 'NOV' },
   { date: '2025-12-01', label: 'DEC' }, { date: '2026-01-01', label: 'JAN' },
@@ -82,8 +82,7 @@ const PBA_MONTH_TICKS: { date: string; label: string }[] = [
   { date: '2026-04-01', label: 'APR' }, { date: '2026-05-01', label: 'MAY' },
   { date: '2026-06-01', label: 'JUN' }, { date: '2026-07-01', label: 'JUL' },
   { date: '2026-08-01', label: 'AUG' }, { date: '2026-09-01', label: 'SEP' },
-  { date: '2026-10-01', label: 'OCT' }, { date: '2026-11-01', label: 'NOV' },
-  { date: '2026-12-01', label: 'DEC' }, { date: '2027-01-01', label: 'JAN' },
+  { date: '2026-10-01', label: 'OCT' },
 ];
 
 const EURO_MONTH_TICKS: { date: string; label: string }[] = [
@@ -120,13 +119,13 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
   const trackRef = useRef<HTMLDivElement>(null);
 
   const applyDate = useCallback((raw: string) => {
-    const clamped = raw < tlMin ? tlMin : raw > INPUT_MAX ? INPUT_MAX : raw;
+    const clamped = raw < tlMin ? tlMin : raw > tlMax ? tlMax : raw;
     if (!isPba && !isEuro && clamped >= '2026-02-13' && clamped <= '2026-02-16') {
       setSelectedDate('2026-02-13');
     } else {
       setSelectedDate(clamped);
     }
-  }, [tlMin, isPba, isEuro]);
+  }, [tlMin, tlMax, isPba, isEuro]);
 
   const handleTrackClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!trackRef.current) return;
@@ -147,6 +146,8 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
   const daysSkipped = daysBetween(tlMin, selectedDate);
   const estSeconds = Math.max(1, Math.ceil(daysSkipped / 25));
   const isDay1 = selectedDate === tlMin;
+  const pbaDateContext = isPba ? getPbaDateContext(selectedDate) : null;
+  const pbaSeasonLabel = isPba ? getPbaSeasonLabel(selectedDate) : null;
 
   const selectedX = dateToX(selectedDate);
 
@@ -165,7 +166,7 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
             {isEuro
               ? 'Pick any date across the Euro offseason, domestic season, cups, and playoffs. Everything before it gets lazy-simmed.'
               : isPba
-              ? 'Pick any date across the 3-conference PBA season. Everything before it gets simulated automatically.'
+              ? 'Pick any date across the 2025-26 PBA calendar through season awards. Everything before it gets lazy-simmed.'
               : 'Pick any date from the offseason to the end of the regular season. Everything before it gets simulated automatically.'}
           </p>
         </div>
@@ -216,9 +217,10 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
               <div className="absolute w-4 h-4 bg-white rounded-full border-2 border-slate-900 shadow-lg"
                 style={{ top: '97px', left: '-7px' }} />
               {/* Date label above */}
-              <div className="absolute px-2 py-0.5 bg-white text-black text-[10px] font-black rounded-md whitespace-nowrap shadow-lg"
-                style={{ top: '68px', left: '-30px', transform: 'translateX(-50%)', minWidth: '80px', textAlign: 'center' }}>
-                {formatDate(selectedDate)}
+              <div className="absolute px-2 py-1 bg-white text-black text-[10px] font-black rounded-md whitespace-nowrap shadow-lg"
+                style={{ top: isPba ? '58px' : '68px', left: '-30px', transform: 'translateX(-50%)', minWidth: isPba ? '112px' : '80px', textAlign: 'center' }}>
+                <div>{formatDate(selectedDate)}</div>
+                {pbaSeasonLabel && <div className="text-[8px] text-amber-700 leading-none mt-0.5">{pbaSeasonLabel} season</div>}
               </div>
             </div>
 
@@ -336,10 +338,17 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
           {isDay1 ? (
             <p className="text-slate-400 text-sm">
               <span className="text-emerald-400 font-bold">Starting from Day 1</span> — no simulation needed
+              {pbaDateContext && <span> · <span className="text-amber-300 font-bold">{pbaDateContext}</span></span>}
             </p>
           ) : (
             <p className="text-slate-400 text-sm">
               Selected: <span className="text-white font-bold">{formatDate(selectedDate)}</span>
+              {pbaDateContext && (
+                <>
+                  {' · '}
+                  <span className="text-amber-300 font-bold">{pbaDateContext}</span>
+                </>
+              )}
               {' · '}
               Skipping <span className="text-indigo-400 font-bold">{daysSkipped} days</span>
               {' · '}
@@ -364,7 +373,7 @@ export const StartDateTimeline: React.FC<StartDateTimelineProps> = ({ onSelect, 
               type="date"
               value={selectedDate}
               min={tlMin}
-              max={INPUT_MAX}
+              max={tlMax}
               onChange={e => applyDate(e.target.value)}
               className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm font-mono focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none"
             />

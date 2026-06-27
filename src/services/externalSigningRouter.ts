@@ -213,9 +213,9 @@ export function routeUnsignedPlayers(
       salaryUSD,
     });
 
-    // Fix 18: clamp OVR to destination league ceiling so NBA-boosted ratings
-    // don't carry over (e.g. K2 88 player cut to PBA stays at PBA cap, not K2 88).
-    const destOvrCap = EXTERNAL_LEAGUE_OVR_CAP[dest.league];
+    // Fix 18: cut OVR once at the destination-league boundary so NBA-boosted
+    // ratings don't carry unchanged into weaker leagues.
+    const destOvrCap = dest.league === 'PBA' ? undefined : EXTERNAL_LEAGUE_OVR_CAP[dest.league];
     const clampedOvr = destOvrCap !== undefined
       ? Math.min(p.overallRating ?? 60, destOvrCap)
       : (p.overallRating ?? 60);

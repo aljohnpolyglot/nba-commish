@@ -78,9 +78,11 @@ function pickWeighted(pool: NationalityPoolEntry[], seed: number): string {
 
 function leagueIdForTeam(team: NBATeam): string {
   const league = String((team as any).league ?? team.conference ?? '').toLowerCase();
+  if (league.includes('pba') || league.includes('philipp')) return 'pba';
   if (league.includes('endesa')) return 'endesa';
   if (league.includes('euroleague')) return 'euroleague';
   const tid = (team as any).id ?? 0;
+  if (tid >= 2000 && tid < 2100) return 'pba';
   if (tid >= 5000 && tid < 5100) return 'endesa';
   if (tid >= 1000 && tid < 1100) return 'euroleague';
   return league || 'endesa';
@@ -88,6 +90,7 @@ function leagueIdForTeam(team: NBATeam): string {
 
 function fallbackNationality(team: NBATeam, seed: number): string {
   const leagueId = leagueIdForTeam(team);
+  if (leagueId === 'pba') return 'Philippines';
   if (leagueId === 'endesa') return seed % 5 === 0 ? 'Argentina' : 'Spain';
   return ['Serbia', 'Lithuania', 'Greece', 'Italy', 'Spain', 'France', 'Turkey', 'Croatia'][seed % 8];
 }

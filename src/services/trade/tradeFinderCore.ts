@@ -22,7 +22,7 @@ import { validateCBATradeRules } from '../../utils/cbaTradeRules';
 import { isFranchiseLifer } from '../../utils/playerTenure';
 import { isInPostDeadlinePreFAWindow } from '../../utils/dateUtils';
 import { projectTrimDeadMoneyUSD } from './tradeAcceptance';
-import { isTradeExcludedStatus, type FindOffersInput, roleToMode, type TradeOffer, type TradeOfferItem } from './tradeFinderShared';
+import { isTradeExcludedPlayer, type FindOffersInput, roleToMode, type TradeOffer, type TradeOfferItem } from './tradeFinderShared';
 
 // ── Core Engine ──────────────────────────────────────────────────────────────
 
@@ -129,7 +129,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     // Get their roster sorted by OVR, excluding external/prospects.
     // Walking expirings and recently-signed players are dropped from candidate pools.
     const theirRoster = players
-      .filter(p => p.tid === team.id && !isTradeExcludedStatus(p.status, allowPbaRoster) && p.tid !== -2 && !isWalking(p) && !isLocked(p))
+      .filter(p => p.tid === team.id && !isTradeExcludedPlayer(p, allowPbaRoster) && p.tid !== -2 && !isWalking(p) && !isLocked(p))
       .filter(p => premiumIncoming || calcOvr2K(p) <= 84)
       .sort((a, b) => b.overallRating - a.overallRating);
 

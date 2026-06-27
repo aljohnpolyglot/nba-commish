@@ -1,27 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { LazySimProgress } from '../../types';
 
 interface LazySimLoadingScreenProps {
   progress: LazySimProgress;
 }
-
-const FLAVOR_TEXTS = [
-  'Simulating regular season games...',
-  'Calculating standings and records...',
-  'Processing player injuries...',
-  'Tracking All-Star vote tallies...',
-  'Setting Christmas Day matchups...',
-  'Running trade deadline negotiations...',
-  'Selecting dunk contest contestants...',
-  'Choosing 3-Point Contest field...',
-  'Simulating Rising Stars Challenge...',
-  'Running All-Star Game...',
-  'Computing MVP race standings...',
-  'Updating fantasy projections...',
-  'Generating highlight moments...',
-  'Resolving in-season tournament...',
-  'Advancing the league timeline...',
-];
 
 const formatDate = (iso: string): string => {
   if (!iso) return '';
@@ -31,15 +13,6 @@ const formatDate = (iso: string): string => {
 };
 
 export const LazySimLoadingScreen: React.FC<LazySimLoadingScreenProps> = ({ progress }) => {
-  const [flavorIdx, setFlavorIdx] = useState(0);
-
-  useEffect(() => {
-    const iv = setInterval(() => {
-      setFlavorIdx(i => (i + 1) % FLAVOR_TEXTS.length);
-    }, 3000);
-    return () => clearInterval(iv);
-  }, []);
-
   const pct = Math.min(99, progress.percentComplete);
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
@@ -105,11 +78,6 @@ export const LazySimLoadingScreen: React.FC<LazySimLoadingScreenProps> = ({ prog
             <div className="text-sm font-black text-indigo-300 tabular-nums">{formatDate(progress.targetDate)}</div>
           </div>
         </div>
-
-        {/* Flavor text */}
-        <p className="text-xs text-slate-500 text-center animate-pulse font-medium">
-          {FLAVOR_TEXTS[flavorIdx]}
-        </p>
 
       </div>
     </div>

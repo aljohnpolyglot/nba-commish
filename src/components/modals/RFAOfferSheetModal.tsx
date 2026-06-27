@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { CheckCircle, FileSignature, X } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
+import { formatContractTotalUSD } from '../../utils/salaryUtils';
 
 export const RFAOfferSheetModal: React.FC = () => {
   const { state, dispatchAction } = useGame();
@@ -10,6 +11,7 @@ export const RFAOfferSheetModal: React.FC = () => {
     playerName: string;
     signingTeamName: string;
     annualM: number;
+    salaryUSD?: number;
     years: number;
     expiresInDays: number;
   }>;
@@ -79,7 +81,7 @@ export const RFAOfferSheetModal: React.FC = () => {
               <div className="mb-6 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.03] divide-y divide-white/10">
                 {sheets.map(s => {
                   const decided = decidedIds.has(s.playerId);
-                  const totalM = Math.round(s.annualM * s.years);
+                  const totalValue = formatContractTotalUSD(s.salaryUSD ?? s.annualM * 1_000_000, s.years);
                   return (
                     <div key={s.playerId} className="px-3 py-2 flex items-center gap-3 text-sm">
                       <div className="flex-1 min-w-0">
@@ -87,7 +89,7 @@ export const RFAOfferSheetModal: React.FC = () => {
                         <div className="text-[10px] text-slate-500 flex items-center gap-2">
                           <span className="text-rose-300">{s.signingTeamName}</span>
                           <span className="text-slate-600">·</span>
-                          <span className="text-[#FDB927] tabular-nums">${totalM}M / {s.years}yr</span>
+                          <span className="text-[#FDB927] tabular-nums">{totalValue} / {s.years}yr</span>
                           <span className="text-slate-600">·</span>
                           <span>{s.expiresInDays}d</span>
                         </div>

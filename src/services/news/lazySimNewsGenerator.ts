@@ -171,12 +171,12 @@ export const generateLazySimNews = (
         }), player?.imgURL);
         if (item) {
           if (topGame) { item.gameId = topGame.gameId; item.homeTeamId = topGame.homeTeamId; item.awayTeamId = topGame.awayTeamId; }
-          // Rewrite batch_recap headline during playoffs — always rephrase for postseason feel
-          if (isPlayoffs && item) {
+          const topGameSched = topGame && schedule?.find(sg => sg.gid === topGame.gameId);
+          const topGameIsPostseason = !!(topGameSched?.isPlayoff || topGameSched?.isPlayIn);
+          if (isPlayoffs && item && topGameIsPostseason) {
             const lastName = top.stat.name.split(' ').pop() ?? top.stat.name;
             const pts = top.stat.pts, reb = top.stat.reb, ast = top.stat.ast;
             const seriesCtx = topGame ? getSeriesContext(topGame) : null;
-            const topGameSched = topGame && schedule?.find(sg => sg.gid === topGame.gameId);
             const playInGame = topGameSched?.isPlayIn;
             const topSeries = topGameSched?.playoffSeriesId
               ? playoffs?.series.find(s => s.id === topGameSched.playoffSeriesId)

@@ -8,17 +8,20 @@ import { computeRookieSalaryUSD } from '../../utils/rookieContractUtils';
 import { isPlausibleActiveMarket, MAX_FA_MARKET_DECISION_WINDOW_DAYS } from '../../services/freeAgencyBidding';
 import { hasLiveContractAfterWaive, stripLiveContractAfterWaive } from '../../utils/contractCleanup';
 import { repairBirdRightsForLoadedPlayer } from '../../utils/playerBirdRights';
+import { resolveYearsWithCurrentTeamFromStats } from '../../utils/playerTenure';
 import { isNoDraftLeague } from '../../services/offseason/offseasonState';
 import { initialState } from '../initialState';
 import { deriveOfficialNbaRecords } from '../../utils/nbaOfficialRecords';
 import { generateFuturePicksForTeamIds } from '../../services/draft/DraftPickGenerator';
 import { computeContractOffer, getContractLimits } from '../../utils/salaryUtils';
-import { isPbaRosterLocal } from '../../services/pba/importManager';
+import { buildPbaImportContractMetadata, isPbaRosterLocal, isRegisteredPbaRosterIdentity } from '../../services/pba/importManager';
 import { attachPbaStaffToTeam } from '../../services/pba/staffSources';
 import { computeLocalPBASalaryUSD, getPBARosterEconomyConfig } from '../../services/externalRosterService';
 import { ensureDraftClasses } from '../../services/draftClassFiller';
 import { buildPbaCollegePoolFromSource } from '../../services/pba/collegeSources';
 import { tunePbaDraftProspects } from '../../services/pba/draftRules';
+import { getPbaCompetitionIdForConference, isPbaActiveConferenceMode, isPbaActiveConferencePhase } from '../../utils/uiMode';
+import { getPbaRosterPortrait } from '../../services/pba/portraits';
 
 const EXTERNAL_STATUSES_SET = new Set(['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
 const DEAD_MONEY_FLOOR_USD = 50_000;
@@ -31,6 +34,8 @@ const NBA_TO_FICTIONAL_HANDLES: Record<string, string> = {
 };
 
 const PBA_LEGACY_ECONOMY_CAP_FLOOR = 1_000_000;
+const PBA_CONFERENCES = new Set(['philippine', 'commissioners', 'governors']);
+const PBA_CONFERENCE_PHASES = new Set(['regularSeason', 'playoffs', 'offseason', 'complete']);
 
 export function healPbaEconomySettings(leagueStats: any) {
   if (leagueStats?.uiMode !== 'pba_isolated') return leagueStats;
@@ -58,6 +63,9 @@ export function healPbaEconomySettings(leagueStats: any) {
     minimumPayrollEnabled: false,
     twoWayContractsEnabled: false,
     maxTwoWayPlayersPerTeam: 0,
+    maxPlayersPerTeam: PBA_ISOLATED_DEFAULTS.maxPlayersPerTeam,
+    maxStandardPlayersPerTeam: PBA_ISOLATED_DEFAULTS.maxStandardPlayersPerTeam,
+    maxTrainingCampRoster: PBA_ISOLATED_DEFAULTS.maxTrainingCampRoster,
     mleEnabled: false,
     biannualEnabled: false,
     playerOptionsEnabled: false,
@@ -95,6 +103,7 @@ function isBadPortrait(player: any) {
 }
 
 function clampExternalLeaguePlayer(player: any) {
+  if (player?.status === 'PBA') return player;
   const cap = EXTERNAL_LEAGUE_OVR_CAP[player?.status as keyof typeof EXTERNAL_LEAGUE_OVR_CAP];
   if (cap === undefined) return player;
   const overallRating = Math.min(Number(player?.overallRating ?? 0), cap);
@@ -141,7 +150,12 @@ export function migrateLoadedPlayers(loaded: any, currentSeasonYear: number) {
   let healedWaivedGhostContractCount = 0;
 
   const migratedPlayers = (loaded.players as any[] | undefined)?.map(player => {
-    let updated = isBadPortrait(player) ? { ...player, imgURL: undefined } : player;
+    const pbaPortrait = player?.status === 'PBA' && /^pba-\d+-/.test(String(player?.internalId ?? ''))
+      ? getPbaRosterPortrait(player.name)
+      : undefined;
+    let updated = pbaPortrait && (!player.imgURL || isBadPortrait(player))
+      ? { ...player, imgURL: pbaPortrait }
+      : isBadPortrait(player) ? { ...player, imgURL: undefined } : player;
     updated = repairGeneratedExternalPlayer(updated as any, currentSeasonYear) as any;
     updated = clampExternalLeaguePlayer(updated);
     if (updated.contract && Array.isArray(updated.contractYears)) {
@@ -382,7 +396,49 @@ export function healLoadedPbaContracts(players: any[], leagueStats: any, current
     if (!isPbaPlayer) return player;
     const currentSalaryUSD = Number(player.contract.amount ?? 0) * 1_000;
     if (!Number.isFinite(currentSalaryUSD) || currentSalaryUSD <= 0) return player;
-    const explicitImport = !!player.isImport || !isPbaRosterLocal(player, leagueStats);
+    const registeredLocal = isFilipinoPbaPlayer(player) || isRegisteredPbaRosterIdentity(player);
+    const staleLocalFlag = !!player.pbaLocalEligible && !registeredLocal;
+    const classificationPlayer = staleLocalFlag ? { ...player, pbaLocalEligible: undefined } : player;
+    const explicitImport = !!player.isImport || !isPbaRosterLocal(classificationPlayer, leagueStats);
+    const currentConference = String(player.importConference ?? leagueStats?.pbaConference ?? '');
+    const canRestoreConferenceImport = currentConference === 'commissioners' || currentConference === 'governors';
+    const shouldRestoreImport = explicitImport && pbaTeamIds.has(Number(player.tid)) && canRestoreConferenceImport;
+    if (shouldRestoreImport && !isPbaActiveConferencePhase(leagueStats?.pbaConferencePhase)) {
+      healed++;
+      return {
+        ...player,
+        ...(staleLocalFlag ? { pbaLocalEligible: undefined } : {}),
+        tid: -1,
+        status: 'Free Agent',
+        isImport: undefined,
+        importConference: undefined,
+        importTeamId: undefined,
+        pbaImportContract: {
+          ...(player.pbaImportContract ?? {}),
+          status: 'released',
+          releaseDate: player.pbaImportContract?.releaseDate ?? undefined,
+        },
+        contract: undefined,
+      };
+    }
+    const hasActiveConferenceImportContract =
+      shouldRestoreImport &&
+      !!player.pbaImportContract &&
+      player.pbaImportContract.status !== 'released';
+    if (hasActiveConferenceImportContract) {
+      if (staleLocalFlag || !player.isImport || player.importConference !== currentConference || Number(player.importTeamId ?? player.tid) !== Number(player.tid)) {
+        healed++;
+        return {
+          ...player,
+          ...(staleLocalFlag ? { pbaLocalEligible: undefined } : {}),
+          isImport: true,
+          importConference: currentConference,
+          importTeamId: Number(player.tid),
+          pbaImportContract: player.pbaImportContract,
+        };
+      }
+      return player;
+    }
     const isImport = explicitImport;
     const limits = getContractLimits(player, leagueStats);
     const offer = computeContractOffer(player, leagueStats);
@@ -396,7 +452,14 @@ export function healLoadedPbaContracts(players: any[], leagueStats: any, current
     healed++;
     return {
       ...player,
-      ...(!explicitImport ? { pbaLocalEligible: true } : {}),
+      ...(staleLocalFlag ? { pbaLocalEligible: undefined } : {}),
+      ...(!explicitImport && registeredLocal ? { pbaLocalEligible: true } : {}),
+      ...(shouldRestoreImport ? {
+        isImport: true,
+        importConference: currentConference,
+        importTeamId: Number(player.tid),
+        pbaImportContract: player.pbaImportContract ?? buildPbaImportContractMetadata(Number(player.tid), currentConference as any, undefined),
+      } : {}),
       contract: {
         ...player.contract,
         amount: Math.round(targetSalaryUSD / 1_000),
@@ -468,7 +531,13 @@ export function finalizeLoadedPlayers(loaded: any, players: any[], currentSeason
     externalRosterRepairs.length > 0
       ? [...loadedPlayers, ...externalRosterRepairs]
       : loadedPlayers
-  ).map((player: any) => repairBirdRightsForLoadedPlayer(player));
+  ).map((player: any) => {
+    const repaired = repairBirdRightsForLoadedPlayer(player);
+    const rebuiltYearsWithTeam = resolveYearsWithCurrentTeamFromStats(repaired);
+    return rebuiltYearsWithTeam === Number((repaired as any).yearsWithTeam ?? 0)
+      ? repaired
+      : { ...repaired, yearsWithTeam: rebuiltYearsWithTeam };
+  });
 
   const allHistoricalCups = Object.values((loaded.nbaCupHistory ?? {}) as Record<string, any>);
   if (loaded.nbaCup?.mvpPlayerId) allHistoricalCups.push(loaded.nbaCup);
@@ -480,6 +549,170 @@ export function finalizeLoadedPlayers(loaded: any, players: any[], currentSeason
   );
 
   return { finalPlayers, backfilledPlayers };
+}
+
+const normalizeDuplicateName = (value: unknown): string =>
+  String(value ?? '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+
+const playerCareerGames = (player: any): number =>
+  Array.isArray(player?.stats)
+    ? player.stats.reduce((sum: number, stat: any) => sum + Number(stat?.gp ?? 0), 0)
+    : 0;
+
+const duplicatePriority = (player: any, currentSeasonYear: number): number => {
+  const draftYear = Number(player?.draft?.year ?? 0);
+  const currentClassPenalty = Number.isFinite(draftYear) && draftYear >= currentSeasonYear ? -2000 : 0;
+  const prospectPenalty = player?.tid === -2 || player?.status === 'Draft Prospect' || player?.status === 'Prospect' ? -1500 : 0;
+  const activeBonus = player?.tid >= 0 ? 400 : 0;
+  const pbaBonus = player?.status === 'PBA' ? 250 : 0;
+  const gamesBonus = playerCareerGames(player);
+  const ageBonus = Number(player?.age ?? 0);
+  return currentClassPenalty + prospectPenalty + activeBonus + pbaBonus + gamesBonus + ageBonus;
+};
+
+const makeUniqueDuplicateId = (baseId: string, usedIds: Set<string>): string => {
+  let attempt = 2;
+  let candidate = `${baseId}--dup-${attempt}`;
+  while (usedIds.has(candidate)) {
+    attempt += 1;
+    candidate = `${baseId}--dup-${attempt}`;
+  }
+  usedIds.add(candidate);
+  return candidate;
+};
+
+export function healDuplicatePlayerInternalIds(players: any[], boxScores: any[], currentSeasonYear: number) {
+  const groups = new Map<string, any[]>();
+  for (const player of players ?? []) {
+    const id = String(player?.internalId ?? '');
+    if (!id) continue;
+    const bucket = groups.get(id) ?? [];
+    bucket.push(player);
+    groups.set(id, bucket);
+  }
+
+  const duplicateGroups = [...groups.entries()].filter(([, bucket]) => bucket.length > 1);
+  if (duplicateGroups.length === 0) {
+    return { players, boxScores };
+  }
+
+  const usedIds = new Set(
+    (players ?? [])
+      .map((player: any) => String(player?.internalId ?? ''))
+      .filter((id: string) => id.length > 0),
+  );
+  const replacementByPlayer = new Map<any, string>();
+  const metaByOldId = new Map<string, Array<{ currentId: string; nameKey: string; tid: number }>>();
+  let renamedPlayers = 0;
+
+  for (const [oldId, bucket] of duplicateGroups) {
+    const ordered = [...bucket].sort((a, b) => duplicatePriority(b, currentSeasonYear) - duplicatePriority(a, currentSeasonYear));
+    const canonical = ordered[0];
+    const meta: Array<{ currentId: string; nameKey: string; tid: number }> = [{
+      currentId: oldId,
+      nameKey: normalizeDuplicateName(canonical?.name),
+      tid: Number(canonical?.tid ?? NaN),
+    }];
+    for (let index = 1; index < ordered.length; index++) {
+      const player = ordered[index];
+      const nextId = makeUniqueDuplicateId(oldId, usedIds);
+      replacementByPlayer.set(player, nextId);
+      meta.push({
+        currentId: nextId,
+        nameKey: normalizeDuplicateName(player?.name),
+        tid: Number(player?.tid ?? NaN),
+      });
+      renamedPlayers += 1;
+    }
+    metaByOldId.set(oldId, meta);
+  }
+
+  const healedPlayers = (players ?? []).map((player: any) =>
+    replacementByPlayer.has(player)
+      ? { ...player, internalId: replacementByPlayer.get(player) }
+      : player,
+  );
+
+  const resolveDuplicateStatId = (oldId: string, stat: any, teamId: number): string => {
+    const meta = metaByOldId.get(oldId);
+    if (!meta) return oldId;
+    const statNameKey = normalizeDuplicateName(stat?.name);
+    const nameMatches = statNameKey ? meta.filter(entry => entry.nameKey === statNameKey) : [];
+    if (nameMatches.length === 1) return nameMatches[0].currentId;
+    const teamMatches = (nameMatches.length > 0 ? nameMatches : meta).filter(entry => entry.tid === teamId);
+    if (teamMatches.length === 1) return teamMatches[0].currentId;
+    return oldId;
+  };
+
+  const resolveDuplicateMapKey = (oldId: string, homeTeamId: number, awayTeamId: number): string => {
+    const meta = metaByOldId.get(oldId);
+    if (!meta) return oldId;
+    const homeMatches = meta.filter(entry => entry.tid === homeTeamId);
+    if (homeMatches.length === 1) return homeMatches[0].currentId;
+    const awayMatches = meta.filter(entry => entry.tid === awayTeamId);
+    if (awayMatches.length === 1) return awayMatches[0].currentId;
+    return oldId;
+  };
+
+  let rewiredStats = 0;
+  let rewiredMaps = 0;
+  const rewriteSideStats = (stats: any[], teamId: number) =>
+    (stats ?? []).map((stat: any) => {
+      const oldId = String(stat?.playerId ?? '');
+      if (!metaByOldId.has(oldId)) return stat;
+      const nextId = resolveDuplicateStatId(oldId, stat, teamId);
+      if (nextId === oldId) return stat;
+      rewiredStats += 1;
+      return { ...stat, playerId: nextId };
+    });
+
+  const rewriteKeyedMap = (map: Record<string, any> | undefined, homeTeamId: number, awayTeamId: number) => {
+    if (!map || typeof map !== 'object') return map;
+    let changed = false;
+    const next: Record<string, any> = {};
+    for (const [key, value] of Object.entries(map)) {
+      const nextKey = metaByOldId.has(key) ? resolveDuplicateMapKey(key, homeTeamId, awayTeamId) : key;
+      if (nextKey !== key) {
+        rewiredMaps += 1;
+        changed = true;
+      }
+      next[nextKey] = value;
+    }
+    return changed ? next : map;
+  };
+
+  const healedBoxScores = (boxScores ?? []).map((box: any) => {
+    const homeStats = rewriteSideStats(box?.homeStats ?? [], Number(box?.homeTeamId ?? NaN));
+    const awayStats = rewriteSideStats(box?.awayStats ?? [], Number(box?.awayTeamId ?? NaN));
+    const playerDNPs = rewriteKeyedMap(box?.playerDNPs, Number(box?.homeTeamId ?? NaN), Number(box?.awayTeamId ?? NaN));
+    const playerInGameInjuries = rewriteKeyedMap(box?.playerInGameInjuries, Number(box?.homeTeamId ?? NaN), Number(box?.awayTeamId ?? NaN));
+    const playersPlayingHurt = rewriteKeyedMap(box?.playersPlayingHurt, Number(box?.homeTeamId ?? NaN), Number(box?.awayTeamId ?? NaN));
+    if (
+      homeStats === box?.homeStats &&
+      awayStats === box?.awayStats &&
+      playerDNPs === box?.playerDNPs &&
+      playerInGameInjuries === box?.playerInGameInjuries &&
+      playersPlayingHurt === box?.playersPlayingHurt
+    ) {
+      return box;
+    }
+    return {
+      ...box,
+      homeStats,
+      awayStats,
+      playerDNPs,
+      playerInGameInjuries,
+      playersPlayingHurt,
+    };
+  });
+
+  console.warn(
+    `[LOAD_GAME] Healed ${duplicateGroups.length} duplicate player internalId group(s); renamed ${renamedPlayers} player(s), rewired ${rewiredStats} box-score row(s), ${rewiredMaps} keyed map entr${rewiredMaps === 1 ? 'y' : 'ies'}.`,
+  );
+
+  return { players: healedPlayers, boxScores: healedBoxScores };
 }
 
 export function healLoadedDraftPicks(loaded: any, currentSeasonYear: number) {
@@ -545,6 +778,36 @@ export function migrateLeagueStats(loaded: any) {
   }
   if (staleRulesMigrated) {
     console.log('[LOAD_GAME] Migrated stale exhibition rules to tournament defaults.');
+  }
+  if (migratedLeagueStats.uiMode === 'pba_isolated') {
+    migratedLeagueStats.allStarGameEnabled = true;
+    migratedLeagueStats.allStarMirrorLeagueRules = false;
+    migratedLeagueStats.allStarGameFormat = 'timed';
+    migratedLeagueStats.allStarQuarterLength = 12;
+    migratedLeagueStats.allStarNumQuarters = 4;
+    migratedLeagueStats.allStarOvertimeDuration = 5;
+    migratedLeagueStats.risingStarsEnabled = false;
+    migratedLeagueStats.celebrityGameEnabled = false;
+    if (!PBA_CONFERENCES.has(String(migratedLeagueStats.pbaConference ?? ''))) {
+      migratedLeagueStats.pbaConference = 'philippine';
+    }
+    if (!PBA_CONFERENCE_PHASES.has(String(migratedLeagueStats.pbaConferencePhase ?? ''))) {
+      const competitionId = getPbaCompetitionIdForConference(migratedLeagueStats.pbaConference);
+      const currentConferenceGames = (loaded.schedule ?? []).filter((game: any) => game.competitionId === competitionId);
+      const currentConferenceBoxScores = (loaded.boxScores ?? []).filter((game: any) => game.competitionId === competitionId);
+      const hasUnplayedCurrentConference = currentConferenceGames.some((game: any) => !game.played);
+      const hasPostseasonMaterial = [...currentConferenceGames, ...currentConferenceBoxScores].some((game: any) =>
+        ['qf', 'sf', 'final'].includes(String(game.competitionPhase)),
+      );
+      migratedLeagueStats.pbaConferencePhase = hasUnplayedCurrentConference || currentConferenceGames.length > 0 || currentConferenceBoxScores.length > 0
+        ? hasPostseasonMaterial ? 'playoffs' : 'regularSeason'
+        : loaded.offseasonChecklist ? 'offseason' : 'regularSeason';
+      console.log(`[LOAD_GAME] Normalized missing PBA conference phase to ${migratedLeagueStats.pbaConferencePhase}.`);
+    }
+    if (!isPbaActiveConferencePhase(migratedLeagueStats.pbaConferencePhase) && migratedLeagueStats.pbaConferencePhase !== 'offseason' && migratedLeagueStats.pbaConferencePhase !== 'complete') {
+      migratedLeagueStats.pbaConferencePhase = 'regularSeason';
+      console.log('[LOAD_GAME] Repaired invalid PBA conference phase.');
+    }
   }
   return migratedLeagueStats;
 }
@@ -807,6 +1070,49 @@ export function cleanOptionHistory(history: any[] | undefined) {
   return cleanedHistory;
 }
 
+const LEGACY_AUTO_NEWS_HEADLINES = new Set([
+  'Christmas Day Games Set',
+  'THE THRONE — Sign-Ups Open',
+  'THE THRONE — Sign-Ups Closed',
+  'THE THRONE — Field of 16 Revealed',
+  'All-Star Starters Announced',
+  'Full All-Star Rosters Set',
+  'All-Star Weekend Complete',
+  'NBA All-Star Starters Announced',
+  'NBA All-Star Rosters Set',
+  'NBA All-Star Weekend Complete',
+  'PBA All-Star Rosters Set',
+  'PBA All-Star Weekend Complete',
+  'Draft Lottery Complete',
+  'NBA Draft Complete',
+]);
+
+const extractNewsYear = (item: any): string => {
+  const match = String(item?.date ?? '').match(/\b(19|20)\d{2}\b/);
+  return match?.[0] ?? 'unknown';
+};
+
+export function cleanDuplicateAutoNews(news: any[] | undefined) {
+  if (!Array.isArray(news) || news.length === 0) return news ?? [];
+  const seen = new Set<string>();
+  let removed = 0;
+  const cleaned = news.filter((item: any) => {
+    const headline = String(item?.headline ?? '').trim();
+    if (!LEGACY_AUTO_NEWS_HEADLINES.has(headline)) return true;
+    const key = `${extractNewsYear(item)}|${headline}`;
+    if (seen.has(key)) {
+      removed++;
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+  if (removed > 0) {
+    console.log(`[LOAD_GAME] Removed ${removed} duplicate auto-news item(s).`);
+  }
+  return cleaned;
+}
+
 export async function refreshTrainingCalendars(loaded: any, teams: any[]) {
   let teamsWithFreshTraining = teams;
   try {
@@ -870,7 +1176,7 @@ export function healFollowedHandles(loaded: any) {
 export function healOffseasonChecklist(loaded: any) {
   const persistedChecklist = loaded.offseasonChecklist as OffseasonChecklist | undefined;
   let healedOffseasonChecklist = persistedChecklist;
-  if (persistedChecklist && loaded.leagueStats?.uiMode === 'pba_isolated' && loaded.leagueStats?.pbaConferencePhase !== 'offseason') {
+  if (persistedChecklist && isPbaActiveConferenceMode(loaded)) {
     console.log('[LOAD_GAME] Cleared stale PBA offseason checklist during active conference play.');
     return undefined;
   }

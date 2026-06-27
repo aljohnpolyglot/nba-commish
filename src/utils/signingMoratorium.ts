@@ -25,6 +25,10 @@ const addMonths = (d: Date, months: number): Date => {
     return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, d.getUTCDate()));
 };
 
+export function isPostSigningMoratoriumActive(leagueStats?: LeagueStats): boolean {
+    return leagueStats?.postSigningMoratoriumEnabled !== false && leagueStats?.uiMode !== 'pba_isolated';
+}
+
 export function computeTradeEligibleDate(input: MoratoriumInput): string | undefined {
     if (!input.signingDate) return undefined;
     if (input.isMinimum || input.isTenDay || input.isTwoWay) return undefined;
@@ -58,7 +62,7 @@ export function computeTradeEligibleDate(input: MoratoriumInput): string | undef
 }
 
 export function isTradeEligible(player: NBAPlayer, currentDate: string, leagueStats?: LeagueStats): boolean {
-    if (leagueStats?.postSigningMoratoriumEnabled === false) return true;
+    if (!isPostSigningMoratoriumActive(leagueStats)) return true;
     const eligible = (player as any).tradeEligibleDate as string | undefined;
     if (!eligible) return true;
     if (!currentDate) return true;

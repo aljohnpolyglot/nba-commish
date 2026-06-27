@@ -1,5 +1,5 @@
 import type { GameState, NBAPlayer } from '../../../types';
-import { computeContractOffer } from '../../../utils/salaryUtils';
+import { computeContractOffer, formatContractUSD } from '../../../utils/salaryUtils';
 
 type HistoryEntry = NonNullable<GameState['history']>[number];
 
@@ -9,6 +9,7 @@ export type PendingOptionToast = {
   pos: string;
   decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined';
   amountM?: number;
+  amountUSD?: number;
 };
 
 type OptionDecisionArgs = {
@@ -16,6 +17,7 @@ type OptionDecisionArgs = {
   currentYear: number;
   nextYear: number;
   optionDateStr: string;
+  leagueStats?: GameState['leagueStats'];
 };
 
 type OptionDecisionResult = {
@@ -34,6 +36,7 @@ export function resolveSeasonRolloverOptionDecisions({
   currentYear,
   nextYear,
   optionDateStr,
+  leagueStats,
 }: OptionDecisionArgs): OptionDecisionResult {
   const playerOptOutIds = new Set<string>();
   const playerOptInIds = new Set<string>();
@@ -61,12 +64,12 @@ export function resolveSeasonRolloverOptionDecisions({
     if (!player.contract || (player.contract.exp ?? 0) !== nextYear) continue;
     if (player.tid < 0 || player.tid >= 100) continue;
 
-    const offer = computeContractOffer(player, state.leagueStats as any);
+    const offer = computeContractOffer(player, (leagueStats ?? state.leagueStats) as any);
     const currentAmountUSD = optionSalaryUSD(player);
     const team = state.teams.find(t => t.id === player.tid);
     if (currentAmountUSD >= offer.salaryUSD * 0.9) {
       playerOptInIds.add(player.internalId);
-      const text = `${player.name} has accepted his player option with the ${team?.name ?? 'team'}: $${(currentAmountUSD / 1_000_000).toFixed(1)}M`;
+      const text = `${player.name} has accepted his player option with the ${team?.name ?? 'team'}: ${formatContractUSD(currentAmountUSD)}`;
       playerOptionNews.push(text);
       playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing', playerIds: [player.internalId], tid: player.tid } as unknown as HistoryEntry);
       if (isGM && player.tid === userTid) {
@@ -76,6 +79,7 @@ export function resolveSeasonRolloverOptionDecisions({
           pos: (player as any).pos ?? '',
           decision: 'player-in',
           amountM: +(currentAmountUSD / 1_000_000).toFixed(1),
+          amountUSD: currentAmountUSD,
         });
       }
       continue;

@@ -1,5 +1,7 @@
 import { StarterService } from '../../../../../../services/simulation/StarterService';
-import { MinutesPlayedService } from '../../../../../../services/simulation/MinutesPlayedService';
+import { KNOBS_PBA } from '../../../../../../services/simulation/SimulatorKnobs';
+import { buildLeagueBaseKnobs } from '../../../../../../services/simulation/GameSimulator/engineLeagueKnobs';
+import { resolveRotationPlan } from '../../../../../../services/simulation/rotationPlan';
 import { getTeamRotationManagementEffects } from '../../../../../../services/staff/staffGameplayEffects';
 import { getDisplayOverall } from '../../../../../../utils/playerRatings';
 import type { NBAPlayer } from '../../../../../../types';
@@ -154,63 +156,47 @@ export function computeBaselineFromService(
   benchDepth: number,
   quarterLength: number,
   numQuarters: number,
-  minuteProfile: 'default' | 'euro_club',
+  _minuteProfile: 'default' | 'euro_club',
+  leagueStats?: any,
+  knobOverrides?: Record<string, unknown>,
 ): RotationPreview {
   if (!roster.length || !team) return { starterIds: [], minutes: {} };
 
-  const maxPlayerMinutes = quarterLength * numQuarters;
-  const targetMinutes = maxPlayerMinutes * 5;
   const healthy = roster.map(player => ({ ...(player as any), injury: undefined })) as NBAPlayer[];
   const depthOverride = Math.round(5 + (benchDepth / 100) * 8);
-  const rotation = MinutesPlayedService.getRotation(
+  const baseKnobs = buildLeagueBaseKnobs(leagueStats);
+  const resolved = resolveRotationPlan(
     team,
     allPlayers,
-    0,
     season,
+    {
+      ...baseKnobs,
+      ...knobOverrides,
+      conferenceRank: standings.conferenceRank,
+      gbFromLeader: standings.gbFromLeader,
+      gamesRemaining: standings.gamesRemaining,
+      quarterLength,
+      numQuarters,
+      rotationDepthOverride: depthOverride,
+    } as any,
+    0,
     healthy,
-    standings.conferenceRank,
-    standings.gbFromLeader,
-    standings.gamesRemaining,
-    depthOverride,
-  );
-  const { minutes } = MinutesPlayedService.allocateMinutes(
-    rotation.players,
-    season,
-    0,
-    0,
-    rotation.starMpgTarget,
-    false,
-    quarterLength,
-    undefined,
-    numQuarters,
-    minuteProfile,
   );
 
   const out: Record<string, number> = {};
-  rotation.players.forEach((player, i) => {
-    out[player.internalId] = Math.max(0, Math.round(minutes[i] ?? 0));
+  resolved.rotation.forEach((player, i) => {
+    out[player.internalId] = Math.max(0, Math.round(resolved.minuteTargets[i] ?? 0));
   });
 
-  let sum = Object.values(out).reduce((a, b) => a + b, 0);
-  const ids = Object.keys(out);
-  if (sum !== targetMinutes && ids.length > 0) {
-    const order = [...ids].sort((a, b) => out[b] - out[a]);
-    let cursor = 0;
-    let guard = order.length * Math.max(1, maxPlayerMinutes);
-    while (sum !== targetMinutes && guard-- > 0) {
-      const id = order[cursor % order.length];
-      const step = sum < targetMinutes ? 1 : -1;
-      const next = out[id] + step;
-      if (next >= 0 && next <= maxPlayerMinutes) {
-        out[id] = next;
-        sum += step;
-      }
-      cursor++;
-    }
-  }
-
   return {
-    starterIds: rotation.players.slice(0, 5).map(player => player.internalId),
+    starterIds: resolved.rotation.slice(0, 5).map(player => player.internalId),
     minutes: out,
   };
 }
+
+export const PBA_IDEAL_KNOBS = {
+  ...KNOBS_PBA,
+  // Ideal should mirror the actual PBA rotation engine, but still respect the
+  // bench-depth slider rather than hard-forcing an 11-man preview.
+  rotationDepthOverride: undefined,
+};

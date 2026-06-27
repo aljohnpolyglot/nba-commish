@@ -12,11 +12,25 @@ import { resolveExhibitionRules } from './exhibitionRules';
 import { announceThroneField, simulateThroneTournament as simulateThroneTournamentImpl } from './throneOrchestrator';
 import { ALL_STAR_WEEKEND_LOGOS, buildBracketLayout, getAllStarWeekendDates, toNoonUTC } from './allStarWeekendDates';
 
+const isInjectedAllStarWeekendGame = (game: any): boolean =>
+  !!(
+    game?.isAllStar ||
+    game?.isRisingStars ||
+    game?.isCelebrityGame ||
+    game?.isDunkContest ||
+    game?.isThreePointContest ||
+    game?.isShootingStars ||
+    game?.isSkillsChallenge ||
+    game?.isHorseContest ||
+    game?.isThroneEvent
+  );
+
 export function injectAllStarGames(schedule: any[], teams: any[], year: number, roster: any[], leagueStats: any) {
   const dates = getAllStarWeekendDates(year, leagueStats);
   const rsFormat = leagueStats.risingStarsFormat ?? '4team_tournament';
   const rsIsTournament = rsFormat === '4team_tournament' || rsFormat === 'random_4team';
   const allStarRules = resolveExhibitionRules(leagueStats, 'allStar');
+  const isPbaIsolated = leagueStats?.uiMode === 'pba_isolated';
   void teams;
 
   const risingStarsGames: any[] = rsIsTournament
@@ -64,7 +78,15 @@ export function injectAllStarGames(schedule: any[], teams: any[], year: number, 
   if (leagueStats.allStarHorse === true) newGames.push(horse);
   if (leagueStats.allStarThroneEnabled === true) newGames.push(throneEvent);
 
-  return [...schedule, ...newGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const injectedGids = new Set(newGames.map((g) => g.gid));
+  const cleanedSchedule = schedule.filter((game) => {
+    if (injectedGids.has(game.gid)) return false;
+    if (!isPbaIsolated) return true;
+    if (!isInjectedAllStarWeekendGame(game)) return true;
+    return !game.isRisingStars && !game.isCelebrityGame;
+  });
+
+  return [...cleanedSchedule, ...newGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 export async function simulateCelebrityGame(state: GameState): Promise<Partial<GameState>> {
@@ -115,6 +137,11 @@ export function simulateDunkContest(state: GameState): Partial<GameState> {
   if (contestants.length < 2) return { allStar: newAllStarState, schedule: markPlayed(state.schedule) };
 
   const result = AllStarDunkContestSim.simulate(contestants);
+  const winnerPlayer = contestants.find((p) =>
+    p.internalId === result.winnerId || p.name === result.winnerId || p.name === result.winnerName,
+  );
+  const normalizedWinnerId = winnerPlayer?.internalId ?? result.winnerId;
+  const normalizedWinnerName = winnerPlayer?.name ?? result.winnerName;
   newAllStarState.dunkContest = {
     round1: result.round1,
     round2: result.round2,
@@ -126,12 +153,12 @@ export function simulateDunkContest(state: GameState): Partial<GameState> {
         playerName: p.name,
         round1Score: r1?.totalScore ?? 0,
         round2Score: r2?.totalScore ?? null,
-        isWinner: result.winnerId === p.internalId,
+        isWinner: normalizedWinnerId === p.internalId,
         dunkTypes: [...(r1?.dunks.map((d) => d.move) ?? []), ...(r2?.dunks.map((d) => d.move) ?? [])],
       };
     }),
-    winnerId: result.winnerId,
-    winnerName: result.winnerName,
+    winnerId: normalizedWinnerId,
+    winnerName: normalizedWinnerName,
     mvpDunk: result.mvpDunk,
     log: result.log,
     complete: true,

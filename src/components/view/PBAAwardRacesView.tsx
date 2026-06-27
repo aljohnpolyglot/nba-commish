@@ -3,7 +3,7 @@ import { Trophy, Star, Target, Zap, UserCheck, Info, Award, Flame, Sparkles, Use
 import { useGame } from '../../store/GameContext';
 import { useHubScope } from '../../hooks/useHubScope';
 import { AwardService, type AllNBASpot } from '../../services/logic/AwardService';
-import { assignCoachOdds } from '../../services/logic/AwardServiceShared';
+import { assignCoachOdds, assignOdds } from '../../services/logic/AwardServiceShared';
 import { resolveStaffRating } from '../../services/staff/displayAttributes';
 import { fetchCoachData, getCoachPhoto } from '../../data/photos/coaches';
 import { PlayerBioView } from '../central/view/PlayerBioView';
@@ -14,6 +14,10 @@ import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions'
 import { PBA_TEAM_DATA } from '../../data/templates/philippines/teamPopulations';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
+import { isPbaRosterLocal } from '../../services/pba/importManager';
+import { getPbaMostImprovedCandidates, isPbaRookieForSeason } from '../../services/pba/awards';
+import { getPbaHeadCoachPhotoForTeam } from '../../services/pba/staffSources';
+import { selectCountedPbaRegularBoxScores } from '../../services/pba/competitionGames';
 
 type PbaTab = 'mvp' | 'bpc' | 'bestImport' | 'roy' | 'mip' | 'coy' | 'dpoy' | 'mqm' | 'allPBA';
 
@@ -29,6 +33,7 @@ type PbaCoachCandidate = {
   team: any;
   wins: number;
   losses: number;
+  coachPhotoUrl?: string;
   odds?: string;
 };
 
@@ -57,8 +62,44 @@ const HISTORY_TYPES: Record<PbaTab, string> = {
 };
 const COY_HISTORY_TYPES = ['Coach of the Year', 'Baby Dalupan PBA Coach of the Year award', 'PBA Coach of the Year award'];
 const BEST_IMPORT_HISTORY_TYPES = ['Best Import of the Conference', 'Best Import'];
+const HISTORY_TYPE_ALIASES: Record<PbaTab, string[]> = {
+  mvp: ['MVP', HISTORY_TYPES.mvp],
+  bpc: [HISTORY_TYPES.bpc],
+  bestImport: BEST_IMPORT_HISTORY_TYPES,
+  roy: ['ROY', HISTORY_TYPES.roy],
+  mip: ['MIP', HISTORY_TYPES.mip],
+  coy: ['COY', ...COY_HISTORY_TYPES],
+  dpoy: ['DPOY', HISTORY_TYPES.dpoy],
+  mqm: ['SMOY', 'Sixth Man of the Year', HISTORY_TYPES.mqm],
+  allPBA: ['PBA Mythical First Team', 'PBA Mythical Second Team', HISTORY_TYPES.allPBA],
+};
 
 const normalizeText = (value: unknown) => String(value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const awardTypeMatches = (award: any, types: readonly string[]) => {
+  const type = String(award?.type ?? '');
+  return types.some(candidate => type === candidate || type.includes(candidate));
+};
+const pbaTeamId = (tid: unknown): boolean => Number(tid) >= 2000 && Number(tid) < 2100;
+const isPbaTeamPlayer = (player: NBAPlayer): boolean => player.status === 'PBA' || pbaTeamId(player.tid);
+const hasActivePbaImportContract = (player: NBAPlayer): boolean => {
+  const contract = (player as any).pbaImportContract;
+  return !!contract && contract.status !== 'released';
+};
+const isPbaImportLike = (player: NBAPlayer): boolean =>
+  !!(player as any).isImport ||
+  !!(player as any).importConference ||
+  hasActivePbaImportContract(player);
+const isPbaLocalAwardPlayer = (player: NBAPlayer, leagueStats: any): boolean =>
+  isPbaTeamPlayer(player) &&
+  isPbaRosterLocal(player, leagueStats) &&
+  !isPbaImportLike(player);
+const statRebounds = (stats: any): number => stats?.trb ?? stats?.reb ?? ((stats?.orb ?? 0) + (stats?.drb ?? 0));
+const posGroup = (pos?: string): 'G' | 'F' | 'C' => {
+  const key = String(pos ?? '').toUpperCase();
+  if (key.startsWith('C')) return 'C';
+  if (key.includes('G')) return 'G';
+  return 'F';
+};
 
 export const PBAAwardRacesView: React.FC = () => {
   const { state } = useGame();
@@ -71,7 +112,6 @@ export const PBAAwardRacesView: React.FC = () => {
   const pbaConference = ((state.leagueStats as any)?.pbaConference ?? 'philippine') as 'philippine' | 'commissioners' | 'governors';
   const currentHistory = (state.historicalAwards ?? []).filter((award: any) => {
     if (Number(award.season) !== Number(season)) return false;
-    if (selectedTab === 'coy') return COY_HISTORY_TYPES.some(type => String(award.type ?? '').includes(type));
     if (selectedTab === 'bpc' || selectedTab === 'bestImport') {
       const awardConference = normalizeText(award.conference ?? award.source ?? award.type);
       const wantsConference = pbaConference === 'philippine'
@@ -80,9 +120,9 @@ export const PBAAwardRacesView: React.FC = () => {
           ? 'commissioner'
           : 'governor';
       if (!awardConference.includes(wantsConference)) return false;
-      if (selectedTab === 'bestImport') return BEST_IMPORT_HISTORY_TYPES.some(type => String(award.type ?? '').includes(type));
+      if (selectedTab === 'bestImport') return awardTypeMatches(award, HISTORY_TYPE_ALIASES.bestImport);
     }
-    return award.type === HISTORY_TYPES[selectedTab];
+    return awardTypeMatches(award, HISTORY_TYPE_ALIASES[selectedTab]);
   });
   const pbaSpec = (() => {
     const current = (state.leagueStats as any)?.pbaConference;
@@ -106,11 +146,7 @@ export const PBAAwardRacesView: React.FC = () => {
     for (const team of teams) {
       records.set(team.id, { wins: 0, losses: 0 });
     }
-    for (const box of state.boxScores ?? []) {
-      const phase = String((box as any).competitionPhase ?? '').toLowerCase();
-      const boxSeason = Number((box as any).season ?? season);
-      if ((box as any).competitionId !== pbaSpec.id || boxSeason !== Number(season)) continue;
-      if (phase && !phase.startsWith('r') && phase !== 'regular' && phase !== 'league' && phase !== 'group') continue;
+    for (const box of selectCountedPbaRegularBoxScores(state.boxScores ?? [], pbaSpec, Number(season))) {
       const homeTid = Number((box as any).homeTeamId);
       const awayTid = Number((box as any).awayTeamId);
       const home = records.get(homeTid) ?? { wins: 0, losses: 0 };
@@ -128,34 +164,86 @@ export const PBAAwardRacesView: React.FC = () => {
       const record = records.get(team.id);
       return record ? { ...team, wins: record.wins, losses: record.losses } : team;
     });
-  }, [pbaSpec.id, season, state.boxScores, teams]);
+  }, [pbaSpec, season, state.boxScores, teams]);
+
+  const pbaPlayers = useMemo(
+    () => players.filter(player => isPbaTeamPlayer(player)),
+    [players],
+  );
+  const localPbaPlayers = useMemo(
+    () => pbaPlayers.filter(player => isPbaLocalAwardPlayer(player, state.leagueStats)),
+    [pbaPlayers, state.leagueStats],
+  );
+  const importPbaPlayers = useMemo(
+    () => pbaPlayers.filter(player => pbaTeamId(player.tid) && isPbaImportLike(player)),
+    [pbaPlayers],
+  );
 
   const liveRaces = useMemo(() => AwardService.calculateAwardRaces(
-    players,
+    localPbaPlayers,
     teamsWithRecords,
     season,
     state.staff,
     state.leagueStats?.minGamesRequirement,
-  ), [players, teamsWithRecords, season, state.staff, state.leagueStats?.minGamesRequirement]);
+  ), [localPbaPlayers, teamsWithRecords, season, state.staff, state.leagueStats?.minGamesRequirement]);
 
   const pbaTeamMeta = useMemo(() => {
     const byAbbrev = new Map<string, typeof PBA_TEAM_DATA[number]>();
     const byName = new Map<string, typeof PBA_TEAM_DATA[number]>();
+    const putAlias = (alias: string, team: typeof PBA_TEAM_DATA[number]) => {
+      const key = normalizeText(alias);
+      if (key) byName.set(key, team);
+    };
     for (const team of PBA_TEAM_DATA) {
       byAbbrev.set(normalizeText(team.abbrev), team);
-      byName.set(normalizeText(team.name), team);
+      putAlias(team.name, team);
+      putAlias(`${team.region} ${team.name}`, team);
+      putAlias(team.region, team);
+    }
+    const aliasPairs: Array<[string, string]> = [
+      ['TIT', 'TGR'],
+      ['Titan Ultra Giant Risers', 'TGR'],
+      ['NorthPort Batang Pier', 'TGR'],
+      ['BLB', 'BWB'],
+      ['Blackwater Bossing', 'BWB'],
+      ['Bossing', 'BWB'],
+      ['BGSM', 'BGSM'],
+      ['Ginebra', 'BGSM'],
+      ['Barangay Ginebra', 'BGSM'],
+      ['ROS', 'ROS'],
+      ['Rain or Shine', 'ROS'],
+      ['MER', 'MER'],
+      ['Meralco', 'MER'],
+      ['MAG', 'MAG'],
+      ['Magnolia', 'MAG'],
+      ['PHX', 'PHX'],
+      ['Phoenix', 'PHX'],
+      ['TER', 'TER'],
+      ['Terrafirma', 'TER'],
+      ['CON', 'CON'],
+      ['Converge', 'CON'],
+    ];
+    for (const [alias, abbrev] of aliasPairs) {
+      const team = byAbbrev.get(normalizeText(abbrev));
+      if (!team) continue;
+      byAbbrev.set(normalizeText(alias), team);
+      putAlias(alias, team);
     }
     return { byAbbrev, byName };
   }, []);
 
   const coyRaces = useMemo(() => {
     const scored = teamsWithRecords
-      .filter((team: any) => team.id >= 0 && (team.wins + team.losses) >= 10)
+      .filter((team: any) => pbaTeamId(team.id) && (Number(team.wins ?? 0) + Number(team.losses ?? 0)) > 0)
       .map((team: any) => {
         const wins = Number(team.wins ?? 0);
         const losses = Number(team.losses ?? 0);
         const winPct = wins / ((wins + losses) || 1);
-        const teamMeta = pbaTeamMeta.byAbbrev.get(normalizeText(team.abbrev)) ?? pbaTeamMeta.byName.get(normalizeText(team.name));
+        const teamMeta =
+          pbaTeamMeta.byAbbrev.get(normalizeText(team.abbrev)) ??
+          pbaTeamMeta.byName.get(normalizeText(team.name)) ??
+          pbaTeamMeta.byName.get(normalizeText(team.region)) ??
+          pbaTeamMeta.byName.get(normalizeText(`${team.region ?? ''} ${team.name ?? ''}`));
         const coachName = teamMeta?.coach ?? (team as any).coachName ?? (team as any).coach ?? (team as any).headCoach ?? '';
         if (!coachName) return null;
         const coachRating = resolveStaffRating('Head Coach', {
@@ -164,7 +252,17 @@ export const PBAAwardRacesView: React.FC = () => {
           attributeProfile: 'nba',
         });
         const score = (winPct * 72) + (coachRating * 0.45);
-        return { coachName, team, score, odds: '', wins, losses, improvement: 0, coachRating };
+        return {
+          coachName,
+          team,
+          score,
+          odds: '',
+          wins,
+          losses,
+          improvement: 0,
+          coachRating,
+          coachPhotoUrl: getPbaHeadCoachPhotoForTeam(team, season) ?? getCoachPhoto(coachName),
+        };
       })
       .filter((entry): entry is NonNullable<typeof entry> => !!entry)
       .sort((a, b) => b.score - a.score);
@@ -172,7 +270,6 @@ export const PBAAwardRacesView: React.FC = () => {
     return assignCoachOdds(scored);
   }, [pbaTeamMeta, season, teamsWithRecords]);
 
-  const pbaPlayers = players.filter(player => player.status === 'PBA' || (player.tid >= 2000 && player.tid < 2100));
   const hasRegularSeasonSample = useMemo(() => (state.boxScores ?? []).some((box: any) => {
     const phase = String(box?.competitionPhase ?? '').toLowerCase();
     const boxSeason = Number(box?.season ?? season);
@@ -182,14 +279,15 @@ export const PBAAwardRacesView: React.FC = () => {
   }), [pbaSpec.id, season, state.boxScores]);
 
   const fallback = useMemo(() => {
-    const scored = pbaPlayers
+    const scorePlayers = (pool: NBAPlayer[]) => pool
       .map((player) => {
         const stats = player.stats?.find((row: any) => Number(row.season) === Number(season) && !row.playoffs && (row.gp ?? 0) > 0)
           ?? player.stats?.[player.stats.length - 1];
         if (!stats || !stats.gp) return null;
         const team = teamsWithRecords.find(t => t.id === player.tid);
+        if (!team) return null;
         const ppg = (stats.pts ?? 0) / stats.gp;
-        const rpg = ((stats.trb ?? ((stats.orb ?? 0) + (stats.drb ?? 0))) || 0) / stats.gp;
+        const rpg = (statRebounds(stats) || 0) / stats.gp;
         const apg = (stats.ast ?? 0) / stats.gp;
         const winPct = team && (team.wins + team.losses) > 0 ? team.wins / (team.wins + team.losses) : 0.5;
         return {
@@ -201,25 +299,72 @@ export const PBAAwardRacesView: React.FC = () => {
       })
       .filter((entry): entry is NonNullable<typeof entry> => !!entry)
       .sort((a, b) => b.score - a.score);
+    const scoredLocals = scorePlayers(localPbaPlayers);
+    const scoredImports = scorePlayers(importPbaPlayers);
 
     return {
-      bpc: scored,
-      finalsMvp: scored,
-      bestImport: scored.filter(entry => (entry.player as any).isImport),
+      bpc: scoredLocals,
+      finalsMvp: scoredLocals,
+      bestImport: scoredImports,
     };
-  }, [pbaPlayers, season, teamsWithRecords]);
+  }, [importPbaPlayers, localPbaPlayers, season, teamsWithRecords]);
+
+  const rookieCandidates = useMemo(() => {
+    const candidates = (fallback.bpc as Array<PbaCandidate & { score?: number }>)
+      .filter(entry => isPbaRookieForSeason(state, entry.player, season))
+      .slice(0, 10)
+      .map(entry => ({ ...entry, odds: entry.odds ?? '' }));
+    return assignOdds(candidates as any) as PbaCandidate[];
+  }, [fallback.bpc, season, state]);
+
+  const honorTeams = useMemo(() => {
+    const toSpot = (entry: PbaCandidate & { score?: number }): AllNBASpot => ({
+      player: entry.player,
+      team: entry.team,
+      pos: posGroup(entry.player.pos),
+      score: entry.score ?? 0,
+      stats: entry.stats,
+    });
+    const mythical = (fallback.bpc as Array<PbaCandidate & { score?: number }>).map(toSpot);
+    const defense = localPbaPlayers
+      .map(player => {
+        const stats = player.stats?.find((row: any) => Number(row.season) === Number(season) && !row.playoffs && (row.gp ?? 0) > 0);
+        const team = teamsWithRecords.find(entry => Number(entry.id) === Number(player.tid));
+        if (!stats || !team) return null;
+        const gp = Math.max(Number(stats.gp ?? 1), 1);
+        const diq = Number((player.ratings?.[player.ratings.length - 1] as any)?.diq ?? 50);
+        const score = ((Number(stats.stl ?? 0) / gp) * 3.4) +
+          ((Number(stats.blk ?? 0) / gp) * 3.1) +
+          ((statRebounds(stats) / gp) * 0.28) +
+          (diq * 0.045);
+        return { player, team, pos: posGroup(player.pos), score, stats } as AllNBASpot;
+      })
+      .filter((entry): entry is AllNBASpot => !!entry)
+      .sort((a, b) => b.score - a.score);
+    const rookies = rookieCandidates.map(entry => toSpot(entry as PbaCandidate & { score?: number }));
+    return {
+      allNBA: [mythical.slice(0, 5), mythical.slice(5, 10), []] as [AllNBASpot[], AllNBASpot[], AllNBASpot[]],
+      allDefense: [defense.slice(0, 5), []] as [AllNBASpot[], AllNBASpot[]],
+      allRookie: [rookies.slice(0, 5), []] as [AllNBASpot[], AllNBASpot[]],
+    };
+  }, [fallback.bpc, localPbaPlayers, rookieCandidates, season, teamsWithRecords]);
 
   const selectedMeta = TAB_META[selectedTab];
+
+  const pbaMipCandidates = useMemo(
+    () => getPbaMostImprovedCandidates(state, localPbaPlayers, teamsWithRecords as any, season, { live: true }) as PbaCandidate[],
+    [localPbaPlayers, season, state, teamsWithRecords],
+  );
 
   const livePlayerCandidates = useMemo(() => {
     return {
       mvp: liveRaces.mvp as PbaCandidate[],
-      roy: liveRaces.roty as PbaCandidate[],
-      mip: liveRaces.mip as PbaCandidate[],
+      roy: rookieCandidates,
+      mip: pbaMipCandidates.length > 0 ? pbaMipCandidates : liveRaces.mip as PbaCandidate[],
       dpoy: liveRaces.dpoy as PbaCandidate[],
       mqm: liveRaces.smoy as PbaCandidate[],
     };
-  }, [liveRaces]);
+  }, [liveRaces, pbaMipCandidates, rookieCandidates]);
 
   const selectedWinnerLabel = (() => {
     if (selectedTab === 'coy') return coyRaces[0]?.coachName ?? 'No leader yet';
@@ -274,7 +419,7 @@ export const PBAAwardRacesView: React.FC = () => {
         <RankedPersonCard
           key={`${candidate.coachName}-${candidate.team.id}`}
           rank={index + 1}
-          portraitUrl={getCoachPhoto(candidate.coachName) || undefined}
+          portraitUrl={candidate.coachPhotoUrl ?? getCoachPhoto(candidate.coachName)}
           name={candidate.coachName}
           subtitle={`${candidate.team.name} · ${candidate.wins}–${candidate.losses}`}
           teamLogoUrl={candidate.team.logoUrl}
@@ -402,19 +547,19 @@ export const PBAAwardRacesView: React.FC = () => {
                 <AllPBASection
                   label="PBA Mythical Teams"
                   color="text-amber-400"
-                  teams={[liveRaces.allNBATeams.allNBA[0] ?? [], liveRaces.allNBATeams.allNBA[1] ?? []]}
+                  teams={[honorTeams.allNBA[0] ?? [], honorTeams.allNBA[1] ?? []]}
                   names={['Mythical First Team', 'Mythical Second Team']}
                 />
                 <AllPBASection
                   label="PBA All-Defensive Team"
                   color="text-blue-400"
-                  teams={[liveRaces.allNBATeams.allDefense[0] ?? []]}
+                  teams={[honorTeams.allDefense[0] ?? []]}
                   names={['All-Defensive Team']}
                 />
                 <AllPBASection
                   label="PBA All-Rookie Team"
                   color="text-emerald-400"
-                  teams={[liveRaces.allNBATeams.allRookie[0] ?? []]}
+                  teams={[honorTeams.allRookie[0] ?? []]}
                   names={['All-Rookie Team']}
                 />
               </div>
@@ -428,7 +573,7 @@ export const PBAAwardRacesView: React.FC = () => {
             }
 
             <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-5">
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Current Season Winners Archive</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Current Season Result</div>
               <div className="mb-3 text-sm text-slate-400">
                 Current leader: <span className="text-white font-bold">{selectedWinnerLabel}</span>
               </div>
@@ -447,7 +592,7 @@ export const PBAAwardRacesView: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-slate-500">No current-season result has been written yet.</div>
+                <div className="text-sm text-slate-500">Final winner has not been announced yet.</div>
               )}
             </div>
           </div>
@@ -455,7 +600,7 @@ export const PBAAwardRacesView: React.FC = () => {
           <div className="mt-12 p-4 rounded-xl bg-slate-900/30 border border-slate-800/50 flex items-start gap-3">
             <Info size={18} className="text-slate-600 shrink-0 mt-0.5" />
             <p className="text-xs text-slate-600 leading-relaxed">
-              Current races track this season's contenders while the archive keeps the previous winners in view.
+              Live rankings are projections. Final winners appear here after the awards are written.
             </p>
           </div>
         </div>

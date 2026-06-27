@@ -28,13 +28,20 @@ interface BoxAggregate {
   gh: ReturnType<typeof emptyGH>;
 }
 
+function competitionBoxKey(seasonYear: number, phaseKey: 'rs' | 'ply', competitionId?: string): string {
+  return `${seasonYear}_${phaseKey}_${String(competitionId ?? '').toLowerCase()}`;
+}
+
 function inferLeagueFromGame(game: any, teamTid: number): { tag: string; title: string } {
   const competitionId = String(game?.competitionId ?? '').toLowerCase();
   if (competitionId === 'euroleague') return { tag: 'EUROPE', title: 'EuroLeague' };
   if (competitionId === 'endesa') return { tag: 'ESP-1', title: 'Liga Endesa' };
   if (competitionId === 'copa-del-rey') return { tag: 'ESP-CUP', title: 'Copa del Rey' };
   if (competitionId === 'supercopa') return { tag: 'ESP-SC', title: 'Supercopa' };
-  if (competitionId === 'pba') return { tag: 'PBA', title: 'PBA' };
+  if (competitionId === 'pba-philippine-cup') return { tag: 'PH CUP', title: 'PBA Philippine Cup' };
+  if (competitionId === 'pba-commissioners-cup') return { tag: 'COMM', title: "PBA Commissioners' Cup" };
+  if (competitionId === 'pba-governors-cup') return { tag: 'GOV', title: "PBA Governors' Cup" };
+  if (competitionId === 'pba' || competitionId.startsWith('pba-')) return { tag: 'PBA', title: 'PBA' };
   if (teamTid >= 5000 && teamTid < 6000) return { tag: 'ESP-1', title: 'Liga Endesa' };
   if (teamTid >= 1000 && teamTid < 2000) return { tag: 'EUROPE', title: 'EuroLeague / Europe' };
   if (teamTid >= 2000 && teamTid < 3000) return { tag: 'PBA', title: 'PBA' };
@@ -56,13 +63,16 @@ export function useBoxData(playerId: string, boxScores: any[]) {
     };
 
     boxScores.forEach((game: any) => {
+      if (game?.isAllStar || game?.isRisingStars || game?.isCelebrityGame || game?.isExhibition) return;
+      if (Number(game?.homeTeamId ?? game?.homeTid ?? 0) < 0 || Number(game?.awayTeamId ?? game?.awayTid ?? 0) < 0) return;
       const inHome = (game.homeStats ?? []).some((player: any) => player.playerId === playerId);
       const stats = [...(game.homeStats ?? []), ...(game.awayStats ?? [])].find((player: any) => player.playerId === playerId);
       if (!stats) return;
       const seasonYear = getGameSeasonYear(game.date ?? '');
       if (!seasonYear) return;
       const isPlayoffs = !!(game.isPlayoff || game.isPlayIn);
-      const aggregate = getOrCreate(`${seasonYear}_${isPlayoffs ? 'ply' : 'rs'}`);
+      const competitionId = String(game.competitionId ?? '').toLowerCase();
+      const aggregate = getOrCreate(competitionBoxKey(seasonYear, isPlayoffs ? 'ply' : 'rs', competitionId));
       const gameTid = inHome ? (game.homeTeamId ?? game.homeTid ?? -1) : (game.awayTeamId ?? game.awayTid ?? -1);
       if (gameTid > 0) aggregate.teamTid = gameTid;
       const league = inferLeagueFromGame(game, gameTid);
@@ -162,7 +172,7 @@ export function buildSeasonRows(
     const bySeasonTeamKey = new Map<string, NBAGMStat[]>();
     for (const stat of pool) {
       const abbrevKey = statTeamAbbrev(stat) ?? '_';
-      const key = `${stat.season}_${stat.tid}_${abbrevKey}`;
+      const key = `${stat.season}_${stat.tid}_${abbrevKey}_${String((stat as any).competitionId ?? '').toLowerCase()}`;
       if (!bySeasonTeamKey.has(key)) bySeasonTeamKey.set(key, []);
       bySeasonTeamKey.get(key)!.push(stat);
     }
@@ -171,12 +181,14 @@ export function buildSeasonRows(
     bySeasonTeamKey.forEach((list, key) => {
       const [seasonLabel] = key.split('_');
       const season = parseInt(seasonLabel, 10);
-      const box = boxData.get(`${season}_${phaseKey}`);
+      const statCompetitionId = String((list[0] as any).competitionId ?? '').toLowerCase();
+      const box = boxData.get(competitionBoxKey(season, phaseKey, statCompetitionId));
       const statTid = list[0].tid;
       const inferredTid = statTid < 0 && box?.teamTid && box.teamTid > 0 ? box.teamTid : statTid;
       const team = teams.find(entry => entry.id === inferredTid);
       const abbrev = statTeamAbbrev(list[0]) ?? team?.abbrev ?? (inferredTid < 0 ? 'FA' : 'UNK');
       const rowAge = (age ?? 0) - (currentYear - season);
+      const statLeague = inferLeagueFromGame({ competitionId: statCompetitionId }, inferredTid);
 
       const totGp = list.reduce((sum, stat) => sum + sp(stat.gp), 0) || 1;
       const totMin = list.reduce((sum, stat) => sum + sp(stat.min), 0);
@@ -204,8 +216,8 @@ export function buildSeasonRows(
       rows.push({
         season,
         seasonLabel: (list[0] as any)._seasonLabel,
-        leagueTag: box?.leagueTag ?? (list[0] as any).tag ?? (list[0] as any).leagueTag ?? inferLeagueFromGame(null, inferredTid).tag,
-        leagueTitle: box?.leagueTitle ?? (list[0] as any).title ?? (list[0] as any).leagueTitle ?? inferLeagueFromGame(null, inferredTid).title,
+        leagueTag: box?.leagueTag ?? (list[0] as any).tag ?? (list[0] as any).leagueTag ?? statLeague.tag,
+        leagueTitle: box?.leagueTitle ?? (list[0] as any).title ?? (list[0] as any).leagueTitle ?? statLeague.title,
         teamAbbrev: abbrev,
         age: Math.max(16, rowAge),
         gp: totGp,

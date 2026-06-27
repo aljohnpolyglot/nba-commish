@@ -2,6 +2,7 @@ import type { Game, GameResult } from '../../types';
 import type { CompetitionSpec } from './types';
 import { selectCompetitionTeamTids } from './competitionScheduler';
 import { normalizeDate } from '../../utils/helpers';
+import { getActivePbaCompetitionId } from '../../utils/uiMode';
 import {
   addDays,
   dateForRound,
@@ -13,6 +14,19 @@ import {
   roundStartDate,
   type PostseasonScheduleState,
 } from './competitionSeasonState';
+import { competitionSeasonForBox, isPbaCompetitionId, selectCountedPbaRegularBoxScores } from '../pba/competitionGames';
+
+function matchesCompetitionBoxScoreSeason(
+  game: GameResult,
+  spec: CompetitionSpec,
+  season?: number,
+): boolean {
+  if (season == null) return true;
+  if (isPbaCompetitionId(spec.id)) {
+    return competitionSeasonForBox(spec, game) === season;
+  }
+  return matchesBoxScoreSeason(game, season);
+}
 export interface CompetitionStanding {
   tid: number;
   seed: number;
@@ -45,19 +59,10 @@ export interface CompetitionSeasonResolution {
   quarterfinalistTids: number[];
 }
 
-function activePbaCompetitionId(state: PostseasonScheduleState): string | null {
-  const leagueStats = (state as any).leagueStats;
-  if (leagueStats?.uiMode !== 'pba_isolated') return null;
-  if (leagueStats.pbaConferencePhase === 'offseason' || leagueStats.pbaConferencePhase === 'complete') return null;
-  if (leagueStats.pbaConference === 'commissioners') return 'pba-commissioners-cup';
-  if (leagueStats.pbaConference === 'governors') return 'pba-governors-cup';
-  return 'pba-philippine-cup';
-}
-
 function shouldHandleSeriesSpec(state: PostseasonScheduleState, spec: CompetitionSpec): boolean {
   if (!spec.id.startsWith('pba-')) return true;
   if ((state as any).leagueStats?.uiMode !== 'pba_isolated') return true;
-  return activePbaCompetitionId(state) === spec.id;
+  return getActivePbaCompetitionId(state as any) === spec.id;
 }
 
 function rankStandings(rows: Map<number, Omit<CompetitionStanding, 'seed' | 'pointDiff'>>): CompetitionStanding[] {
@@ -136,6 +141,45 @@ function seriesCompleteFromWins(
     return { complete: true, winnerTid: match.highSeedTid };
   }
   return { complete: false, winnerTid: null };
+}
+
+function matchingSeriesBoxScores(
+  match: CompetitionKnockoutMatch,
+  spec: CompetitionSpec,
+  competitionId: string,
+  phase: string,
+  boxScores: GameResult[],
+  season?: number,
+): GameResult[] {
+  return boxScores
+    .filter(game =>
+      game.competitionId === competitionId &&
+      game.competitionPhase === phase &&
+      matchesCompetitionBoxScoreSeason(game, spec, season) &&
+      ((game.homeTeamId === match.highSeedTid && game.awayTeamId === match.lowSeedTid) ||
+        (game.homeTeamId === match.lowSeedTid && game.awayTeamId === match.highSeedTid)),
+    )
+    .sort((a: any, b: any) =>
+      normalizeDate(a.date ?? '').localeCompare(normalizeDate(b.date ?? '')) ||
+      Number(a.gameId ?? a.gid ?? 0) - Number(b.gameId ?? b.gid ?? 0),
+    );
+}
+
+function winsFromSeriesBoxScores(
+  match: CompetitionKnockoutMatch,
+  games: GameResult[],
+): Map<number, number> {
+  const wins = new Map<number, number>([
+    [match.highSeedTid, 0],
+    [match.lowSeedTid, 0],
+  ]);
+  const maxGames = match.maxGames ?? match.bestOf;
+  for (const game of games.slice(0, maxGames)) {
+    const winner = game.homeScore > game.awayScore ? game.homeTeamId : game.awayTeamId;
+    wins.set(winner, (wins.get(winner) ?? 0) + 1);
+    if (seriesCompleteFromWins(match, wins).complete) break;
+  }
+  return wins;
 }
 function getQuarterfinalBestOf(spec: CompetitionSpec): number {
   return spec.playoffFormat?.qfBest ?? (spec.playoffFormat?.qfFormat === 'twice-to-beat' ? 2 : 3);
@@ -222,6 +266,7 @@ export function hasUnresolvedEuroSeasonCompetitions(state: EuroSeasonCompletionS
 }
 function roundWinnerFromResults(
   match: CompetitionKnockoutMatch,
+  spec: CompetitionSpec,
   competitionId: string,
   phase: string,
   boxScores: GameResult[],
@@ -231,45 +276,26 @@ function roundWinnerFromResults(
     [match.highSeedTid, 0],
     [match.lowSeedTid, 0],
   ]);
-  boxScores
-    .filter(game =>
-      game.competitionId === competitionId &&
-      game.competitionPhase === phase &&
-      matchesBoxScoreSeason(game, season) &&
-      ((game.homeTeamId === match.highSeedTid && game.awayTeamId === match.lowSeedTid) ||
-        (game.homeTeamId === match.lowSeedTid && game.awayTeamId === match.highSeedTid)),
-    )
-    .forEach(game => {
-      const winner = game.homeScore > game.awayScore ? game.homeTeamId : game.awayTeamId;
-      wins.set(winner, (wins.get(winner) ?? 0) + 1);
-    });
-  return seriesCompleteFromWins(match, wins).winnerTid;
+  const seriesWins = winsFromSeriesBoxScores(
+    match,
+    matchingSeriesBoxScores(match, spec, competitionId, phase, boxScores, season),
+  );
+  return seriesCompleteFromWins(match, seriesWins.size > 0 ? seriesWins : wins).winnerTid;
 }
 
 function phaseMatchResults(
   matches: CompetitionKnockoutMatch[],
+  spec: CompetitionSpec,
   competitionId: string,
   phase: string,
   boxScores: GameResult[],
   season?: number,
 ): Array<{ winnerTid: number; loserTid: number }> {
   return matches.flatMap(match => {
-    const wins = new Map<number, number>([
-      [match.highSeedTid, 0],
-      [match.lowSeedTid, 0],
-    ]);
-    boxScores
-      .filter(game =>
-        game.competitionId === competitionId &&
-        game.competitionPhase === phase &&
-        matchesBoxScoreSeason(game, season) &&
-        ((game.homeTeamId === match.highSeedTid && game.awayTeamId === match.lowSeedTid) ||
-          (game.homeTeamId === match.lowSeedTid && game.awayTeamId === match.highSeedTid)),
-      )
-      .forEach(game => {
-        const winner = game.homeScore > game.awayScore ? game.homeTeamId : game.awayTeamId;
-        wins.set(winner, (wins.get(winner) ?? 0) + 1);
-      });
+    const wins = winsFromSeriesBoxScores(
+      match,
+      matchingSeriesBoxScores(match, spec, competitionId, phase, boxScores, season),
+    );
     const result = seriesCompleteFromWins(match, wins);
     if (!result.complete || result.winnerTid == null) return [];
     return [{
@@ -280,6 +306,9 @@ function phaseMatchResults(
 }
 function isRegularSeasonPhase(phase?: string): boolean {
   return !phase || phase === 'group' || phase.startsWith('r');
+}
+function isPostseasonPhase(phase?: string): boolean {
+  return phase === 'play-in' || phase === 'qf' || phase === 'sf' || phase === 'final';
 }
 function makeSeriesGames(
   baseGid: number,
@@ -304,6 +333,11 @@ function makeSeriesGames(
     isPlayoff,
   }));
 }
+
+function clampSeriesStartDate(startIso: string, today: string): string {
+  return normalizeDate(startIso) < today ? new Date(`${today}T00:00:00Z`).toISOString() : startIso;
+}
+
 function playoffSeedsForResolution(
   spec: CompetitionSpec,
   resolution: CompetitionSeasonResolution,
@@ -316,8 +350,8 @@ function playoffSeedsForResolution(
   const standingsByTid = new Map(resolution.standings.map(row => [row.tid, row]));
   const sevenEight = resolution.playInMatches[0];
   const eighthSeedMatch = resolution.playInMatches[2];
-  const seventhTid = roundWinnerFromResults(sevenEight, spec.id, 'play-in', boxScores, season) ?? sevenEight.winnerTid;
-  const eighthTid = roundWinnerFromResults(eighthSeedMatch, spec.id, 'play-in', boxScores, season) ?? eighthSeedMatch.winnerTid;
+  const seventhTid = roundWinnerFromResults(sevenEight, spec, spec.id, 'play-in', boxScores, season) ?? sevenEight.winnerTid;
+  const eighthTid = roundWinnerFromResults(eighthSeedMatch, spec, spec.id, 'play-in', boxScores, season) ?? eighthSeedMatch.winnerTid;
   return [
     ...resolution.standings.slice(0, 6),
     standingsByTid.get(seventhTid),
@@ -344,6 +378,57 @@ function quarterfinalMatchesForResolution(
         : makeMatch('quarterfinal', high, low, qfBest),
     );
 }
+function semifinalMatchesForResolution(
+  spec: CompetitionSpec,
+  resolution: CompetitionSeasonResolution,
+  boxScores: GameResult[],
+  season: number,
+): CompetitionKnockoutMatch[] {
+  const qfWinners = quarterfinalMatchesForResolution(spec, resolution, boxScores, season)
+    .map(match => roundWinnerFromResults(match, spec, spec.id, 'qf', boxScores, season))
+    .filter((tid): tid is number => tid != null);
+  const standingsByTid = new Map(resolution.standings.map(row => [row.tid, row]));
+  const semifinalists = qfWinners
+    .map(tid => standingsByTid.get(tid))
+    .filter((row): row is CompetitionStanding => !!row);
+  const sfBest = spec.playoffFormat?.finalFormat === 'final-four'
+    ? 1
+    : (spec.playoffFormat?.sfBest ?? spec.playoffFormat?.finalBest ?? 5);
+  return [
+    [semifinalists[0], semifinalists[1]],
+    [semifinalists[2], semifinalists[3]],
+  ].filter((pair): pair is [CompetitionStanding, CompetitionStanding] => !!pair[0] && !!pair[1])
+    .map(([a, b]) => {
+      const high = a.seed < b.seed ? a : b;
+      const low = a.seed < b.seed ? b : a;
+      return makeMatch('semifinal', high, low, sfBest);
+    });
+}
+function finalMatchesForResolution(
+  spec: CompetitionSpec,
+  resolution: CompetitionSeasonResolution,
+  boxScores: GameResult[],
+  season: number,
+): CompetitionKnockoutMatch[] {
+  const sfMatches = semifinalMatchesForResolution(spec, resolution, boxScores, season);
+  const sfWinners = phaseMatchResults(sfMatches, spec, spec.id, 'sf', boxScores, season)
+    .map(result => result.winnerTid);
+  const standingsByTid = new Map(resolution.standings.map(row => [row.tid, row]));
+  const finalists = sfWinners
+    .map(tid => standingsByTid.get(tid))
+    .filter((row): row is CompetitionStanding => !!row);
+  if (finalists.length !== 2) return [];
+  const high = finalists[0].seed < finalists[1].seed ? finalists[0] : finalists[1];
+  const low = finalists[0].seed < finalists[1].seed ? finalists[1] : finalists[0];
+  const finalBest = spec.playoffFormat?.finalFormat === 'final-four' ? 1 : (spec.playoffFormat?.finalBest ?? 5);
+  return [makeMatch('final', high, low, finalBest)];
+}
+function isScheduledMatchPair(game: Game, match: CompetitionKnockoutMatch): boolean {
+  return (
+    (game.homeTid === match.highSeedTid && game.awayTid === match.lowSeedTid) ||
+    (game.homeTid === match.lowSeedTid && game.awayTid === match.highSeedTid)
+  );
+}
 function seedTidsForSpec(spec: CompetitionSpec, state: PostseasonScheduleState): number[] {
   return selectCompetitionTeamTids(spec, state);
 }
@@ -353,17 +438,66 @@ function phaseExists(schedule: Game[], competitionId: string, phase: string): bo
 function phaseUnplayed(schedule: Game[], competitionId: string, phase: string): boolean {
   return schedule.some(game => game.competitionId === competitionId && game.competitionPhase === phase && !game.played);
 }
-function regularSeasonComplete(state: PostseasonScheduleState, spec: CompetitionSpec): boolean {
-  return !state.schedule.some(game =>
+function hasPostseasonMaterialForSpec(
+  schedule: Game[],
+  boxScores: GameResult[],
+  spec: CompetitionSpec,
+  season: number,
+): boolean {
+  return schedule.some((game: any) =>
+    game.competitionId === spec.id &&
+    isPostseasonPhase(game.competitionPhase) &&
+    (!isPbaCompetitionId(spec.id) || competitionSeasonForBox(spec, game) === season),
+  ) || boxScores.some(game =>
+    game.competitionId === spec.id &&
+    isPostseasonPhase(game.competitionPhase) &&
+    matchesCompetitionBoxScoreSeason(game, spec, season),
+  );
+}
+function pruneUnplayedRoundToMatches(
+  schedule: Game[],
+  competitionId: string,
+  phase: 'sf' | 'final',
+  matches: CompetitionKnockoutMatch[],
+): Game[] {
+  return schedule.filter(game =>
+    game.played ||
+    game.competitionId !== competitionId ||
+    game.competitionPhase !== phase ||
+    matches.some(match => isScheduledMatchPair(game, match)),
+  );
+}
+function expectedRegularSeasonGames(spec: CompetitionSpec, teamCount: number): number {
+  if (teamCount < 2) return 0;
+  const gamesPerTeam = Math.floor(Number(spec.gamesPerTeam ?? teamCount - 1));
+  if (gamesPerTeam > 0 && gamesPerTeam < teamCount - 1) return Math.floor((teamCount * gamesPerTeam) / 2);
+  const singleRoundRobin = (teamCount * (teamCount - 1)) / 2;
+  return (spec.gamesPerTeam ?? 0) >= (teamCount - 1) * 2 ? singleRoundRobin * 2 : singleRoundRobin;
+}
+function regularSeasonComplete(state: PostseasonScheduleState, spec: CompetitionSpec, season: number): boolean {
+  const expected = expectedRegularSeasonGames(spec, seedTidsForSpec(spec, state).length);
+  if (isPbaCompetitionId(spec.id) && expected > 0) {
+    return selectCountedPbaRegularBoxScores(state.boxScores, spec, season).length >= expected;
+  }
+  const hasUnplayedRegular = state.schedule.some(game =>
     game.competitionId === spec.id &&
     !game.played &&
     (game.competitionPhase === 'group' || game.competitionPhase?.startsWith('r')),
   );
+  if (hasUnplayedRegular) return false;
+  if (expected <= 0) return true;
+  const playedRegular = state.boxScores.filter(game =>
+    game.competitionId === spec.id &&
+    isRegularSeasonPhase(game.competitionPhase) &&
+    matchesCompetitionBoxScoreSeason(game, spec, season),
+  ).length;
+  return playedRegular >= expected;
 }
 
 function pruneCompletedSeriesGames(
   schedule: Game[],
   matches: CompetitionKnockoutMatch[],
+  spec: CompetitionSpec,
   competitionId: string,
   phase: 'play-in' | 'qf' | 'sf' | 'final',
   boxScores: GameResult[],
@@ -371,7 +505,7 @@ function pruneCompletedSeriesGames(
 ): Game[] {
   let pruned = schedule;
   for (const match of matches) {
-    const winner = roundWinnerFromResults(match, competitionId, phase, boxScores, season);
+    const winner = roundWinnerFromResults(match, spec, competitionId, phase, boxScores, season);
     if (winner == null) continue;
     pruned = pruned.filter(game =>
       game.played ||
@@ -394,39 +528,45 @@ export function injectCompetitionPostseasonGames(
   let schedule = [...state.schedule];
   let nextGid = Math.max(800_000, ...schedule.map(game => game.gid)) + 1;
   for (const spec of specs.filter(spec => isSeriesCompetitionSpec(spec) && shouldHandleSeriesSpec(state, spec))) {
-    if (!regularSeasonComplete({ ...state, schedule }, spec)) continue;
+    const postseasonMaterialized = hasPostseasonMaterialForSpec(schedule, state.boxScores, spec, season);
+    const pbaPlayoffsOpen = isPbaCompetitionId(spec.id) && (state as any).leagueStats?.pbaConferencePhase === 'playoffs';
+    if (!regularSeasonComplete({ ...state, schedule }, spec, season) && !postseasonMaterialized && !pbaPlayoffsOpen) continue;
     const resolution = resolveCompetitionSeason(spec, state.boxScores, season, seedTidsForSpec(spec, state));
     if (!resolution) continue;
     const qfRound = spec.playoffFormat?.rounds.find(round => round.phase === 'qf' || round.phase === 'quarterfinals');
     const sfRound = spec.playoffFormat?.rounds.find(round => round.phase === 'sf' || round.phase === 'semifinals' || round.phase === 'final-four');
     const finalRound = spec.playoffFormat?.rounds.find(round => round.phase === 'final' || round.phase === 'final-four');
-    const qfStart = qfRound ? roundStartDate(season, qfRound) : null;
-    const sfStart = sfRound ? roundStartDate(season, sfRound) : null;
+    const qfStart = qfRound ? roundStartDate(season, qfRound, spec) : null;
+    const sfStart = sfRound ? roundStartDate(season, sfRound, spec) : null;
     const finalStart = finalRound
       ? spec.playoffFormat?.finalFormat === 'final-four'
-        ? roundEndDate(season, finalRound)
-        : roundStartDate(season, finalRound)
+        ? roundEndDate(season, finalRound, spec)
+        : roundStartDate(season, finalRound, spec)
       : null;
     const playInStart = spec.id === 'euroleague' && qfStart ? addDays(qfStart, -8) : null;
     const playInComplete = spec.id !== 'euroleague' ||
-      phaseMatchResults(resolution.playInMatches, spec.id, 'play-in', state.boxScores, season).length >= resolution.playInMatches.length;
-    if (playInStart && !phaseExists(schedule, spec.id, 'play-in')) {
+      phaseMatchResults(resolution.playInMatches, spec, spec.id, 'play-in', state.boxScores, season).length >= resolution.playInMatches.length;
+    const today = normalizeDate((state as any).date ?? new Date().toISOString());
+    const playInOpen = !!playInStart && today >= normalizeDate(playInStart);
+    const qfOpen = !!qfStart && today >= normalizeDate(qfStart);
+    if (playInOpen && !phaseExists(schedule, spec.id, 'play-in')) {
       const playInGames = resolution.playInMatches.flatMap((match, index) => {
-        const games = makeSeriesGames(nextGid, match, spec, 'play-in', addDays(playInStart, index < 2 ? 0 : 2));
+        const games = makeSeriesGames(nextGid, match, spec, 'play-in', addDays(playInStart!, index < 2 ? 0 : 2));
         nextGid += games.length;
         return games;
       });
       schedule = [...schedule, ...playInGames];
     }
     if (
-      qfStart &&
+      qfOpen &&
       playInComplete
     ) {
       const qf = quarterfinalMatchesForResolution(spec, resolution, state.boxScores, season);
       const existingQf = schedule.filter(game => game.competitionId === spec.id && game.competitionPhase === 'qf');
       if (existingQf.length === 0) {
+        const qfGameStart = clampSeriesStartDate(qfStart!, today);
         const qfGames = qf.flatMap(match => {
-          const games = makeSeriesGames(nextGid, match, spec, 'qf', qfStart);
+          const games = makeSeriesGames(nextGid, match, spec, 'qf', qfGameStart);
           nextGid += games.length;
           return games;
         });
@@ -443,7 +583,7 @@ export function injectCompetitionPostseasonGames(
             )
             .sort((a, b) => normalizeDate(a.date).localeCompare(normalizeDate(b.date)) || a.gid - b.gid);
           const needed = (match.maxGames ?? match.bestOf) - pairGames.length;
-          let baseDate = pairGames[pairGames.length - 1]?.date ?? qfStart;
+          let baseDate = pairGames[pairGames.length - 1]?.date ?? qfStart!;
           for (let i = 0; i < needed; i++) {
             const newGame = {
               gid: nextGid++,
@@ -463,7 +603,7 @@ export function injectCompetitionPostseasonGames(
       }
     }
     const qfForSf = quarterfinalMatchesForResolution(spec, resolution, state.boxScores, season);
-    if (spec.playoffFormat?.qfFormat === 'twice-to-beat') {
+    if (qfOpen && spec.playoffFormat?.qfFormat === 'twice-to-beat') {
       const repairedGames: Game[] = [];
       for (const match of qfForSf) {
         const pairGames = schedule
@@ -474,10 +614,10 @@ export function injectCompetitionPostseasonGames(
               (game.homeTid === match.lowSeedTid && game.awayTid === match.highSeedTid)),
           )
           .sort((a, b) => normalizeDate(a.date).localeCompare(normalizeDate(b.date)) || a.gid - b.gid);
-        const winner = roundWinnerFromResults(match, spec.id, 'qf', state.boxScores, season);
+        const winner = roundWinnerFromResults(match, spec, spec.id, 'qf', state.boxScores, season);
         if (winner != null || pairGames.length >= (match.maxGames ?? match.bestOf)) continue;
         const nextIndex = pairGames.length;
-        const baseDate = pairGames[pairGames.length - 1]?.date ?? qfStart;
+        const baseDate = pairGames[pairGames.length - 1]?.date ?? qfStart!;
         repairedGames.push({
           gid: nextGid++,
           homeTid: nextIndex % 2 === 0 ? match.highSeedTid : match.lowSeedTid,
@@ -495,8 +635,8 @@ export function injectCompetitionPostseasonGames(
         schedule = [...schedule, ...repairedGames];
       }
     }
-    schedule = pruneCompletedSeriesGames(schedule, qfForSf, spec.id, 'qf', state.boxScores, season);
-    const completedQf = phaseMatchResults(qfForSf, spec.id, 'qf', state.boxScores, season);
+    schedule = pruneCompletedSeriesGames(schedule, qfForSf, spec, spec.id, 'qf', state.boxScores, season);
+    const completedQf = phaseMatchResults(qfForSf, spec, spec.id, 'qf', state.boxScores, season);
     const qfComplete = qfForSf.length > 0 && completedQf.length >= qfForSf.length;
     if (!qfComplete && (phaseUnplayed(schedule, spec.id, 'sf') || phaseUnplayed(schedule, spec.id, 'final'))) {
       schedule = schedule.filter(game =>
@@ -505,30 +645,22 @@ export function injectCompetitionPostseasonGames(
         game.played,
       );
     }
+    const sfMatches = qfComplete ? semifinalMatchesForResolution(spec, resolution, state.boxScores, season) : [];
+    if (qfComplete && sfMatches.length > 0) {
+      schedule = pruneUnplayedRoundToMatches(schedule, spec.id, 'sf', sfMatches);
+    }
     if (sfStart && !phaseExists(schedule, spec.id, 'sf') && qfComplete) {
-      const qf = quarterfinalMatchesForResolution(spec, resolution, state.boxScores, season);
-      const qfWinners = qf.map(match => roundWinnerFromResults(match, spec.id, 'qf', state.boxScores, season)).filter((tid): tid is number => tid != null);
-      const standingsByTid = new Map(resolution.standings.map(row => [row.tid, row]));
-      const semifinalists = qfWinners.map(tid => standingsByTid.get(tid)).filter((row): row is CompetitionStanding => !!row);
-      const sfPairs: Array<[CompetitionStanding, CompetitionStanding]> = [
-        [semifinalists[0], semifinalists[1]],
-        [semifinalists[2], semifinalists[3]],
-      ].filter((pair): pair is [CompetitionStanding, CompetitionStanding] => !!pair[0] && !!pair[1]);
-      const sfBest = spec.playoffFormat?.finalFormat === 'final-four' ? 1 : (spec.playoffFormat?.sfBest ?? spec.playoffFormat?.finalBest ?? 5);
-      const sfGames = sfPairs.flatMap(([a, b]) => {
-        const high = a.seed < b.seed ? a : b;
-        const low = a.seed < b.seed ? b : a;
-        const games = makeSeriesGames(nextGid, makeMatch('semifinal', high, low, sfBest), spec, 'sf', sfStart);
+      const sfGameStart = clampSeriesStartDate(sfStart, today);
+      const sfGames = sfMatches.flatMap(match => {
+        const games = makeSeriesGames(nextGid, match, spec, 'sf', sfGameStart);
         nextGid += games.length;
         return games;
       });
       schedule = [...schedule, ...sfGames];
     }
-    const sfBestForResults = spec.playoffFormat?.finalFormat === 'final-four' ? 1 : (spec.playoffFormat?.sfBest ?? spec.playoffFormat?.finalBest ?? 5);
-    const sfMatches = resolution.knockoutMatches.filter(match => match.round === 'semifinal');
-    const completedSf = phaseMatchResults(sfMatches, spec.id, 'sf', state.boxScores, season);
+    const completedSf = phaseMatchResults(sfMatches, spec, spec.id, 'sf', state.boxScores, season);
     const sfComplete = completedSf.length >= 2;
-    schedule = pruneCompletedSeriesGames(schedule, sfMatches, spec.id, 'sf', state.boxScores, season);
+    schedule = pruneCompletedSeriesGames(schedule, sfMatches, spec, spec.id, 'sf', state.boxScores, season);
     if (!sfComplete && phaseUnplayed(schedule, spec.id, 'final')) {
       schedule = schedule.filter(game =>
         game.competitionId !== spec.id ||
@@ -536,29 +668,23 @@ export function injectCompetitionPostseasonGames(
         game.played,
       );
     }
+    const finalMatches = sfComplete ? finalMatchesForResolution(spec, resolution, state.boxScores, season) : [];
+    if (sfComplete && finalMatches.length > 0) {
+      schedule = pruneUnplayedRoundToMatches(schedule, spec.id, 'final', finalMatches);
+    }
     if (finalStart && !phaseExists(schedule, spec.id, 'final') && sfComplete) {
-      const actualSfWinners = phaseMatchResults(
-        resolution.knockoutMatches.filter(match => match.round === 'semifinal'),
-        spec.id,
-        'sf',
-        state.boxScores,
-        season,
-      ).map(result => result.winnerTid);
-      const sfWinners = actualSfWinners.length >= 2 ? actualSfWinners : [];
-      const standingsByTid = new Map(resolution.standings.map(row => [row.tid, row]));
-      const finalists = sfWinners.map(tid => standingsByTid.get(tid)).filter((row): row is CompetitionStanding => !!row);
-      if (finalists.length === 2) {
-        const high = finalists[0].seed < finalists[1].seed ? finalists[0] : finalists[1];
-        const low = finalists[0].seed < finalists[1].seed ? finalists[1] : finalists[0];
-        const finalBest = spec.playoffFormat?.finalFormat === 'final-four' ? 1 : (spec.playoffFormat?.finalBest ?? 5);
-        const finalGames = makeSeriesGames(nextGid, makeMatch('final', high, low, finalBest), spec, 'final', finalStart);
-        nextGid += finalGames.length;
-        schedule = [...schedule, ...finalGames];
-      }
+      const finalGameStart = clampSeriesStartDate(finalStart, today);
+      const finalGames = finalMatches.flatMap(match => {
+        const games = makeSeriesGames(nextGid, match, spec, 'final', finalGameStart);
+        nextGid += games.length;
+        return games;
+      });
+      schedule = [...schedule, ...finalGames];
     }
     schedule = pruneCompletedSeriesGames(
       schedule,
-      resolution.knockoutMatches.filter(match => match.round === 'final'),
+      finalMatches,
+      spec,
       spec.id,
       'final',
       state.boxScores,
@@ -638,7 +764,10 @@ export function resolveCompetitionSeason(
 ): CompetitionSeasonResolution | null {
   const rows = new Map<number, Omit<CompetitionStanding, 'seed' | 'pointDiff'>>();
   seedTids.forEach(tid => rows.set(tid, { tid, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 }));
-  boxScores.filter(game => game.competitionId === spec.id && isRegularSeasonPhase(game.competitionPhase) && matchesBoxScoreSeason(game, season)).forEach(game => {
+  const regularBoxScores = isPbaCompetitionId(spec.id)
+    ? selectCountedPbaRegularBoxScores(boxScores, spec, season)
+    : boxScores.filter(game => game.competitionId === spec.id && isRegularSeasonPhase(game.competitionPhase) && matchesCompetitionBoxScoreSeason(game, spec, season));
+  regularBoxScores.forEach(game => {
     const home = rows.get(game.homeTeamId) ?? { tid: game.homeTeamId, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 };
     const away = rows.get(game.awayTeamId) ?? { tid: game.awayTeamId, wins: 0, losses: 0, pointsFor: 0, pointsAgainst: 0 };
     const homeWon = game.homeScore > game.awayScore;
@@ -656,26 +785,39 @@ export function resolveCompetitionSeason(
   const standings = rankStandings(rows);
   if (standings.length < 2) return null;
   const projected = resolveBracket(standings, spec);
-  const qfBest = getQuarterfinalBestOf(spec);
-  const sfBest = spec.playoffFormat?.finalFormat === 'final-four' ? 1 : (spec.playoffFormat?.sfBest ?? spec.playoffFormat?.finalBest ?? 1);
-  const finalBest = spec.playoffFormat?.finalFormat === 'final-four' ? 1 : (spec.playoffFormat?.finalBest ?? 1);
-  const qfResults = phaseMatchResults(projected.knockoutMatches.filter(match => match.round === 'quarterfinal'), spec.id, 'qf', boxScores, season);
-  const sfResults = phaseMatchResults(projected.knockoutMatches.filter(match => match.round === 'semifinal'), spec.id, 'sf', boxScores, season);
-  const finalResults = phaseMatchResults(projected.knockoutMatches.filter(match => match.round === 'final'), spec.id, 'final', boxScores, season);
-  const playInComplete = spec.id !== 'euroleague' || phaseMatchResults(projected.playInMatches, spec.id, 'play-in', boxScores, season).length >= projected.playInMatches.length;
-  const qfExpected = projected.knockoutMatches.filter(match => match.round === 'quarterfinal').length;
-  const sfExpected = projected.knockoutMatches.filter(match => match.round === 'semifinal').length || 2;
-  const qfComplete = qfExpected > 0 && qfResults.length >= qfExpected;
-  const sfComplete = sfExpected > 0 && sfResults.length >= sfExpected;
+  const projectedResolution: CompetitionSeasonResolution = {
+    competitionId: spec.id,
+    season,
+    standings,
+    ...projected,
+  };
+  const playInResults = phaseMatchResults(projected.playInMatches, spec, spec.id, 'play-in', boxScores, season);
+  const playInComplete = spec.id !== 'euroleague' || playInResults.length >= projected.playInMatches.length;
+  const qfMatches = quarterfinalMatchesForResolution(spec, projectedResolution, boxScores, season);
+  const qfResults = phaseMatchResults(qfMatches, spec, spec.id, 'qf', boxScores, season);
+  const qfComplete = qfMatches.length > 0 && qfResults.length >= qfMatches.length;
+  const sfMatches = qfComplete ? semifinalMatchesForResolution(spec, projectedResolution, boxScores, season) : [];
+  const sfResults = phaseMatchResults(sfMatches, spec, spec.id, 'sf', boxScores, season);
+  const sfComplete = sfMatches.length > 0 && sfResults.length >= sfMatches.length;
+  const finalMatches = sfComplete ? finalMatchesForResolution(spec, projectedResolution, boxScores, season) : [];
+  const finalResults = phaseMatchResults(finalMatches, spec, spec.id, 'final', boxScores, season);
+  const finalComplete = finalMatches.length > 0 && finalResults.length >= finalMatches.length;
   const validFinalPath = playInComplete && qfComplete && sfComplete;
   const requiresPlayedFinal = !!spec.playoffFormat;
-  const actualChampion = validFinalPath ? (finalResults[0]?.winnerTid ?? (requiresPlayedFinal ? null : projected.championTid)) : null;
-  const actualRunnerUp = validFinalPath ? (finalResults[0]?.loserTid ?? (requiresPlayedFinal ? null : projected.runnerUpTid)) : null;
+  const actualChampion = validFinalPath ? (finalComplete ? finalResults[0]?.winnerTid ?? null : (requiresPlayedFinal ? null : projected.championTid)) : null;
+  const actualRunnerUp = validFinalPath ? (finalComplete ? finalResults[0]?.loserTid ?? null : (requiresPlayedFinal ? null : projected.runnerUpTid)) : null;
+  const displaySfMatches = qfComplete
+    ? sfMatches
+    : projected.knockoutMatches.filter(match => match.round === 'semifinal');
+  const displayFinalMatches = sfComplete
+    ? finalMatches
+    : projected.knockoutMatches.filter(match => match.round === 'final');
   return {
     competitionId: spec.id,
     season,
     standings,
     ...projected,
+    knockoutMatches: [...qfMatches, ...displaySfMatches, ...displayFinalMatches],
     championTid: actualChampion,
     runnerUpTid: actualRunnerUp,
     semifinalistTids: sfComplete ? sfResults.map(result => result.loserTid) : [],

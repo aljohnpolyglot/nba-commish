@@ -49,6 +49,8 @@ export interface NBAGMStat {
   blkPct?: number;
   tovPct?: number;
   playoffs?: boolean;
+  competitionId?: string;
+  competitionPhase?: string;
   jerseyNumber?: string | number;
   ptsMax?: number;
   rebMax?: number;
@@ -119,6 +121,7 @@ export interface NBAPlayer {
   postCareerStaffRole?: string;
   postCareerStaffYear?: number;
   playoffEligible?: boolean;
+  pbaLocalEligible?: boolean;
   isImport?: boolean;
   importConference?: 'commissioners' | 'governors';
   importTeamId?: number;

@@ -133,6 +133,8 @@ The signing/cap system runs in this **execution order** inside `src/services/AIF
 
 Do this before broad repo-wide grep passes. Use `debugCheats` to narrow the failing phase/state first, then read only the code paths implicated by that output. The goal is to avoid spamming the repo for context when the app already has a purpose-built diagnostic surface.
 
+For PBA season/conference bugs, do not build save-repair or migration cheats unless the user explicitly asks for one. The user will resim the save; spend the work on diagnostics (`PBASEASON`) and forward fixes in the calendar, draft, import, award, All-Star, and conference lifecycle paths.
+
 Two browser-console scripts validate fixes against a real save (`scripts/`):
 
 - **`audit-economy.js`** — quick health check: rosters, two-ways, payroll floor, mega-contracts, lingering supermax flags. Paste in DevTools, auto-runs on newest save.

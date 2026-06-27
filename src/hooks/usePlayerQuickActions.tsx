@@ -14,7 +14,8 @@ import { formatGameDateShort, getCurrentOffseasonEffectiveFAStart, getDraftCombi
 import { isOnRoster, resolveAnyTeam } from '../utils/teamLookup';
 import { isPbaIsolatedMode } from '../utils/uiMode';
 import { isTransferWindowOpen } from '../utils/transferWindow';
-import { canSignInPba, getEffectivePbaConference, isFilipino } from '../services/pba/importManager';
+import { canSignInPba, getEffectivePbaConference } from '../services/pba/importManager';
+import { getPbaDraftPool } from '../services/pba/draftRules';
 import { isDraftProspectLike } from '../utils/prospectUtils';
 import {
   getClassPercentiles,
@@ -62,6 +63,10 @@ export function usePlayerQuickActions() {
   const [blockedMessage, setBlockedMessage] = useState<string | null>(null);
   const pbaMode = isPbaIsolatedMode(state);
   const currentYear = state.leagueStats?.year ?? new Date().getUTCFullYear();
+  const isRawDraftProspect = React.useCallback(
+    (player: NBAPlayer) => player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect',
+    [],
+  );
   const currentDateNorm = React.useMemo(() => {
     const date = parseGameDate(state.date);
     return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : '';
@@ -96,20 +101,20 @@ export function usePlayerQuickActions() {
 
   const scoutingClassProspects = React.useMemo(() => {
     if (!scoutingPlayer) return [] as NBAPlayer[];
+    if (pbaMode) return getPbaDraftPool(state.players, scoutingDraftYear, state.leagueStats as any);
     return state.players.filter(player =>
       isDraftProspectLike(player, currentYear) &&
-      (!pbaMode || isFilipino(player)) &&
       Number((player as any).draft?.year ?? scoutingDraftYear) === scoutingDraftYear,
     );
-  }, [pbaMode, scoutingPlayer, state.players, currentYear, scoutingDraftYear]);
+  }, [pbaMode, scoutingPlayer, state.players, currentYear, scoutingDraftYear, state.leagueStats]);
 
   const scoutingActivePlayers = React.useMemo(() =>
     state.players.filter(player =>
       (pbaMode ? pbaTeamIds.has(player.tid) : player.tid >= 0 && player.tid < 100) &&
       isOnRoster(player) &&
-      !isDraftProspectLike(player, currentYear),
+      (pbaMode ? !isRawDraftProspect(player) : !isDraftProspectLike(player, currentYear)),
     ),
-  [pbaMode, pbaTeamIds, state.players, currentYear]);
+  [pbaMode, pbaTeamIds, state.players, currentYear, isRawDraftProspect]);
 
   const scoutingClassAverages = React.useMemo(
     () => getClassAverages(scoutingClassProspects),
@@ -174,7 +179,7 @@ export function usePlayerQuickActions() {
   /** Dispatch-only handler for the lightweight sign/resign/waive actions. Returns true if handled. */
   const handle = (player: NBAPlayer, actionType: string): boolean => {
     if (actionType === 'view_scouting') {
-      if (isDraftProspectLike(player, currentYear)) {
+      if (pbaMode ? isRawDraftProspect(player) : isDraftProspectLike(player, currentYear)) {
         setScoutingPlayer(player);
         return true;
       }

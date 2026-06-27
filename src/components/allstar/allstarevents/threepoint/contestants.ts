@@ -2,6 +2,7 @@ export type { ThreePointContestant } from '../../../../services/allStar/ThreePoi
 export { } from '../../../../services/allStar/ThreePointContestant';
 
 import { ThreePointContestant } from '../../../../services/allStar/ThreePointContestant';
+import { getPlayerImage } from '../../../../utils/playerImage';
 
 /**
  * Map a game NBAPlayer to ThreePointContestant for the live contest display.
@@ -9,10 +10,14 @@ import { ThreePointContestant } from '../../../../services/allStar/ThreePointCon
  * from the Cloudflare Worker. Falls back to badge-based logic if the fetch fails.
  */
 export function mapPlayerToContestant(player: any, teamAbbrev: string): ThreePointContestant {
+  const latestRatings = Array.isArray(player.ratings)
+    ? player.ratings[player.ratings.length - 1] ?? {}
+    : (player.ratings ?? {});
   const nbaSlug = (player.nbaSlug as string | undefined) ||
     player.name.toLowerCase().replace(/['.]/g, '').replace(/\s+/g, '-');
 
-  const imgURL = player.imgURL ||
+  const imgURL = getPlayerImage(player) ||
+    player.imgURL ||
     (player.nbaId ? `https://cdn.nba.com/headshots/nba/latest/1040x760/${player.nbaId}.png` : '');
 
   return {
@@ -23,9 +28,9 @@ export function mapPlayerToContestant(player: any, teamAbbrev: string): ThreePoi
     nbaSlug,
     imgURL,
     ratings: {
-      tp:  player.ratings?.tp  ?? 75,
-      fg:  player.ratings?.fg  ?? 70,
-      spd: player.ratings?.spd ?? 65,
+      tp:  latestRatings.tp  ?? 75,
+      fg:  latestRatings.fg  ?? 70,
+      spd: latestRatings.spd ?? 65,
     },
     badges: player.badges ?? {},
     age: player.age ?? 25,

@@ -7,14 +7,23 @@ import { PlayerHoverCard } from '../../shared/PlayerHoverCard';
 import { PlayerHoverCardK2 } from '../../shared/PlayerHoverCardK2';
 import { SettingsManager } from '../../../services/SettingsManager';
 import { calcOvr2K, calcPot2K, getPotColor, isSalaryLegal } from '../../../services/trade/tradeValueEngine';
-import { formatPlayerSalaryDisplay, sumPlayerCurrentSalariesUSD, type TradeOutlook } from '../../../utils/salaryUtils';
+import { formatPlayerSalaryDisplay, getPlayerContractExpiryDisplay, sumPlayerCurrentSalariesUSD, type TradeOutlook } from '../../../utils/salaryUtils';
 import { computeMoodScore } from '../../../utils/mood/moodScore';
 import { formatPickLabel } from '../../../services/draft/draftClassStrength';
 import { getDisplayAge } from '../../../store/playerRatingStore';
+import { formatCurrencyWithCode, getLeagueCurrencyCode } from '../../../utils/helpers';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { getPbaRosterPortrait } from '../../../services/pba/portraits';
 import type { DraftPick, NBAPlayer, NBATeam } from '../../../types';
 import { type FoundOffer, type TradeItem } from './TradeFinderTypes';
 
-const formatSalaryM = (n: number) => `$${(n / 1000).toFixed(1)}M`;
+const formatTradeSalary = (amount: number, currency: string): string =>
+  formatCurrencyWithCode(amount, currency, false)
+    .replace(/\.00(?=[KMBT])/, '')
+    .replace(/(\.\d)0(?=[KMBT])/, '$1');
+
+const getTradePortraitFallback = (player: NBAPlayer): string | undefined =>
+  player.status === 'PBA' ? getPbaRosterPortrait(player.name) : undefined;
 
 function expiryTextClass(exp: number | undefined, currentYear: number): string {
   return exp !== undefined && exp <= currentYear ? 'text-rose-400' : 'text-slate-500';
@@ -106,16 +115,19 @@ export const PlayerRow: React.FC<{
   currentYear: number;
   walkingExpiring?: boolean;
   recentlySigned?: boolean;
+  pbaImportLocked?: boolean;
   tradeEligibleDate?: string;
-}> = ({ player, selected, onToggle, team, dateStr, currentYear, walkingExpiring, recentlySigned, tradeEligibleDate }) => {
+}> = ({ player, selected, onToggle, team, dateStr, currentYear, walkingExpiring, recentlySigned, pbaImportLocked, tradeEligibleDate }) => {
   const { state } = useGame();
   const ovr = calcOvr2K(player);
   const pot = calcPot2K(player, currentYear);
   const potColor = getPotColor(pot);
-  const exp = player.contract?.exp ?? currentYear;
-  const expClass = expiryTextClass(player.contract?.exp, currentYear);
-  const blocked = (!!walkingExpiring || !!recentlySigned) && !selected;
-  const blockTitle = recentlySigned
+  const expiry = getPlayerContractExpiryDisplay(player as any, currentYear);
+  const expClass = expiry.isConferenceDeal ? 'text-amber-300' : expiryTextClass(player.contract?.exp, currentYear);
+  const blocked = !!pbaImportLocked || ((!!walkingExpiring || !!recentlySigned) && !selected);
+  const blockTitle = pbaImportLocked
+    ? 'PBA conference import — import deals are conference-only and cannot be traded.'
+    : recentlySigned
     ? (tradeEligibleDate ? `Post-signing trade moratorium — eligible to trade ${tradeEligibleDate}.` : 'Recently signed — trade moratorium in effect.')
     : 'Walking expiring — past trade deadline, this player will be a free agent before any acquirer can use them.';
   const rowRef = useRef<HTMLDivElement>(null);
@@ -135,20 +147,21 @@ export const PlayerRow: React.FC<{
         blocked ? 'opacity-40 grayscale cursor-not-allowed pointer-events-none' : 'cursor-pointer ' + (selected ? 'bg-indigo-600/20 border-l-4 border-l-indigo-500' : 'hover:bg-slate-800/50')
       }`}
     >
-      <PlayerPortrait imgUrl={player.imgURL} face={(player as any).face} size={36} playerName={player.name} />
+      <PlayerPortrait imgUrl={player.imgURL} fallbackImgUrl={getTradePortraitFallback(player)} face={(player as any).face} size={36} playerName={player.name} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-bold text-white truncate">{player.name}</span>
           {playerIndicators(player, team, dateStr)}
         </div>
         <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide truncate">{player.pos} · {getDisplayAge(player, currentYear)}y</div>
+        {pbaImportLocked && <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-amber-300">Conference import</div>}
         {recentlySigned && tradeEligibleDate && <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-amber-300">Moratorium until {tradeEligibleDate}</div>}
       </div>
       <div className={`w-9 text-center text-xs font-black tabular-nums ${ovrText(ovr)}`}>{ovr}</div>
       <div className={`w-9 text-center text-xs font-bold tabular-nums ${potColor}`}>{pot}</div>
       <div className="w-[68px] text-right">
         <div className="text-xs font-bold text-white tabular-nums">{formatPlayerSalaryDisplay(player as any, currentYear, state.nonNBATeams ?? [])}</div>
-        <div className={`text-[9px] tabular-nums ${expClass}`}>{exp}</div>
+        <div className={`text-[9px] tabular-nums ${expClass}`}>{expiry.label}</div>
       </div>
       {selected && <X size={11} className="text-indigo-400 flex-shrink-0" />}
       {cardPos && (
@@ -203,6 +216,9 @@ const OfferItemRow: React.FC<{ item: TradeItem; teams: NBATeam[]; nonNBATeams: a
   const rowRef = useRef<HTMLDivElement>(null);
   const [cardPos, setCardPos] = useState<{ top: number; left: number; centered: boolean } | null>(null);
   const bg = tone === 'ask' ? 'bg-rose-900/20' : 'bg-slate-800/40';
+  const playerExpiry = item.type === 'player' && item.player
+    ? getPlayerContractExpiryDisplay(item.player as any, currentYear)
+    : null;
   return (
     <div
       ref={rowRef}
@@ -220,13 +236,13 @@ const OfferItemRow: React.FC<{ item: TradeItem; teams: NBATeam[]; nonNBATeams: a
         </>
       ) : item.type === 'player' && item.player ? (
         <>
-          <PlayerPortrait imgUrl={item.player.imgURL} face={(item.player as any).face} size={28} playerName={item.player.name} />
+          <PlayerPortrait imgUrl={item.player.imgURL} fallbackImgUrl={getTradePortraitFallback(item.player)} face={(item.player as any).face} size={28} playerName={item.player.name} />
           <div className="flex-1 min-w-0">
             <div className="text-xs font-bold text-white truncate flex items-center gap-1">{item.player.name}{playerIndicators(item.player, teams.find(t => t.id === item.player!.tid), dateStr)}</div>
             <div className="text-[10px] text-slate-500">{item.player.pos}{(() => { const age = getDisplayAge(item.player, currentYear); return age ? <span> · {age}Y</span> : null; })()}</div>
           </div>
           <div className="flex flex-col items-end flex-shrink-0"><div className={`text-xs font-black tabular-nums ${ovrText(item.ovr ?? 70)}`}>{item.ovr ?? '—'}</div><div className={`text-[10px] font-bold tabular-nums ${getPotColor(item.pot ?? 70)}`}>{item.pot ?? '—'}</div></div>
-          <div className="flex flex-col items-end flex-shrink-0 tabular-nums w-14"><div className="text-[11px] font-black text-white">{formatPlayerSalaryDisplay(item.player as any, currentYear, nonNBATeams)}</div>{item.player.contract?.exp && <div className={`text-[10px] ${expiryTextClass(item.player.contract.exp, currentYear)}`}>{item.player.contract.exp}</div>}</div>
+          <div className="flex flex-col items-end flex-shrink-0 tabular-nums w-14"><div className="text-[11px] font-black text-white">{formatPlayerSalaryDisplay(item.player as any, currentYear, nonNBATeams)}</div>{playerExpiry && <div className={`text-[10px] ${playerExpiry.isConferenceDeal ? 'text-amber-300' : expiryTextClass(item.player.contract?.exp, currentYear)}`}>{playerExpiry.label}</div>}</div>
         </>
       ) : (
         <>
@@ -256,6 +272,9 @@ export const OfferCard: React.FC<{
   hideActions?: boolean;
   salaryBadgeOverride?: { label: string; tone: 'ok' | 'warn' | 'bad' } | null;
 }> = ({ offer, myItems, team, teams, currentYear, dateStr, nonNBATeams, capSpaceK, onManage, onReject, showAsk, hideActions, salaryBadgeOverride }) => {
+  const { state } = useGame();
+  const currency = getLeagueCurrencyCode(state.leagueStats);
+  const salaryRulesEnabled = state.leagueStats?.salaryCapEnabled !== false;
   const mySalary = myItems.filter(i => i.type === 'player').reduce((s, i) => s + (i.player?.contract?.amount ?? 0), 0);
   const theirSalary = offer.items.filter(i => i.type === 'player').reduce((s, i) => s + (i.player?.contract?.amount ?? 0), 0);
   const myDisplaySalaryUSD = sumPlayerCurrentSalariesUSD(myItems.filter(i => i.type === 'player').map(i => i.player!).filter(Boolean) as any[], currentYear);
@@ -265,7 +284,7 @@ export const OfferCard: React.FC<{
   const capAbsorbLegal = capAbsorbOnly && capSpaceK !== undefined && capSpaceK > 0 && mySalary <= capSpaceK + 0.1;
   const ratioOk = bothHavePlayers ? isSalaryLegal(mySalary, theirSalary) : capAbsorbLegal;
   const cbaBlocked = offer.cbaValid === false;
-  const primaryBadge = salaryBadgeOverride ?? (
+  const primaryBadge = salaryRulesEnabled ? salaryBadgeOverride ?? (
     capAbsorbOnly
       ? (capAbsorbLegal
           ? { label: 'Cap space available', tone: 'warn' as const }
@@ -277,7 +296,7 @@ export const OfferCard: React.FC<{
           : bothHavePlayers && ratioOk
             ? { label: 'Salary OK', tone: 'ok' as const }
             : null
-  );
+  ) : null;
   const badgeLabel = offer.strategyLabel ?? offer.outlook.label;
   const isAbsorb = offer.variant === 'absorb';
   const matchDeltaK = bothHavePlayers ? mySalary * 1.25 - theirSalary : null;
@@ -286,12 +305,12 @@ export const OfferCard: React.FC<{
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col">
       <div className="flex items-center gap-3 p-3 border-b border-slate-800/50">
         <div className="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 p-1 flex items-center justify-center flex-shrink-0">{team?.logoUrl && <img src={team.logoUrl} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />}</div>
-        <div className="flex-1 min-w-0"><div className="text-xs font-black text-white truncate">{team?.name}</div><div className="text-[10px] text-slate-500">{(team as any)?.wins ?? 0}–{(team as any)?.losses ?? 0}</div></div>
+        <div className="flex-1 min-w-0"><div className="text-xs font-black text-white truncate">{team ? getTeamFullName(team) : ''}</div><div className="text-[10px] text-slate-500">{(team as any)?.wins ?? 0}–{(team as any)?.losses ?? 0}</div></div>
         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg flex-shrink-0 ${offer.outlook.bgColor} ${offer.outlook.color}`}>{badgeLabel}</span>
       </div>
-      {showAsk && myItems.length > 0 && <div className="px-2 pt-2 pb-1 bg-rose-950/20 border-b border-rose-500/10 space-y-1"><div className="flex items-center gap-1.5 px-1 mb-1"><span className="text-[9px] font-black uppercase tracking-widest text-rose-300 bg-rose-500/15 border border-rose-500/25 rounded px-1.5 py-0.5">↗ Outgoing{myDisplaySalaryUSD > 0 && ` · ${formatSalaryM(myDisplaySalaryUSD / 1000)}`}</span></div>{myItems.map(item => <OfferItemRow key={item.id} item={item} teams={teams} nonNBATeams={nonNBATeams} dateStr={dateStr} currentYear={currentYear} tone="ask" />)}</div>}
+      {showAsk && myItems.length > 0 && <div className="px-2 pt-2 pb-1 bg-rose-950/20 border-b border-rose-500/10 space-y-1"><div className="flex items-center gap-1.5 px-1 mb-1"><span className="text-[9px] font-black uppercase tracking-widest text-rose-300 bg-rose-500/15 border border-rose-500/25 rounded px-1.5 py-0.5">↗ Outgoing{myDisplaySalaryUSD > 0 && ` · ${formatTradeSalary(myDisplaySalaryUSD, currency)}`}</span></div>{myItems.map(item => <OfferItemRow key={item.id} item={item} teams={teams} nonNBATeams={nonNBATeams} dateStr={dateStr} currentYear={currentYear} tone="ask" />)}</div>}
       <div className="flex-1 p-2 space-y-1">
-        <div className="flex items-center gap-1.5 px-1 mb-1"><span className="text-[9px] font-black uppercase tracking-widest text-emerald-300 bg-emerald-500/15 border border-emerald-500/25 rounded px-1.5 py-0.5">↙ Incoming{theirDisplaySalaryUSD > 0 && ` · ${formatSalaryM(theirDisplaySalaryUSD / 1000)}`}</span></div>
+        <div className="flex items-center gap-1.5 px-1 mb-1"><span className="text-[9px] font-black uppercase tracking-widest text-emerald-300 bg-emerald-500/15 border border-emerald-500/25 rounded px-1.5 py-0.5">↙ Incoming{theirDisplaySalaryUSD > 0 && ` · ${formatTradeSalary(theirDisplaySalaryUSD, currency)}`}</span></div>
         {offer.items.map(item => <OfferItemRow key={item.id} item={item} teams={teams} nonNBATeams={nonNBATeams} dateStr={dateStr} currentYear={currentYear} />)}
       </div>
       <div className="p-2.5 border-t border-slate-800/50 flex items-center justify-between gap-2">

@@ -7,6 +7,7 @@ import {
   parseGameDate,
 } from '../../utils/dateUtils';
 import { clearWaiverMarkers } from '../../utils/contractCleanup';
+import { formatContractTotalUSD } from '../../utils/salaryUtils';
 
 type SetGameState = Dispatch<SetStateAction<GameState>>;
 
@@ -164,11 +165,10 @@ export function handleFaBiddingDispatchAction({
             : item,
         );
         markets[idx] = { ...market, resolved: true, pendingMatch: false, matchedByPriorTeam: true };
-        const annualM = Math.round(offerBid.salaryUSD / 100_000) / 10;
-        const totalM = Math.round(annualM * finalYears);
         const signingTeam = prev.teams.find(t => t.id === offerBid.teamId);
+        const totalValue = formatContractTotalUSD(offerBid.salaryUSD, finalYears);
         const histEntry = {
-          text: `${team.name} matched ${signingTeam?.name ?? 'opposing'} offer sheet on ${player.name}: $${totalM}M/${finalYears}yr.`,
+          text: `${team.name} matched ${signingTeam?.name ?? 'opposing'} offer sheet on ${player.name}: ${totalValue}/${finalYears}yr.`,
           date: prev.date,
           type: 'Signing',
           playerIds: [player.internalId],

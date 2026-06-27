@@ -18,6 +18,16 @@ import {
   spawnExternalPlayer,
 } from './externalLeagueSpawn';
 
+const EXTERNAL_AUTO_FILL_LEAGUES = new Set([
+  'Euroleague',
+  'Endesa',
+  'China CBA',
+  'NBL Australia',
+  'B-League',
+  'G-League',
+  'WNBA',
+]);
+
 export function ensureEuroUserAcademyProspects(
   state: GameState & { nonNBATeams?: any[] },
   year: number,
@@ -88,6 +98,7 @@ export function retireExternalLeaguePlayers(
   players: NBAPlayer[],
   year: number,
   stateDate: string,
+  state?: Pick<GameState, 'boxScores'>,
 ): {
   players: NBAPlayer[];
   retirees: ExternalRetireeRecord[];
@@ -98,6 +109,37 @@ export function retireExternalLeaguePlayers(
   ]);
   const retirees: ExternalRetireeRecord[] = [];
   const historyEntries: ExternalHistoryEntry[] = [];
+  const normalizeName = (name: string | undefined) => String(name ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const countPbaBoxScoreGP = (player: NBAPlayer): number => {
+    const playerKey = normalizeName(player.name);
+    const games = new Set<string>();
+    for (const box of state?.boxScores ?? []) {
+      if (!String((box as any).competitionId ?? '').startsWith('pba-')) continue;
+      const rows = [
+        ...((box as any).homeStats ?? []),
+        ...((box as any).awayStats ?? []),
+      ];
+      const appeared = rows.some((stat: any) => {
+        const statPid = String(stat?.playerId ?? stat?.pid ?? '');
+        const statName = normalizeName(stat?.playerName ?? stat?.name);
+        const matched = statPid === player.internalId || (!!playerKey && statName === playerKey);
+        if (!matched) return false;
+        return Number(stat?.min ?? 0) > 0
+          || Number(stat?.pts ?? 0) > 0
+          || Number(stat?.reb ?? stat?.trb ?? 0) > 0
+          || Number(stat?.ast ?? 0) > 0
+          || Number(stat?.stl ?? 0) > 0
+          || Number(stat?.blk ?? 0) > 0;
+      });
+      if (appeared) games.add(String((box as any).gid ?? (box as any).id ?? `${(box as any).date}-${(box as any).homeTeamId}-${(box as any).awayTeamId}`));
+    }
+    return games.size;
+  };
+  const careerGamesFor = (player: NBAPlayer, league: string): number => {
+    const statGP = computeCareerGP(player);
+    if (league !== 'PBA') return statGP;
+    return Math.max(statGP, countPbaBoxScoreGP(player));
+  };
 
   const updated = players.map(p => {
     const status = (p as any).status ?? '';
@@ -144,7 +186,7 @@ export function retireExternalLeaguePlayers(
     const roll = seededRandom(`retire_ext_${p.internalId}_${year}`);
     if (roll >= prob) return p;
 
-    const careerGP = computeCareerGP(p);
+    const careerGP = careerGamesFor(p, status);
     const country = getPlayerCountry(p);
     retirees.push({ player: { ...p } as NBAPlayer, league: status, country, careerGP });
 
@@ -155,7 +197,9 @@ export function retireExternalLeaguePlayers(
     }
 
     historyEntries.push({
-      text: `${p.name} retired from the ${status} after ${careerGP} career games.`,
+      text: careerGP > 0
+        ? `${p.name} retired from the ${status} after ${careerGP} career games.`
+        : `${p.name} retired from the ${status} after his ${status} career.`,
       date: stateDate,
       type: 'Retirement',
       playerIds: [p.internalId],
@@ -167,6 +211,8 @@ export function retireExternalLeaguePlayers(
       ...p,
       status: 'Retired' as const,
       retiredYear: year,
+      retiredFromLeague: status,
+      hofLeague: status === 'PBA' ? 'PBA' : undefined,
       farewellTour: undefined,
       contract: undefined,
     } as any as NBAPlayer;
@@ -183,9 +229,6 @@ export function enforceExternalMinRoster(
   state: GameState & { nonNBATeams?: any[] },
   year: number,
 ): { additions: NBAPlayer[] } {
-  const EXTERNAL_LEAGUES = new Set([
-    'Euroleague', 'Endesa', 'China CBA', 'NBL Australia', 'PBA', 'B-League', 'G-League', 'WNBA',
-  ]);
   const MIN_ROSTER = 12;
   const MAX_ROSTER = 15;
   const salaryCap = state.leagueStats?.salaryCap ?? 154_600_000;
@@ -196,7 +239,7 @@ export function enforceExternalMinRoster(
   const additions: NBAPlayer[] = [];
 
   for (const team of nonNBATeams) {
-    if (!EXTERNAL_LEAGUES.has(team.league)) continue;
+    if (!EXTERNAL_AUTO_FILL_LEAGUES.has(team.league)) continue;
 
     const currentCount =
       state.players.filter(p => p.tid === team.tid && (p as any).status !== 'Retired').length +
@@ -256,9 +299,6 @@ export function repopulateExternalLeagues(
   year: number,
   nextYear: number,
 ): { additions: NBAPlayer[] } {
-  const EXTERNAL_LEAGUES = new Set([
-    'Euroleague', 'Endesa', 'China CBA', 'NBL Australia', 'PBA', 'B-League', 'G-League', 'WNBA',
-  ]);
   const salaryCap = state.leagueStats?.salaryCap ?? 154_600_000;
   const nonNBATeams: any[] = (state as any).nonNBATeams ?? [];
   const additions: NBAPlayer[] = [];
@@ -269,7 +309,7 @@ export function repopulateExternalLeagues(
 
   // Retirees — already have country from retireExternalLeaguePlayers
   for (const r of retirees) {
-    if (!EXTERNAL_LEAGUES.has(r.league)) continue;
+    if (!EXTERNAL_AUTO_FILL_LEAGUES.has(r.league)) continue;
     const country = r.country || sampleLeagueCountry(r.league, nonNBATeams, state.players, 0.5);
     outflow[r.league] = outflow[r.league] ?? {};
     outflow[r.league][country] = (outflow[r.league][country] ?? 0) + 1;
@@ -285,7 +325,7 @@ export function repopulateExternalLeagues(
   for (const d of declarers) {
     const country = getPlayerCountry(d);
     const homeLeague = resolveNationalityLeague(country, 0.5);
-    if (homeLeague && EXTERNAL_LEAGUES.has(homeLeague)) {
+    if (homeLeague && EXTERNAL_AUTO_FILL_LEAGUES.has(homeLeague)) {
       outflow[homeLeague] = outflow[homeLeague] ?? {};
       outflow[homeLeague][country] = (outflow[homeLeague][country] ?? 0) + 1;
     }

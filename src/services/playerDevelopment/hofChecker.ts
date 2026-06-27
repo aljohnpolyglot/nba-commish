@@ -40,6 +40,7 @@ export interface HOFInduction {
   name: string;
   age: number;
   inductionYear: number;
+  league?: 'NBA' | 'PBA';
   careerWS: number;
   allStarAppearances: number;
   championships: number;
@@ -79,6 +80,50 @@ function countAward(player: NBAPlayer, type: string): number {
 
 function countAwardIncludes(player: NBAPlayer, needle: string): number {
   return (player.awards ?? []).filter(a => a.type.includes(needle)).length;
+}
+
+function isPbaRetiree(player: NBAPlayer): boolean {
+  return (player as any).retiredFromLeague === 'PBA' || (player as any).hofLeague === 'PBA';
+}
+
+function pbaCareerGames(player: NBAPlayer): number {
+  return ((player as any).stats ?? [])
+    .filter((entry: any) =>
+      !entry.playoffs &&
+      (entry.gp ?? 0) > 0 &&
+      (Number(entry.tid) >= 2000 || String(entry.league ?? '').toUpperCase() === 'PBA' || String(entry.source ?? entry._source ?? '').toLowerCase().includes('pba')),
+    )
+    .reduce((sum: number, entry: any) => sum + Number(entry.gp ?? 0), 0);
+}
+
+function countPbaAward(player: NBAPlayer, pattern: RegExp): number {
+  return (player.awards ?? []).filter(award => pattern.test(award.type)).length;
+}
+
+function isPbaHOFWorthy(player: NBAPlayer): boolean {
+  const games = pbaCareerGames(player);
+  const mvps = countPbaAward(player, /^(Most Valuable Player|MVP)$/i);
+  const bpc = countPbaAward(player, /Best Player of the Conference/i);
+  const bestImport = countPbaAward(player, /Best Import/i);
+  const fmvps = countPbaAward(player, /Finals MVP/i);
+  const mythical = countPbaAward(player, /Mythical/i);
+  const allDef = countPbaAward(player, /All-Defensive/i);
+  const champs = countPbaAward(player, /(Champion|Won Championship)/i);
+
+  if (mvps >= 1) return true;
+  if (bpc >= 2 || fmvps >= 2) return true;
+  if (bestImport >= 3) return true;
+  if (mythical >= 5) return true;
+  if (champs >= 3 && mythical + bpc + fmvps + bestImport >= 2) return true;
+  if (games >= 250 && mythical + bpc + fmvps + allDef >= 3) return true;
+  return false;
+}
+
+function isFirstBallotPba(player: NBAPlayer): boolean {
+  return countPbaAward(player, /^(Most Valuable Player|MVP)$/i) >= 2
+    || countPbaAward(player, /Best Player of the Conference/i) >= 3
+    || countPbaAward(player, /Finals MVP/i) >= 3
+    || countPbaAward(player, /Mythical/i) >= 7;
 }
 
 // ─── Worthiness ───────────────────────────────────────────────────────────────
@@ -210,6 +255,7 @@ export function runHOFChecks(
   const updated = players.map(p => {
     if (p.hof) return p; // already inducted
     if ((p as any).status !== 'Retired') return p;
+    if (isPbaRetiree(p) || ((p as any).retiredFromLeague && (p as any).retiredFromLeague !== 'NBA')) return p;
     const tierInfo = getHOFTierInfo(p, wsThreshold);
     if (!tierInfo) return p;
     if (year < tierInfo.eligibleYear) return p;
@@ -225,6 +271,7 @@ export function runHOFChecks(
       name:               p.name,
       age,
       inductionYear:      year,
+      league: 'NBA',
       careerWS:           ws,
       allStarAppearances: allStars,
       championships:      champs,
@@ -241,10 +288,56 @@ export function runHOFChecks(
       ...p,
       hof: true,
       hofInductionYear: year,
+      hofLeague: 'NBA',
     } as NBAPlayer;
   });
 
   console.log(`[HOF] Class of ${year}: ${newInductees.length} inductee${newInductees.length === 1 ? '' : 's'} (WS threshold: ${wsThreshold})`);
+  return { players: updated, newInductees };
+}
+
+export function runPbaHOFChecks(
+  players: NBAPlayer[],
+  year: number,
+): { players: NBAPlayer[]; newInductees: HOFInduction[] } {
+  const newInductees: HOFInduction[] = [];
+  const updated = players.map(player => {
+    if (player.hof) return player;
+    if ((player as any).status !== 'Retired') return player;
+    if (!isPbaRetiree(player)) return player;
+    const retiredYear = Number((player as any).retiredYear ?? 0);
+    if (!retiredYear || year < retiredYear + HOF_FIRST_BALLOT_WAIT_YEARS) return player;
+    if (!isPbaHOFWorthy(player)) return player;
+
+    const games = pbaCareerGames(player);
+    const mvps = countPbaAward(player, /^(Most Valuable Player|MVP)$/i);
+    const champs = countPbaAward(player, /(Champion|Won Championship)/i);
+    const mythical = countPbaAward(player, /Mythical/i);
+    const age = player.born?.year ? year - player.born.year : 0;
+    const firstBallot = isFirstBallotPba(player);
+
+    newInductees.push({
+      playerId: player.internalId,
+      name: player.name,
+      age,
+      inductionYear: year,
+      league: 'PBA',
+      careerWS: games,
+      allStarAppearances: mythical,
+      championships: champs,
+      mvps,
+      firstBallot,
+      tier: firstBallot ? 'first_ballot' : 'regular',
+    });
+
+    return {
+      ...player,
+      hof: true,
+      hofInductionYear: year,
+      hofLeague: 'PBA',
+    } as NBAPlayer;
+  });
+
   return { players: updated, newInductees };
 }
 

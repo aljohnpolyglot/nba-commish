@@ -21,6 +21,7 @@ import { isNoDraftLeague } from '../../../../../services/offseason/offseasonStat
 import { getDisplayAge } from '../../../../../store/playerRatingStore';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
 import { isPbaIsolatedMode } from '../../../../../utils/uiMode';
+import { getPbaTradeTeams, isPbaTradeWindowOpen } from '../../../../../services/pba/tradeWindow';
 
 interface TradingBlockProps {
   teamId: number;
@@ -41,14 +42,17 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
   const { players, teams, draftPicks } = state;
   const noDraft = isNoDraftLeague(state.leagueStats as any);
   const pbaMode = isPbaIsolatedMode(state);
+  if (pbaMode && !isPbaTradeWindowOpen(state)) return null;
+  const tradeTeams = pbaMode ? getPbaTradeTeams(state) : teams;
+  const tradeTeamIds = new Set(tradeTeams.map(team => team.id));
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const lotterySlotByTid = useMemo(
-    () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
-    [(state as any).draftLotteryResult, state.teams],
+    () => buildFullDraftSlotMap((state as any).draftLotteryResult, tradeTeams),
+    [(state as any).draftLotteryResult, tradeTeams],
   );
   const allActive = players.filter(p => p.tid >= 0 && isOnRoster(p) && p.status !== 'Draft Prospect');
   const leagueActive = pbaMode
-    ? allActive.filter(p => p.status === 'PBA' || (p.tid >= 2000 && p.tid < 3000))
+    ? allActive.filter(p => tradeTeamIds.has(Number(p.tid)))
     : allActive;
   const teamPlayers = allActive.filter(p => p.tid === teamId);
   const team = resolveAnyTeam(teamId, teams, state.nonNBATeams ?? []);
@@ -65,7 +69,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
     }
     const payroll = getTeamPayrollUSD(players, teamId, team, currentYear);
     const rec = effectiveRecord(team, currentYear);
-    const confTeams = teams.filter(t => t.conference === team.conference).map(t => ({
+    const confTeams = tradeTeams.filter(t => t.conference === team.conference).map(t => ({
       t, rec: effectiveRecord(t, currentYear),
     })).sort((a, b) => (b.rec.wins - b.rec.losses) - (a.rec.wins - a.rec.losses));
     const leader = confTeams[0];
@@ -80,7 +84,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
     if (outlook.role === 'heavy_buyer' || outlook.role === 'buyer') return 'contend';
     if (outlook.role === 'rebuilding') return 'presti';
     return 'rebuild';
-  }, [team, players, teams, teamId, currentYear, thresholds, state.gameMode, state.userTeamId]);
+  }, [team, players, tradeTeams, teamId, currentYear, thresholds, state.gameMode, state.userTeamId]);
 
   if (teamPlayers.length === 0) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;
@@ -380,16 +384,18 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
   // Build the trade-outlook map once for the inbound proposal generator.
   const buildOutlookMap = () => {
     const map = new Map<number, { role: string }>();
-    const EAST = teams.filter(t => t.conference === 'East');
-    const WEST = teams.filter(t => t.conference === 'West');
-    const rankedInConf = (confTeams: typeof teams) => {
+    const conferenceKeys = Array.from(new Set(tradeTeams.map(t => String(t.conference ?? '').trim()).filter(Boolean)));
+    const rankedInConf = (confTeams: typeof tradeTeams) => {
       return [...confTeams]
         .map(t => ({ t, rec: effectiveRecord(t, currentYear) }))
         .sort((a, b) => (b.rec.wins - b.rec.losses) - (a.rec.wins - a.rec.losses));
     };
-    const ranks = [...rankedInConf(EAST), ...rankedInConf(WEST)];
-    for (const t of teams) {
-      const confList = t.conference === 'East' ? rankedInConf(EAST) : rankedInConf(WEST);
+    const conferenceGroups = (conferenceKeys.length > 0 ? conferenceKeys : ['']).map(conf =>
+      tradeTeams.filter(t => (String(t.conference ?? '').trim() || '') === conf),
+    );
+    const ranks = conferenceGroups.flatMap(group => rankedInConf(group));
+    for (const t of tradeTeams) {
+      const confList = rankedInConf(tradeTeams.filter(team => team.conference === t.conference));
       const leader = confList[0];
       const lw = leader?.rec.wins ?? 0, ll = leader?.rec.losses ?? 0;
       const idx = confList.findIndex(c => c.t.id === t.id);
@@ -421,9 +427,9 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
     const outlookMap = buildOutlookMap();
     const minTradableSeason = getMinTradableSeason(state);
     const classStrengthByYear = buildClassStrengthMap(players, currentYear, currentYear, getMaxTradableSeason(state));
-    const lotterySlotByTid = buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams);
-    const powerRanks = teamPowerRanks(teams, currentYear);
-    const mvpTop = AwardService.calculateMVPRankings(players, teams, currentYear, 30);
+    const lotterySlotByTid = buildFullDraftSlotMap((state as any).draftLotteryResult, tradeTeams);
+    const powerRanks = teamPowerRanks(tradeTeams, currentYear);
+    const mvpTop = AwardService.calculateMVPRankings(players, tradeTeams, currentYear, 30);
     const mvpRank = new Map<string, number>();
     mvpTop.forEach((c, i) => mvpRank.set(c.player.internalId, i + 1));
     const proposals = generateInboundProposalsForUser({
@@ -432,7 +438,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       blockPlayerIds: Array.from(blockIds),
       blockPickIds: Array.from(blockPickIds),
       players,
-      teams,
+      teams: tradeTeams,
       draftPicks: getTradablePicks(state),
       currentYear,
       minTradableSeason,
@@ -446,7 +452,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
         currentDate: state.date ?? '',
         leagueStats: state.leagueStats as any,
       },
-      allowPbaRoster: isPbaIsolatedMode(state),
+      allowPbaRoster: pbaMode,
       mvpRank,
       leagueStats: state.leagueStats,
     });
@@ -473,12 +479,12 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
         </p>
       )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 flex-1">
-        <EditableColumn title="Target List" items={targetList} teams={teams}
+        <EditableColumn title="Target List" items={targetList} teams={tradeTeams}
           onAdd={canEdit ? () => setEditingColumn('targets') : undefined}
           accentColor="#818cf8" onPlayerClick={setViewingPlayer}
           onRemovePlayer={canEdit && targetIds.size > 0 ? (id) => removeFromList('targets', id) : undefined} />
         <EditableColumn
-          title="Trading Block" items={tradingBlockList} teams={teams}
+          title="Trading Block" items={tradingBlockList} teams={tradeTeams}
           onAdd={canEdit ? () => setEditingColumn('block') : undefined}
           accentColor="#f87171" onPlayerClick={setViewingPlayer}
           onRemovePlayer={canEdit ? (id) => removeFromList('block', id) : undefined}
@@ -488,10 +494,10 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
           onTogglePick={togglePick}
           allTeamPicks={teamPicks}
           onOpenPickEditor={canEdit && teamMode === 'contend' ? () => setEditingColumn('block') : undefined}
-          currentYear={currentYear} allTeams={teams} blockPickIds={blockPickIds}
+          currentYear={currentYear} allTeams={tradeTeams} blockPickIds={blockPickIds}
           lotterySlotByTid={lotterySlotByTid}
         />
-        <EditableColumn title="Untouchables" items={untouchablesList} teams={teams}
+        <EditableColumn title="Untouchables" items={untouchablesList} teams={tradeTeams}
           onAdd={canEdit ? () => setEditingColumn('untouchable') : undefined}
           accentColor="#34d399" onPlayerClick={setViewingPlayer}
           onRemovePlayer={canEdit ? (id) => removeFromList('untouchable', id) : undefined} />
@@ -510,7 +516,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
             <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               <PlayerSelectorGrid
                 items={editingColumn === 'targets' ? leagueItems : ownRosterItems}
-                teams={teams as any}
+                teams={tradeTeams as any}
                 selectedIds={editingColumn === 'untouchable' ? untouchableIds : editingColumn === 'block' ? blockIds : targetIds}
                 onToggle={(id) => toggle(editingColumn!, id)}
                 maxSelections={MAX_SLOTS}
@@ -524,7 +530,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-3">Trade Future Picks</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {teamPicks.map(pick => {
-                      const origTeam = teams.find(t => t.id === pick.originalTid);
+                      const origTeam = tradeTeams.find(t => t.id === pick.originalTid);
                       const isActive = blockPickIds.has(pick.dpid);
                       return (
                         <button

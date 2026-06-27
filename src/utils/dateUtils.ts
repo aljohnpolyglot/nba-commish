@@ -351,17 +351,21 @@ export function isDraftBlockedByUnresolvedPlayoffs(state: any): boolean {
   return activeSeries || unplayedPlayoffGame;
 }
 
-/** Draft Combine window start: May 19 by default. */
+/** Draft Combine window start: May 19 by default; PBA uses the offseason draft week. */
 export function getDraftCombineStartDate(seasonYear: number, stats?: TxnCalendar): Date {
-  const m = stats?.combineStartMonth ?? 5;
-  const d = stats?.combineStartDay ?? 19;
+  const defaultMonth = stats?.uiMode === 'pba_isolated' ? 9 : 5;
+  const defaultDay = stats?.uiMode === 'pba_isolated' ? 22 : 19;
+  const m = stats?.combineStartMonth ?? defaultMonth;
+  const d = stats?.combineStartDay ?? defaultDay;
   return new Date(Date.UTC(seasonYear, m - 1, d));
 }
 
-/** Draft Combine window end: May 23 by default. */
+/** Draft Combine window end: May 23 by default; PBA uses the offseason draft week. */
 export function getDraftCombineEndDate(seasonYear: number, stats?: TxnCalendar): Date {
-  const m = stats?.combineEndMonth ?? 5;
-  const d = stats?.combineEndDay ?? 23;
+  const defaultMonth = stats?.uiMode === 'pba_isolated' ? 9 : 5;
+  const defaultDay = stats?.uiMode === 'pba_isolated' ? 26 : 23;
+  const m = stats?.combineEndMonth ?? defaultMonth;
+  const d = stats?.combineEndDay ?? defaultDay;
   return new Date(Date.UTC(seasonYear, m - 1, d));
 }
 
@@ -383,6 +387,9 @@ export function getTrainingCampDate(seasonYear: number, stats?: TxnCalendar): Da
  * e.g. seasonYear=2026 → 3rd Sunday of Feb 2026
  */
 export function getAllStarGameDate(seasonYear: number, stats?: TxnCalendar): Date {
+  if (stats?.uiMode === 'pba_isolated') {
+    return new Date(Date.UTC(seasonYear, 2, 8));
+  }
   const month   = stats?.allStarMonth   ?? 2;
   const ordinal = stats?.allStarOrdinal ?? 3;
   const day     = (stats?.allStarDayOfWeek ?? 'Sun') as DayAbbr;

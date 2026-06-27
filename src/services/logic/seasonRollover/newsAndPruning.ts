@@ -60,15 +60,21 @@ export function buildSeasonRolloverNewsAndPruning({
   newJerseyRetirements,
   deaths,
 }: SeasonRolloverNewsArgs): SeasonRolloverNewsResult {
+  const isPba = state.leagueStats?.uiMode === 'pba_isolated';
   const capM = (newSalaryCap / 1_000_000).toFixed(1);
   const pctStr = inflationPctApplied >= 0
     ? `+${inflationPctApplied.toFixed(1)}%`
     : `${inflationPctApplied.toFixed(1)}%`;
+  const pbaSeasonLabel = `${nextYear - 1}-${String(nextYear).slice(-2)}`;
 
   const rolloverNews = {
     id: `rollover-${nextYear}-${Date.now()}`,
-    headline: `${nextYear} NBA Season Underway — Salary Cap Set at $${capM}M`,
-    content: `The ${nextYear} NBA season is officially underway. The salary cap has been set at $${capM}M (${pctStr} from last season). ${expiredCount} players became free agents as their contracts expired.`,
+    headline: isPba
+      ? `${pbaSeasonLabel} PBA Season Opens`
+      : `${nextYear} NBA Season Underway — Salary Cap Set at $${capM}M`,
+    content: isPba
+      ? `The ${pbaSeasonLabel} PBA season is underway with teams moving into the Philippine Cup calendar.`
+      : `The ${nextYear} NBA season is officially underway. The salary cap has been set at $${capM}M (${pctStr} from last season). ${expiredCount} players became free agents as their contracts expired.`,
     date: state.date,
     type: 'league',
     isNew: true,
@@ -176,10 +182,13 @@ export function buildSeasonRolloverNewsAndPruning({
     const accoladeStr = accolades.length > 0 ? ` — ${accolades.join(', ')}` : '';
     const ballotStr = inductee.firstBallot ? ' (First-Ballot)' : '';
     const tierStr = inductee.firstBallot ? '' : ` (${inductee.tier === 'borderline' ? 'Borderline' : 'Multi-Ballot'})`;
+    const hallLabel = inductee.league === 'PBA' ? 'PBA Hall of Fame' : 'Hall of Fame';
+    const formalHallLabel = inductee.league === 'PBA' ? 'PBA Hall of Fame' : 'Naismith Memorial Basketball Hall of Fame';
+    const careerLabel = inductee.league === 'PBA' ? `${inductee.careerWS.toFixed(0)} PBA games` : `${inductee.careerWS.toFixed(1)} Win Shares`;
     return [{
       id: `hof-${inductee.playerId}-${Date.now()}-${idx}`,
-      headline: `${inductee.name} Inducted Into Hall of Fame${ballotStr || tierStr}`,
-      content: `${inductee.name} has been inducted into the Naismith Memorial Basketball Hall of Fame${ballotStr || tierStr}. Career: ${inductee.careerWS.toFixed(1)} Win Shares${accoladeStr}.`,
+      headline: `${inductee.name} Inducted Into ${hallLabel}${ballotStr || tierStr}`,
+      content: `${inductee.name} has been inducted into the ${formalHallLabel}${ballotStr || tierStr}. Career: ${careerLabel}${accoladeStr}.`,
       date: ceremonyDate,
       type: 'player',
       isNew: true,
@@ -195,8 +204,9 @@ export function buildSeasonRolloverNewsAndPruning({
       year: 'numeric',
     });
     if (state.date !== ceremonyDate) return [];
+    const hallLabel = inductee.league === 'PBA' ? 'PBA Hall of Fame' : 'Hall of Fame';
     return [{
-      text: `${inductee.name} inducted into the Hall of Fame (Class of ${inductee.inductionYear})${inductee.firstBallot ? ' — First-Ballot' : inductee.tier === 'borderline' ? ' — Borderline' : ' — Multi-Ballot'}.`,
+      text: `${inductee.name} inducted into the ${hallLabel} (Class of ${inductee.inductionYear})${inductee.firstBallot ? ' — First-Ballot' : inductee.tier === 'borderline' ? ' — Borderline' : ' — Multi-Ballot'}.`,
       date: ceremonyDate,
       type: 'Retirement',
       playerIds: [inductee.playerId],

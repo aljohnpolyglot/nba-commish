@@ -3,7 +3,7 @@ import { useGame } from '../../store/GameContext';
 import { X, Search, User, CheckCircle2, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NBAPlayer, NBATeam } from '../../types';
-import { convertTo2KRating } from '../../utils/helpers';
+import { getScoutedDisplayOverall } from '../../utils/scoutingFuzz';
 import { getPlayerImage } from '../central/view/bioCache';
 import { MyFace, isRealFaceConfig } from '../shared/MyFace';
 import SigningModal from './SigningModal';
@@ -12,7 +12,7 @@ import { getCurrentOffseasonFAMoratoriumEnd, parseGameDate } from '../../utils/d
 import { classifyResignIntent } from '../central/view/PlayerBioMoraleTab';
 import { computeMoodScore, normalizeMoodTraits } from '../../utils/mood/moodScore';
 import { getActiveLeagueTeams, resolveAnyTeam } from '../../utils/teamLookup';
-import { isEuroIsolatedMode } from '../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
 
 interface SigningDetails {
   playerId: string;
@@ -42,6 +42,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
   const { state, dispatchAction } = useGame();
   const isGM = state.gameMode === 'gm';
   const euroIsolated = isEuroIsolatedMode(state);
+  const pbaIsolated = isPbaIsolatedMode(state);
   const userTeam = useMemo(
     () => (isGM && state.userTeamId != null ? resolveAnyTeam(state.userTeamId, state.teams, state.nonNBATeams ?? []) : null),
     [isGM, state.userTeamId, state.teams, state.nonNBATeams],
@@ -80,12 +81,12 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
   }, [freeAgents, searchTerm]);
 
   const filteredTeams = useMemo(() => {
-    const teams = euroIsolated ? getActiveLeagueTeams(state) : state.teams;
+    const teams = euroIsolated || pbaIsolated ? getActiveLeagueTeams(state) : state.teams;
     return teams.filter(t =>
       t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.abbrev.toLowerCase().includes(searchTerm.toLowerCase())
     ).sort((a, b) => a.name.localeCompare(b.name));
-  }, [state, euroIsolated, searchTerm]);
+  }, [state, euroIsolated, pbaIsolated, searchTerm]);
 
   // In negotiation step, SigningModal is the source of truth.
   // Commissioner mode auto-accepts the offer (executive authority); GM must win the interest check.
@@ -146,7 +147,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
             mleType,
           });
         }}
-        onSubmitBid={!euroIsolated ? ({ salary, years, option }) => {
+        onSubmitBid={!euroIsolated && !pbaIsolated ? ({ salary, years, option }) => {
           // Bidding-war path — post a competing offer into state.faBidding.markets
           // instead of signing right away. The ticker resolves it alongside AI bids
           // 3-5 days later. No tid/contract mutation happens here.
@@ -179,6 +180,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
             playerName: selectedPlayer.name,
             teamName: selectedTeam.name,
             annualM: Math.round(salary / 100_000) / 10,
+            salaryUSD: salary,
             years,
             resolvesInDays,
           });
@@ -266,7 +268,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
                             <div className="flex-1 min-w-0">
                                 <div className="text-sm font-bold truncate text-white">{player.name}</div>
                                 <div className="text-xs text-slate-500">
-                                    {player.pos} • OVR: {convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp)}
+                                    {player.pos} • OVR: {getScoutedDisplayOverall(state as any, player, state.leagueStats?.year)}
                                     {!euroIsolated && ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '') && (
                                         <span className="ml-1 text-indigo-400 font-bold tracking-tighter">• {player.status}</span>
                                     )}

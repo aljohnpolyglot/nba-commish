@@ -38,6 +38,16 @@ function getEuroStats(player: NBAPlayer): any[] {
     .filter(stat => !stat.playoffs && (stat.gp ?? 0) > 0 && isEuroTid(Number(stat.tid)));
 }
 
+function getPlayerYearsPro(player: NBAPlayer, stats: any[], classYear: number): number {
+  const statYears = new Set(stats.map(stat => Number(stat.season ?? 0)).filter(Number.isFinite)).size;
+  const rawDraftYear = (player as any).draft?.year ?? (player as any).draftYear ?? (player as any).rookieYear;
+  const draftYear = Number(rawDraftYear);
+  const draftYears = Number.isFinite(draftYear) && draftYear > 1900 && draftYear <= classYear
+    ? Math.max(1, classYear - draftYear)
+    : 0;
+  return Math.max(1, draftYears, statYears);
+}
+
 export default function EuroRetiredPlayersReviewModal({ isOpen, onClose }: Props) {
   const { state, dispatchAction } = useGame();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -89,7 +99,7 @@ export default function EuroRetiredPlayersReviewModal({ isOpen, onClose }: Props
         return {
           player,
           age: getPlayerAge(player, classYear),
-          yearsPro: new Set(stats.map(stat => Number(stat.season ?? 0))).size,
+          yearsPro: getPlayerYearsPro(player, stats, classYear),
           pos: (player as any).pos ?? '',
           teams,
           lastTeam,

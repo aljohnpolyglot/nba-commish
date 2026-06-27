@@ -7,7 +7,11 @@ import { getTradeDeadlineDate, toISODateString } from '../../../utils/dateUtils'
 import { generateAIDayTradeProposals, executeAITrade } from '../../../services/AITradeHandler';
 import { tickTransferMarket } from '../../../services/transfer/transferMarketTicker';
 import { applySeasonRollover } from '../../../services/logic/seasonRollover';
+import { repairPbaConferenceForDate } from '../../../services/pba/conferenceTransition';
+import { isPbaTradeWindowOpen } from '../../../services/pba/tradeWindow';
 import { SettingsManager } from '../../../services/SettingsManager';
+import { isPbaIsolatedMode } from '../../../utils/uiMode';
+import { getStandardRosterLimit } from '../../../utils/rosterLimits';
 import { isNbaCupEnabled } from '../../../utils/ruleFlags';
 import { getOffseasonDayPlan } from '../../../services/offseason/offseasonPlan';
 import { injectCompetitionPostseasonGames } from '../../../services/competition/competitionResolver';
@@ -82,6 +86,7 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
 
         // Apply playoff/play-in bracket logic before simulating this day's games
         // so that injected play-in/playoff games are in the schedule when simulateDayGames runs.
+        stateWithSim = repairPbaConferenceForDate(stateWithSim);
         stateWithSim = applyPlayoffLogic(stateWithSim, [], numGamesPerRound);
         stateWithSim = {
             ...stateWithSim,
@@ -261,13 +266,13 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         if (stateWithSim.gameMode === 'gm' && stateWithSim.userTeamId !== undefined) {
             const isRegularSeason = (simMonth === 10 && simDayNum >= 24) || (simMonth >= 11) || (simMonth <= 3);
             if (isRegularSeason) {
-                const maxStd = stateWithSim.leagueStats?.maxStandardPlayersPerTeam ?? 15;
+                const maxStd = getStandardRosterLimit(stateWithSim.leagueStats);
                 const userRoster = stateWithSim.players.filter(p =>
                     p.tid === stateWithSim.userTeamId && !(p as any).twoWay && p.status === 'Active'
                 );
                 if (userRoster.length > maxStd) {
                     const excess = userRoster.length - maxStd;
-                    const msg = `Boss, we're still over 15 standard players (${userRoster.length} total). We can't sim the regular season like this—need to cut ${excess} player(s).`;
+                    const msg = `Boss, we're still over ${maxStd} standard players (${userRoster.length} total). We can't sim the regular season like this—need to cut ${excess} player(s).`;
                     stateWithSim = pushCoachMessage(stateWithSim, msg);
                 }
             }
@@ -349,24 +354,34 @@ export const runSimulation = async (state: GameState, daysToSimulate: number, ac
         const simDateForTrades = normalizeDate(stateWithSim.date);
         const tradeDeadline = toISODateString(getTradeDeadlineDate(stateWithSim.leagueStats?.year ?? new Date().getFullYear(), stateWithSim.leagueStats));
         const beforeTradeDeadline = simDateForTrades <= tradeDeadline;
-        if (!isPlayoffDay && beforeTradeDeadline) {
-            const daysToDeadline = (new Date(tradeDeadline).getTime() - new Date(simDateForTrades).getTime()) / 86_400_000;
-            // Frequency: final week → every 3 days, 2 weeks out → every 7 days, normal → every 14 days
-            // aiTradeFrequency slider: 0=off (freq=999), 50=default, 100=double (freq halved)
+        const pbaTradeWindowOpen = isPbaIsolatedMode(stateWithSim) && isPbaTradeWindowOpen(stateWithSim);
+        const tradeWindowOpen = pbaTradeWindowOpen || (!isPbaIsolatedMode(stateWithSim) && beforeTradeDeadline);
+        if (!isPlayoffDay && tradeWindowOpen) {
             const freqSlider = SettingsManager.getSettings().aiTradeFrequency ?? 50;
             const freqMult = freqSlider <= 0 ? 999 : Math.max(0.5, 1.5 - freqSlider / 100);
-            const tradeFreq = Math.round((daysToDeadline <= 7 ? 3 : daysToDeadline <= 14 ? 7 : 14) * freqMult);
-            if (stateWithSim.day % tradeFreq === 0) {
-                const newProposals = generateAIDayTradeProposals(stateWithSim);
-                if (newProposals.length > 0) {
-                    stateWithSim = {
-                        ...stateWithSim,
-                        tradeProposals: [
-                            ...(stateWithSim.tradeProposals ?? []),
-                            ...newProposals,
-                        ],
-                    };
-                }
+            const collectTradeProposals = (daysToDeadline: number, scope: 'pba' | 'nba') => {
+                const tradeFreq = Math.round((daysToDeadline <= 7 ? 3 : daysToDeadline <= 14 ? 7 : 14) * freqMult);
+                if (stateWithSim.day % tradeFreq !== 0) return [] as ReturnType<typeof generateAIDayTradeProposals>;
+                return generateAIDayTradeProposals(stateWithSim, scope);
+            };
+
+            const newProposals = [
+                ...(pbaTradeWindowOpen ? collectTradeProposals(14, 'pba') : []),
+                ...((beforeTradeDeadline && isPbaIsolatedMode(stateWithSim))
+                    ? collectTradeProposals((new Date(tradeDeadline).getTime() - new Date(simDateForTrades).getTime()) / 86_400_000, 'nba')
+                    : (!isPbaIsolatedMode(stateWithSim)
+                        ? collectTradeProposals((new Date(tradeDeadline).getTime() - new Date(simDateForTrades).getTime()) / 86_400_000, 'nba')
+                        : [])),
+            ];
+
+            if (newProposals.length > 0) {
+                stateWithSim = {
+                    ...stateWithSim,
+                    tradeProposals: [
+                        ...(stateWithSim.tradeProposals ?? []),
+                        ...newProposals,
+                    ],
+                };
             }
         }
 

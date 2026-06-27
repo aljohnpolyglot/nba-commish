@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useGame } from '../../store/GameContext';
 import { Star, Zap, Target, Trophy, Users, Crown } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
@@ -33,21 +33,59 @@ import { PlayerBioView } from '../central/view/PlayerBioView';
 import { History } from 'lucide-react';
 import { fetchAllStarHistory, getCachedAllStarHistory } from '../../data/allStarHistoryFetcher';
 import { parseGameDate } from '../../utils/dateUtils';
+import { findBoxScoreForGame } from '../../utils/boxScoreLookup';
 import { useAllStarThroneLifecycle } from './useAllStarThroneLifecycle';
 import { buildAllStarTabs, type AllStarTab } from './allStarTabs';
 import { isPbaIsolatedMode } from '../../utils/uiMode';
+import {
+  buildPbaAllStarLeagueStats,
+  buildPbaAllStarPatch,
+  buildPbaContestPatch,
+  hasReachedPbaAllStarContestAnnouncement,
+  hasReachedPbaAllStarRosterAnnouncement,
+  isPbaAllStarStateLocal,
+  pbaAllStarGameNeedsFullLengthRepair,
+  sanitizePbaAllStarForDate,
+} from '../../services/pba/allStar';
 
 export const AllStarView: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const ownTid = getOwnTeamId(state);
-  const allStar = state.allStar;
   const isPba = isPbaIsolatedMode(state);
+  const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
+  const currentDate = parseGameDate(state.date);
+  const rawAllStar = state.allStar ?? (isPba ? {
+    season: state.leagueStats.year,
+    votes: [],
+    roster: [],
+    startersAnnounced: false,
+    reservesAnnounced: false,
+    weekendComplete: false,
+  } as any : undefined);
   const pbaTeams = useMemo(
     () => ((state as any).nonNBATeams ?? [])
       .filter((team: any) => team?.league === 'PBA')
       .map((team: any) => ({ ...team, id: team.tid ?? team.id })),
     [(state as any).nonNBATeams],
   );
+  const allStar = useMemo(() => {
+    if (!isPba) return state.allStar;
+    const dateState = { ...state, leagueStats: buildPbaAllStarLeagueStats(state.leagueStats) } as any;
+    if (!hasReachedPbaAllStarRosterAnnouncement(dateState)) {
+      return sanitizePbaAllStarForDate(dateState, rawAllStar);
+    }
+    const leagueStats = buildPbaAllStarLeagueStats(state.leagueStats);
+    const visibleRawAllStar = sanitizePbaAllStarForDate({ ...state, leagueStats } as any, rawAllStar);
+    const needsLocalRebuild = !visibleRawAllStar?.reservesAnnounced || !isPbaAllStarStateLocal(state, visibleRawAllStar);
+    const seedPatch = needsLocalRebuild
+      ? buildPbaAllStarPatch({ ...state, leagueStats } as any, state.players)
+      : { players: state.players, allStar: visibleRawAllStar };
+    const players = seedPatch?.players ?? state.players;
+    const seededAllStar = seedPatch?.allStar ?? rawAllStar;
+    if (!seededAllStar?.reservesAnnounced) return seededAllStar;
+    if (!hasReachedPbaAllStarContestAnnouncement({ ...state, leagueStats } as any)) return seededAllStar;
+    return buildPbaContestPatch({ ...state, leagueStats, players, allStar: seededAllStar } as any, players, seededAllStar);
+  }, [isPba, rawAllStar, state]);
   const contestTeams = isPba ? pbaTeams : state.teams;
   const allTeamsForLookup = isPba ? [...state.teams, ...pbaTeams] : state.teams;
   const [activeTab, setActiveTab] = useState<AllStarTab>('overview');
@@ -67,14 +105,32 @@ export const AllStarView: React.FC = () => {
   const [showingHistory, setShowingHistory] = useState(false);
   const [viewingPlayer, setViewingPlayer] = useState<any | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
+  const pbaRepairRequestedRef = useRef(false);
   useEffect(() => {
     if (isPba) return;
     fetchAllStarHistory().then(() => setHistoryVersion(v => v + 1));
   }, [isPba]);
   
-  const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
   const dateStr = dates.allStarGame.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   useAllStarThroneLifecycle(state, dispatchAction, dates);
+
+  useEffect(() => {
+    if (!isPba || pbaRepairRequestedRef.current) return;
+    const leagueStats = buildPbaAllStarLeagueStats(state.leagueStats);
+    if (!pbaAllStarGameNeedsFullLengthRepair({ ...state, leagueStats } as any, allStar)) return;
+    pbaRepairRequestedRef.current = true;
+    dispatchAction({ type: 'REPAIR_PBA_ALL_STAR_WEEKEND' });
+  }, [allStar, dispatchAction, isPba, state]);
+
+  const collapseRepeatedLabel = (label?: string) => {
+    const parts = (label ?? '').trim().split(/\s+/).filter(Boolean);
+    for (let size = 1; size <= Math.floor(parts.length / 2); size += 1) {
+      if (parts.slice(0, size).join(' ').toLowerCase() === parts.slice(size, size * 2).join(' ').toLowerCase()) {
+        return parts.slice(0, size).join(' ');
+      }
+    }
+    return parts.join(' ');
+  };
 
   const handleWatchGame = (game: any) => {
     const isToday = normalizeDate(game.date) === normalizeDate(state.date);
@@ -102,9 +158,11 @@ export const AllStarView: React.FC = () => {
 
   // Determine current phase
   let phase: 'upcoming' | 'voting' | 'starters' | 'roster' | 'complete' = 'upcoming';
-  const currentDate = parseGameDate(state.date);
-
-  if (allStar) {
+  if (isPba) {
+    if (allStar?.weekendComplete) phase = 'complete';
+    else if (allStar?.reservesAnnounced && currentDate >= dates.reservesAnnounced) phase = 'roster';
+    else phase = 'upcoming';
+  } else if (allStar) {
     if (allStar.weekendComplete) phase = 'complete';
     else if (allStar.reservesAnnounced) phase = 'roster';
     else if (allStar.startersAnnounced) phase = 'starters';
@@ -339,6 +397,8 @@ export const AllStarView: React.FC = () => {
             onWatchDunkContest={() => setWatchingDunkContest(true)}
             year={state.leagueStats.year}
             leagueStats={state.leagueStats}
+            currentDate={currentDate}
+            dates={{ saturday: dates.saturday, allStarGame: dates.allStarGame }}
           />
         )}
         {activeTab === 'votes' && (
@@ -389,7 +449,7 @@ export const AllStarView: React.FC = () => {
             players={state.players}
             teams={contestTeams}
             ownTid={ownTid}
-            onRun={handleRunShootingStars}
+            onRun={isPba ? undefined : handleRunShootingStars}
             isSimulating={simulatingShootingStars}
           />
         )}
@@ -399,7 +459,7 @@ export const AllStarView: React.FC = () => {
             players={state.players}
             teams={contestTeams}
             ownTid={ownTid}
-            onRun={handleRunSkillsChallenge}
+            onRun={isPba ? undefined : handleRunSkillsChallenge}
             isSimulating={simulatingSkillsChallenge}
           />
         )}
@@ -409,7 +469,7 @@ export const AllStarView: React.FC = () => {
             players={state.players}
             teams={contestTeams}
             ownTid={ownTid}
-            onRun={handleRunHorse}
+            onRun={isPba ? undefined : handleRunHorse}
             isSimulating={false}
           />
         )}
@@ -431,8 +491,8 @@ export const AllStarView: React.FC = () => {
             homeTeam={getTeamForGame(pendingWatchGame.homeTid)}
             awayTeam={getTeamForGame(pendingWatchGame.awayTid)}
             players={state.players}
-            homeStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, true, state.allStar, state.players)}
-            awayStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, false, state.allStar, state.players)}
+            homeStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, true, allStar, state.players)}
+            awayStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, false, allStar, state.players)}
             onClose={() => setPendingWatchGame(null)}
             onConfirm={() => {
               setWatchingGame(pendingWatchGame);
@@ -443,13 +503,19 @@ export const AllStarView: React.FC = () => {
       </AnimatePresence>
 
       <AnimatePresence>
-        {selectedBoxScoreGame && (
+        {selectedBoxScoreGame && (() => {
+          const result = findBoxScoreForGame(state.boxScores, selectedBoxScoreGame.gid, selectedBoxScoreGame.date, {
+            homeTid: selectedBoxScoreGame.homeTid,
+            awayTid: selectedBoxScoreGame.awayTid,
+            homeTeamName: selectedBoxScoreGame.expectedHomeTeamName,
+            awayTeamName: selectedBoxScoreGame.expectedAwayTeamName,
+          });
+          return (
           <BoxScoreModal
             game={selectedBoxScoreGame}
-            result={state.boxScores.find((b: any) => b.gameId === selectedBoxScoreGame.gid || (b.homeTeamId === selectedBoxScoreGame.homeTid && b.awayTeamId === selectedBoxScoreGame.awayTid))}
+            result={result}
             homeTeam={(() => {
               const baseTeam = getTeamForGame(selectedBoxScoreGame.homeTid) || allTeamsForLookup.find(t => t.id === selectedBoxScoreGame.homeTid)!;
-              const result = state.boxScores.find((b: any) => b.gameId === selectedBoxScoreGame.gid || (b.homeTeamId === selectedBoxScoreGame.homeTid && b.awayTeamId === selectedBoxScoreGame.awayTid));
               
               // Handle All-Star Game Logos
               let logoUrl = baseTeam?.logoUrl;
@@ -458,14 +524,22 @@ export const AllStarView: React.FC = () => {
               if (selectedBoxScoreGame.homeTid === -3 || selectedBoxScoreGame.homeTid === -4) logoUrl = ALL_STAR_ASSETS.risingStarsLogo;
               if (selectedBoxScoreGame.homeTid === -5 || selectedBoxScoreGame.homeTid === -6) logoUrl = ALL_STAR_ASSETS.celebrityLogo;
 
-              if (result?.homeTeamName) {
-                return { ...baseTeam, name: result.homeTeamName, abbrev: result.homeTeamName.split(' ').pop()?.substring(0, 3).toUpperCase() || baseTeam.abbrev, logoUrl };
+              const expectedHomeTeamName = selectedBoxScoreGame.expectedHomeTeamName;
+              if (result?.homeTeamName || expectedHomeTeamName) {
+                const homeTeamName = collapseRepeatedLabel(result?.homeTeamName ?? expectedHomeTeamName);
+                return {
+                  ...baseTeam,
+                  name: homeTeamName,
+                  region: '',
+                  location: '',
+                  abbrev: homeTeamName.split(' ').pop()?.substring(0, 3).toUpperCase() || baseTeam.abbrev,
+                  logoUrl,
+                };
               }
               return { ...baseTeam, logoUrl };
             })()}
             awayTeam={(() => {
               const baseTeam = getTeamForGame(selectedBoxScoreGame.awayTid) || allTeamsForLookup.find(t => t.id === selectedBoxScoreGame.awayTid)!;
-              const result = state.boxScores.find((b: any) => b.gameId === selectedBoxScoreGame.gid || (b.homeTeamId === selectedBoxScoreGame.homeTid && b.awayTeamId === selectedBoxScoreGame.awayTid));
               
               // Handle All-Star Game Logos
               let logoUrl = baseTeam?.logoUrl;
@@ -474,15 +548,25 @@ export const AllStarView: React.FC = () => {
               if (selectedBoxScoreGame.awayTid === -3 || selectedBoxScoreGame.awayTid === -4) logoUrl = ALL_STAR_ASSETS.risingStarsLogo;
               if (selectedBoxScoreGame.awayTid === -5 || selectedBoxScoreGame.awayTid === -6) logoUrl = ALL_STAR_ASSETS.celebrityLogo;
 
-              if (result?.awayTeamName) {
-                return { ...baseTeam, name: result.awayTeamName, abbrev: result.awayTeamName.split(' ').pop()?.substring(0, 3).toUpperCase() || baseTeam.abbrev, logoUrl };
+              const expectedAwayTeamName = selectedBoxScoreGame.expectedAwayTeamName;
+              if (result?.awayTeamName || expectedAwayTeamName) {
+                const awayTeamName = collapseRepeatedLabel(result?.awayTeamName ?? expectedAwayTeamName);
+                return {
+                  ...baseTeam,
+                  name: awayTeamName,
+                  region: '',
+                  location: '',
+                  abbrev: awayTeamName.split(' ').pop()?.substring(0, 3).toUpperCase() || baseTeam.abbrev,
+                  logoUrl,
+                };
               }
               return { ...baseTeam, logoUrl };
             })()}
             players={state.players}
             onClose={() => setSelectedBoxScoreGame(null)}
           />
-        )}
+          );
+        })()}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -595,7 +679,7 @@ export const AllStarView: React.FC = () => {
               game={watchingGame}
               teams={allTeamsForLookup}
               players={state.players}
-              allStar={state.allStar}
+              allStar={allStar}
               isProcessing={state.isProcessing}
               onClose={() => setWatchingGame(null)}
               onComplete={executeWatchGame}

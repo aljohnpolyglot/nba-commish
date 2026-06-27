@@ -7,10 +7,15 @@ export const fmt3 = (v: number) =>
   Number.isFinite(v) && v > 0 ? `.${Math.round(v * 1000).toString().padStart(3, '0')}` : '—';
 export const safePct = (num: number, den: number) => (den > 0 ? num / den : 0);
 
-export function aggregateStats(statsList: NBAGMStat[]): NBAGMStat {
+function validStatRows(statsList: Array<NBAGMStat | null | undefined>): NBAGMStat[] {
+  return statsList.filter((row): row is NBAGMStat => !!row && typeof row === 'object');
+}
+
+export function aggregateStats(statsList: Array<NBAGMStat | null | undefined>): NBAGMStat {
+  const rows = validStatRows(statsList);
   const out: NBAGMStat = {
     season: 0,
-    tid: statsList[0]?.tid ?? 0,
+    tid: rows[0]?.tid ?? 0,
     gp: 0,
     gs: 0,
     min: 0,
@@ -38,27 +43,27 @@ export function aggregateStats(statsList: NBAGMStat[]): NBAGMStat {
     per: 0,
     pm: 0,
   };
-  for (const s of statsList) {
-    out.gp += s.gp;
-    out.gs += s.gs;
-    out.min += s.min;
-    out.fg += s.fg;
-    out.fga += s.fga;
-    out.tp += s.tp;
-    out.tpa += s.tpa;
+  for (const s of rows) {
+    out.gp += s.gp ?? 0;
+    out.gs += s.gs ?? 0;
+    out.min += s.min ?? 0;
+    out.fg += s.fg ?? 0;
+    out.fga += s.fga ?? 0;
+    out.tp += s.tp ?? 0;
+    out.tpa += s.tpa ?? 0;
     out.fp = (out.fp ?? 0) + (s.fp ?? 0);
     out.fpa = (out.fpa ?? 0) + (s.fpa ?? 0);
-    out.ft += s.ft;
-    out.fta += s.fta;
-    out.orb += s.orb;
-    out.drb += s.drb;
-    out.trb += s.trb;
-    out.ast += s.ast;
-    out.stl += s.stl;
-    out.blk += s.blk;
-    out.tov += s.tov;
-    out.pf += s.pf;
-    out.pts += s.pts;
+    out.ft += s.ft ?? 0;
+    out.fta += s.fta ?? 0;
+    out.orb += s.orb ?? 0;
+    out.drb += s.drb ?? 0;
+    out.trb += s.trb ?? 0;
+    out.ast += s.ast ?? 0;
+    out.stl += s.stl ?? 0;
+    out.blk += s.blk ?? 0;
+    out.tov += s.tov ?? 0;
+    out.pf += s.pf ?? 0;
+    out.pts += s.pts ?? 0;
     out.pm = (out.pm ?? 0) + (s.pm ?? 0);
   }
   out.fgp = safePct(out.fg, out.fga);
@@ -66,7 +71,7 @@ export function aggregateStats(statsList: NBAGMStat[]): NBAGMStat {
   out.fpp = safePct(out.fp ?? 0, out.fpa ?? 0);
   out.ftp = safePct(out.ft, out.fta);
   const totalGp = out.gp || 1;
-  const wpd = (k: keyof NBAGMStat) => statsList.reduce((a, s) => a + ((s[k] as number) ?? 0) * s.gp, 0) / totalGp;
+  const wpd = (k: keyof NBAGMStat) => rows.reduce((a, s) => a + ((s[k] as number) ?? 0) * (s.gp ?? 0), 0) / totalGp;
   out.per = wpd('per');
   out.tsPct = wpd('tsPct');
   out.efgPct = wpd('efgPct');
@@ -83,18 +88,18 @@ export function aggregateStats(statsList: NBAGMStat[]): NBAGMStat {
   out.stlPct = wpd('stlPct');
   out.blkPct = wpd('blkPct');
   out.tovPct = wpd('tovPct');
-  out.ws = statsList.reduce((a, s) => a + (s.ws ?? 0), 0);
-  out.ows = statsList.reduce((a, s) => a + (s.ows ?? 0), 0);
-  out.dws = statsList.reduce((a, s) => a + (s.dws ?? 0), 0);
-  out.vorp = statsList.reduce((a, s) => a + (s.vorp ?? 0), 0);
-  out.ewa = statsList.reduce((a, s) => a + (s.ewa ?? 0), 0);
+  out.ws = rows.reduce((a, s) => a + (s.ws ?? 0), 0);
+  out.ows = rows.reduce((a, s) => a + (s.ows ?? 0), 0);
+  out.dws = rows.reduce((a, s) => a + (s.dws ?? 0), 0);
+  out.vorp = rows.reduce((a, s) => a + (s.vorp ?? 0), 0);
+  out.ewa = rows.reduce((a, s) => a + (s.ewa ?? 0), 0);
   return out;
 }
 
-export function dedupeStatsRows(statsList: NBAGMStat[]): NBAGMStat[] {
+export function dedupeStatsRows(statsList: Array<NBAGMStat | null | undefined>): NBAGMStat[] {
   const grouped = new Map<string, NBAGMStat[]>();
-  for (const row of statsList) {
-    const key = `${row.season}|${row.tid}|${row.playoffs ? 1 : 0}`;
+  for (const row of validStatRows(statsList)) {
+    const key = `${row.season}|${row.tid}|${row.playoffs ? 1 : 0}|${row.competitionId ?? ''}`;
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key)!.push(row);
   }
@@ -240,7 +245,7 @@ export function toRow(
 }
 
 export function historicalTeamRows(
-  stats: NBAGMStat[],
+  stats: Array<NBAGMStat | null | undefined>,
   player: NBAPlayer,
   teams: { id: number; abbrev: string }[],
   statType: StatType,
@@ -248,15 +253,16 @@ export function historicalTeamRows(
   age: number,
   teamFilter: string,
 ): ComputedRow[] {
+  const rows = validStatRows(stats);
   const byTid = new Map<number, NBAGMStat[]>();
-  for (const stat of stats) {
+  for (const stat of rows) {
     if (!byTid.has(stat.tid)) byTid.set(stat.tid, []);
     byTid.get(stat.tid)!.push(stat);
   }
 
   if (byTid.size <= 1) {
-    const agg = stats.length > 1 ? aggregateStats(stats) : stats[0];
-    if (agg.gp < 1) return [];
+    const agg = rows.length > 1 ? aggregateStats(rows) : rows[0];
+    if (!agg || agg.gp < 1) return [];
     const team = teams.find(entry => entry.id === agg.tid);
     const rowTeam = team?.abbrev ?? (agg.tid < 0 ? 'FA' : '?');
     if (teamFilter !== 'all' && rowTeam !== teamFilter) return [];
@@ -265,7 +271,7 @@ export function historicalTeamRows(
 
   const result: ComputedRow[] = [];
   if (teamFilter === 'all') {
-    const agg = aggregateStats(stats);
+    const agg = aggregateStats(rows);
     if (agg.gp >= 1) result.push(toRow(player, agg, statType, seasonLabel, `${byTid.size}TM`, age));
   }
   for (const [tid, teamStats] of byTid) {

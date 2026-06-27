@@ -11,6 +11,7 @@ import { deriveOfficialNbaRecords } from '../../../utils/nbaOfficialRecords';
 import { computeClinchStatus } from '../../../utils/standingsUtils';
 import { PBA_COMPETITIONS } from '../../../data/templates/philippines/competitions';
 import { getResolvedTeamLogoUrl, getTeamPrimaryColor } from '../../../utils/teamAssets';
+import { selectCountedPbaRegularBoxScores } from '../../../services/pba/competitionGames';
 
 type StandingsViewType = 'league' | 'conf' | 'div';
 const PBA_COMBINED_FILTER = 'combined';
@@ -52,9 +53,9 @@ export const StandingsView: React.FC = () => {
   const [pbaCompetitionFilter, setPbaCompetitionFilter] = useState(currentPbaCompetitionId);
 
   useEffect(() => {
-    if (!isPbaIsolatedMode(state) || pbaCompetitionFilter === PBA_COMBINED_FILTER) return;
-    setPbaCompetitionFilter(currentPbaCompetitionId);
-  }, [currentPbaCompetitionId, pbaCompetitionFilter, state]);
+    if (state.leagueStats?.uiMode !== 'pba_isolated') return;
+    setPbaCompetitionFilter(prev => prev === PBA_COMBINED_FILTER ? prev : currentPbaCompetitionId);
+  }, [currentPbaCompetitionId, state.leagueStats?.uiMode]);
 
   // Available years from box scores + current year
   const availableYears = useMemo(() => {
@@ -112,11 +113,12 @@ export const StandingsView: React.FC = () => {
   const pbaRows = useMemo(() => {
     if (!isPbaIsolatedMode(state)) return [];
     const selectedCompetitionIds = pbaCompetitionIds;
+    const selectedSpecs = (state.activeCompetitions ?? []).filter((competition: any) =>
+      selectedCompetitionIds.has(String(competition.id)),
+    );
     const selectedCompetitionTeams = new Set<number>();
-    for (const competition of state.activeCompetitions ?? []) {
-      if (selectedCompetitionIds.has(String((competition as any).id))) {
-        selectCompetitionTeamTids(competition as any, state).forEach(tid => selectedCompetitionTeams.add(tid));
-      }
+    for (const competition of selectedSpecs) {
+      selectCompetitionTeamTids(competition as any, state).forEach(tid => selectedCompetitionTeams.add(tid));
     }
     const pbaTeams = (state.nonNBATeams ?? []).filter((team: any) => {
       const tid = Number(team.tid ?? team.id);
@@ -129,14 +131,8 @@ export const StandingsView: React.FC = () => {
       const tid = Number(team.tid ?? team.id);
       acc.set(tid, { tid, w: 0, l: 0, pf: 0, pa: 0, games: [] });
     });
-    state.boxScores
-      .filter((box: any) => {
-        if (!selectedCompetitionIds.has(String(box.competitionId ?? ''))) return false;
-        const meta = classifyBoxScoreGame(box, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, leagueYear, state.leagueStats);
-        const boxSeason = Number(box.season ?? meta.seasonYear);
-        if (boxSeason !== currentYear) return false;
-        return !meta.isPreseason && !meta.isPlayoff && !meta.isPlayIn && !meta.excludeFromRecord;
-      })
+    selectedSpecs
+      .flatMap((spec: any) => selectCountedPbaRegularBoxScores(state.boxScores, spec, currentYear))
       .forEach(b => {
       const home = acc.get(b.homeTeamId);
       const away = acc.get(b.awayTeamId);

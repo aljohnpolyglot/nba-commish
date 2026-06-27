@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ArrowLeft, Briefcase, Star, X } from 'lucide-react';
 import { formatCurrencyWithCode } from '../../../../../utils/helpers';
 import { deterministicStaffImageId } from '../../../../../utils/staffPortrait';
+import { getRegenPortraitUrl } from '../../../../../utils/newgenPortrait';
 import { getNameData } from '../../../../../data/nameDataFetcher';
 import { getNBA2KCoach } from '../../../../../services/staffService';
 import { getCountryFlag, normalizeNationality } from '../../../../../utils/countryFlags';
@@ -124,7 +125,7 @@ export const StaffSigningModal: React.FC<{
   const candidatePool = useMemo(() => {
     if (pool.length >= 3) return pool;
     const nameData = getNameData() as any;
-    const countries = emergencyCountries ?? ['Spain', 'France', 'Italy', 'Serbia', 'Greece', 'Turkey'];
+    const countries = emergencyCountries ?? (market === 'pba' ? ['Philippines'] : ['Spain', 'France', 'Italy', 'Serbia', 'Greece', 'Turkey']);
     const needed = 3 - pool.length;
     const emergency: StaffCandidate[] = [];
     for (let i = 0; i < needed; i++) {
@@ -137,8 +138,11 @@ export const StaffSigningModal: React.FC<{
       const fullName = `${first} ${last}`;
       // Same seed pipeline as the FA pool so emergency candidates also show a
       // role-weighted overall consistent with the card and ratings modal.
-      const seed = seedForStaff({ name: fullName, reputation: 54 + i * 3 });
-      const rating = resolveStaffRating(selectedRole, { name: fullName, reputation: 54 + i * 3, coachingYears: 2 + i * 2, playingYears: 0 });
+      const reputation = market === 'pba' ? 50 + i * 2 : 54 + i * 3;
+      const seed = seedForStaff({ name: fullName, reputation });
+      const rating = market === 'pba'
+        ? Math.max(42, Math.min(56, reputation))
+        : resolveStaffRating(selectedRole, { name: fullName, reputation, coachingYears: 2 + i * 2, playingYears: 0 });
       emergency.push({
         id: `emergency-${selectedRole}-${i}`,
         role: selectedRole,
@@ -153,7 +157,10 @@ export const StaffSigningModal: React.FC<{
         rating,
         years: 2 + i * 2,
         face: undefined,
-        staffImageId: deterministicStaffImageId(fullName),
+        staffImageId: market === 'pba' ? undefined : deterministicStaffImageId(fullName),
+        playerPortraitUrl: market === 'pba'
+          ? getRegenPortraitUrl(`${fullName}-${selectedRole}`, 'asian', { nationality: 'Philippines' }) ?? undefined
+          : undefined,
         attributes: buildDisplayAttributes(selectedRole, seed, fullName, { role: selectedRole }),
       });
     }

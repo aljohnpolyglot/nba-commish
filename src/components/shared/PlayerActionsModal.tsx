@@ -39,6 +39,7 @@ const MODAL_ACTION_IDS = [
 ];
 
 const GM_HIDDEN_ACTIONS = new Set(['fine', 'bribe', 'dinner', 'movie', 'suspension', 'sabotage', 'contact']);
+const PBA_HIDDEN_ACTIONS = new Set(['sign_guaranteed', 'convert_to_guaranteed', 'convert_to_twoway', 'trade_player']);
 
 export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, onClose, onActionSelect, onHeal }) => {
   const { state } = useGame();
@@ -49,6 +50,7 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
   const euroIsolated = isEuroIsolatedMode(state);
   const pbaIsolated = isPbaIsolatedMode(state);
   const playerAge = computeAge(player, currentYear);
+  const isRawDraftProspect = player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect';
   const isEuroAcademyPlayer =
     euroIsolated &&
     userTeamId != null &&
@@ -56,6 +58,10 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
     !(player as any).promotedFromAcademy &&
     playerAge >= 15 &&
     playerAge <= 19;
+  const isPbaImportPlayer =
+    pbaIsolated &&
+    player.status === 'PBA' &&
+    (player.isImport || !!player.importConference || !!(player as any).pbaImportContract);
   const showTransferMarketAction =
     euroIsolated &&
     isGM &&
@@ -68,7 +74,10 @@ export const PlayerActionsModal: React.FC<PlayerActionsModalProps> = ({ player, 
     .map(id => PERSON_ACTION_DEFS.find(def => def.id === id))
     .filter((def): def is NonNullable<typeof def> => !!def)
     .filter(def => isPlayerEligible(player, def.eligibility, { currentYear, userTeamId, euroIsolated, pbaIsolated }))
-    .filter(def => !(euroIsolated && def.id === 'trade_player'))
+    .filter(def => !((euroIsolated || pbaIsolated) && def.id === 'trade_player'))
+    .filter(def => !(pbaIsolated && PBA_HIDDEN_ACTIONS.has(def.id)))
+    .filter(def => !(isPbaImportPlayer && def.id === 'resign_player'))
+    .filter(def => !(pbaIsolated && def.id === 'view_scouting' && !isRawDraftProspect))
     .filter(def => !(isEuroAcademyPlayer && def.id === 'view_scouting'))
     .filter(def => !isGM || !GM_HIDDEN_ACTIONS.has(def.id));
 

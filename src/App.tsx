@@ -121,6 +121,7 @@ const ThreePointContestView = React.lazy(() => import('./minigames/threepoint/Th
 const ShootingStarsView = React.lazy(() => import('./minigames/shootingstars/ShootingStarsMiniGame'));
 const SkillsChallengeView = React.lazy(() => import('./minigames/skills/SkillsChallengeMiniGame'));
 const HorseView = React.lazy(() => import('./minigames/horse/HorseMiniGame'));
+const OlympicsView = React.lazy(() => import('./minigames/olympics/OlympicsMiniGame'));
 import { fetchStatmuseData } from './data/social/statmuseImages';
 import { fetchAvatarData } from './data/avatars';
 import { fetchCharaniaPhotos } from './services/social/charaniaphotos';
@@ -136,7 +137,7 @@ function GameLayout() {
   const [leagueType, setLeagueType] = useState<LeagueType | null>(null);
   const [moddedLeagueBase, setModdedLeagueBase] = useState<ModdedLeagueBase>('nba');
   const [europeMarket, setEuropeMarket] = useState<EuropeMarket | undefined>(undefined);
-  const [activeMiniGame, setActiveMiniGame] = useState<'throne' | 'dunk' | '3point' | 'shooting-stars' | 'skills' | 'horse' | null>(null);
+  const [activeMiniGame, setActiveMiniGame] = useState<'throne' | 'dunk' | '3point' | 'shooting-stars' | 'skills' | 'horse' | 'olympics' | null>(null);
   const [tycoonWelcomeOpen, setTycoonWelcomeOpen] = useState(false);
   const { state, dispatchAction, currentView, setCurrentView } = useGame();
   const labels = useLeagueLabels();
@@ -339,7 +340,11 @@ function GameLayout() {
           if (startPayload.moddedLeagueBase === 'philippines' && startPayload.userTeamId != null) {
             await dispatchAction({
               type: 'INIT_PBA_CAREER',
-              payload: { teamId: startPayload.userTeamId },
+              payload: {
+                teamId: startPayload.userTeamId,
+                startDate: startPayload.startDate,
+                assistantGM: startPayload.assistantGM === true,
+              },
             });
           }
         }}
@@ -356,6 +361,7 @@ function GameLayout() {
       'shooting-stars': 'Shooting Stars',
       skills: 'Skills Challenge',
       horse: 'H-O-R-S-E',
+      olympics: 'Olympics',
     };
     const miniGameComponents: Record<string, React.ReactNode> = {
       throne: <TheThroneView />,
@@ -364,6 +370,7 @@ function GameLayout() {
       'shooting-stars': <ShootingStarsView />,
       skills: <SkillsChallengeView />,
       horse: <HorseView />,
+      olympics: <OlympicsView />,
     };
 
     return (

@@ -87,7 +87,18 @@ export function SeasonCell({
   cupChampionLabel: string;
 }) {
   if (row.isCareer) return <span>Career</span>;
-  if (row.isSubRow) return <span className="text-slate-500">{row.seasonLabel ?? getSeasonLabel(row.season)}</span>;
+  if (row.isSubRow) {
+    return (
+      <span className="flex items-center gap-1 text-slate-500">
+        {row.seasonLabel ?? getSeasonLabel(row.season)}
+        {row.leagueTag && (
+          <span title={row.leagueTitle} className="inline-flex items-center rounded-full border border-slate-800 bg-slate-950 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">
+            {row.leagueTag}
+          </span>
+        )}
+      </span>
+    );
+  }
 
   return (
     <span className="flex items-center gap-1">
@@ -133,9 +144,50 @@ export function StatsTable({
 }) {
   const bodyRows = rows.filter(row => !row.isCareer);
   const careerRow = rows.find(row => row.isCareer);
+  const mobileCols = cols.filter(col => !['season', 'tm', 'age'].includes(col.key)).slice(0, 12);
+  const renderMobileRow = (row: SeasonRow, index: number, isCareer = false) => (
+    <div
+      key={isCareer ? 'career' : `${row.season}-${row.teamAbbrev}-${index}`}
+      className={`p-3 ${row.isSubRow ? 'bg-slate-950/40 opacity-70' : row.isTot ? 'bg-slate-800/30' : 'bg-slate-900/40'}`}
+    >
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="text-xs font-black text-white">
+          {isCareer ? 'Career' : (
+            <SeasonCell row={row} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} cupChampionLabel={cupChampionLabel} />
+          )}
+        </div>
+        {!isCareer && (
+          <div className="rounded-full border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-300">
+            {row.teamAbbrev}
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {mobileCols.map(col => (
+          <div key={col.key} className="rounded-lg border border-slate-800 bg-slate-950/70 px-2 py-2">
+            <div className="text-[9px] font-black uppercase tracking-wider text-slate-500">{col.label}</div>
+            <div className={`mt-1 text-sm font-bold tabular-nums ${col.highlight ? 'text-white' : col.dim ? 'text-slate-400' : 'text-slate-200'}`}>
+              {col.fmt(row)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="overflow-x-auto custom-scrollbar">
+    <div className="space-y-3">
+      <div className="overflow-hidden rounded-xl border border-slate-800 sm:hidden">
+        {bodyRows.length === 0 ? (
+          <div className="px-4 py-8 text-center text-sm italic text-slate-600">No data available</div>
+        ) : (
+          <div className="divide-y divide-slate-800">
+            {bodyRows.map((row, index) => renderMobileRow(row, index))}
+            {careerRow ? renderMobileRow(careerRow, 0, true) : null}
+          </div>
+        )}
+      </div>
+      <div className="hidden overflow-x-auto custom-scrollbar sm:block">
       <table className="min-w-max w-full text-[11px] border-collapse">
         <thead>
           {groupHeaders && (
@@ -149,7 +201,7 @@ export function StatsTable({
           )}
           <tr className="bg-slate-900/80 border-b border-slate-700">
             {cols.map(col => (
-              <th key={col.key} title={col.title} className={`px-2 py-2 font-bold uppercase tracking-wide whitespace-nowrap select-none ${col.align === 'right' ? 'text-right' : 'text-left'} ${col.highlight ? 'text-white' : col.dim ? 'text-slate-600' : 'text-slate-400'}`}>
+              <th key={col.key} title={col.title} className={`border-r border-slate-800/60 px-2 py-2 font-bold uppercase tracking-wide whitespace-nowrap select-none ${col.align === 'right' ? 'text-right' : 'text-left'} ${col.highlight ? 'text-white' : col.dim ? 'text-slate-600' : 'text-slate-400'}`}>
                 {col.label}
               </th>
             ))}
@@ -164,7 +216,7 @@ export function StatsTable({
           {bodyRows.map((row, index) => (
             <tr key={`${row.season}-${row.teamAbbrev}-${index}`} className={`border-b transition-colors ${row.isSubRow ? 'border-slate-800/20 hover:bg-slate-800/15 opacity-60' : row.isTot ? 'border-slate-700/60 bg-slate-800/30 hover:bg-slate-800/50' : 'border-slate-800/40 hover:bg-slate-800/25'}`}>
               {cols.map(col => (
-                <td key={col.key} className={`whitespace-nowrap tabular-nums ${col.align === 'right' ? 'text-right' : 'text-left'} ${row.isSubRow ? `px-2 py-1 text-slate-400 ${col.key === 'tm' ? 'pl-4' : ''}` : row.isTot ? `px-2 py-1.5 font-semibold ${col.highlight ? 'text-white' : col.dim ? 'text-slate-400' : 'text-slate-200'}` : `px-2 py-1.5 ${col.highlight ? 'font-bold text-white' : col.dim ? 'text-slate-500' : 'text-slate-300'}`} ${col.key === 'season' ? 'font-semibold text-slate-200' : ''}`}>
+                <td key={col.key} className={`border-r border-slate-800/40 whitespace-nowrap tabular-nums ${col.align === 'right' ? 'text-right' : 'text-left'} ${row.isSubRow ? `px-2 py-1 text-slate-400 ${col.key === 'tm' ? 'pl-4' : ''}` : row.isTot ? `px-2 py-1.5 font-semibold ${col.highlight ? 'text-white' : col.dim ? 'text-slate-400' : 'text-slate-200'}` : `px-2 py-1.5 ${col.highlight ? 'font-bold text-white' : col.dim ? 'text-slate-500' : 'text-slate-300'}`} ${col.key === 'season' ? 'font-semibold text-slate-200' : ''}`}>
                   {col.key === 'season' ? (
                     <SeasonCell row={row} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} cupChampionLabel={cupChampionLabel} />
                   ) : col.fmt(row)}
@@ -177,7 +229,7 @@ export function StatsTable({
           <tfoot>
             <tr className="border-t-2 border-slate-600 bg-slate-900/70 font-bold">
               {cols.map(col => (
-                <td key={col.key} className={`px-2 py-2 whitespace-nowrap tabular-nums font-bold ${col.align === 'right' ? 'text-right' : 'text-left'} ${col.highlight ? 'text-white' : col.dim ? 'text-slate-500' : 'text-slate-200'}`}>
+                <td key={col.key} className={`border-r border-slate-800/40 px-2 py-2 whitespace-nowrap tabular-nums font-bold ${col.align === 'right' ? 'text-right' : 'text-left'} ${col.highlight ? 'text-white' : col.dim ? 'text-slate-500' : 'text-slate-200'}`}>
                   {col.key === 'season' ? <span>Career</span> : col.fmt(careerRow)}
                 </td>
               ))}
@@ -185,6 +237,7 @@ export function StatsTable({
           </tfoot>
         )}
       </table>
+      </div>
     </div>
   );
 }

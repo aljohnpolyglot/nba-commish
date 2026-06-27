@@ -19,7 +19,7 @@ import type { HistoricalAward, GameState } from '../../types';
 
 function getUIMode(state: GameStateView): UIMode {
   const m = (state.leagueStats as any)?.uiMode ?? 'nba';
-  return (m === 'euro_isolated' || m === 'fictional') ? m : 'nba';
+  return (m === 'euro_isolated' || m === 'pba_isolated' || m === 'fictional') ? m : 'nba';
 }
 
 /** Build default AwardSettings for a save based on its uiMode. */
@@ -160,6 +160,7 @@ export function announce(state: GameState, awardId: string): Partial<GameState> 
       type: storedType,
       name: winner.coachName,
       tid: winner.team?.id,
+      uiMode,
     });
   } else if (winner.player) {
     newAwards.push({
@@ -168,6 +169,7 @@ export function announce(state: GameState, awardId: string): Partial<GameState> 
       name: winner.player.name,
       pid: winner.player.internalId,
       tid: winner.team?.id,
+      uiMode,
     });
     const playerAwardType = PLAYER_AWARD_TYPE_MAP[storedType] ?? resolved.effectiveName;
     updatedPlayers = updatedPlayers.map(p =>
@@ -219,6 +221,8 @@ function announceAllTeam(
       name: c.player.name,
       pid: c.player.internalId,
       tid: c.team?.id,
+      uiMode,
+      competitionId: def.poolId === 'euroleague' ? 'euroleague' : undefined,
     });
     updatedPlayers = updatedPlayers.map(p =>
       p.internalId === c.player!.internalId

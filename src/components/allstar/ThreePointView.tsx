@@ -5,6 +5,7 @@ import { useGame } from '../../store/GameContext';
 import { getPlayerHeadshot, getTeamLogo, extractTeamId, extractNbaId } from '../../utils/helpers';
 import { NBAPlayer } from '../../types';
 import { calcThreePointOdds } from '../../utils/allStarOdds';
+import { getPlayerImage } from '../../utils/playerImage';
 
 function getShooterStats(player: NBAPlayer, currentSeason: number) {
   const regularRows = (player.stats ?? []).filter(s => !s.playoffs);
@@ -47,14 +48,30 @@ interface ThreePointViewProps {
   ownTid?: number | null;
 }
 
+const avatarUrl = (name: string, background = '1e293b', size = 224) => {
+  const initials = String(name ?? 'Player')
+    .split(' ')
+    .map(part => part[0])
+    .join('') || 'P';
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=${background.replace('#', '')}&color=fff&size=${size}&bold=true`;
+};
+
+const getContestPortrait = (player: any, nbaId?: string | null, background = '1e293b', size = 224) => {
+  const local = player ? getPlayerImage(player as NBAPlayer) : undefined;
+  if (local) return local;
+  if (nbaId) return getPlayerHeadshot(player?.playerId || player?.internalId || '', nbaId);
+  return avatarUrl(player?.name ?? player?.playerName ?? 'Player', background, size);
+};
+
 export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players, teams: providedTeams, ownTid }) => {
   const { state } = useGame();
   const isPba = state.leagueStats?.uiMode === 'pba_isolated';
   const teams = providedTeams ?? state.teams;
   const currentYear = state.leagueStats.year;
+  const allStarData = allStar ?? {};
 
-  const isAnnounced = allStar.threePointContestants && allStar.threePointContestants.length > 0;
-  const isComplete  = !!allStar.threePointContest;
+  const isAnnounced = (allStarData.threePointContestants ?? []).length > 0;
+  const isComplete  = !!allStarData.threePointContest;
 
   if (!isAnnounced) {
     return (
@@ -71,7 +88,7 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
   }
 
   if (!isComplete) {
-    const contestants = allStar.threePointContestants;
+    const contestants = allStarData.threePointContestants ?? [];
     
     return (
       <div>
@@ -109,12 +126,12 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
                     style={{ borderColor: `${teamColor}40` }}
                   >
                     <img 
-                      src={getPlayerHeadshot(p.playerId || p.internalId, nbaId)}
+                      src={getContestPortrait(p, isPba ? null : nbaId, teamColor)}
                       className="w-full h-full object-cover"
                       alt={p.name}
                       referrerPolicy="no-referrer"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${p.playerId || p.internalId}/100/100`;
+                        (e.target as HTMLImageElement).src = avatarUrl(p.name, teamColor, 224);
                       }}
                     />
                   </div>
@@ -178,7 +195,7 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
     );
   }
 
-  const { contestants, winnerName, winnerId } = allStar.threePointContest;
+  const { contestants = [], winnerName = '', winnerId = null } = allStarData.threePointContest ?? {};
   const winnerPlayer = players.find((p: any) => p.internalId === winnerId)
     || players.find((p: any) => p.name === winnerName);
   const winnerTeam = winnerPlayer ? teams.find(t => t.id === winnerPlayer.tid) : null;
@@ -197,12 +214,12 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
           <div className="relative shrink-0">
             <div className="w-28 h-28 rounded-full overflow-hidden border-4 border-indigo-400 shadow-[0_0_40px_rgba(99,102,241,0.4)]">
               <img
-                src={getPlayerHeadshot(winnerPlayer?.internalId || winnerId, winnerNbaId)}
+                src={getContestPortrait(winnerPlayer ?? { name: winnerName, internalId: winnerId }, isPba ? null : winnerNbaId, '4f46e5')}
                 alt={winnerName}
                 className="w-full h-full object-cover object-top"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(winnerName?.split(' ').map((n: string) => n[0]).join('') || 'C')}&background=4f46e5&color=fff&size=224`;
+                  (e.target as HTMLImageElement).src = avatarUrl(winnerName, '4f46e5', 224);
                 }}
               />
             </div>
@@ -257,12 +274,12 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
                         style={{ borderColor: `${teamColor}40` }}
                       >
                         <img 
-                          src={getPlayerHeadshot(c.playerId, nbaId)}
+                          src={getContestPortrait(player ?? c, isPba ? null : nbaId, teamColor, 100)}
                           className="w-full h-full object-cover"
                           alt={c.playerName}
                           referrerPolicy="no-referrer"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${c.playerId}/100/100`;
+                            (e.target as HTMLImageElement).src = avatarUrl(c.playerName, teamColor, 100);
                           }}
                         />
                       </div>
@@ -305,7 +322,7 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
         <div className="text-[10px] text-slate-500 font-medium">
           Max score: 30 pts · Money ball = 2 pts
         </div>
-        {allStar.threePointContest.log && (
+        {allStarData.threePointContest?.log && (
           <button className="text-[10px] text-indigo-400 font-bold hover:underline uppercase tracking-widest">
             View Full Log
           </button>

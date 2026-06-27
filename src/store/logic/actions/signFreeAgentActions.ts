@@ -1,14 +1,15 @@
 import { GameState, UserAction } from '../../../types';
+import { formatExternalSalary } from '../../../constants';
 import { calculateOutcome } from '../../../services/logic/outcomeDecider';
 import { advanceDay } from '../../../services/llm/llm';
 import { generateFreeAgentSigningReactions } from '../../../services/llm/services/freeAgentService';
-import { calculateSocialEngagement, formatCurrencyWithCode } from '../../../utils/helpers';
+import { calculateSocialEngagement } from '../../../utils/helpers';
 import { buildShamsSigningPost } from '../../../services/social/templates/charania';
 import { getInsiderHandle } from '../../../data/social/handles';
 import { NewsGenerator } from '../../../services/news/NewsGenerator';
 import { SettingsManager } from '../../../services/SettingsManager';
 import { normalizeTeamJerseyNumbers } from '../../../utils/jerseyUtils';
-import { buildStretchedSchedule, contractToUSD, getCapThresholds, getContractLimits, getMLEAvailability, getTeamPayrollUSD, hasBirdRights, seasonLabelToYear } from '../../../utils/salaryUtils';
+import { buildStretchedSchedule, contractToUSD, formatContractTotalUSD, getCapThresholds, getContractLimits, getMLEAvailability, getTeamPayrollUSD, hasBirdRights, seasonLabelToYear } from '../../../utils/salaryUtils';
 import { computeTradeEligibleDate } from '../../../utils/signingMoratorium';
 import { getFreeAgencyStartDate, parseGameDate } from '../../../utils/dateUtils';
 import { clearWaiverMarkers, stripLiveContractAfterWaive } from '../../../utils/contractCleanup';
@@ -18,9 +19,9 @@ import { ensureStaffPoolDepth, inferEuroStaffLeagueId, normalizeStaffPoolRole, t
 import {
     buildPbaImportContractMetadata,
     canSignInPba,
+    clampPbaImportOfferSalary,
     getActiveImport,
     getEffectivePbaConference,
-    getPbaImportConferenceSalary,
     getPbaImportContractLabel,
     isPbaImportForTeam,
 } from '../../../services/pba/importManager';
@@ -94,7 +95,12 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
             return { isProcessing: false };
         }
         if (isPbaImportSigning) {
-            baseSalaryUSD = getPbaImportConferenceSalary(baseSalaryUSD, stateWithSim.leagueStats as any, pbaConference);
+            baseSalaryUSD = clampPbaImportOfferSalary(
+                typeof salary === 'number' ? salary : 0,
+                player as any,
+                stateWithSim.leagueStats as any,
+                pbaConference,
+            );
         }
     }
     if (!isPbaMode && stateWithSim.gameMode === 'gm' && player.tid === -1 && player.status === 'Free Agent' && stateWithSim.date) {
@@ -213,7 +219,7 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
 
         // Auto Charania post — only when LLM is off (LLM generates its own Shams post)
         const llmEnabled = SettingsManager.getSettings().enableLLM;
-        const shamsContent = !llmEnabled ? buildShamsSigningPost(
+        const shamsContent = !llmEnabled && !isPbaImportSigning ? buildShamsSigningPost(
             player.name,
             team.name,
             team.abbrev,
@@ -294,26 +300,35 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
 
         // Match AI signing/re-signing template so the transaction log + news
         // get full contract details (salary, years, option, contract type).
-        const currencyCode = String((stateWithSim.leagueStats as any)?.currency ?? 'USD');
-        const annualM = Math.round(baseSalaryUSD / 100_000) / 10;
-        const totalRaw = annualM * totalYears;
-        const totalStr = totalRaw < 1 ? totalRaw.toFixed(1) : Math.round(totalRaw).toString();
         const optTag = finalOption === 'PLAYER' ? ' (player option)' : finalOption === 'TEAM' ? ' (team option)' : '';
         const twoWayTag = signedAsTwoWay ? ' (two-way)' : '';
         const ngTag = signedAsNG ? ' (non-guaranteed)' : '';
         const mleTag = effectiveMleType && !signedAsTwoWay && !signedAsNG
             ? (effectiveMleType === 'taxpayer' ? ' (taxpayer MLE)' : effectiveMleType === 'room' ? ' (room MLE)' : ' (MLE)')
             : '';
-        const formattedDealAmount = currencyCode === 'USD'
-            ? `$${totalStr}M`
-            : formatCurrencyWithCode(baseSalaryUSD, currencyCode, false);
+        const targetExternalLeague = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA']
+            .includes(String((team as any).league ?? ''))
+            ? String((team as any).league)
+            : null;
+        const formattedDealAmount = isPbaImportSigning
+            ? formatExternalSalary(baseSalaryUSD, 'PBA')
+            : targetExternalLeague
+                ? formatExternalSalary(baseSalaryUSD, targetExternalLeague)
+                : formatContractTotalUSD(baseSalaryUSD, totalYears);
+        const pbaConferenceDisplay = pbaConference === 'commissioners'
+            ? "Commissioner's Cup"
+            : pbaConference === 'governors'
+                ? "Governors' Cup"
+                : 'Philippine Cup';
         const contractDetails = isPbaImportSigning
             ? `: ${formattedDealAmount} ${getPbaImportContractLabel(pbaConference)}`
             : `: ${formattedDealAmount}/${totalYears}yr${optTag}${twoWayTag}${ngTag}${mleTag}`;
         const treatAsResignText = isResignAction && !effectiveMleType;
-        const signingOutcomeText = treatAsResignText
-            ? `${playerName} re-signs with ${teamName}${contractDetails}`
-            : `${playerName} signs with the ${teamName}${contractDetails}${returnContext}`;
+        const signingOutcomeText = isPbaImportSigning
+            ? `${playerName} signed as ${teamName} import for the ${leagueYear} ${pbaConferenceDisplay}: ${formattedDealAmount}`
+            : treatAsResignText
+                ? `${playerName} re-signs with ${teamName}${contractDetails}`
+                : `${playerName} signs with the ${teamName}${contractDetails}${returnContext}`;
 
         const signingSeed = `BREAKING SIGNING: The ${teamName} have signed ${playerName}.${returnContext} ` +
             `REQUIRED: @ShamsCharania MUST break this in a detailed tweet — name the team, the player, any context (returning from abroad, veteran presence, etc.), and what he brings. ` +
@@ -536,11 +551,11 @@ export const handleSignFreeAgent = async (stateWithSim: GameState, action: UserA
         if (signingNewsItem) {
             const verbHeadline = treatAsResignText ? 'Re-Signs With' : 'Signs With';
             (signingNewsItem as any).headline = isPbaImportSigning
-                ? `${player.name} ${verbHeadline} ${team.name} — ${getPbaImportContractLabel(pbaConference)}`
+                ? `${player.name} Signs as ${team.name} Import`
                 : `${player.name} ${verbHeadline} ${team.name} — ${formattedDealAmount}/${totalYears}yr${optTag}${twoWayTag}${ngTag}${mleTag}`;
             (signingNewsItem as any).content = isPbaImportSigning
                 ? `${signingOutcomeText}. The reinforcement is signed for the current PBA conference and can be replaced only under PBA import rules.`
-                : `${signingOutcomeText}. The ${totalYears}-year deal carries an annual value of ${formattedDealAmount}${optTag ? `, with a${optTag.startsWith(' (player') ? ' player' : ' team'} option in the final year` : ''}.`;
+                : `${signingOutcomeText}. The ${totalYears}-year deal is worth ${formattedDealAmount}${optTag ? `, with a${optTag.startsWith(' (player') ? ' player' : ' team'} option in the final year` : ''}.`;
             newNews.unshift(signingNewsItem);
         }
 

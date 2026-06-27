@@ -10,7 +10,7 @@ import { DEFAULT_GM_ATTRIBUTES, findGMForTeam } from '../../../../../services/st
 import { StarterService } from '../../../../../services/simulation/StarterService';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
 import { getGameplan } from '../../../../../store/gameplanStore';
-import { formatPlayerSalaryDisplay, getPlayerCurrentSalaryUSD } from '../../../../../utils/salaryUtils';
+import { formatPlayerSalaryDisplay, getPlayerContractExpiryDisplay, getPlayerCurrentSalaryUSD } from '../../../../../utils/salaryUtils';
 import type { NBAPlayer } from '../../../../../types';
 import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
@@ -18,6 +18,7 @@ import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
 import { getDisplayAge } from '../../../../../store/playerRatingStore';
 import { makePlaceholderGM } from '../../../../../services/staff/staffFallback';
 import { getFatigueBarColor, getFatigueTextColor, getInjuryRisk, getMoodBarColor } from '../../../../shared/playerWellness';
+import { getConferenceSpec, type PbaConference } from '../../../../../services/pba/conferenceTransition';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -43,16 +44,40 @@ function getPotWithDelta(p: NBAPlayer, currentYear: number): { pot: number; delt
   return { pot, delta: pot - prevPot };
 }
 
-function isRegularRosterBox(box: any, schedule: any[]) {
+function isRegularRosterBox(box: any, schedule: any[], competitionId?: string) {
   const sched = schedule.find(g => g.gid === box.gameId);
-  const phase = sched?.competitionPhase;
+  const boxCompetitionId = String(box.competitionId ?? sched?.competitionId ?? '');
+  if (competitionId && boxCompetitionId !== competitionId) return false;
+  const phase = box.competitionPhase ?? sched?.competitionPhase;
   if (sched?.isPreseason || sched?.isPlayIn || sched?.isPlayoff) return false;
+  if (box.isPreseason || box.isPlayIn || box.isPlayoff) return false;
   if (phase === 'play-in' || phase === 'qf' || phase === 'sf' || phase === 'final') return false;
   return true;
 }
 
-function getLastSeasonStats(p: NBAPlayer, teamId: number, currentYear: number, boxScores: any[], schedule: any[]) {
+function getLastSeasonStats(p: NBAPlayer, teamId: number, currentYear: number, competitionId?: string) {
   const stats = ((p as any).stats ?? []) as any[];
+  if (competitionId) {
+    const currentCompetitionRow = stats
+      .filter(s =>
+        !s.playoffs &&
+        (s.gp ?? 0) > 0 &&
+        s.tid === teamId &&
+        s.season === currentYear &&
+        String(s.competitionId ?? '') === competitionId
+      )
+      .slice(-1)[0];
+    if (!currentCompetitionRow) return null;
+    const gp = currentCompetitionRow.gp;
+    return {
+      g: gp,
+      mp: (currentCompetitionRow.min ?? 0) / gp,
+      pts: (currentCompetitionRow.pts ?? 0) / gp,
+      reb: ((currentCompetitionRow.orb ?? 0) + (currentCompetitionRow.drb ?? 0)) / gp || (currentCompetitionRow.trb ?? 0) / gp,
+      ast: (currentCompetitionRow.ast ?? 0) / gp,
+      per: currentCompetitionRow.per ?? 0,
+    };
+  }
   const currentTeamRow = stats
     .filter(s => !s.playoffs && (s.gp ?? 0) > 0 && s.tid === teamId && s.season === currentYear)
     .sort((a, b) => (a.season ?? 0) - (b.season ?? 0))
@@ -73,11 +98,11 @@ function getLastSeasonStats(p: NBAPlayer, teamId: number, currentYear: number, b
   };
 }
 
-function getBoxScoreDerivedStats(p: NBAPlayer, teamId: number, currentYear: number, boxScores: any[], schedule: any[]) {
+function getBoxScoreDerivedStats(p: NBAPlayer, teamId: number, currentYear: number, boxScores: any[], schedule: any[], competitionId?: string) {
   let g = 0, min = 0, pts = 0, reb = 0, ast = 0, per = 0;
   for (const box of boxScores ?? []) {
     if ((box.season ?? currentYear) !== currentYear) continue;
-    if (!isRegularRosterBox(box, schedule)) continue;
+    if (!isRegularRosterBox(box, schedule, competitionId)) continue;
     const lines = box.homeTeamId === teamId
       ? box.homeStats ?? []
       : box.awayTeamId === teamId
@@ -94,6 +119,23 @@ function getBoxScoreDerivedStats(p: NBAPlayer, teamId: number, currentYear: numb
   }
   if (g <= 0) return null;
   return { g, mp: min / g, pts: pts / g, reb: reb / g, ast: ast / g, per: per / g };
+}
+
+function getCompetitionTeamRecord(teamId: number, currentYear: number, boxScores: any[], schedule: any[], competitionId?: string) {
+  if (!competitionId) return null;
+  let wins = 0;
+  let losses = 0;
+  for (const box of boxScores ?? []) {
+    if ((box.season ?? currentYear) !== currentYear) continue;
+    if (!isRegularRosterBox(box, schedule, competitionId)) continue;
+    const isHome = box.homeTeamId === teamId;
+    const isAway = box.awayTeamId === teamId;
+    if (!isHome && !isAway) continue;
+    const won = Number(box.winnerId) === teamId || (isHome ? box.homeScore > box.awayScore : box.awayScore > box.homeScore);
+    if (won) wins += 1;
+    else losses += 1;
+  }
+  return { wins, losses };
 }
 
 function getYearsWithTeam(p: NBAPlayer, teamId: number): number {
@@ -126,6 +168,8 @@ interface RowData {
   currentSalaryUSD: number;
   currentSalaryLabel: string;
   effectiveExp: number;
+  expiryLabel: string;
+  isConferenceDeal: boolean;
   yearsLeft: number;
   ywt: number;
   g: number;
@@ -185,9 +229,18 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const hideNbaContractBadges = isEuroIsolatedMode(state) || teamId >= 100;
   const showNbaContractMix = !hideNbaContractBadges;
+  const pbaCompetitionId = state.leagueStats?.uiMode === 'pba_isolated'
+    ? getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id
+    : undefined;
 
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const teamColor = team?.colors?.[0] ?? '#552583';
+  const teamRecord = useMemo(
+    () => getCompetitionTeamRecord(teamId, currentYear, state.boxScores ?? [], state.schedule ?? [], pbaCompetitionId),
+    [teamId, currentYear, state.boxScores, state.schedule, pbaCompetitionId],
+  );
+  const displayWins = teamRecord?.wins ?? team?.wins ?? 0;
+  const displayLosses = teamRecord?.losses ?? team?.losses ?? 0;
 
   const teamPlayers = useMemo(
     () => (state.players ?? []).filter(p => p.tid === teamId),
@@ -253,8 +306,8 @@ export function TeamOfficeRosterView({ teamId }: Props) {
       const { k2, delta: k2Delta } = getK2WithDelta(p, currentYear);
       const { pot, delta: potDelta } = getPotWithDelta(p, currentYear);
       const stats =
-        getLastSeasonStats(p, teamId, currentYear, state.boxScores ?? [], state.schedule ?? []) ??
-        getBoxScoreDerivedStats(p, teamId, currentYear, state.boxScores ?? [], state.schedule ?? []);
+        getLastSeasonStats(p, teamId, currentYear, pbaCompetitionId) ??
+        getBoxScoreDerivedStats(p, teamId, currentYear, state.boxScores ?? [], state.schedule ?? [], pbaCompetitionId);
       const { score: moodScore } = computeMoodScore(
         p, team, state.date, false, false, false, teamPlayers, currentYear,
       );
@@ -267,8 +320,9 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         .map(cy => parseInt((cy.season ?? '').split('-')[0], 10) + 1)
         .filter(y => Number.isFinite(y));
       const latestCY = cyYears.length > 0 ? Math.max(...cyYears) : 0;
-      const effectiveExp = Math.max(p.contract?.exp ?? currentYear, latestCY);
-      const yearsLeft = Math.max(0, effectiveExp - currentYear);
+      const baseExpiry = getPlayerContractExpiryDisplay(p as any, currentYear);
+      const effectiveExp = baseExpiry.isConferenceDeal ? baseExpiry.sortYear : Math.max(baseExpiry.sortYear || currentYear, latestCY);
+      const yearsLeft = baseExpiry.isConferenceDeal ? 0 : Math.max(0, effectiveExp - currentYear);
       return {
         player: p,
         jerseyNum: (p as any).jerseyNumber ?? '—',
@@ -280,6 +334,8 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         currentSalaryUSD: getPlayerCurrentSalaryUSD(p as any, currentYear),
         currentSalaryLabel: formatPlayerSalaryDisplay(p as any, currentYear, state.nonNBATeams ?? []),
         effectiveExp,
+        expiryLabel: baseExpiry.isConferenceDeal ? baseExpiry.label : String(effectiveExp || '—'),
+        isConferenceDeal: baseExpiry.isConferenceDeal,
         yearsLeft,
         ywt: getYearsWithTeam(p, teamId),
         g: stats?.g ?? 0,
@@ -296,7 +352,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         injuryType: (p as any).injury?.type ?? 'Injured',
       };
     });
-  }, [teamPlayers, team, state.date, state.leagueStats, state.boxScores, state.schedule, currentYear, teamId, hideNbaContractBadges, state.nonNBATeams]);
+  }, [teamPlayers, team, state.date, state.leagueStats, state.boxScores, state.schedule, currentYear, teamId, hideNbaContractBadges, state.nonNBATeams, pbaCompetitionId]);
 
   const rows = useMemo((): RowData[] => {
     if (sortMode === 'rotation' && team) {
@@ -405,11 +461,11 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         <div className="flex gap-3 ml-auto shrink-0 text-center">
           <div>
             <div className="text-[8px] uppercase tracking-widest text-slate-500">W</div>
-            <div className="text-sm font-black text-slate-200">{team?.wins ?? 0}</div>
+            <div className="text-sm font-black text-slate-200">{displayWins}</div>
           </div>
           <div>
             <div className="text-[8px] uppercase tracking-widest text-slate-500">L</div>
-            <div className="text-sm font-black text-slate-200">{team?.losses ?? 0}</div>
+            <div className="text-sm font-black text-slate-200">{displayLosses}</div>
           </div>
         </div>
         <select
@@ -444,11 +500,11 @@ export function TeamOfficeRosterView({ teamId }: Props) {
               <div className="flex gap-4 mt-1">
                 <div>
                   <div className="text-[8px] uppercase tracking-widest text-slate-500">W</div>
-                  <div className="text-sm font-black text-slate-200">{team?.wins ?? 0}</div>
+                  <div className="text-sm font-black text-slate-200">{displayWins}</div>
                 </div>
                 <div>
                   <div className="text-[8px] uppercase tracking-widest text-slate-500">L</div>
-                  <div className="text-sm font-black text-slate-200">{team?.losses ?? 0}</div>
+                  <div className="text-sm font-black text-slate-200">{displayLosses}</div>
                 </div>
               </div>
             </div>
@@ -507,7 +563,118 @@ export function TeamOfficeRosterView({ teamId }: Props) {
             )}
           </div>
 
-          <div className="flex-1 min-h-0 overflow-auto rounded-lg border border-[#30363d] bg-black/40 scrollbar-hide">
+          <div className="md:hidden flex-1 min-h-0 overflow-y-auto space-y-2 pr-1 scrollbar-hide">
+            {rows.map((r) => {
+              const p = r.player;
+              const moodPct = Math.round(((r.moodScore + 10) / 20) * 100);
+              const fatigueRisk = getInjuryRisk(r.trainingFatigue);
+              const isStarter = starterIds.has(p.internalId);
+              const isExpiring = r.yearsLeft === 0;
+
+              return (
+                <div
+                  key={p.internalId}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => quick.openFor(p)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') quick.openFor(p);
+                  }}
+                  className={cn(
+                    'w-full rounded-lg border border-[#30363d] bg-slate-950/70 p-3 text-left transition-colors',
+                    r.isInjured
+                      ? 'opacity-60'
+                      : isStarter && !r.isTwoWay && !r.isNonGuaranteed
+                      ? 'border-l-amber-400 bg-amber-500/10'
+                      : r.isTwoWay
+                      ? 'border-l-violet-500 bg-violet-500/10'
+                      : r.isNonGuaranteed
+                      ? 'border-l-amber-500 bg-amber-500/10'
+                      : 'hover:bg-white/5',
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <PlayerPortrait playerName={p.name} imgUrl={p.imgURL} face={(p as any).face} size={40} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono text-slate-500 shrink-0">#{r.jerseyNum}</span>
+                        <PlayerNameWithHover player={p} className="truncate text-sm font-black text-slate-100">
+                          {p.name}
+                        </PlayerNameWithHover>
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                        <span>{p.pos}</span>
+                        <span>{r.age} yrs</span>
+                        {isStarter && (sortMode === 'rotation' || sortMode === 'gameplan') && <span className="rounded border border-amber-400/40 bg-amber-500/20 px-1 py-0.5 text-amber-300">Starter</span>}
+                        {r.isInjured && <span className="rounded border border-rose-500/40 bg-rose-500/10 px-1 py-0.5 text-rose-300">{r.injuryType}</span>}
+                        {r.isTwoWay && <span className="rounded border border-violet-500/50 bg-violet-500/30 px-1 py-0.5 text-violet-300">2W</span>}
+                        {r.isNonGuaranteed && <span className="rounded border border-amber-500/50 bg-amber-500/30 px-1 py-0.5 text-amber-300">NG</span>}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className={cn(
+                        'text-2xl font-black tabular-nums leading-none',
+                        r.k2 >= 90 ? 'text-blue-300' : r.k2 >= 85 ? 'text-emerald-300' : r.k2 >= 78 ? 'text-amber-300' : 'text-slate-300',
+                      )}>
+                        {r.k2}
+                      </div>
+                      <div className="mt-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">OVR</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {[
+                      ['Pot', r.pot],
+                      ['YWT', r.ywt],
+                      ['G', r.g > 0 ? r.g : '—'],
+                      ['MP', r.mp > 0 ? fmt1(r.mp) : '—'],
+                      ['PTS', fmt1(r.pts)],
+                      ['TRB', fmt1(r.reb)],
+                      ['AST', fmt1(r.ast)],
+                      ['PER', fmt1(r.per)],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-md bg-slate-900/80 px-2 py-1.5">
+                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-500">{label}</div>
+                        <div className="mt-0.5 text-xs font-black tabular-nums text-slate-100">{value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="rounded-md bg-slate-900/80 px-2 py-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Fatigue</span>
+                        <span className={`rounded border px-1 py-0.5 text-[7px] ${fatigueRisk.color}`}>{fatigueRisk.label}</span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                        <div className={`h-full ${getFatigueBarColor(r.trainingFatigue)}`} style={{ width: `${Math.max(2, r.trainingFatigue)}%` }} />
+                      </div>
+                    </div>
+                    <div className="rounded-md bg-slate-900/80 px-2 py-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Mood</span>
+                        <span className="text-[9px] text-slate-400 tabular-nums">{r.moodScore >= 0 ? '+' : ''}{r.moodScore.toFixed(1)}</span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-800">
+                        <div className={cn('h-full rounded', getMoodBarColor(r.moodScore))} style={{ width: `${moodPct}%` }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-800 pt-2 text-[10px]">
+                    <span className="truncate font-semibold text-slate-300">
+                      {r.currentSalaryUSD > 0 ? r.currentSalaryLabel : 'No active salary'}
+                    </span>
+                    <span className={cn('shrink-0 font-black tabular-nums', r.isConferenceDeal ? 'text-amber-300' : isExpiring ? 'text-rose-300' : 'text-slate-500')}>
+                      {r.expiryLabel}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden md:block flex-1 min-h-0 overflow-auto rounded-lg border border-[#30363d] bg-black/40 scrollbar-hide">
             <table className="w-full text-xs min-w-[900px]">
               <thead className="sticky top-0 bg-slate-900/95 backdrop-blur z-10">
                 <tr className={cn('border-b border-slate-800', canSort ? 'text-slate-400' : 'text-slate-600')}>
@@ -649,8 +816,8 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                         </td>
 
                         <td className="text-center tabular-nums px-1.5">
-                          <span className={cn('text-[10px] font-bold', isExpiring ? 'text-rose-300 font-black' : 'text-slate-500')}>
-                            {r.effectiveExp || '—'}
+                          <span className={cn('text-[10px] font-bold', r.isConferenceDeal ? 'text-amber-300 font-black' : isExpiring ? 'text-rose-300 font-black' : 'text-slate-500')}>
+                            {r.expiryLabel}
                           </span>
                         </td>
 

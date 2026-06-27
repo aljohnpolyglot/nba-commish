@@ -1,6 +1,6 @@
 import type { NBAPlayer } from '../types';
 
-export function getCurrentTeamRegularSeasonYears(player: NBAPlayer): number {
+export function resolveYearsWithCurrentTeamFromStats(player: NBAPlayer): number {
   const currentTid = typeof player.tid === 'number' ? player.tid : -1;
   if (currentTid < 0) return 0;
 
@@ -17,6 +17,10 @@ export function getCurrentTeamRegularSeasonYears(player: NBAPlayer): number {
 
   const directYears = Number((player as any).yearsWithTeam ?? 0);
   return Number.isFinite(directYears) ? Math.max(0, directYears) : 0;
+}
+
+export function getCurrentTeamRegularSeasonYears(player: NBAPlayer): number {
+  return resolveYearsWithCurrentTeamFromStats(player);
 }
 
 export function isFranchiseLifer(player: NBAPlayer, minYears = 10): boolean {

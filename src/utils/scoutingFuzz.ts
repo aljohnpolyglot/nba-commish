@@ -2,6 +2,9 @@ import type { GameState, NBAPlayer } from '../types';
 import { getTeamScoutingFuzzBand } from '../services/staff/staffGameplayEffects';
 import { getDisplayOverall, getDisplayPotential } from './playerRatings';
 
+export const DRAFT_FUZZ_OVR_SALT = 'draft-ovr';
+export const DRAFT_FUZZ_POT_SALT = 'draft-pot';
+
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -26,8 +29,13 @@ function hash(input: string): number {
   return h >>> 0;
 }
 
-export function getScoutingFuzzBand(state: GameState, player?: NBAPlayer | null): number {
-  if (!player || state.gameMode !== 'gm') return 0;
+export function getScoutingFuzzBand(
+  state: GameState,
+  player?: NBAPlayer | null,
+  options?: { force?: boolean },
+): number {
+  if (!player) return 0;
+  if (!options?.force && state.gameMode !== 'gm') return 0;
   if ((player as any).tid === state.userTeamId) return 0;
   const team = state.teams.find((t: any) => (t.id ?? t.tid) === state.userTeamId)
     ?? (state.nonNBATeams ?? []).find((t: any) => (t.id ?? t.tid) === state.userTeamId) as any;
@@ -40,12 +48,33 @@ export function getScoutingFuzzBand(state: GameState, player?: NBAPlayer | null)
   return clamp(Math.round(staffBand * 0.3 + budgetBand * 0.7), 0, 8);
 }
 
-export function fuzzRatingValue(value: number, state: GameState, player?: NBAPlayer | null, salt = 'ovr'): number {
-  const band = getScoutingFuzzBand(state, player);
+export function fuzzRatingValue(
+  value: number,
+  state: GameState,
+  player?: NBAPlayer | null,
+  salt = 'ovr',
+  options?: { force?: boolean },
+): number {
+  const band = getScoutingFuzzBand(state, player, options);
   if (!band) return value;
   const id = String((player as any)?.internalId ?? (player as any)?.pid ?? (player as any)?.name ?? 'player');
   const n = hash(`${state.saveId ?? 'save'}-${id}-${salt}`) % (band * 2 + 1);
   return Math.max(25, Math.min(99, Math.round(value + n - band)));
+}
+
+export function fuzzDraftRatingValue(
+  value: number,
+  state: GameState,
+  player: NBAPlayer | null | undefined,
+  kind: 'ovr' | 'pot',
+): number {
+  return fuzzRatingValue(
+    value,
+    state,
+    player,
+    kind === 'ovr' ? DRAFT_FUZZ_OVR_SALT : DRAFT_FUZZ_POT_SALT,
+    { force: true },
+  );
 }
 
 export function formatFuzzedRating(value: number, state: GameState, player?: NBAPlayer | null, salt = 'ovr'): string {

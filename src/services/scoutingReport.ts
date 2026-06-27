@@ -57,7 +57,16 @@ function clamp(v: number, lo: number, hi: number): number {
 
 // Thresholds operate on K2 SCALE (60–99) since that's what users see in the UI.
 // Callers convert raw BBGM → K2 before invoking these helpers.
-export function projectionCeiling(potK2: number): string {
+type ProjectionContext = 'nba' | 'pba';
+
+export function projectionCeiling(potK2: number, context: ProjectionContext = 'nba'): string {
+  if (context === 'pba') {
+    if (potK2 >= 82) return 'PBA Franchise Player';
+    if (potK2 >= 76) return 'PBA Starter / All-Star Candidate';
+    if (potK2 >= 70) return 'PBA Rotation Player';
+    if (potK2 >= 64) return 'Bench Contributor';
+    return 'Developmental Roster Player';
+  }
   if (potK2 >= 95) return 'Hall of Fame / Superstar';
   if (potK2 >= 89) return 'All-Star / Franchise Player';
   if (potK2 >= 83) return 'Quality Starter / Borderline All-Star';
@@ -65,7 +74,13 @@ export function projectionCeiling(potK2: number): string {
   return 'Rotation Role Player';
 }
 
-export function projectionFloor(ovrK2: number): string {
+export function projectionFloor(ovrK2: number, context: ProjectionContext = 'nba'): string {
+  if (context === 'pba') {
+    if (ovrK2 >= 72) return 'PBA Rotation';
+    if (ovrK2 >= 66) return 'Bench Contributor';
+    if (ovrK2 >= 60) return 'Reserve / Developmental';
+    return 'Practice Pool';
+  }
   if (ovrK2 >= 82) return 'Quality Starter';
   if (ovrK2 >= 75) return 'Bench Rotation';
   if (ovrK2 >= 68) return 'Deep Bench / G-League';
@@ -211,7 +226,10 @@ export interface StructuredScoutingReport {
   medicalConcern: boolean;
 }
 
-export function generateStructuredScoutingReport(player: NBAPlayer): StructuredScoutingReport {
+export function generateStructuredScoutingReport(
+  player: NBAPlayer,
+  context: ProjectionContext = 'nba',
+): StructuredScoutingReport {
   const r = getRatings(player);
   const ovr = player.overallRating ?? r.ovr;
   const storedPot = (player.ratings as any)?.[player.ratings?.length - 1]?.pot as number | undefined;
@@ -233,8 +251,8 @@ export function generateStructuredScoutingReport(player: NBAPlayer): StructuredS
   weaknesses.sort((a, b) => b.score - a.score);
 
   return {
-    ceiling: projectionCeiling(potK2),
-    floor: projectionFloor(ovrK2),
+    ceiling: projectionCeiling(potK2, context),
+    floor: projectionFloor(ovrK2, context),
     strengths: strengths.slice(0, 5).map(s => s.text),
     weaknesses: weaknesses.slice(0, 5).map(w => w.text),
     medicalConcern: ((player as any).durability ?? 70) <= 35,
@@ -407,7 +425,7 @@ export interface RiskProfile {
   ceilingScore: number; // 0..100
 }
 
-export function getRiskProfile(player: NBAPlayer): RiskProfile {
+export function getRiskProfile(player: NBAPlayer, context: ProjectionContext = 'nba'): RiskProfile {
   const r = getRatings(player);
   const ovr = player.overallRating ?? r.ovr;
   const storedPot = (player.ratings as any)?.[player.ratings?.length - 1]?.pot as number | undefined;
@@ -431,8 +449,8 @@ export function getRiskProfile(player: NBAPlayer): RiskProfile {
 
   return {
     bustRisk,
-    floorTier: projectionFloor(ovrK2),
-    ceilingTier: projectionCeiling(potK2),
+    floorTier: projectionFloor(ovrK2, context),
+    ceilingTier: projectionCeiling(potK2, context),
     floorScore: clamp(ovrK2, 0, 99),
     ceilingScore: clamp(potK2, 0, 99),
   };
@@ -742,9 +760,9 @@ export function batchComparisonsDeduped(
 export type PositionBucket = 'Guard' | 'Forward' | 'Center' | 'Class';
 
 export function posBucketFor(pos: string | undefined): PositionBucket {
-  const p = pos ?? 'F';
-  if (p.includes('G') || p === 'PG' || p === 'SG') return 'Guard';
-  if (p.includes('C') || p === 'FC') return 'Center';
+  const p = (pos ?? 'F').split('/')[0] ?? 'F';
+  if (p === 'PG' || p === 'SG') return 'Guard';
+  if (p === 'C' || p === 'FC') return 'Center';
   return 'Forward';
 }
 

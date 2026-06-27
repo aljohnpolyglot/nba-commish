@@ -4,6 +4,7 @@ import { useGame } from '../../../../../store/GameContext';
 import { PlayerSelectorItem } from '../../../../shared/PlayerSelectorGrid';
 import { formatCurrencyWithCode } from '../../../../../utils/helpers';
 import { computeContractOffer, getCapThresholds, getMLEAvailability } from '../../../../../utils/salaryUtils';
+import { formatExternalSalary } from '../../../../../constants';
 import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
 import { isPlausibleActiveMarket } from '../../../../../services/freeAgencyBidding';
@@ -11,7 +12,9 @@ import { formatGameDateShort, getCurrentOffseasonFAMoratoriumEnd, isInMoratorium
 import { getOffseasonState } from '../../../../../services/offseason/offseasonState';
 import type { NBAPlayer } from '../../../../../types';
 import { resolveAnyTeam } from '../../../../../utils/teamLookup';
-import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../../../utils/uiMode';
+import { isPbaRosterLocal } from '../../../../../services/pba/importManager';
+import { preparePbaLocalFreeAgency } from '../../../../../services/pba/localFreeAgency';
 import { TeamIntelFreeAgencyBidTracker } from './TeamIntelFreeAgencyBidTracker';
 import {
   AutoBidSummaryModal,
@@ -42,7 +45,9 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
   const { state, dispatchAction } = useGame();
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const euroIsolated = isEuroIsolatedMode(state);
-  const birdRightsEnabled = state.leagueStats?.birdRightsEnabled !== false;
+  const pbaIsolated = isPbaIsolatedMode(state);
+  const directSigningMode = euroIsolated || pbaIsolated;
+  const birdRightsEnabled = !directSigningMode && state.leagueStats?.birdRightsEnabled !== false;
   const isGM = state.gameMode === 'gm';
   const isOwnTeam = isGM && teamId === state.userTeamId;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
@@ -69,7 +74,18 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
   const [faPerPage, setFaPerPage] = useState(25);
   const [editing, setEditing] = useState(false);
   const fmtMoney = (value: number) =>
-    euroIsolated ? formatCurrencyWithCode(value, state.leagueStats?.currency ?? 'EUR', false) : fmtUSD(value);
+    pbaIsolated
+      ? formatExternalSalary(value, 'PBA')
+      : directSigningMode
+        ? formatCurrencyWithCode(value, state.leagueStats?.currency ?? 'EUR', false)
+        : fmtUSD(value);
+
+  useEffect(() => {
+    if (!pbaIsolated) return;
+    const patch = preparePbaLocalFreeAgency(state);
+    if (Object.keys(patch).length === 0) return;
+    dispatchAction({ type: 'UPDATE_STATE', payload: patch } as any);
+  }, [pbaIsolated, state, dispatchAction]);
 
   useEffect(() => {
     if (!isOwnTeam || !isMoratoriumActive) return;
@@ -105,8 +121,18 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
   }, [shortlistIds, isOwnTeam, teamId]);
 
   const allFAs = useMemo(
-    () => state.players.filter(player => player.tid === -1 && player.status === 'Free Agent' && !((player as any).draft?.year >= currentYear)),
-    [state.players, currentYear],
+    () => state.players.filter(player => {
+      const draftYear = Number((player as any).draft?.year ?? 0);
+      if (player.tid !== -1 && player.status !== 'Free Agent') return false;
+      if (pbaIsolated) {
+        if (player.tid === -2 || player.status === 'Prospect' || player.status === 'Draft Prospect') return false;
+        if (Number.isFinite(draftYear) && draftYear > currentYear) return false;
+        return isPbaRosterLocal(player, state.leagueStats as any);
+      }
+      if (Number.isFinite(draftYear) && draftYear >= currentYear) return false;
+      return player.tid === -1 && player.status === 'Free Agent';
+    }),
+    [state.players, currentYear, pbaIsolated, state.leagueStats],
   );
   const faIdSet = useMemo(() => new Set(allFAs.map(player => player.internalId)), [allFAs]);
 
@@ -238,7 +264,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
 
   const submitAutoBid = (player: NBAPlayer): { ok: boolean; reason?: string } => {
     if (!isOwnTeam || !team) return { ok: false, reason: 'GM mode + own team only' };
-    if (euroIsolated) {
+    if (directSigningMode) {
       quick.handle(player, 'sign_player');
       return { ok: true };
     }
@@ -307,7 +333,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
       <AutoBidSummaryModal summary={autoBidSummary} onClose={() => setAutoBidSummary(null)} />
       <MoratoriumHeadsUpModal open={showFaHeadsUp} moratoriumEndLabel={moratoriumEndLabel} onClose={dismissFaHeadsUp} />
       <div className="h-full flex flex-col gap-3">
-        {!euroIsolated && (
+        {!directSigningMode && (
           <div className={`rounded-lg border border-[#30363d] bg-black/40 p-4 grid gap-4 ${isOffseasonView ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2'}`}>
             <Stat label={isPreFA ? 'Projected cap (post-rollover)' : 'Cap Space'} value={fmtUSD(capSpaceUSD)} tone={capSpaceUSD < 0 ? 'red' : 'emerald'} />
             <Stat label="MLE Available" value={mleAvail.blocked ? '—' : fmtUSD(mleAvailableNetUSD)} />
@@ -328,7 +354,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
           <TeamIntelFreeAgencyShortlistPanel
             isOffseasonView={isOffseasonView}
             isOwnTeam={isOwnTeam}
-            euroIsolated={euroIsolated}
+            euroIsolated={directSigningMode}
             shortlistedPlayers={shortlistedPlayers}
             shortlistSize={shortlistIds.size}
             shortlistCap={SHORTLIST_CAP}
@@ -342,13 +368,13 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
             onToggleShortlist={toggleShortlist}
             onSubmitAutoBidsAll={submitAutoBidsAll}
             onSubmitAutoBid={player => {
-              if (euroIsolated) quick.handle(player, 'sign_player');
+              if (directSigningMode) quick.handle(player, 'sign_player');
               else submitAutoBid(player);
             }}
             onOpenPlayer={openPlayer}
           />
           <TeamIntelFreeAgencyBidTracker
-            euroIsolated={euroIsolated}
+            euroIsolated={directSigningMode}
             isOwnTeam={isOwnTeam}
             team={team}
             teamId={teamId}
@@ -364,7 +390,7 @@ export function TeamIntelFreeAgency({ teamId, onPlayerClick }: Props) {
           tierFilter={tierFilter}
           sortConfig={sortConfig}
           birdRightsEnabled={birdRightsEnabled}
-          euroIsolated={euroIsolated}
+          euroIsolated={directSigningMode}
           isOwnTeam={isOwnTeam}
           shortlistIds={shortlistIds}
           teamId={teamId}

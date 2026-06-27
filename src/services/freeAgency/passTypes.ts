@@ -43,6 +43,7 @@ export interface ExtensionResult {
   playerName: string;
   teamName: string;
   newAmount: number;
+  newSalaryUSD?: number;
   newExp: number;
   newYears: number;
   hasPlayerOption: boolean;

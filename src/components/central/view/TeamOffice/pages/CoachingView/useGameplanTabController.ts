@@ -5,9 +5,11 @@ import { getGameplan, saveGameplan, clearGameplan, type Gameplan } from '../../.
 import { getIdealRotation } from '../../../../../../store/idealRotationStore';
 import { getLockedStrategy } from '../../../../../../store/coachStrategyLockStore';
 import { pushToast } from '../../../../../shared/ToastNotifier';
-import { isEuroClubTeamId } from '../../../../../../services/simulation/SimulatorKnobs';
+import { isEuroClubTeamId, KNOBS_PBA } from '../../../../../../services/simulation/SimulatorKnobs';
 import { MinutesPlayedService } from '../../../../../../services/simulation/MinutesPlayedService';
 import { injurySeverityLevel } from '../../../../../../services/simulation/playThroughInjuriesFactor';
+import { resolveRotationPlan } from '../../../../../../services/simulation/rotationPlan';
+import { buildLeagueBaseKnobs } from '../../../../../../services/simulation/GameSimulator/engineLeagueKnobs';
 import type { NBAPlayer } from '../../../../../../types';
 import { effectiveRecord } from '../../../../../../utils/salaryUtils';
 import { getGameDateParts } from '../../../../../../utils/dateUtils';
@@ -146,34 +148,28 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
     const confRank = Math.max(1, confTeams.findIndex(c => c.t.id === teamId) + 1 || 8);
     const gb = Math.max(0, ((leader?.rec.wins ?? 0) - rec.wins + rec.losses - (leader?.rec.losses ?? 0)) / 2);
     const gamesRemaining = Math.max(0, 82 - (rec.wins + rec.losses));
-    const computedRotation = MinutesPlayedService.getRotation(
+    const baseKnobs = buildLeagueBaseKnobs(state.leagueStats);
+    const isPbaTeam = teamId >= 2000 && teamId < 3000;
+    const resolvedPlan = resolveRotationPlan(
       team,
       state.players,
-      0,
       currentYear,
-      undefined,
-      confRank,
-      gb,
-      gamesRemaining,
-      undefined,
-      ptiLevel,
-    );
-    const { minutes } = MinutesPlayedService.allocateMinutes(
-      computedRotation.players,
-      currentYear,
+      {
+        ...(isPbaTeam ? { ...baseKnobs, ...KNOBS_PBA } : baseKnobs),
+        conferenceRank: confRank,
+        gbFromLeader: gb,
+        gamesRemaining,
+        playThroughInjuries: ptiLevel,
+        quarterLength: state.leagueStats?.quarterLength ?? (isPbaTeam ? KNOBS_PBA.quarterLength : defaultQuarterLength),
+        numQuarters: state.leagueStats?.numQuarters ?? 4,
+      },
       0,
-      0,
-      computedRotation.starMpgTarget,
-      false,
-      state.leagueStats?.quarterLength ?? defaultQuarterLength,
       undefined,
-      state.leagueStats?.numQuarters ?? 4,
-      isEuroClubTeamId(teamId) ? 'euro_club' : 'default',
     );
-    const inRotationIds = new Set(computedRotation.players.map(p => p.internalId));
+    const inRotationIds = new Set(resolvedPlan.rotation.map(p => p.internalId));
     return {
-      rotation: computedRotation.players.filter(p => !(p as any).twoWay || !isPlayoffSeason),
-      baseMinutes: minutes,
+      rotation: resolvedPlan.rotation.filter(p => !(p as any).twoWay || !isPlayoffSeason),
+      baseMinutes: resolvedPlan.minuteTargets,
       injuredPlayers: injured,
       benchPool: eligibleRoster.filter(p => !inRotationIds.has(p.internalId) && !isInjured(p, ptiLevel)),
       twoWayIneligible: playoffIneligible,
@@ -184,6 +180,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
     state.teams,
     state.leagueStats?.quarterLength,
     state.leagueStats?.numQuarters,
+    state.leagueStats,
     teamId,
     currentYear,
     isPlayoffSeason,

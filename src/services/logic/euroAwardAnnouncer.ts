@@ -79,6 +79,8 @@ function awardPlayer(state: GameState, key: EuroAwardKey, players: any[]): Parti
       type: STORED_TYPE[key],
       name: winner.coachName,
       tid: winner.team?.id,
+      uiMode: 'euro_isolated',
+      competitionId: isEuroleague ? 'euroleague' : 'endesa',
     });
   } else if (winner.player) {
     newAwards.push({
@@ -87,6 +89,8 @@ function awardPlayer(state: GameState, key: EuroAwardKey, players: any[]): Parti
       name: winner.player.name,
       pid: winner.player.internalId,
       tid: winner.team?.id,
+      uiMode: 'euro_isolated',
+      competitionId: isEuroleague ? 'euroleague' : 'endesa',
     });
     updatedPlayers = updatedPlayers.map(p =>
       p.internalId === winner!.player.internalId
@@ -121,6 +125,8 @@ function awardAllEuroLeague(state: GameState): Partial<GameState> {
         name: sp.player.name,
         pid: sp.player.internalId,
         tid: sp.team?.id,
+        uiMode: 'euro_isolated',
+        competitionId: 'euroleague',
       });
       updatedPlayers = updatedPlayers.map(p =>
         p.internalId === sp.player.internalId

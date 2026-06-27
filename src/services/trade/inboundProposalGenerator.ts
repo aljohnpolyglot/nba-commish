@@ -19,7 +19,7 @@ import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 import { validateCBATradeRules } from '../../utils/cbaTradeRules';
 import { wouldStepienViolateForTid } from './stepienRule';
 import { DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
-import { isTradeExcludedStatus } from './tradeFinderShared';
+import { isTradeExcludedPlayer } from './tradeFinderShared';
 
 const TV_PARITY_TOLERANCE = 0.15;    // ±15% on either side = "fair" trade
 const MAX_COMBO_SIZE = 3;            // up to 3 players per side
@@ -162,7 +162,7 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
 
     // Their tradeable roster — non-external, non-untouchable from their POV.
     const theirRoster = players
-      .filter(p => p.tid === team.id && !isTradeExcludedStatus(p.status, allowPbaRoster))
+      .filter(p => p.tid === team.id && !isTradeExcludedPlayer(p, allowPbaRoster))
       .filter(p => !isWalking(p) && !isLocked(p))
       .filter(p => !isUntouchable(p, theirMode, currentYear, mvpRank))
       .map(p => ({ player: p, tv: Math.max(MIN_BODY_PLAYER_TV, calcPlayerTV(p, theirMode, currentYear, tvCtx)), salary: (p.contract?.amount ?? 0) * 1000, ovr: calcOvr2K(p) }))

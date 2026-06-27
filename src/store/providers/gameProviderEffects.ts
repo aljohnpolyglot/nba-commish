@@ -203,7 +203,7 @@ export function useGameProviderBootstrapEffects({
 
   useEffect(() => {
     if (!state.isDataLoaded || state.gameMode !== 'gm') return;
-    if (state.leagueStats?.uiMode === 'euro_isolated' || state.leagueStats?.uiMode === 'pba_isolated') return;
+    if (state.leagueStats?.uiMode === 'euro_isolated') return;
     if (isNoDraftLeague(state.leagueStats as any)) return;
     const seasonYear = state.leagueStats?.year ?? new Date().getFullYear();
     const combineDay = toISODateString(getDraftCombineStartDate(seasonYear, state.leagueStats as any));

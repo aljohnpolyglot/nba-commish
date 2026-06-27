@@ -18,7 +18,23 @@ export const getCapThresholds = (leagueStats: {
   minimumPayrollPercentage?: number;
   apronsEnabled?: boolean;
   numberOfAprons?: number;
+  salaryCapEnabled?: boolean;
+  salaryCapType?: string;
+  uiMode?: string | null;
 }): CapThresholds => {
+  if (
+    leagueStats.uiMode === 'pba_isolated' ||
+    leagueStats.salaryCapEnabled === false ||
+    leagueStats.salaryCapType === 'none'
+  ) {
+    return {
+      salaryCap: Number.POSITIVE_INFINITY,
+      luxuryTax: Number.POSITIVE_INFINITY,
+      firstApron: Number.POSITIVE_INFINITY,
+      secondApron: Number.POSITIVE_INFINITY,
+      minPayroll: 0,
+    };
+  }
   const cap = leagueStats.salaryCap;
   const luxuryTax = leagueStats.luxuryTaxThresholdPercentage
     ? cap * (leagueStats.luxuryTaxThresholdPercentage / 100)
@@ -44,6 +60,7 @@ export interface CapStatus {
 }
 
 export const getCapStatus = (payrollUSD: number, t: CapThresholds): CapStatus => {
+  if (!Number.isFinite(t.salaryCap)) return { key: 'under_cap', label: 'No Cap', color: 'text-slate-400', bgColor: 'bg-slate-500/20', barColor: '#94a3b8' };
   if (payrollUSD >= t.secondApron) return { key: 'over_second_apron', label: '2nd Apron', color: 'text-rose-400', bgColor: 'bg-rose-500/20', barColor: '#f43f5e' };
   if (payrollUSD >= t.firstApron) return { key: 'over_first_apron', label: '1st Apron', color: 'text-orange-400', bgColor: 'bg-orange-500/20', barColor: '#fb923c' };
   if (payrollUSD >= t.luxuryTax) return { key: 'over_tax', label: 'Tax Payer', color: 'text-yellow-400', bgColor: 'bg-yellow-500/20', barColor: '#facc15' };

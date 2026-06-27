@@ -8,6 +8,7 @@ import { getContractLimits } from '../utils/salaryUtils';
 import type { NBAPlayer } from '../types';
 import { isOnRoster, resolveAnyTeam } from '../utils/teamLookup';
 import { isEuroIsolatedMode } from '../utils/uiMode';
+import { getStandardRosterLimit, getTrainingCampRosterLimit, getTwoWayRosterLimit } from '../utils/rosterLimits';
 
 /**
  * Roster compliance gate — single chokepoint for every user-triggered sim
@@ -58,11 +59,9 @@ export function useRosterComplianceGate() {
     const standardRoster = allRoster.filter(p => !(p as any).twoWay);
     const twoWayRoster = allRoster.filter(p => !!(p as any).twoWay);
     const minRoster = state.leagueStats?.minPlayersPerTeam ?? 14;
-    const maxStd = state.leagueStats?.maxStandardPlayersPerTeam ?? 15;
-    const maxTwoWay = state.leagueStats?.twoWayContractsEnabled === false
-      ? 0
-      : (state.leagueStats?.maxTwoWayPlayersPerTeam ?? 3);
-    const maxCamp = state.leagueStats?.maxTrainingCampRoster ?? 21;
+    const maxStd = getStandardRosterLimit(state.leagueStats);
+    const maxTwoWay = getTwoWayRosterLimit(state.leagueStats);
+    const maxCamp = getTrainingCampRosterLimit(state.leagueStats);
 
     // Enforce minimum only when games are live and meaningful: regular season, or playoffs while still competing.
     // During training camp / free agency (Jul–Oct 21) and post-elimination, teams are building their roster.
@@ -243,7 +242,7 @@ export function useRosterComplianceGate() {
       const standardCount = state.players.filter(p =>
         p.tid === state.userTeamId && isOnRoster(p) && !(p as any).twoWay
       ).length;
-      return standardCount < (state.leagueStats?.maxStandardPlayersPerTeam ?? 15);
+      return standardCount < getStandardRosterLimit(state.leagueStats);
     })();
 
   const userTeam = state.userTeamId != null

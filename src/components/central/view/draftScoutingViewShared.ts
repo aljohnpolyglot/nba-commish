@@ -2,7 +2,8 @@ import type { NBAPlayer } from '../../../types';
 import { convertTo2KRating } from '../../../utils/helpers';
 import { getDisplayAge, estimatePotentialBbgm } from '../../../utils/playerRatings';
 import { matchProspectToGist, type GistProspect } from '../../../services/draftScoutingGist';
-import { isFilipino } from '../../../services/pba/importManager';
+import { getPbaDraftPool, tunePbaDraftProspects } from '../../../services/pba/draftRules';
+import type { LeagueStats } from '../../../types';
 
 export interface MockProspect extends NBAPlayer {
   displayOvr: number;
@@ -33,6 +34,7 @@ export const buildMockProspects = (
   draftYear: number,
   gistData: GistProspect[] | null,
   pbaMode = false,
+  leagueStats?: Pick<LeagueStats, 'draftEligibilityRule' | 'minAgeRequirement'> | null,
 ): MockProspect[] => {
   const matchesDraftYear = (player: NBAPlayer): boolean => {
     const rawDraftYear = Number((player as any).draft?.year);
@@ -41,11 +43,13 @@ export const buildMockProspects = (
     }
     return rawDraftYear === draftYear;
   };
-  const raw = players.filter((player) =>
-    (player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect') &&
-    (!pbaMode || isFilipino(player)) &&
-    matchesDraftYear(player),
-  );
+  const tunedPlayers = pbaMode ? tunePbaDraftProspects(players, currentLeagueYear, leagueStats) : players;
+  const raw = pbaMode
+    ? getPbaDraftPool(tunedPlayers, draftYear, leagueStats)
+    : players.filter((player) =>
+        (player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect') &&
+        matchesDraftYear(player),
+      );
   if (raw.length === 0) return [];
   const enriched = raw.map((player) => {
     const last = player.ratings?.[player.ratings.length - 1];

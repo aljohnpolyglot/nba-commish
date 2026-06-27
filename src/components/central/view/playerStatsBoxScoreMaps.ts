@@ -2,6 +2,8 @@ import { GameState, NBAGMStat } from '../../../types';
 import { classifyBoxScoreGame } from '../../../utils/gameClassification';
 import { Phase, SeasonMode, ShotLocAgg, StatType } from './PlayerStatsTypes';
 import { safePct, zeroStatRow } from './playerStatsMath';
+import { PBA_COMPETITIONS } from '../../../data/templates/philippines/competitions';
+import { isPbaCompetitionId, makeCountedPbaRegularBoxSet, pbaBoxIdentity } from '../../../services/pba/competitionGames';
 
 type BoxScoreStatsPhase = Exclude<Phase, 'cup'>;
 
@@ -106,10 +108,17 @@ export function buildBoxScoreStatsByPlayer(
 ): Map<string, NBAGMStat[]> {
   const phase = options.phase ?? 'regular';
   const rows = new Map<string, NBAGMStat & Record<string, number>>();
+  const countedPbaRegularBoxes = phase === 'regular'
+    ? makeCountedPbaRegularBoxSet(
+        state.boxScores as any[],
+        PBA_COMPETITIONS.filter(spec => !options.competitionIds || options.competitionIds.has(spec.id.toLowerCase())),
+      )
+    : undefined;
 
   for (const box of state.boxScores as any[]) {
     const meta = matchesBoxScoreStatsFilter(state, box, { ...options, phase });
     if (!meta) continue;
+    if (countedPbaRegularBoxes && isPbaCompetitionId(box.competitionId) && !countedPbaRegularBoxes.has(pbaBoxIdentity(box))) continue;
     const season = Number(box.season ?? meta.seasonYear);
     const sides = [
       { tid: box.homeTeamId, lines: box.homeStats ?? [] },
@@ -120,7 +129,11 @@ export function buildBoxScoreStatsByPlayer(
         const playerId = line.playerId;
         if (!playerId) continue;
         const key = `${playerId}|${season}|${side.tid}`;
-        if (!rows.has(key)) rows.set(key, zeroStatRow(season, side.tid) as NBAGMStat & Record<string, number>);
+        if (!rows.has(key)) {
+          const row = zeroStatRow(season, side.tid) as NBAGMStat & Record<string, number>;
+          (row as any).competitionId = box.competitionId ?? (meta as any).competitionId;
+          rows.set(key, row);
+        }
         addBoxScoreLine(rows.get(key)!, line);
       }
     }
@@ -144,6 +157,13 @@ export function buildBoxScoreShotLocMap(
 ): Map<string, ShotLocAgg> {
   if (statType !== 'shotLocations') return new Map();
   const map = new Map<string, ShotLocAgg>();
+  const countedPbaRegularBoxes = phase === 'regular'
+    ? makeCountedPbaRegularBoxSet(
+        state.boxScores as any[],
+        PBA_COMPETITIONS.filter(spec => !competitionIds || competitionIds.has(spec.id.toLowerCase())),
+        typeof season === 'number' ? season : undefined,
+      )
+    : undefined;
   const zero = (): ShotLocAgg => ({
     rimFgm: 0,
     rimFga: 0,
@@ -166,6 +186,7 @@ export function buildBoxScoreShotLocMap(
   for (const box of state.boxScores as any[]) {
     const meta = matchesBoxScoreStatsFilter(state, box, { competitionIds, phase });
     if (!meta) continue;
+    if (countedPbaRegularBoxes && isPbaCompetitionId(box.competitionId) && !countedPbaRegularBoxes.has(pbaBoxIdentity(box))) continue;
     const boxSeason = Number(box.season ?? meta.seasonYear);
     if (typeof season === 'number' && boxSeason !== season) continue;
     const process = (stats: any[]) => {

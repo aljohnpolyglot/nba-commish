@@ -17,6 +17,7 @@ import { compareGameDates, getCurrentOffseasonEffectiveFAStart, parseGameDate } 
 import { getOffseasonState } from '../../../../../services/offseason/offseasonState';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../../../utils/uiMode';
+import { isPbaTradeWindowOpen } from '../../../../../services/pba/tradeWindow';
 import { getTeamFullName } from '../../../../../utils/teamNames';
 import { getDisplayAge } from '../../../../../store/playerRatingStore';
 
@@ -97,7 +98,9 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
     : 0;
   const displayedCapSpaceUSD = capProfile.capSpaceUSD + expiringSalaryUSD;
   const euroIsolated = isEuroIsolatedMode(state);
-  const capFormatted = euroIsolated
+  const capFormatted = pbaMode
+    ? 'No Cap'
+    : euroIsolated
     ? formatCurrencyWithCode(displayedCapSpaceUSD, state.leagueStats?.currency ?? 'EUR', false)
     : formatSalaryM(displayedCapSpaceUSD);
 
@@ -201,10 +204,10 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   const [editingList, setEditingList] = useState<'untouchable' | 'block' | 'targets' | null>(null);
   // ── Sub-tab pill: Trades (existing) | Free Agency (new) ─────────────────
   // Both views share the team banner; only the body switches. Persists per-mount.
+  const tradesDisabled = state.leagueStats?.tradesAllowed === false || (pbaMode && !isPbaTradeWindowOpen(state));
   const [intelTab, setIntelTab] = useState<'trades' | 'fa' | 'expiring'>(
-    euroIsolated ? 'fa' : state.leagueStats?.tradesAllowed === false ? 'fa' : 'trades',
+    euroIsolated ? 'fa' : tradesDisabled ? 'fa' : 'trades',
   );
-  const tradesDisabled = state.leagueStats?.tradesAllowed === false;
   const showFreeAgencyTab = true;
 
   useEffect(() => {
@@ -216,9 +219,9 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   useEffect(() => {
     const want = state.pendingTeamOfficeNav?.intelTab;
     if (!want) return;
-    setIntelTab(want);
+    setIntelTab(want === 'trades' && tradesDisabled ? (showFreeAgencyTab ? 'fa' : 'expiring') : want);
     dispatchAction({ type: 'UPDATE_STATE', payload: { pendingTeamOfficeNav: undefined } } as any);
-  }, [state.pendingTeamOfficeNav?.intelTab]);
+  }, [state.pendingTeamOfficeNav?.intelTab, tradesDisabled, showFreeAgencyTab, dispatchAction]);
 
   // Hydrate from tradingBlockStore so the narrative reflects what the user
   // actually marked in the Trading Block UI (and stays in sync with AI/trade
@@ -369,7 +372,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
             <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">Record</div>
             <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{team.wins}-{team.losses}</div>
           </div>
-          {!euroIsolated && (() => {
+          {!euroIsolated && !pbaMode && (() => {
             // NBA-only: Conf + Div ranks. Endesa/EuroLeague don't have conferences
             // or divisions — a single 18-team table. Hidden in Euro mode.
             const hasGames = (team.wins + team.losses) > 0;
@@ -392,7 +395,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
           })()}
           <div>
             <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">
-              {euroIsolated ? 'Wage Headroom' : isPreFA ? 'Projected cap (post-rollover)' : 'Cap Space'}
+              {pbaMode ? 'Cap Status' : euroIsolated ? 'Wage Headroom' : isPreFA ? 'Projected cap (post-rollover)' : 'Cap Space'}
             </div>
             <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{capFormatted}</div>
           </div>

@@ -1,6 +1,8 @@
 import type { GameState } from '../../../types';
 import { CATEGORY_ORDER, CATEGORY_ORDER_AVG } from '../../../data/franchiseService';
 import { classifyBoxScoreGame } from '../../../utils/gameClassification';
+import { PBA_COMPETITIONS } from '../../../data/templates/philippines/competitions';
+import { isPbaRegularPhase, makeCountedPbaRegularBoxSet, pbaBoxIdentity } from '../../../services/pba/competitionGames';
 
 type TotalRow = {
   NAME: string;
@@ -52,9 +54,11 @@ export function buildPbaTeamLiveTotals(state: GameState, teamId: number): TotalR
   const names = new Map<string, string>();
   for (const player of state.players) names.set(player.internalId, player.name);
   const totals = new Map<string, Record<string, number>>();
+  const countedRegularBoxes = makeCountedPbaRegularBoxSet((state.boxScores ?? []) as any[], PBA_COMPETITIONS);
 
   for (const box of (state.boxScores ?? []) as any[]) {
     if (!String(box?.competitionId ?? '').startsWith('pba-')) continue;
+    if (isPbaRegularPhase(box?.competitionPhase) && !countedRegularBoxes.has(pbaBoxIdentity(box))) continue;
     const meta = classifyBoxScoreGame(box, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats.year, state.leagueStats);
     if (meta.isPreseason || meta.isPlayIn || meta.excludeFromRecord || meta.isAllStar) continue;
     const side = Number(box.homeTeamId) === teamId

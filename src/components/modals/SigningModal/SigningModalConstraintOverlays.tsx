@@ -5,12 +5,16 @@ import { OverlayShell, PlayerThumb } from './SigningModalOverlayShared';
 
 interface OverLimitOverlayProps {
   action: 'showResponse' | 'sign';
+  guaranteedCount: number;
+  maxGuaranteed: number;
   onCancel: () => void;
   onContinue: (action: 'showResponse' | 'sign') => void;
 }
 
 export function SigningModalOverLimitOverlay({
   action,
+  guaranteedCount,
+  maxGuaranteed,
   onCancel,
   onContinue,
 }: OverLimitOverlayProps): ReactElement {
@@ -18,9 +22,9 @@ export function SigningModalOverLimitOverlay({
     <OverlayShell borderClass="border-amber-500/40">
       <div className="p-5 sm:p-8 w-full flex flex-col items-center">
         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-300 mb-2">Roster Limit</p>
-        <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-white">15/15 Guaranteed</h2>
+        <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-white">{guaranteedCount}/{maxGuaranteed} Guaranteed</h2>
         <p className="text-white/80 italic mb-8 leading-relaxed text-sm">
-          You're at 15/15 guaranteed. Signing this player will require an immediate waive. Continue?
+          You're at {guaranteedCount}/{maxGuaranteed} guaranteed. Signing this player will require an immediate waive. Continue?
         </p>
         <div className="flex flex-col gap-2 w-full">
           <button

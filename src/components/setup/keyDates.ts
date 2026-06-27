@@ -57,8 +57,8 @@ export const TIMELINE_MAX = '2026-06-29';
 export const TIMELINE_DISPLAY_END = '2026-07-10';
 
 export const PBA_TIMELINE_MIN = '2025-10-05';
-export const PBA_TIMELINE_MAX = '2026-12-28';
-export const PBA_TIMELINE_DISPLAY_END = '2027-01-10';
+export const PBA_TIMELINE_MAX = '2026-10-01';
+export const PBA_TIMELINE_DISPLAY_END = '2026-10-04';
 
 export const EURO_TIMELINE_MIN = '2025-07-01';
 export const EURO_TIMELINE_MAX = '2026-06-29';
@@ -66,21 +66,41 @@ export const EURO_TIMELINE_DISPLAY_END = '2026-07-10';
 
 export type PbaDateZone = 'philippineCup' | 'allstar' | 'commissionersCup' | 'governorsCup' | 'offseason';
 
+export function getPbaSeasonEndYear(iso: string): number {
+  const [year, month, day] = iso.split('-').map(Number);
+  return month > 10 || (month === 10 && day >= 5) ? year + 1 : year;
+}
+
+export function getPbaSeasonLabel(iso: string): string {
+  const endYear = getPbaSeasonEndYear(iso);
+  return `${endYear - 1}-${String(endYear).slice(-2)}`;
+}
+
+export function getPbaDateContext(iso: string): string {
+  const [, month, day] = iso.split('-').map(Number);
+  const season = getPbaSeasonLabel(iso);
+  if (month === 10 && day >= 5) return `${season} Philippine Cup`;
+  if (month === 10) return `${season} offseason`;
+  if (month < 3 || (month === 3 && day <= 10)) return `${season} Philippine Cup`;
+  if (month < 7 || (month === 7 && day <= 9)) return `${season} Commissioner's Cup`;
+  return `${season} Governors' Cup`;
+}
+
 export function getPbaKeyDates(): KeyDate[] {
   return [
-    { date: '2025-10-05', label: 'Phil. Cup Opening',   sublabel: 'All-Filipino conference begins',              icon: '🏀', zone: 'philippineCup' },
+    { date: '2025-10-05', label: '2025-26 Phil. Cup',    sublabel: 'Season-opening All-Filipino conference',      icon: '🏀', zone: 'philippineCup' },
     { date: '2025-12-15', label: 'Phil. Cup Playoffs',   sublabel: 'Twice-to-beat quarterfinals',                 icon: '🏆', zone: 'philippineCup' },
     { date: '2026-01-28', label: 'Phil. Cup Finals',     sublabel: 'Best-of-7 championship series',               icon: '🏆', zone: 'philippineCup' },
     { date: '2026-03-06', label: 'All-Star Weekend',     sublabel: 'Captain draft, 3-point contest, main event',  icon: '⭐', zone: 'allstar' },
     { date: '2026-03-11', label: 'Comm. Cup Opening',    sublabel: '1 import per team, no height limit',          icon: '🏀', zone: 'commissionersCup' },
     { date: '2026-03-11', label: 'Import Search',        sublabel: 'Sign your conference import',                  icon: '🔍', zone: 'commissionersCup', placeholder: true, placeholderLabel: 'Import Search — auto-resolved on jump' },
-    { date: '2026-07-01', label: 'Comm. Cup Playoffs',   sublabel: 'Twice-to-beat quarterfinals',                 icon: '🏆', zone: 'commissionersCup' },
-    { date: '2026-08-08', label: 'Comm. Cup Finals',     sublabel: 'Best-of-7 championship series',               icon: '🏆', zone: 'commissionersCup' },
-    { date: '2026-09-10', label: 'Gov. Cup Opening',     sublabel: '1 import, max 6\'5" height limit',            icon: '🏀', zone: 'governorsCup' },
-    { date: '2026-09-10', label: 'Import Search (6\'5")', sublabel: 'Height-restricted import signing',           icon: '🔍', zone: 'governorsCup', placeholder: true, placeholderLabel: 'Import Search — auto-resolved on jump' },
-    { date: '2026-11-10', label: 'Gov. Cup Playoffs',    sublabel: 'Twice-to-beat quarterfinals',                 icon: '🏆', zone: 'governorsCup' },
-    { date: '2026-12-14', label: 'Gov. Cup Finals',      sublabel: 'Best-of-7 championship series',               icon: '🏆', zone: 'governorsCup' },
-    { date: '2026-12-28', label: 'Season Awards',        sublabel: 'MVP, Mythical Team, Grand Slam check',        icon: '🎖️', zone: 'governorsCup' },
+    { date: '2026-06-03', label: 'Comm. Cup Playoffs',   sublabel: 'Twice-to-beat quarterfinals',                 icon: '🏆', zone: 'commissionersCup' },
+    { date: '2026-06-25', label: 'Comm. Cup Finals',     sublabel: 'Best-of-7 championship series',               icon: '🏆', zone: 'commissionersCup' },
+    { date: '2026-07-10', label: 'Gov. Cup Opening',     sublabel: '1 import, max 6\'5\" height limit',           icon: '🏀', zone: 'governorsCup' },
+    { date: '2026-07-10', label: 'Import Search (6\'5\")', sublabel: 'Height-restricted import signing',         icon: '🔍', zone: 'governorsCup', placeholder: true, placeholderLabel: 'Import Search — auto-resolved on jump' },
+    { date: '2026-08-28', label: 'Gov. Cup Playoffs',    sublabel: 'Twice-to-beat quarterfinals',                 icon: '🏆', zone: 'governorsCup' },
+    { date: '2026-09-18', label: 'Gov. Cup Finals',      sublabel: 'Best-of-7 championship series',               icon: '🏆', zone: 'governorsCup' },
+    { date: '2026-10-01', label: 'Season Awards',        sublabel: 'MVP, Mythical Team, Grand Slam check',        icon: '🎖️', zone: 'offseason' },
   ];
 }
 

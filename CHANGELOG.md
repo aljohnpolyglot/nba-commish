@@ -2,6 +2,12 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 70 (June 11, 2026) — PBA conference calendar compression
+
+- `src/data/templates/philippines/competitions.ts` — compressed the isolated-mode PBA conference windows so Commissioner's Cup no longer occupies March through August and Governors' Cup no longer gets pushed into a second year-length feeling. The simplified worktree model now keeps the three-conference season on a tighter October-to-October arc while preserving the 11/11/10 regular-season game counts and existing PBA playoff formats.
+- `src/components/setup/StartDateTimeline.tsx`, `src/components/setup/keyDates.ts` — updated the PBA jumpstart timeline, key dates, and selectable range to match the compressed live schedule, so setup no longer advertises the old stretched conference windows.
+- `README.md`, `TODO.md` — synced repo notes to the new compact PBA schedule state and left the guest-team / real-format follow-ups tracked as deferred work.
+
 ## Session 69 (June 5, 2026) — PBA history table + UI-copy hardening
 
 - `src/components/central/view/PbaLeagueHistoryView.tsx`, `src/components/central/view/LeagueHistoryView.tsx` — replaced the old PBA isolated-mode placeholder table with an NBA-style season archive: one row per season, separate Philippine / Commissioner's / Governors' cup columns, major season-award columns, and click-through into season detail / team history where data exists.

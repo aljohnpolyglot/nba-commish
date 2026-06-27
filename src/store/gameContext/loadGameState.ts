@@ -5,9 +5,11 @@ import { initialState } from '../initialState';
 import {
   applyTrainingAiSetup,
   cleanDeadMoneyTeams,
+  cleanDuplicateAutoNews,
   cleanFaMarkets,
   cleanOptionHistory,
   finalizeLoadedPlayers,
+  healDuplicatePlayerInternalIds,
   healLoadedDraftPicks,
   healFollowedHandles,
   healHistoricalTeamIdentity,
@@ -24,10 +26,12 @@ import {
   refreshTrainingCalendars,
 } from './loadGameStateHealers';
 import { applyEuroLoadHeals, ensureStandardStaffPool } from './loadGameStateEuro';
-import { applyPbaAwardsToPlayers, buildPbaHistoricalAwards } from '../../services/pba/awards';
+import { applyPbaAwardsToPlayers, buildPbaHistoricalAwards, healPbaAwardsFromConferenceChampions } from '../../services/pba/awards';
 import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
 import { repairCompetitionSchedules } from '../../services/competition/competitionScheduler';
-import { applyPbaConferenceLifecycle } from '../../services/pba/conferenceTransition';
+import { injectCompetitionPostseasonGames } from '../../services/competition/competitionResolver';
+import { applyPbaConferenceLifecycle, repairPbaConferenceForDate } from '../../services/pba/conferenceTransition';
+import { sanitizePbaAllStarForDate } from '../../services/pba/allStar';
 
 export {
   EURO_TRANSFER_MARKET_DEFAULTS,
@@ -41,20 +45,23 @@ export async function loadGameState(loaded: any): Promise<{ nextState: GameState
   const currentSeasonYear = loaded.leagueStats?.year ?? new Date().getFullYear();
   const migratedPlayers = migrateLoadedPlayers(loaded, currentSeasonYear);
   const { finalPlayers, backfilledPlayers } = finalizeLoadedPlayers(loaded, migratedPlayers ?? loaded.players ?? [], currentSeasonYear);
+  const duplicateIdHeal = healDuplicatePlayerInternalIds(backfilledPlayers, loaded.boxScores ?? [], currentSeasonYear);
+  const playersWithUniqueIds = duplicateIdHeal.players;
+  let healedBoxScores = duplicateIdHeal.boxScores;
   const healedDraftPicks = healLoadedDraftPicks(loaded, currentSeasonYear);
 
   let migratedLeagueStats = migrateLeagueStats(loaded);
   migratedLeagueStats = healPbaEconomySettings(migratedLeagueStats);
   let healedSchedule = healSchedule(loaded.schedule, migratedLeagueStats);
   const teamsWithCleanDeadMoney = cleanDeadMoneyTeams(loaded.teams);
-  const teamsWithHealedIdentity = healHistoricalTeamIdentity(loaded, teamsWithCleanDeadMoney as any, backfilledPlayers);
+  const teamsWithHealedIdentity = healHistoricalTeamIdentity(loaded, teamsWithCleanDeadMoney as any, playersWithUniqueIds);
   const teamsWithHealedRecords = healLoadedNbaTeamRecords(loaded, migratedLeagueStats, healedSchedule, teamsWithHealedIdentity as any);
   const teamsWithHealedStaff = healLegacyNbaStaff(teamsWithHealedRecords as any, loaded);
-  const cleanedFAMarkets = cleanFaMarkets(loaded, migratedLeagueStats, healedSchedule, backfilledPlayers, teamsWithHealedStaff as any);
+  const cleanedFAMarkets = cleanFaMarkets(loaded, migratedLeagueStats, healedSchedule, playersWithUniqueIds, teamsWithHealedStaff as any);
   let cleanedHistory = cleanOptionHistory(loaded.history);
 
   let teamsWithFreshTraining = await refreshTrainingCalendars(loaded, teamsWithHealedStaff as any);
-  let playersWithAISetup = await applyTrainingAiSetup(loaded, backfilledPlayers, teamsWithFreshTraining as any);
+  let playersWithAISetup = await applyTrainingAiSetup(loaded, playersWithUniqueIds, teamsWithFreshTraining as any);
   if (migratedLeagueStats?.uiMode === 'pba_isolated') {
     playersWithAISetup = applyPbaAwardsToPlayers(playersWithAISetup, buildPbaHistoricalAwards(currentSeasonYear));
   }
@@ -65,8 +72,11 @@ export async function loadGameState(loaded: any): Promise<{ nextState: GameState
   }
 
   const healedFollowedHandles = healFollowedHandles(loaded);
-  let healedOffseasonChecklist = healOffseasonChecklist(loaded);
+  let healedOffseasonChecklist = healOffseasonChecklist({ ...loaded, leagueStats: migratedLeagueStats });
+  let healedHistoricalAwards = Array.isArray(loaded.historicalAwards) ? loaded.historicalAwards : initialState.historicalAwards;
+  let healedNews = cleanDuplicateAutoNews(loaded.news ?? initialState.news);
   let healedStaff = loaded.staff;
+  let healedAllStar = loaded.allStar;
   let healedNonNBATeams = healPbaTeamStaff(
     (loaded.nonNBATeams ?? []).map(normalizeEndesaTeam),
     migratedLeagueStats,
@@ -83,17 +93,59 @@ export async function loadGameState(loaded: any): Promise<{ nextState: GameState
       migratedLeagueStats?.year ?? currentSeasonYear,
     );
     if (repairedPbaSchedule !== healedSchedule) healedSchedule = repairedPbaSchedule;
+    const pbaPostseasonSchedule = injectCompetitionPostseasonGames(
+      {
+        ...loaded,
+        leagueStats: migratedLeagueStats,
+        nonNBATeams: healedNonNBATeams,
+        schedule: healedSchedule,
+        boxScores: healedBoxScores ?? [],
+      },
+      PBA_COMPETITIONS,
+      migratedLeagueStats?.year ?? currentSeasonYear,
+    );
+    if (pbaPostseasonSchedule !== healedSchedule) healedSchedule = pbaPostseasonSchedule;
     const pbaLifecyclePatch = applyPbaConferenceLifecycle({
       ...loaded,
       leagueStats: migratedLeagueStats,
+      players: playersWithAISetup,
       nonNBATeams: healedNonNBATeams,
       schedule: healedSchedule,
-      boxScores: loaded.boxScores ?? [],
+      boxScores: healedBoxScores ?? [],
+      news: healedNews,
+      historicalAwards: healedHistoricalAwards,
+      offseasonChecklist: healedOffseasonChecklist,
     } as GameState);
     if (pbaLifecyclePatch.schedule) healedSchedule = pbaLifecyclePatch.schedule;
     if (pbaLifecyclePatch.leagueStats) migratedLeagueStats = pbaLifecyclePatch.leagueStats as any;
+    if ((pbaLifecyclePatch as any).players) playersWithAISetup = (pbaLifecyclePatch as any).players;
+    if ((pbaLifecyclePatch as any).historicalAwards) healedHistoricalAwards = (pbaLifecyclePatch as any).historicalAwards;
     if (pbaLifecyclePatch.offseasonChecklist !== undefined) healedOffseasonChecklist = pbaLifecyclePatch.offseasonChecklist as any;
     if (pbaLifecyclePatch.history) cleanedHistory = pbaLifecyclePatch.history as any;
+    if ((pbaLifecyclePatch as any).news) healedNews = (pbaLifecyclePatch as any).news;
+    const pbaCalendarPatch = repairPbaConferenceForDate({
+      ...loaded,
+      leagueStats: migratedLeagueStats,
+      players: playersWithAISetup,
+      nonNBATeams: healedNonNBATeams,
+      schedule: healedSchedule,
+      boxScores: healedBoxScores ?? [],
+      historicalAwards: healedHistoricalAwards,
+      offseasonChecklist: healedOffseasonChecklist,
+    } as GameState);
+    healedSchedule = pbaCalendarPatch.schedule ?? healedSchedule;
+    migratedLeagueStats = pbaCalendarPatch.leagueStats as any;
+    playersWithAISetup = pbaCalendarPatch.players ?? playersWithAISetup;
+    if (pbaCalendarPatch.offseasonChecklist !== undefined) healedOffseasonChecklist = pbaCalendarPatch.offseasonChecklist as any;
+    if (pbaCalendarPatch.news) healedNews = pbaCalendarPatch.news as any;
+    healedAllStar = sanitizePbaAllStarForDate({
+      ...loaded,
+      leagueStats: migratedLeagueStats,
+      date: loaded.date,
+      players: playersWithAISetup,
+      nonNBATeams: healedNonNBATeams,
+      allStar: healedAllStar,
+    } as GameState, healedAllStar);
   }
   let healedEuroSetupSeed = (loaded as any).euroSetupSeed;
   let healedStaffFreeAgents = loaded.staffFreeAgents ?? [];
@@ -123,6 +175,10 @@ export async function loadGameState(loaded: any): Promise<{ nextState: GameState
   }
 
   if (migratedLeagueStats?.uiMode === 'pba_isolated') {
+    healedHistoricalAwards = healPbaAwardsFromConferenceChampions(
+      healedHistoricalAwards,
+      (migratedLeagueStats as any)?.pbaConferenceChampions ?? [],
+    );
     playersWithAISetup = healLoadedPbaContracts(playersWithAISetup, migratedLeagueStats, currentSeasonYear, healedNonNBATeams);
     playersWithAISetup = healLoadedPbaDraftProspects(playersWithAISetup, migratedLeagueStats, currentSeasonYear);
   }
@@ -145,13 +201,16 @@ export async function loadGameState(loaded: any): Promise<{ nextState: GameState
       ? PBA_COMPETITIONS
       : loaded.activeCompetitions ?? initialState.activeCompetitions,
     schedule: healedSchedule,
+    boxScores: healedBoxScores,
     players: playersWithAISetup,
     teams: teamsWithFreshTraining as any,
     staff: healedStaff,
+    allStar: healedAllStar,
     staffFreeAgents: healedStaffFreeAgents,
     draftPicks: healedDraftPicks,
     euroSetupSeed: healedEuroSetupSeed,
     history: cleanedHistory,
+    news: healedNews,
     faBidding: { markets: cleanedFAMarkets },
     followedHandles: healedFollowedHandles ?? initialState.followedHandles,
     offseasonChecklist: healedOffseasonChecklist,
@@ -159,7 +218,7 @@ export async function loadGameState(loaded: any): Promise<{ nextState: GameState
     historicalAwards: migratedLeagueStats?.uiMode === 'pba_isolated'
       ? (() => {
           const pbaAwards = buildPbaHistoricalAwards(currentSeasonYear);
-          const existing = Array.isArray(loaded.historicalAwards) ? loaded.historicalAwards : [];
+          const existing = healedHistoricalAwards;
           const merged = [...existing, ...pbaAwards];
           const seen = new Set<string>();
           return merged.filter((award: any) => {

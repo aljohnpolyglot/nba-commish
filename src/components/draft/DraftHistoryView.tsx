@@ -7,8 +7,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { convertTo2KRating } from '../../utils/helpers';
-import { estimatePotentialBbgm } from '../../utils/playerRatings';
+import { getDisplayOverall, getDisplayPotential } from '../../store/playerRatingStore';
 import { getPlayerImage } from '../central/view/bioCache';
 import { MyFace, isRealFaceConfig } from '../shared/MyFace';
 import { ensureNonNBAFetched, getNonNBAGistData } from '../central/view/nonNBACache';
@@ -40,10 +39,6 @@ const BIO_LEAGUE_MAP: Record<string, string> = {
   'China CBA': 'China CBA',
   'NBL Australia': 'NBL Australia',
 };
-
-// POT estimator — delegates to the canonical helper so every view agrees.
-const estimatePot = (rawOvr: number, hgt: number, tp: number | undefined, age: number): number =>
-  convertTo2KRating(estimatePotentialBbgm(rawOvr, age), hgt, tp);
 
 const DraftTeamBadge: React.FC<{
   logoUrl?: string;
@@ -133,10 +128,10 @@ export const DraftHistoryView: React.FC = () => {
   };
 
   const availableDraftYears = useMemo(() => {
-    if (pbaMode && pbaArchiveRows.length > 0) {
-      return Array.from(new Set(pbaArchiveRows.map(row => row.draftYear))).sort((a, b) => b - a);
-    }
     const years = new Set<number>();
+    if (pbaMode && pbaArchiveRows.length > 0) {
+      for (const row of pbaArchiveRows) years.add(row.draftYear);
+    }
     for (const p of state.players) {
       const d = (p as any).draft;
       const draftTid = Number(d?.tid);
@@ -157,6 +152,10 @@ export const DraftHistoryView: React.FC = () => {
 
   const defaultViewYear = availableDraftYears[0] ?? (state.leagueStats?.year ?? new Date().getFullYear());
   const [viewDraftYear, setViewDraftYear] = useState<number>(defaultViewYear);
+  const pbaArchiveRowsForYear = useMemo(
+    () => pbaMode ? findPbaDraftRowsByYear(viewDraftYear) : [],
+    [pbaMode, viewDraftYear, pbaDraftArchiveVer],
+  );
 
   useEffect(() => {
     if (availableDraftYears.length > 0 && !availableDraftYears.includes(viewDraftYear)) {
@@ -165,8 +164,8 @@ export const DraftHistoryView: React.FC = () => {
   }, [availableDraftYears]);
 
   const draftClass = useMemo(() => {
-    if (pbaMode && pbaArchiveRows.length > 0) {
-      return findPbaDraftRowsByYear(viewDraftYear).map(row => {
+    if (pbaMode && pbaArchiveRowsForYear.length > 0) {
+      return pbaArchiveRowsForYear.map(row => {
         const matchedPlayer = resolvePbaPlayerMatch(row.normalizedPlayerName, row.draftYear);
         if (!matchedPlayer) {
           return {
@@ -181,12 +180,7 @@ export const DraftHistoryView: React.FC = () => {
           };
         }
 
-        const lastRatings = matchedPlayer.ratings?.[matchedPlayer.ratings.length - 1] ?? {};
-        const hgt = lastRatings.hgt ?? 50;
-        const tp = lastRatings.tp;
-        const rawOvr = matchedPlayer.overallRating || lastRatings.ovr || 0;
         const simYear = state.leagueStats?.year ?? new Date().getFullYear();
-        const age = matchedPlayer.born?.year ? simYear - matchedPlayer.born.year : (typeof matchedPlayer.age === 'number' ? matchedPlayer.age : 25);
         return {
           ...row,
           ...matchedPlayer,
@@ -196,8 +190,8 @@ export const DraftHistoryView: React.FC = () => {
           _matchedPlayer: matchedPlayer,
           _cardKey: matchedPlayer.internalId,
           _pbaDraftTeamName: row.draftedTeam,
-          displayOvr: convertTo2KRating(rawOvr, hgt, tp),
-          displayPot: estimatePot(rawOvr, hgt, tp, age),
+          displayOvr: getDisplayOverall(matchedPlayer),
+          displayPot: getDisplayPotential(matchedPlayer, simYear),
         };
       });
     }
@@ -242,16 +236,10 @@ export const DraftHistoryView: React.FC = () => {
     return Array.from(bySlot.entries())
       .sort(([a], [b]) => a - b)
       .map(([slot, p]) => {
-        const lastRatings = p.ratings?.[p.ratings.length - 1] ?? {};
-        const hgt = lastRatings.hgt ?? 50;
-        const tp = lastRatings.tp;
-        // Must match PlayerBiosView: prefer overallRating (updated by progression), fall back to ratings array
-        const rawOvr = p.overallRating || lastRatings.ovr || 0;
         const simYear = state.leagueStats?.year ?? new Date().getFullYear();
-        const age = p.born?.year ? simYear - p.born.year : (typeof p.age === 'number' ? p.age : 25);
-        return { ...p, _slot: slot, displayOvr: convertTo2KRating(rawOvr, hgt, tp), displayPot: estimatePot(rawOvr, hgt, tp, age) };
+        return { ...p, _slot: slot, displayOvr: getDisplayOverall(p), displayPot: getDisplayPotential(p, simYear) };
       });
-  }, [activeDraftTids, pbaArchiveRows, pbaMode, pbaTids, state.leagueStats?.year, state.players, teamsPerRound, viewDraftYear, nonNBACacheVer]);
+  }, [activeDraftTids, pbaArchiveRowsForYear, pbaMode, pbaTids, state.leagueStats?.year, state.players, teamsPerRound, viewDraftYear, nonNBACacheVer]);
 
   if (viewingBioPlayer) {
     return (

@@ -5,6 +5,7 @@ import { convertTo2KRating } from '../../utils/helpers';
 
 export interface PlayerPortraitProps {
   imgUrl?: string;
+  fallbackImgUrl?: string;
   teamLogoUrl?: string;
   overallRating?: number;
   /** Player ratings array — used to apply tp elite bonus to the OVR badge */
@@ -33,6 +34,7 @@ export interface PlayerPortraitProps {
  */
 export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
   imgUrl,
+  fallbackImgUrl,
   teamLogoUrl,
   overallRating,
   ratings,
@@ -46,15 +48,15 @@ export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
   const badgeSize = Math.round(size * 0.5);  // team logo badge ~50% of portrait
 
   // Fallback: BBGM/ProBallers portrait → initials avatar (no NBA CDN fallback — those are passport-style headshots)
-  const [imgSrc, setImgSrc] = useState<string | null>(imgUrl ?? null);
+  const [imgSrc, setImgSrc] = useState<string | null>(imgUrl ?? fallbackImgUrl ?? null);
 
   // Reset when the imgUrl prop changes (e.g. navigating between players without unmount)
   useEffect(() => {
-    setImgSrc(imgUrl ?? null);
-  }, [imgUrl]);
+    setImgSrc(imgUrl ?? fallbackImgUrl ?? null);
+  }, [imgUrl, fallbackImgUrl]);
 
   const handleImgError = () => {
-    setImgSrc(null);
+    setImgSrc(current => current !== fallbackImgUrl && fallbackImgUrl ? fallbackImgUrl : null);
   };
 
   const initials = playerName
@@ -67,7 +69,7 @@ export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
       {imgSrc ? (
         <img
           src={imgSrc}
-          alt={playerName ?? ''}
+          alt=""
           className="rounded-full object-cover bg-slate-800 border-2 border-slate-700 group-hover:border-slate-500 transition-colors w-full h-full"
           referrerPolicy="no-referrer"
           onError={handleImgError}

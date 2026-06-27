@@ -4,7 +4,7 @@ import { buildShamsTransactionPost } from '../../../../services/social/templates
 import { getInsiderHandle } from '../../../../data/social/handles';
 import { convertTo2KRating, calculateSocialEngagement } from '../../../../utils/helpers';
 import { addGameDays, formatGameDateShort, parseGameDate } from '../../../../utils/dateUtils';
-import { seasonLabelToYear } from '../../../../utils/salaryUtils';
+import { formatContractTotalUSD, seasonLabelToYear } from '../../../../utils/salaryUtils';
 
 const releaseDeclinedExtensionPlayer = (player: Player): Player => {
     return { ...player, midSeasonExtensionDeclined: true } as any;
@@ -33,11 +33,12 @@ export function applyMidSeasonExtensionsPass(
             if (acceptedIds.has(p.internalId)) {
                 const ext = extMap.get(p.internalId)!;
                 const extBaseYear = (stateWithSim.leagueStats?.year ?? new Date().getFullYear()) + 1;
+                const annualUSD = ext.newSalaryUSD ?? ext.newAmount * 1_000_000;
                 const extContractYears = Array.from({ length: ext.newYears ?? 1 }, (_, i) => {
                     const yr = extBaseYear + i;
                     return {
                         season: `${yr - 1}-${String(yr).slice(-2)}`,
-                        guaranteed: Math.round(ext.newAmount * 1_000_000 * Math.pow(1.05, i)),
+                        guaranteed: Math.round(annualUSD * Math.pow(1.05, i)),
                         option: i === (ext.newYears ?? 1) - 1 && ext.hasPlayerOption ? 'Player' : '',
                     };
                 });
@@ -61,13 +62,13 @@ export function applyMidSeasonExtensionsPass(
     const extHistoryEntries = extensions
         .filter(e => !e.declined)
         .map(e => {
-            const totalM = Math.round(e.newAmount * (e.newYears ?? 1));
+            const totalValue = formatContractTotalUSD(e.newSalaryUSD ?? e.newAmount * 1_000_000, e.newYears ?? 1);
             const optTag = e.hasPlayerOption ? ' (player option)' : '';
             let playerSeed = 0;
             for (let ci = 0; ci < e.playerId.length; ci++) playerSeed += e.playerId.charCodeAt(ci);
             const entryDate = addGameDays(baseDate, -(playerSeed % 14));
             return {
-                text: `${e.playerName} has re-signed with the ${e.teamName}: $${totalM}M/${e.newYears ?? 1}yr${optTag}${e.contractLabel ? ` (${e.contractLabel})` : ''}`,
+                text: `${e.playerName} has re-signed with the ${e.teamName}: ${totalValue}/${e.newYears ?? 1}yr${optTag}${e.contractLabel ? ` (${e.contractLabel})` : ''}`,
                 date: formatGameDateShort(entryDate),
                 type: 'Signing',
                 playerIds: [e.playerId],
@@ -87,7 +88,7 @@ export function applyMidSeasonExtensionsPass(
             type: 'extension',
             playerName: e.playerName,
             teamName: e.teamName,
-            amount: e.newAmount,
+            amount: (e.newSalaryUSD ?? e.newAmount * 1_000_000) / 1_000_000,
             years: e.newYears ?? 1,
             hasPlayerOption: e.hasPlayerOption,
         });
@@ -140,11 +141,12 @@ export function applySeasonEndExtensionsPass(
             if (acceptedIds.has(p.internalId)) {
                 const ext = extMap.get(p.internalId)!;
                 const extBaseYear = (stateWithSim.leagueStats?.year ?? new Date().getFullYear()) + 1;
+                const annualUSD = ext.newSalaryUSD ?? ext.newAmount * 1_000_000;
                 const extContractYears = Array.from({ length: ext.newYears ?? 1 }, (_, i) => {
                     const yr = extBaseYear + i;
                     return {
                         season: `${yr - 1}-${String(yr).slice(-2)}`,
-                        guaranteed: Math.round(ext.newAmount * 1_000_000 * Math.pow(1.05, i)),
+                        guaranteed: Math.round(annualUSD * Math.pow(1.05, i)),
                         option: i === (ext.newYears ?? 1) - 1 && ext.hasPlayerOption ? 'Player' : '',
                     };
                 });
@@ -166,10 +168,10 @@ export function applySeasonEndExtensionsPass(
     const eeHistoryEntries = endExts
         .filter(e => !e.declined)
         .map(e => {
-            const totalM = Math.round(e.newAmount * (e.newYears ?? 1));
+            const totalValue = formatContractTotalUSD(e.newSalaryUSD ?? e.newAmount * 1_000_000, e.newYears ?? 1);
             const optTag = e.hasPlayerOption ? ' (player option)' : '';
             return {
-                text: `${e.playerName} re-signs with ${e.teamName} before free agency: $${totalM}M/${e.newYears ?? 1}yr${optTag}${e.contractLabel ? ` (${e.contractLabel})` : ''}`,
+                text: `${e.playerName} re-signs with ${e.teamName} before free agency: ${totalValue}/${e.newYears ?? 1}yr${optTag}${e.contractLabel ? ` (${e.contractLabel})` : ''}`,
                 date: nextState.date,
                 type: 'Signing',
                 playerIds: [e.playerId],

@@ -7,7 +7,7 @@ import type { BRefSeasonData } from '../../../data/brefFetcher';
 import { fetchCoachData, getCoachPhoto } from '../../../data/photos/coaches';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { requestTeamHistoryFor } from './TeamHistoryView';
-import { consumePendingLeagueHistorySeason } from './LeagueHistoryNav';
+import { consumePendingLeagueHistorySeason, LEAGUE_HISTORY_SEASON_DETAIL_EVENT, peekPendingLeagueHistorySeason } from './LeagueHistoryNav';
 import type { Tab } from '../../../types';
 import { getEffectiveUiMode } from '../../../utils/useEffectiveUiMode';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
@@ -23,14 +23,20 @@ export const LeagueHistoryView: React.FC<LeagueHistoryViewProps> = ({ onViewChan
   const euroIsolated = getEffectiveUiMode(state as any) === 'euro_isolated';
   const pbaIsolated = getEffectiveUiMode(state as any) === 'pba_isolated';
   const disableNbaHistoricalData = isFictional || euroIsolated || pbaIsolated;
-  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(() => peekPendingLeagueHistorySeason());
   const [coachPhotosReady, setCoachPhotosReady] = useState(false);
   useEffect(() => { fetchCoachData().then(() => setCoachPhotosReady(true)); }, []);
   useEffect(() => {
-    const pendingSeason = consumePendingLeagueHistorySeason();
-    if (pendingSeason != null) {
-      setSelectedSeason(pendingSeason);
-    }
+    consumePendingLeagueHistorySeason();
+    const handleSeasonRequest = (event: Event) => {
+      const requestedSeason = Number((event as CustomEvent<{ season?: number }>).detail?.season);
+      if (Number.isFinite(requestedSeason)) {
+        consumePendingLeagueHistorySeason();
+        setSelectedSeason(requestedSeason);
+      }
+    };
+    window.addEventListener(LEAGUE_HISTORY_SEASON_DETAIL_EVENT, handleSeasonRequest);
+    return () => window.removeEventListener(LEAGUE_HISTORY_SEASON_DETAIL_EVENT, handleSeasonRequest);
   }, []);
   const quick = usePlayerQuickActions();
 

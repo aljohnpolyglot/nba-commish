@@ -72,9 +72,9 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
     if (filterType) {
       const lowered = text.toLowerCase();
       if (filterType === 'AwardOnWaivers') { if (!lowered.includes('claimed off waivers')) return false; }
-      else if (filterType === 'Waive') { if (!lowered.includes('waived')) return false; }
-      else if (filterType === 'Signing') { if (!lowered.includes('signed') && !lowered.includes('re-signed') && !lowered.includes('signs with') && !lowered.includes('extension')) return false; }
-      else if (filterType === 'Trade') { if (!lowered.includes('trade')) return false; }
+      else if (filterType === 'Signing') { if (entry.kind !== 'Signing' && entry.kind !== 'Re-signing') return false; }
+      else if (filterType === 'Trade') { if (entry.kind !== 'Trade') return false; }
+      else if (filterType === 'Waive') { if (entry.kind !== 'Waive') return false; }
       else if (filterType === 'Retirement') { if (entry.kind !== 'Retirement') return false; }
       else if (filterType === 'Jersey Retirement') { if (entry.kind !== 'Jersey Retirement') return false; }
       else if (entry.kind !== filterType) return false;

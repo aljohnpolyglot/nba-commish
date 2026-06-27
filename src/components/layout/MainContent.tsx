@@ -65,6 +65,7 @@ import { CompetitionCentralView } from '../competition/CompetitionCentralView';
 import { CompetitionHubLayout } from '../competition/CompetitionHubLayout';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
 import { isNoDraftLeague } from '../../services/offseason/offseasonState';
+import { isPbaTradeWindowOpen } from '../../services/pba/tradeWindow';
 import { Tab } from '../../types';
 
 interface MainContentProps {
@@ -77,6 +78,10 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
   const euroIsolated = isEuroIsolatedMode(state);
   const pbaIsolated = isPbaIsolatedMode(state);
   const tradesDisabled = state.leagueStats?.tradesAllowed === false;
+  const pbaTradeWindowClosed = pbaIsolated && !isPbaTradeWindowOpen(state);
+  const tradeClosedMessage = pbaTradeWindowClosed
+    ? 'PBA trades are closed during the current phase.'
+    : 'This competition is built around signings, loans and free agency rather than trades.';
   const noDraft = isNoDraftLeague(state.leagueStats as any);
 
   switch (currentView) {
@@ -133,13 +138,13 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Events':
       return <LeagueEvent />;
     case 'Trade Machine':
-      if (tradesDisabled) return <div className="p-8 text-slate-500">This competition is built around signings, loans and free agency rather than trades.</div>;
+      if (tradesDisabled || pbaTradeWindowClosed) return <div className="p-8 text-slate-500">{tradeClosedMessage}</div>;
       return <TradeMachineView onViewChange={onViewChange} />;
     case 'Trade Finder':
-      if (tradesDisabled) return <div className="p-8 text-slate-500">This competition is built around signings, loans and free agency rather than trades.</div>;
+      if (tradesDisabled || pbaTradeWindowClosed) return <div className="p-8 text-slate-500">{tradeClosedMessage}</div>;
       return <TradeFinderView />;
     case 'Trade Proposals':
-      if (tradesDisabled) return <div className="p-8 text-slate-500">This competition is built around signings, loans and free agency rather than trades.</div>;
+      if (tradesDisabled || pbaTradeWindowClosed) return <div className="p-8 text-slate-500">{tradeClosedMessage}</div>;
       // GM-only view — in commissioner mode fall through to the default dashboard.
       return state.gameMode === 'gm' ? <TradeProposalsView /> : <div className="p-8 text-slate-500">Trade Proposals is available in GM mode.</div>;
     case 'Free Agents':
@@ -233,8 +238,10 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
         </div>
       );
     case 'League Finances':
+      if (pbaIsolated) return <div className="p-8 text-slate-500">Salary-cap league finance screens are not used in PBA mode.</div>;
       return <LeagueFinancesView />;
     case 'Team Finances':
+      if (pbaIsolated) return <div className="p-8 text-slate-500">Salary-cap team finance screens are not used in PBA mode.</div>;
       return <TeamFinancesViewDetailed />;
     case 'Draft Scouting':
       if (noDraft) return <div className="p-8 text-slate-500">This league signs and develops players without a draft.</div>;
@@ -254,7 +261,14 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       const _today = state?.date ? normalizeDate(state.date) : '';
       const _isDraftDay = _today >= _draftDate && _today <= _rolloverDate;
       const _isDraftDone = !!(state as any)?.draftComplete;
-      const showSimulator = _isDraftDay && !_isDraftDone && !isDraftBlockedByUnresolvedPlayoffs(state);
+      const _pbaDraftStatus = state.offseasonChecklist?.pbaDraft;
+      const _isPbaDraftTaskOpen = pbaIsolated
+        && !_isDraftDone
+        && (_pbaDraftStatus === 'pending' || _pbaDraftStatus === 'in-progress')
+        && (state.leagueStats as any)?.pbaConferencePhase === 'offseason';
+      const showSimulator = pbaIsolated
+        ? _isPbaDraftTaskOpen
+        : _isDraftDay && !_isDraftDone && !isDraftBlockedByUnresolvedPlayoffs(state);
       return (
         <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
           {showSimulator

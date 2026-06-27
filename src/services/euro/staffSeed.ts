@@ -71,7 +71,7 @@ export function seedStaffSix(
   const nationalityPool = buildCoachNationalityPool(state as Pick<GameState, 'players'>, leagueId);
   const homeCountry = getTeamCountry(normalizedTeam, state);
   const repBase = leagueId === 'pba'
-    ? Math.max(42, TIER_REP_BASE[tier] - 10)
+    ? Math.max(38, TIER_REP_BASE[tier] - 14)
     : TIER_REP_BASE[tier];
   const label = teamLabel(normalizedTeam);
 
@@ -86,7 +86,9 @@ export function seedStaffSix(
       : tenureRoll < 0.85
       ? Math.floor(rng() * 4) + 2
       : Math.floor(rng() * 6) + 5;
-    const contractYears = Math.max(1, Math.floor(rng() * 3) + 1);
+    const contractYears = leagueId === 'pba'
+      ? (role === 'Head Coach' ? 2 + Math.floor(rng() * 2) : 1 + Math.floor(rng() * 2))
+      : Math.max(1, Math.floor(rng() * 3) + 1);
     const careerStartYear = 2026 - (yearsWithTeam + Math.floor(rng() * 18) + 4);
     const bornYear = careerStartYear - (Math.floor(rng() * 12) + 28);
 

@@ -1,7 +1,7 @@
 import type { LeagueStats, NBAPlayer } from '../../types';
 import { getDisplayAge, getDisplayOverall, getDisplayPotential } from '../../store/playerRatingStore';
 import { daysBetweenGameDates } from '../../utils/dateUtils';
-import { isTradeEligible } from '../../utils/signingMoratorium';
+import { isPostSigningMoratoriumActive, isTradeEligible } from '../../utils/signingMoratorium';
 import { isFranchiseLifer } from '../../utils/playerTenure';
 
 export type TeamMode = 'contend' | 'rebuild' | 'presti';
@@ -65,7 +65,7 @@ export function isRecentlySignedLocked(
   currentDate: string,
   leagueStats?: LeagueStats,
 ): boolean {
-  if (leagueStats?.postSigningMoratoriumEnabled === false || !currentDate) return false;
+  if (!isPostSigningMoratoriumActive(leagueStats) || !currentDate) return false;
   const eligible = (player as any).tradeEligibleDate as string | undefined;
   if (eligible) return !isTradeEligible(player, currentDate, leagueStats);
   const signedDate = (player as any).signedDate as string | undefined;

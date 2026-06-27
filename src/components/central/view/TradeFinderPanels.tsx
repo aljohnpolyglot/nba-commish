@@ -8,8 +8,13 @@ import { isInPostDeadlinePreFAWindow } from '../../../utils/dateUtils';
 import { isRecentlySignedLocked, isWalkingExpiring } from '../../../services/trade/tradeValueEngine';
 import { type FoundOffer, type TradeItem } from './TradeFinderTypes';
 import { OfferCard, PickRow, PlayerRow } from './TradeFinderItemComponents';
+import { isPbaImportTradeLocked } from './TradeFinderGuards';
+import { formatCurrencyWithCode } from '../../../utils/helpers';
 
-const formatSalaryM = (n: number) => `$${(n / 1000).toFixed(1)}M`;
+const formatTradeSalary = (amount: number, currency: string): string =>
+  formatCurrencyWithCode(amount, currency, false)
+    .replace(/\.00(?=[KMBT])/, '')
+    .replace(/(\.\d)0(?=[KMBT])/, '$1');
 
 export const AssetSelectorPanel: React.FC<{
   mobilePanel: 'assets' | 'offers';
@@ -66,10 +71,12 @@ export const AssetSelectorPanel: React.FC<{
       <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar">
         {activeTab === 'roster'
           ? (() => {
-              const postDeadlinePreFA = isInPostDeadlinePreFAWindow(stateDate, currentYear, stateLeagueStats);
+              const postDeadlinePreFA = stateLeagueStats?.uiMode !== 'pba_isolated'
+                && isInPostDeadlinePreFAWindow(stateDate, currentYear, stateLeagueStats);
               return filteredRoster.map(player => {
                 const locked = isRecentlySignedLocked(player, stateDate, stateLeagueStats);
-                return <PlayerRow key={player.internalId} player={player} selected={basketIds.has(player.internalId)} onToggle={() => addPlayer(player)} team={selectedTeam} dateStr={stateDate} currentYear={currentYear} walkingExpiring={isWalkingExpiring(player, currentYear, postDeadlinePreFA)} recentlySigned={locked} tradeEligibleDate={player.tradeEligibleDate} />;
+                const pbaImportLocked = isPbaImportTradeLocked(player, stateLeagueStats?.uiMode === 'pba_isolated');
+                return <PlayerRow key={player.internalId} player={player} selected={basketIds.has(player.internalId)} onToggle={() => addPlayer(player)} team={selectedTeam} dateStr={stateDate} currentYear={currentYear} walkingExpiring={isWalkingExpiring(player, currentYear, postDeadlinePreFA)} recentlySigned={locked} pbaImportLocked={pbaImportLocked} tradeEligibleDate={player.tradeEligibleDate} />;
               });
             })()
           : filteredPicks.map(pick => {
@@ -100,13 +107,14 @@ export const TradeFinderResultsPanel: React.FC<{
   capSpaces: Map<number, number>;
   currentYear: number;
   stateDate: string;
+  currencyCode: string;
   nonNBATeams: any[];
   handleManageTrade: (offer: FoundOffer) => void;
-}> = ({ mobilePanel, basket, myDisplaySalaryUSD, removeItem, clearBasket, setMobilePanel, findOffers, isSearching, foundOffers, teams, capSpaces, currentYear, stateDate, nonNBATeams, handleManageTrade }) => (
+}> = ({ mobilePanel, basket, myDisplaySalaryUSD, removeItem, clearBasket, setMobilePanel, findOffers, isSearching, foundOffers, teams, capSpaces, currentYear, stateDate, currencyCode, nonNBATeams, handleManageTrade }) => (
   <div className={`flex-1 flex flex-col min-h-0 ${mobilePanel === 'offers' ? 'flex' : 'hidden'} lg:flex`}>
     <div className="flex-shrink-0 px-4 py-3 border-b border-slate-800 bg-slate-900/30">
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5 flex-wrap"><span className="text-[10px] font-black uppercase tracking-widest text-rose-300 bg-rose-500/15 border border-rose-500/25 rounded px-2 py-0.5">↗ Outgoing · {basket.length} asset{basket.length !== 1 ? 's' : ''}{basket.length > 0 ? ` · ${formatSalaryM(myDisplaySalaryUSD / 1000)}` : ''}</span></div>
+        <div className="flex items-center gap-1.5 flex-wrap"><span className="text-[10px] font-black uppercase tracking-widest text-rose-300 bg-rose-500/15 border border-rose-500/25 rounded px-2 py-0.5">↗ Outgoing · {basket.length} asset{basket.length !== 1 ? 's' : ''}{basket.length > 0 ? ` · ${formatTradeSalary(myDisplaySalaryUSD, currencyCode)}` : ''}</span></div>
         {basket.length > 0 && <button onClick={clearBasket} className="text-[10px] text-slate-500 hover:text-white transition-colors uppercase tracking-wider font-bold">Clear</button>}
       </div>
       {basket.length > 0 ? <div className="flex flex-wrap gap-1.5 mb-2">{basket.map(item => <div key={item.id} className="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-full px-2 py-1 text-xs font-bold text-white"><span className="truncate max-w-[110px] text-[11px]">{item.label}</span><button onClick={() => removeItem(item.id)} className="w-3.5 h-3.5 bg-slate-600 hover:bg-rose-500 rounded-full flex items-center justify-center transition-colors flex-shrink-0"><X size={7} className="text-white" /></button></div>)}</div> : <div className="text-xs text-slate-600 italic py-1">Select players or picks from the roster to offer in a trade.</div>}

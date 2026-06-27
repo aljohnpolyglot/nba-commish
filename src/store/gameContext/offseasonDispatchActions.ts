@@ -21,11 +21,14 @@ import { requestLeagueHistorySeasonDetail } from '../../components/central/view/
 import {
   clearConferenceImports,
   generateNextConferenceSchedule,
-  getConferenceStartDate,
+  getConferenceStartIso,
   getNextConference,
   type PbaConference,
 } from '../../services/pba/conferenceTransition';
+import { preparePbaLocalFreeAgency } from '../../services/pba/localFreeAgency';
 import { applySeasonRollover } from '../../services/logic/seasonRollover';
+import { autoSignPbaImportsForLazySim } from '../../services/logic/lazySimRunnerHelpers';
+import { getAllStarWeekendDates } from '../../services/allStar/allStarWeekendDates';
 
 type SetGameState = Dispatch<SetStateAction<GameState>>;
 
@@ -46,17 +49,48 @@ export async function handleOffseasonDispatchAction({
 }: HandleOffseasonDispatchActionArgs): Promise<boolean> {
   if (action.type === 'OFFSEASON_ENTER_PHASE') {
     const row = (action.payload as { row: OffseasonChecklistRow }).row;
+    if (row === 'pbaAllStarWeekend' && isPbaIsolatedMode(stateRef.current)) {
+      const season = stateRef.current.leagueStats?.year ?? new Date(stateRef.current.date).getUTCFullYear();
+      const targetDate = toISODateString(getAllStarWeekendDates(season, { uiMode: 'pba_isolated' }).allStarGame);
+      const currentDate = normalizeDate(stateRef.current.date);
+      setState(prev => ({
+        ...prev,
+        offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, 'in-progress'),
+      }));
+      if (currentDate < targetDate) {
+        await dispatchAction({
+          type: 'SIMULATE_TO_DATE',
+          payload: { targetDate },
+        } as any);
+      }
+      setState(prev => ({
+        ...prev,
+        offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, 'done'),
+      }));
+      setCurrentView('All-Star');
+      return true;
+    }
     const reviewOnlyRow = row === 'seasonSummary' || row === 'pbaConferenceAwards';
-    if (row === 'seasonSummary') {
-      const season = stateRef.current.leagueStats?.year;
+    if (reviewOnlyRow) {
+      const leagueStats = stateRef.current.leagueStats as any;
+      const preparedPbaSeason = Number(leagueStats?.pbaYearEndRolloverPreparedSeason);
+      const season = row === 'pbaConferenceAwards' && Number.isFinite(preparedPbaSeason)
+        ? preparedPbaSeason
+        : stateRef.current.leagueStats?.year;
       if (typeof season === 'number') {
         requestLeagueHistorySeasonDetail(season);
       }
     }
-    setState(prev => ({
-      ...prev,
-      offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, reviewOnlyRow ? 'done' : 'in-progress'),
-    }));
+    setState(prev => {
+      const pbaLocalFaPatch = row === 'pbaLocalFreeAgency'
+        ? preparePbaLocalFreeAgency(prev)
+        : {};
+      const patched = { ...prev, ...pbaLocalFaPatch };
+      return {
+        ...patched,
+        offseasonChecklist: setRowStatus(patched.offseasonChecklist, row, reviewOnlyRow ? 'done' : 'in-progress'),
+      };
+    });
     const target = OFFSEASON_ROW_TAB[row];
     if (target) setCurrentView(target);
     return true;
@@ -78,13 +112,25 @@ export async function handleOffseasonDispatchAction({
 
   if (action.type === 'OFFSEASON_COMPLETE_PHASE') {
     const row = (action.payload as { row: OffseasonChecklistRow }).row;
-    setState(prev => ({
-      ...prev,
-      leagueStats: row === 'youthPromotion' && prev.leagueStats?.uiMode === 'euro_isolated'
-        ? { ...prev.leagueStats, euroYouthPromotionReviewedYear: prev.leagueStats.year }
-        : prev.leagueStats,
-      offseasonChecklist: setRowStatus(prev.offseasonChecklist, row, 'done'),
-    }));
+    setState(prev => {
+      let next = prev;
+
+      if (row === 'pbaImportDecision' && prev.leagueStats?.uiMode === 'pba_isolated') {
+        const currentConference: PbaConference = ((prev.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference;
+        const nextConference = getNextConference(currentConference);
+        if (nextConference) {
+          next = autoSignPbaImportsForLazySim(next, nextConference);
+        }
+      }
+
+      return {
+        ...next,
+        leagueStats: row === 'youthPromotion' && next.leagueStats?.uiMode === 'euro_isolated'
+          ? { ...next.leagueStats, euroYouthPromotionReviewedYear: next.leagueStats.year }
+          : next.leagueStats,
+        offseasonChecklist: setRowStatus(next.offseasonChecklist, row, 'done'),
+      };
+    });
     return true;
   }
 
@@ -161,10 +207,13 @@ export async function handleOffseasonDispatchAction({
       const currentConference: PbaConference = leagueStats?.pbaConference ?? 'philippine';
       const nextConference = getNextConference(currentConference);
       if (!nextConference) {
-        const rolloverAlreadyPrepared = leagueStats?.pbaYearEndRolloverPreparedSeason != null;
+        const preparedSeason = Number(leagueStats?.pbaYearEndRolloverPreparedSeason);
+        const rolloverAlreadyPrepared = Number.isFinite(preparedSeason);
         const rolloverPatch = rolloverAlreadyPrepared ? {} : applySeasonRollover(stateRef.current);
         const rolledState = { ...stateRef.current, ...rolloverPatch } as GameState;
-        const nextYear = (rolledState.leagueStats as any)?.year ?? ((leagueStats?.year ?? new Date().getFullYear()) + 1);
+        const nextYear = rolloverAlreadyPrepared
+          ? preparedSeason + 1
+          : (rolledState.leagueStats as any)?.year ?? ((leagueStats?.year ?? new Date().getFullYear()) + 1);
         const philSpec = PBA_COMPETITIONS[0];
         const source = { nonNBATeams: rolledState.nonNBATeams as any, userTeamId: rolledState.userTeamId };
         const tids = selectCompetitionTeamTids(philSpec, source);
@@ -183,7 +232,7 @@ export async function handleOffseasonDispatchAction({
             pbaConferencePhase: 'regularSeason',
             pbaYearEndRolloverPreparedSeason: undefined,
           },
-          date: `Oct 5, ${nextYear - 1}`,
+          date: getConferenceStartIso('philippine', nextYear),
           schedule: newGames,
           offseasonChecklist: undefined,
           draftComplete: undefined,
@@ -195,10 +244,15 @@ export async function handleOffseasonDispatchAction({
       } else {
         const newGames = generateNextConferenceSchedule(stateRef.current, nextConference);
         const cleaned = clearConferenceImports(stateRef.current.players, currentConference);
-        const startDate = getConferenceStartDate(nextConference, leagueStats?.year ?? new Date().getFullYear());
+        const withSignedImports = autoSignPbaImportsForLazySim(
+          { ...stateRef.current, players: cleaned } as GameState,
+          nextConference,
+        );
+        const startDate = getConferenceStartIso(nextConference, leagueStats?.year ?? new Date().getFullYear());
         setState(prev => ({
           ...prev,
-          players: cleaned,
+          players: withSignedImports.players,
+          history: withSignedImports.history ?? prev.history,
           leagueStats: {
             ...prev.leagueStats,
             pbaConference: nextConference,

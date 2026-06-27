@@ -136,15 +136,8 @@ export const PlayerStatsView: React.FC<PlayerStatsViewProps> = ({ initialTeamFil
 
   useEffect(() => {
     if (!pbaIsolated) return;
-    const valid = new Set([PBA_COMBINED_FILTER, ...PBA_COMPETITIONS.map(spec => spec.id)]);
-    if (!valid.has(pbaCompetitionFilter)) {
-      setPbaCompetitionFilter(currentPbaCompetitionId);
-      return;
-    }
-    if (pbaCompetitionFilter !== PBA_COMBINED_FILTER && pbaCompetitionFilter !== currentPbaCompetitionId) {
-      setPbaCompetitionFilter(currentPbaCompetitionId);
-    }
-  }, [currentPbaCompetitionId, pbaIsolated, pbaCompetitionFilter]);
+    setPbaCompetitionFilter(prev => prev === PBA_COMBINED_FILTER ? prev : currentPbaCompetitionId);
+  }, [currentPbaCompetitionId, pbaIsolated]);
 
   const pbaCompetitionOptions = useMemo(() => [
     ...PBA_COMPETITIONS.map(spec => ({ id: spec.id, label: spec.displayName.replace(/^PBA\s+/, '') })),

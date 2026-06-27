@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import type { NBAPlayer } from '../../../types';
 import { getCurrentOffseasonFAMoratoriumEnd, isInMoratorium, parseGameDate } from '../../../utils/dateUtils';
+import { formatContractTotalUSD, formatContractUSD } from '../../../utils/salaryUtils';
 import { computeOfferStrength } from '../../../services/freeAgencyBidding';
 
 interface SigningModalOffersTabProps {
@@ -72,8 +73,8 @@ export default function SigningModalOffersTab({
   };
 
   const renderBidCard = (bid: any, idx: number, isUser = false) => {
-    const totalM = Math.round((bid.salaryUSD * bid.years) / 100_000) / 10;
-    const annualM = Math.round(bid.salaryUSD / 100_000) / 10;
+    const totalValue = formatContractTotalUSD(bid.salaryUSD, bid.years);
+    const annualValue = formatContractUSD(bid.salaryUSD);
     const borderClass = isUser ? 'border-indigo-500/30' : 'border-white/5';
     const bgClass = isUser ? 'bg-indigo-500/5' : 'bg-white/[0.03]';
 
@@ -96,8 +97,8 @@ export default function SigningModalOffersTab({
             </div>
           </div>
           <div className="text-right shrink-0">
-            <div className="text-[13px] font-black text-[#FDB927]">${totalM}M</div>
-            <div className="text-[9px] uppercase tracking-widest text-white/40">${annualM}M / {bid.years}yr{!isUser && idx === 0 ? ' · leading' : ''}</div>
+            <div className="text-[13px] font-black text-[#FDB927]">{totalValue}</div>
+            <div className="text-[9px] uppercase tracking-widest text-white/40">{annualValue} / {bid.years}yr{!isUser && idx === 0 ? ' · leading' : ''}</div>
           </div>
         </div>
         {renderStrengthBar(bid)}

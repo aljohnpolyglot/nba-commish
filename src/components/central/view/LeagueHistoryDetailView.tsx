@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, Loader, Shield, Star, Trophy, Zap } from 'lucide-react';
+import { ChevronLeft, Loader, Shield, Trophy, Zap } from 'lucide-react';
 import { getAllCachedSeasons, matchTeamByWikiName, useBRefSeason } from '../../../data/brefFetcher';
 import { fetchCoachData, getCoachPhoto } from '../../../data/photos/coaches';
 import { AwardService } from '../../../services/logic/AwardService';
@@ -43,6 +43,7 @@ interface Props {
 export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => {
   const { state } = useGame();
   const isFictional = state.leagueType === 'fictional';
+  const euroIsolated = state.leagueStats?.uiMode === 'euro_isolated';
   const pbaIsolated = state.leagueStats?.uiMode === 'pba_isolated';
   const currentSeason = state.leagueStats.year;
   const isCurrent = season === currentSeason;
@@ -55,7 +56,10 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
     fetchCoachData().then(() => setCoachPhotosReady(true));
   }, []);
 
-  const awardsAll = (state.historicalAwards as any[]) ?? [];
+  const awardsAll = useMemo(
+    () => (state.historicalAwards as any[]) ?? [],
+    [state.historicalAwards],
+  );
   const pbaTeams = useMemo(
     () => (state.nonNBATeams ?? []).filter((team: any) => {
       const tid = Number(team.tid ?? team.id);
@@ -63,10 +67,22 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
     }),
     [state.nonNBATeams],
   );
-  const historyTeams = pbaIsolated ? pbaTeams : state.teams;
-  const allLookupTeams = pbaIsolated ? [...state.teams, ...pbaTeams] : state.teams;
-  const bbgmRecord = awardsAll.find((award) => Number(award.season) === Number(season) && !award.type) as any;
-  const flatAwards = awardsAll.filter((award) => Number(award.season) === Number(season) && !!award.type);
+  const historyTeams = useMemo(
+    () => pbaIsolated ? pbaTeams : state.teams,
+    [pbaIsolated, pbaTeams, state.teams],
+  );
+  const allLookupTeams = useMemo(
+    () => pbaIsolated ? [...state.teams, ...pbaTeams] : state.teams,
+    [pbaIsolated, pbaTeams, state.teams],
+  );
+  const bbgmRecord = useMemo(
+    () => awardsAll.find((award) => Number(award.season) === Number(season) && !award.type) as any,
+    [awardsAll, season],
+  );
+  const flatAwards = useMemo(
+    () => awardsAll.filter((award) => Number(award.season) === Number(season) && !!award.type),
+    [awardsAll, season],
+  );
   const pbaAwardAliases = {
     mvp: ['MVP', 'Most Valuable Player'],
     dpoy: ['DPOY', 'Defensive Player of the Year'],
@@ -86,6 +102,18 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
       .replace(/[^a-z0-9]+/gi, ' ')
       .trim()
       .toLowerCase();
+  const isNonWinnerNote = (value: unknown) => {
+    const key = normalizePbaKey(value);
+    return (
+      key.includes('no tournament')
+      || key.includes('not held')
+      || key.includes('cancelled')
+      || key.includes('canceled')
+      || key.includes('pandemic')
+      || key.includes('fiba world cup')
+      || key.includes('asian games')
+    );
+  };
   const normalizePbaConferenceKey = (
     value: unknown,
   ): 'philippine' | 'commissioners' | 'governors' | null => {
@@ -103,21 +131,84 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
     }
     return null;
   };
-  const flat = (types: string | readonly string[]) => {
-    const list = Array.isArray(types) ? types : [types];
-    return flatAwards.find((award) => list.includes(String(award.type))) ?? null;
-  };
-  const getAwardEntry = (bbgmKey: string, flatTypes: string | readonly string[]) => flat(flatTypes) ?? bbgmRecord?.[bbgmKey] ?? null;
   const getPbaConferenceKey = (award: any): 'philippine' | 'commissioners' | 'governors' | null => {
     return normalizePbaConferenceKey([award?.conference, award?.source, award?.type].filter(Boolean).join(' '));
   };
+  const isPbaTeamTid = (tid: unknown) => {
+    const numericTid = Number(tid);
+    return Number.isFinite(numericTid) && numericTid >= 2000 && numericTid < 2100;
+  };
+  const isPbaHistoryAward = (award: any) => {
+    if (award?.uiMode === 'pba_isolated' || award?.competitionId === 'pba') return true;
+    if (String(award?.competitionId ?? '').startsWith('pba-')) return true;
+    if (isPbaTeamTid(award?.tid)) return true;
+    if (getPbaConferenceKey(award) !== null) return true;
+    const awardPlayer = findHistoryPlayer(state.players, award);
+    if (awardPlayer && isPbaTeamTid(awardPlayer.tid)) return true;
+    const awardTeam = allLookupTeams.find((candidate: any) => {
+      const target = normalizePbaKey(award?.team ?? award?.name);
+      if (!target) return false;
+      const fullName = normalizePbaKey(getTeamFullName(candidate as any) || candidate?.name || '');
+      const shortName = normalizePbaKey(candidate?.name || '');
+      const abbrev = normalizePbaKey(candidate?.abbrev || '');
+      return (
+        fullName === target
+        || shortName === target
+        || abbrev === target
+        || fullName.includes(target)
+        || target.includes(fullName)
+        || shortName.includes(target)
+        || target.includes(shortName)
+      );
+    });
+    if (awardTeam) return true;
+    const key = normalizePbaKey([award?.source, award?.awardName, award?.award_name, award?.conference, award?.competitionId].filter(Boolean).join(' '));
+    return key.includes('pba');
+  };
+  const isEuroHistoryAward = (award: any) => {
+    if (award?.uiMode === 'euro_isolated') return true;
+    if (['euroleague', 'endesa', 'liga_acb', 'liga-acb'].includes(String(award?.competitionId ?? '').toLowerCase())) return true;
+    const key = normalizePbaKey([award?.source, award?.awardName, award?.award_name, award?.type, award?.competitionId].filter(Boolean).join(' '));
+    return (
+      key.includes('euroleague')
+      || key.includes('euro league')
+      || key.includes('liga acb')
+      || key.includes('endesa')
+      || key.includes('alphonso ford')
+      || key.includes('gomelskiy')
+      || key.includes('final four mvp')
+      || key.includes('all euroleague')
+    );
+  };
+  const scopedFlatAwards = useMemo(
+    () => pbaIsolated
+      ? flatAwards.filter(isPbaHistoryAward)
+      : euroIsolated
+        ? flatAwards.filter(isEuroHistoryAward)
+        : flatAwards,
+    [euroIsolated, flatAwards, pbaIsolated],
+  );
+  const flat = (types: string | readonly string[]) => {
+    const list = Array.isArray(types) ? types : [types];
+    return scopedFlatAwards.find((award) => list.includes(String(award.type))) ?? null;
+  };
+  const getAwardEntry = (bbgmKey: string, flatTypes: string | readonly string[]) => {
+    const flatHit = flat(flatTypes);
+    if (pbaIsolated || euroIsolated) return flatHit;
+    return flatHit ?? bbgmRecord?.[bbgmKey] ?? null;
+  };
   const getPbaConferenceAward = (types: string | readonly string[], conference: 'philippine' | 'commissioners' | 'governors') => {
     const list = Array.isArray(types) ? types : [types];
-    return flatAwards.find((award) =>
+    return scopedFlatAwards.find((award) =>
       list.includes(String(award.type))
-      && getPbaConferenceKey(award) === conference,
+      && getPbaConferenceKey(award) === conference
+      && !isNonWinnerNote(award?.name ?? award?.team),
     ) ?? null;
   };
+  const getPbaBestImportAward = () =>
+    getPbaConferenceAward(pbaAwardAliases.bestImport, 'governors')
+    ?? getPbaConferenceAward(pbaAwardAliases.bestImport, 'commissioners')
+    ?? getPbaConferenceAward(pbaAwardAliases.bestImport, 'philippine');
   const findPbaTeamByName = React.useCallback((rawName?: string | null) => {
     const target = normalizePbaKey(rawName);
     if (!target) return null;
@@ -150,10 +241,10 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
     };
   }, []);
   const getPbaConferenceSeasonCandidates = React.useCallback((
-    conference: 'philippine' | 'commissioners' | 'governors',
+    _conference: 'philippine' | 'commissioners' | 'governors',
   ) => {
     const primary = Number(season);
-    return conference === 'governors' ? [primary, primary - 1] : [primary];
+    return [primary];
   }, [season]);
   const findPlayer = (awardEntry: any) => findHistoryPlayer(state.players, awardEntry);
   const shouldGroupAllStarsByConference = useMemo(() => {
@@ -179,7 +270,7 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
     };
   }, []);
 
-  const { data: bref, loading: brefLoading } = useBRefSeason(!isCurrent && !isFictional && !pbaIsolated ? season : null);
+  const { data: bref, loading: brefLoading } = useBRefSeason(!isCurrent && !isFictional && !pbaIsolated && !euroIsolated ? season : null);
 
   const awards = useMemo(() => {
     const resolved: Record<string, any> = {
@@ -191,8 +282,8 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
       roy: buildDetailAwardObject(getAwardEntry('roy', pbaIsolated ? pbaAwardAliases.roy : 'ROY'), allLookupTeams, state.players, season),
       finalsMvp: buildDetailAwardObject(pbaIsolated ? getPbaConferenceAward(pbaAwardAliases.finalsMvp, 'philippine') : getAwardEntry('finalsMvp', pbaAwardAliases.finalsMvp), allLookupTeams, state.players, season),
       coy: buildDetailAwardObject(getAwardEntry('coy', pbaIsolated ? pbaAwardAliases.coy : 'COY'), allLookupTeams, state.players, season),
-      scoringChampion: buildDetailAwardObject(pbaIsolated ? getPbaConferenceAward(pbaAwardAliases.scoringChampion, 'philippine') : getAwardEntry('mvp', pbaAwardAliases.scoringChampion), allLookupTeams, state.players, season),
-      bestImport: buildDetailAwardObject(pbaIsolated ? getPbaConferenceAward(pbaAwardAliases.bestImport, 'philippine') : getAwardEntry('mvp', pbaAwardAliases.bestImport), allLookupTeams, state.players, season),
+      scoringChampion: buildDetailAwardObject(getAwardEntry('mvp', pbaAwardAliases.scoringChampion), allLookupTeams, state.players, season),
+      bestImport: buildDetailAwardObject(pbaIsolated ? getPbaBestImportAward() : getAwardEntry('mvp', pbaAwardAliases.bestImport), allLookupTeams, state.players, season),
     };
     if (bref) {
       if (!resolved.mvp) resolved.mvp = buildBrefAwardObject(bref.mvp, allLookupTeams, state.players, season);
@@ -208,7 +299,7 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
       if (photo) resolved.coy = { ...resolved.coy, imgURL: photo };
     }
     return resolved;
-  }, [allLookupTeams, bref, coachPhotosReady, season, state.players]);
+  }, [allLookupTeams, bref, coachPhotosReady, euroIsolated, pbaIsolated, scopedFlatAwards, season, state.players]);
 
   const champAward = pbaIsolated ? getPbaConferenceAward(['Champion'], 'philippine') : flat('Champion');
   const runnerAward = pbaIsolated ? getPbaConferenceAward(['Runner Up'], 'philippine') : flat('Runner Up');
@@ -275,7 +366,7 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
     runnerUpTeam,
     runnerUpTeam?.seasons?.find((entry: any) => Number(entry.season) === Number(season)),
   );
-  const hasAllLeague = !!bbgmRecord?.allLeague || flatAwards.some((award) => award.type?.startsWith('All-NBA') || award.type?.startsWith('All-Defensive') || award.type?.startsWith('All-Rookie'));
+  const hasAllLeague = !pbaIsolated && !euroIsolated && (!!bbgmRecord?.allLeague || flatAwards.some((award) => award.type?.startsWith('All-NBA') || award.type?.startsWith('All-Defensive') || award.type?.startsWith('All-Rookie')));
 
   const handlePlayerClick = (awardEntry: any) => {
     const player = findPlayer(awardEntry);
@@ -337,9 +428,10 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
   const bestRecords = useMemo(() => buildBestRecords(historyTeams, season, bref), [bref, historyTeams, season]);
 
   const semifinalsMvps = useMemo(() => {
-    const entries: any[] = bbgmRecord?.sfmvp ?? flatAwards.filter((award) => award.type === 'Semifinals MVP' || award.type === 'Conference Finals MVP') ?? [];
+    if (pbaIsolated) return [];
+    const entries: any[] = bbgmRecord?.sfmvp ?? scopedFlatAwards.filter((award) => award.type === 'Semifinals MVP' || award.type === 'Conference Finals MVP') ?? [];
     return buildSemifinalsMvpEntries(entries, allLookupTeams, state.players, season);
-  }, [allLookupTeams, bbgmRecord, flatAwards, season, state.players]);
+  }, [allLookupTeams, bbgmRecord, pbaIsolated, scopedFlatAwards, season, state.players]);
 
   const awardCounts = useMemo(() => {
     const priorAwards = awardsAll.filter((award) => Number(award.season) <= Number(season));
@@ -460,12 +552,14 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
       const seasonCandidates = getPbaConferenceSeasonCandidates(meta.key);
       const entry = [...entries].reverse().find((candidate: any) =>
         seasonCandidates.includes(Number(candidate?.season))
-        && normalizePbaConferenceKey(candidate?.conference) === meta.key,
+        && normalizePbaConferenceKey(candidate?.conference) === meta.key
+        && !isNonWinnerNote(candidate?.teamName ?? candidate?.name),
       );
-      const award = awardsAll.find((candidate: any) =>
+      const award = scopedFlatAwards.find((candidate: any) =>
         seasonCandidates.includes(Number(candidate?.season))
         && candidate?.type === 'Champion'
-        && getPbaConferenceKey(candidate) === meta.key,
+        && getPbaConferenceKey(candidate) === meta.key
+        && !isNonWinnerNote(candidate?.name ?? candidate?.team),
       ) ?? null;
       const entryTeamId = (entry as any)?.teamId ?? (entry as any)?.tid;
       const resolvedTeam = entryTeamId != null
@@ -485,14 +579,12 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
         count: teamAny ? awardCounts.countPbaConferenceChampions(teamAny.id ?? teamAny.tid, meta.key) : 0,
       };
     });
-  }, [awardCounts, awardsAll, findPbaTeamByName, getPbaConferenceSeasonCandidates, getPbaDisplayTeam, pbaIsolated, season, state.leagueStats?.pbaConferenceChampions, state.nonNBATeams, state.teams]);
+  }, [awardCounts, findPbaTeamByName, getPbaConferenceSeasonCandidates, getPbaDisplayTeam, pbaIsolated, scopedFlatAwards, season, state.leagueStats?.pbaConferenceChampions, state.nonNBATeams, state.teams]);
 
   const pbaMythicalTeams = useMemo(() => {
     if (!pbaIsolated) return [];
-    const pbaTeams = buildFlatHistoryTeams('PBA Mythical', ['First Team', 'Second Team'], flatAwards, allLookupTeams, state.players);
-    if (pbaTeams.length > 0) return pbaTeams;
-    return buildFlatHistoryTeams('All-NBA', ['First Team', 'Second Team', 'Third Team'], flatAwards, allLookupTeams, state.players);
-  }, [allLookupTeams, flatAwards, pbaIsolated, state.players]);
+    return buildFlatHistoryTeams('PBA Mythical', ['First Team', 'Second Team'], scopedFlatAwards, allLookupTeams, state.players);
+  }, [allLookupTeams, pbaIsolated, scopedFlatAwards, state.players]);
 
   const allNBATeams = useMemo(() => {
     if (liveAwardRaces) {
@@ -528,9 +620,9 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
       ? [{
           name: 'Team',
           players: resolveHistoryAwardPlayers(
-            flatAwards.filter((award) => {
+            scopedFlatAwards.filter((award) => {
               const key = normalizePbaKey(award.type);
-              return key === 'pba all defensive team' || key.startsWith('all defensive ');
+              return key === 'pba all defensive team';
             }),
             allLookupTeams,
             state.players,
@@ -548,7 +640,7 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
       state.players,
       allLookupTeams,
     );
-  }, [allLookupTeams, awardCounts, bbgmRecord, bref, flatAwards, hasFlatAllDef, liveAwardRaces, state.players]);
+  }, [allLookupTeams, awardCounts, bbgmRecord, bref, flatAwards, hasFlatAllDef, liveAwardRaces, scopedFlatAwards, state.players]);
 
   const allRookieTeams = useMemo(() => {
     if (liveAwardRaces) {
@@ -561,9 +653,9 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
       ? [{
           name: 'Team',
           players: resolveHistoryAwardPlayers(
-            flatAwards.filter((award) => {
+            scopedFlatAwards.filter((award) => {
               const key = normalizePbaKey(award.type);
-              return key === 'pba all rookie team' || key.startsWith('all rookie ');
+              return key === 'pba all rookie team';
             }),
             allLookupTeams,
             state.players,
@@ -573,7 +665,7 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
         ? [{ name: '1st Team', players: resolveHistoryAwardPlayers(bbgmRecord.allRookie, allLookupTeams, state.players) }]
         : buildFlatHistoryTeams('All-Rookie', ['First Team', 'Second Team'], flatAwards, allLookupTeams, state.players);
     return applyBrefHistoryTeams(teams, bref?.allRookie ?? [], state.players, allLookupTeams);
-  }, [allLookupTeams, bbgmRecord, bref, flatAwards, hasFlatAllRookie, liveAwardRaces, state.players]);
+  }, [allLookupTeams, bbgmRecord, bref, flatAwards, hasFlatAllRookie, liveAwardRaces, scopedFlatAwards, state.players]);
 
   const hasPbaTeamAwards = pbaIsolated && (pbaMythicalTeams.length > 0 || allDefTeams.length > 0 || allRookieTeams.length > 0);
 
@@ -634,30 +726,19 @@ export const LeagueHistoryDetailView: React.FC<Props> = ({ season, onBack }) => 
             <AwardWinner label="DPOY" award={awards.dpoy} isCurrent={isCurrent} winCount={awardCounts.countForPlayer(awards.dpoy?.name, pbaIsolated ? pbaAwardAliases.dpoy : 'DPOY', 'dpoy')} onClick={() => handlePlayerClick(getAwardEntry('dpoy', pbaIsolated ? pbaAwardAliases.dpoy : 'DPOY'))} />
             <COYWinner award={awards.coy} isCurrent={isCurrent} winCount={awardCounts.countForPlayer(awards.coy?.name, pbaIsolated ? pbaAwardAliases.coy : 'COY', 'coy')} />
             {pbaIsolated && (
-              <AwardWinner label="SC" award={awards.scoringChampion} isCurrent={isCurrent} winCount={awardCounts.countForPlayer(awards.scoringChampion?.name, pbaAwardAliases.scoringChampion, 'mvp')} onClick={() => handlePlayerClick(getPbaConferenceAward(pbaAwardAliases.scoringChampion, 'philippine'))} />
+              <AwardWinner label="SC" award={awards.scoringChampion} isCurrent={isCurrent} winCount={awardCounts.countForPlayer(awards.scoringChampion?.name, pbaAwardAliases.scoringChampion, 'mvp')} onClick={() => handlePlayerClick(getAwardEntry('mvp', pbaAwardAliases.scoringChampion))} />
             )}
             <AwardWinner label="SMOY" award={awards.smoy} isCurrent={isCurrent} winCount={awardCounts.countForPlayer(awards.smoy?.name, pbaIsolated ? pbaAwardAliases.smoy : 'SMOY', 'smoy')} onClick={() => handlePlayerClick(getAwardEntry('smoy', pbaIsolated ? pbaAwardAliases.smoy : 'SMOY'))} />
             {pbaIsolated && (
               <AwardWinner label="MQM" award={awards.mqm} isCurrent={isCurrent} winCount={awardCounts.countForPlayer(awards.mqm?.name, pbaAwardAliases.mqm, 'smoy')} onClick={() => handlePlayerClick(getAwardEntry('smoy', pbaAwardAliases.mqm))} />
             )}
             {pbaIsolated && (
-              <AwardWinner label="Best Import" award={awards.bestImport} isCurrent={isCurrent} winCount={awardCounts.countForPlayer(awards.bestImport?.name, pbaAwardAliases.bestImport, 'mvp')} onClick={() => handlePlayerClick(getPbaConferenceAward(pbaAwardAliases.bestImport, 'philippine'))} />
+              <AwardWinner label="Best Import" award={awards.bestImport} isCurrent={isCurrent} winCount={awardCounts.countForPlayer(awards.bestImport?.name, pbaAwardAliases.bestImport, 'mvp')} onClick={() => handlePlayerClick(getPbaBestImportAward())} />
             )}
             <AwardWinner label="MIP" award={awards.mip} isCurrent={isCurrent} winCount={awardCounts.countForPlayer(awards.mip?.name, pbaIsolated ? pbaAwardAliases.mip : 'MIP', 'mip')} onClick={() => handlePlayerClick(getAwardEntry('mip', pbaIsolated ? pbaAwardAliases.mip : 'MIP'))} />
             <AwardWinner label="ROY" award={awards.roy} isCurrent={isCurrent} winCount={awardCounts.countForPlayer(awards.roy?.name, pbaIsolated ? pbaAwardAliases.roy : 'ROY', 'roy')} onClick={() => handlePlayerClick(getAwardEntry('roy', pbaIsolated ? pbaAwardAliases.roy : 'ROY'))} />
           </div>
         </div>
-
-        {pbaIsolated && pbaMythicalTeams.length > 0 ? (
-          <AllTeamSection
-            label="PBA Mythical Team"
-            icon={<Star size={12} className="text-amber-400 fill-amber-400" />}
-            iconColor="text-amber-400"
-            teams={pbaMythicalTeams}
-            onPlayerClick={(player) => player.playerRef ? setViewingPlayer(player.playerRef as NBAPlayer) : setNotFoundName(player.name ?? 'Player')}
-            showCount
-          />
-        ) : null}
 
         {!pbaIsolated ? (
           <div>

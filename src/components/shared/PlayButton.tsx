@@ -23,7 +23,7 @@ import {
   OFFSEASON_ROW_LABELS,
   OFFSEASON_ROW_TAB,
 } from '../../services/offseason/offseasonChecklistState';
-import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaActiveConferenceMode, isPbaIsolatedMode, isPbaOffseasonMode } from '../../utils/uiMode';
 import { userQualifiesForContinental } from '../../utils/euroLeagueDefaults';
 import { isInTransferWindow } from '../../utils/transferWindow';
 import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
@@ -95,8 +95,8 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
       const nextPhase = upcomingGames[0]?.competitionPhase;
       if (nextPhase === 'play-in' || nextPhase === 'qf' || nextPhase === 'sf' || nextPhase === 'final') return `${currentSpec.shortName} playoffs`;
       if (nextPhase === 'group' || nextPhase?.startsWith('r')) return `${currentSpec.shortName} regular season`;
-      if (competitionRegularComplete(state, currentSpec.id) && !state.offseasonChecklist) return `${currentSpec.shortName} playoffs`;
-      if (state.offseasonChecklist) return `${currentSpec.shortName} offseason`;
+      if (competitionRegularComplete(state, currentSpec.id) && !isPbaOffseasonMode(state)) return `${currentSpec.shortName} playoffs`;
+      if (isPbaOffseasonMode(state)) return `${currentSpec.shortName} offseason`;
       return `${currentSpec.shortName} season`;
     }
     return isEuro ? getEuroPhaseLabel(state, seasonYear) : getPhaseLabel(phase, seasonYear, calYear);
@@ -170,6 +170,17 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
     );
   }, [dispatchAction, guardedSim]);
 
+  const simPbaThroughConferenceTransition = useCallback((date: string) => {
+    setOpen(false);
+    guardedSim(
+      () => dispatchAction({
+        type: 'SIMULATE_TO_DATE',
+        payload: { targetDate: date, autoResolveOffseasonTasks: true },
+      } as any),
+      date,
+    );
+  }, [dispatchAction, guardedSim]);
+
   const simDraftToEnd = useCallback(() => {
     setOpen(false);
     const targetDate = addDays(norm, 1);
@@ -211,11 +222,12 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
         .sort((a: any, b: any) => normalizeDate(a.date).localeCompare(normalizeDate(b.date)));
       const playoffPhases = ['play-in', 'qf', 'sf', 'final'];
       const playoffGames = conferenceGames.filter((game: any) => playoffPhases.includes(String(game.competitionPhase)));
-      const nextGame = conferenceGames[0];
+      const pbaPhase = String((state.leagueStats as any)?.pbaConferencePhase ?? '');
+      const nextGame = pbaPhase === 'playoffs' && playoffGames.length > 0 ? playoffGames[0] : conferenceGames[0];
       const nextDate = nextGame ? normalizeDate(nextGame.date) : null;
       const nextPhase = nextGame?.competitionPhase;
       const samePhaseGames = nextPhase
-        ? conferenceGames.filter((game: any) => game.competitionPhase === nextPhase)
+        ? (playoffPhases.includes(String(nextPhase)) ? playoffGames : conferenceGames).filter((game: any) => game.competitionPhase === nextPhase)
         : [];
       const phaseEnd = samePhaseGames.length > 0 ? normalizeDate(samePhaseGames[samePhaseGames.length - 1].date) : null;
       const conferenceEnd = conferenceGames.length > 0 ? normalizeDate(conferenceGames[conferenceGames.length - 1].date) : null;
@@ -232,6 +244,23 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
       const playoffEnd = findLastCompetitionDate(state, currentSpec.id, playoffPhases)
         ?? (regularComplete ? competitionRoundDate(state, seasonYear, currentSpec.id, ['final', 'final-four'], 'end') : null);
       const hasNextPlayoff = !!nextPhase && playoffPhases.includes(String(nextPhase));
+      const playoffsActive = pbaPhase === 'playoffs' || hasNextPlayoff || (!!firstPlayoffDate && regularComplete && norm >= firstPlayoffDate);
+      if (playoffsActive) {
+        const playoffOpts: PlayOption[] = [];
+        if (nextDate) {
+          playoffOpts.push({ label: 'Sim Next Game', action: () => simThrough(clampToToday(nextDate, norm)) });
+        }
+        if (phaseEnd) {
+          playoffOpts.push({ label: 'Sim Round', action: () => simThrough(clampToToday(phaseEnd, norm)) });
+        } else if (playoffRoundEnd) {
+          playoffOpts.push({ label: 'Sim Round', action: () => simThrough(clampToToday(playoffRoundEnd, norm)) });
+        }
+        if (playoffEnd) {
+          playoffOpts.push({ label: 'Sim to Champion', action: () => simThrough(clampToToday(playoffEnd, norm)) });
+        }
+        playoffOpts.push({ label: 'One day', action: simDay });
+        return playoffOpts;
+      }
       const opts: PlayOption[] = [
         { label: 'One day', action: simDay },
         { label: 'One week', action: () => simToDate(addDays(norm, 7)) },
@@ -251,14 +280,16 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
       if (regularComplete && playoffEnd && playoffEnd >= norm) {
         opts.push({
           label: currentConference === 'governors' ? 'Sim to next season' : 'Sim to next conference',
-          action: () => simThrough(playoffEnd),
+          action: () => currentConference === 'governors'
+            ? simThrough(playoffEnd)
+            : simPbaThroughConferenceTransition(playoffEnd),
         });
       } else if (!regularComplete && regularSeasonEnd && regularSeasonEnd >= norm) {
         opts.push({ label: `To ${currentSpec.shortName} playoffs`, action: () => simThrough(regularSeasonEnd) });
       } else if (conferenceEnd && conferenceEnd >= norm) {
         opts.push({ label: `Through ${currentSpec.shortName} playoffs`, action: () => simThrough(conferenceEnd) });
       }
-      if (state.offseasonChecklist) {
+      if (state.offseasonChecklist && !isPbaActiveConferenceMode(state)) {
         const visibleRows = getVisibleOffseasonRows(
           state.leagueStats as any,
           null,
@@ -294,12 +325,16 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
             rowStatus === 'in-progress' &&
             (nextRow === 'pbaLocalFreeAgency' || nextRow === 'pbaImportSearch');
           if (nextRow === 'pbaConferenceAwards') {
-            const targetRow = currentConference === 'governors' ? 'pbaDraft' : 'pbaImportSearch';
             opts.push({
               label: currentConference === 'governors' ? 'Sim to next season' : 'Sim to next conference',
               action: () => {
                 dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: nextRow } } as any);
-                openTask(targetRow);
+                const remainingRows = visibleRows.filter(row => row !== nextRow);
+                openTask(firstUnfinishedRow(
+                  { ...(state.offseasonChecklist as any), [nextRow]: 'done' },
+                  undefined,
+                  remainingRows,
+                ) ?? (currentConference === 'governors' ? 'pbaDraft' : 'pbaImportSearch'));
               },
             });
           } else if (nextRow === 'pbaDraft') {

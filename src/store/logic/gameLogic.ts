@@ -32,7 +32,7 @@ import { applyTradeToPlayer } from '../../utils/playerBirdRights';
 import { applyEuroTycoonDailyOps } from '../../services/tycoon/euroTycoonOps';
 import { inferEuroStaffLeagueId, ensureStaffPoolDepth } from '../../services/euro/staffPool';
 import { processNBAStaffHiringVacancies } from '../../services/staff/nbaRealStaffSeed';
-import { isPbaIsolatedMode } from '../../utils/uiMode';
+import { isPbaActiveConferenceMode, isPbaIsolatedMode } from '../../utils/uiMode';
 import { applyPbaConferenceLifecycle } from '../../services/pba/conferenceTransition';
 
 export { handleStartGame, handleAnnounceChange };
@@ -515,7 +515,26 @@ export const processTurn = async (
         finalScheduledEvents.push(...result.newScheduledEvents);
     }
 
-    const boxScoresWithDate = allSimResults.map(r => ({ ...r, date: r.date || state.date, season: state.leagueStats.year }));
+    const scheduleByGid = new Map((stateWithSim.schedule ?? state.schedule ?? []).map((game: any) => [game.gid, game]));
+    const boxScoresWithDate = allSimResults.map(r => {
+        const schedGame = scheduleByGid.get(r.gameId) as any;
+        return {
+            ...r,
+            date: r.date || schedGame?.date || state.date,
+            season: r.season ?? schedGame?.season ?? state.leagueStats.year,
+            isPreseason: r.isPreseason ?? schedGame?.isPreseason,
+            isPlayoff: r.isPlayoff ?? schedGame?.isPlayoff,
+            isPlayIn: r.isPlayIn ?? schedGame?.isPlayIn,
+            isNBACup: r.isNBACup ?? schedGame?.isNBACup,
+            nbaCupRound: r.nbaCupRound ?? schedGame?.nbaCupRound,
+            nbaCupGroupId: r.nbaCupGroupId ?? schedGame?.nbaCupGroupId,
+            excludeFromRecord: r.excludeFromRecord ?? schedGame?.excludeFromRecord,
+            competitionId: r.competitionId ?? schedGame?.competitionId,
+            competitionPhase: r.competitionPhase ?? schedGame?.competitionPhase,
+        };
+    });
+    const boxScoreKey = (box: { season?: number; gameId: number }) => `${box.season ?? 0}-${box.gameId}`;
+    const removedBoxScoreKeys = new Set<string>();
     const allowNBASeasonEvents = state.leagueStats?.uiMode !== 'euro_isolated' && !isPbaIsolatedMode(state);
 
     // All-Star Logic
@@ -991,10 +1010,21 @@ export const processTurn = async (
             buildPbaAllStarLeagueStats,
             buildPbaAllStarPatch,
             buildPbaContestPatch,
+            pbaAllStarGameNeedsFullLengthRepair,
+            resetPbaAllStarGameForResim,
+            stripUnsupportedPbaAllStarGames,
         } = await import('../../services/pba/allStar');
         const pbaAllStarLeagueStats = buildPbaAllStarLeagueStats(newLeagueStats);
         newLeagueStats = pbaAllStarLeagueStats;
-        const pbaStateForAllStar = {
+        finalSchedule = stripUnsupportedPbaAllStarGames(
+            {
+                ...state,
+                leagueStats: pbaAllStarLeagueStats,
+                schedule: finalSchedule,
+            } as GameState,
+            finalSchedule,
+        ) as Game[];
+        let pbaStateForAllStar = {
             ...state,
             players: updatedPlayers,
             schedule: finalSchedule,
@@ -1003,6 +1033,26 @@ export const processTurn = async (
             nonNBATeams: (stateWithSim as any).nonNBATeams ?? state.nonNBATeams,
             boxScores: [...(state.boxScores || []), ...boxScoresWithDate],
         } as GameState;
+
+        if (pbaAllStarGameNeedsFullLengthRepair({ ...pbaStateForAllStar, allStar: allStarPatch } as GameState, allStarPatch)) {
+            const repairPatch = resetPbaAllStarGameForResim({ ...pbaStateForAllStar, allStar: allStarPatch } as GameState, allStarPatch);
+            const keptBoxScoreKeys = new Set(repairPatch.boxScores.map(boxScoreKey));
+            for (const box of [...(state.boxScores || []), ...boxScoresWithDate]) {
+                const key = boxScoreKey(box);
+                if (!keptBoxScoreKeys.has(key)) removedBoxScoreKeys.add(key);
+            }
+            const originalBoxScoreKeys = new Set((state.boxScores || []).map(boxScoreKey));
+            boxScoresWithDate.length = 0;
+            boxScoresWithDate.push(...repairPatch.boxScores.filter(box => !originalBoxScoreKeys.has(boxScoreKey(box))));
+            finalSchedule = repairPatch.schedule;
+            allStarPatch = repairPatch.allStar;
+            pbaStateForAllStar = {
+                ...pbaStateForAllStar,
+                schedule: finalSchedule,
+                boxScores: repairPatch.boxScores,
+                allStar: allStarPatch,
+            } as GameState;
+        }
 
         if (endDate >= dates.reservesAnnounced && !allStarPatch?.reservesAnnounced) {
             const pbaPatch = buildPbaAllStarPatch(pbaStateForAllStar, updatedPlayers as any);
@@ -1092,13 +1142,12 @@ export const processTurn = async (
     // Prefer stateWithSim.playoffs — runSimulation may have already generated/advanced
     // the bracket inside its day loop (handles multi-day sims that cross April 13).
     const euroIsolatedMode = state.leagueStats?.uiMode === 'euro_isolated';
-    const pbaIsolatedMode = isPbaIsolatedMode(state);
-    let playoffsPatch: PlayoffBracket | undefined = (euroIsolatedMode || pbaIsolatedMode) ? undefined : (stateWithSim.playoffs ?? state.playoffs);
+    let playoffsPatch: PlayoffBracket | undefined = euroIsolatedMode ? undefined : (stateWithSim.playoffs ?? state.playoffs);
     const currentDateNorm2 = normalizeDate(dateString);
 
     // 1. Generate bracket when regular season ends (around Apr 14)
     const playoffSeasonYear = state.leagueStats?.year ?? new Date().getFullYear();
-    if (!euroIsolatedMode && !pbaIsolatedMode && !playoffsPatch && currentDateNorm2 >= `${playoffSeasonYear}-04-13`) {
+    if (!euroIsolatedMode && !playoffsPatch && currentDateNorm2 >= `${playoffSeasonYear}-04-13`) {
         const numGamesPerRound = state.leagueStats.numGamesPlayoffSeries ?? [7, 7, 7, 7];
         playoffsPatch = PlayoffGenerator.generateBracket(
             stateWithSim.teams,
@@ -1192,10 +1241,13 @@ export const processTurn = async (
         stateWithSim.activeCompetitions ?? state.activeCompetitions ?? [],
         stateWithSim.leagueStats?.year ?? state.leagueStats?.year ?? new Date().getFullYear(),
     );
-    const pbaLifecyclePatch = applyPbaConferenceLifecycle(
-        { ...stateWithSim, schedule: finalSchedule, boxScores: state.boxScores ?? [] } as GameState,
-        boxScoresWithDate,
-    );
+    const shouldRunPbaLifecycle = !isInstantTransactionAction(action) || boxScoresWithDate.length > 0;
+    const pbaLifecyclePatch = shouldRunPbaLifecycle
+        ? applyPbaConferenceLifecycle(
+            { ...stateWithSim, schedule: finalSchedule, players: updatedPlayers, boxScores: state.boxScores ?? [] } as GameState,
+            boxScoresWithDate,
+        )
+        : {};
     if (pbaLifecyclePatch.schedule) {
         finalSchedule = pbaLifecyclePatch.schedule as Game[];
     }
@@ -1240,6 +1292,9 @@ export const processTurn = async (
     }
     if (pbaLifecyclePatch.history) {
         stateWithSim = { ...stateWithSim, history: pbaLifecyclePatch.history as any };
+    }
+    if ((pbaLifecyclePatch as any).historicalAwards) {
+        stateWithSim = { ...stateWithSim, historicalAwards: (pbaLifecyclePatch as any).historicalAwards };
     }
 
     // Remove club debuffs for players who played in today's games
@@ -1408,6 +1463,7 @@ export const processTurn = async (
     // Player fatigue tick runs alongside familiarity — both share the daily-walk loop.
     const isTrainingCampChecklistOpen =
         !!state.offseasonChecklist &&
+        !isPbaActiveConferenceMode(state) &&
         state.offseasonChecklist.trainingCamp !== 'done' &&
         state.offseasonChecklist.trainingCamp !== 'skipped';
     const teamsForFatigueTick = isTrainingCampChecklistOpen
@@ -1476,6 +1532,27 @@ export const processTurn = async (
     const actionHistoryEntry = {
         text: ((action as any)?.payload?.outcomeText || result.outcomeText || ''),
         date: dateString,
+        tid: (() => {
+            switch (action.type) {
+                case 'SIGN_FREE_AGENT':
+                case 'WAIVE_PLAYER':
+                case 'EXECUTIVE_TRADE':
+                case 'FORCE_TRADE':
+                    return Number((action as any)?.payload?.teamId);
+                default:
+                    return undefined;
+            }
+        })(),
+        league: (() => {
+            const tid = Number((action as any)?.payload?.teamId);
+            if (!Number.isFinite(tid)) return undefined;
+            const allTeams = [...(stateWithSim.teams ?? []), ...(((stateWithSim as any).nonNBATeams ?? []) as any[])];
+            return allTeams.find((team: any) => Number(team?.id ?? team?.tid) === tid)?.league;
+        })(),
+        playerIds: (() => {
+            const playerId = (action as any)?.payload?.playerId;
+            return playerId ? [playerId] : undefined;
+        })(),
         commissioner: state.gameMode !== 'gm',
         type: (() => {
             switch (action.type) {
@@ -1553,6 +1630,7 @@ export const processTurn = async (
         date: dateString,
         stats: newStats,
         leagueStats: newLeagueStats,
+        historicalAwards: (result as any).historicalAwards ?? stateWithSim.historicalAwards ?? state.historicalAwards,
         historicalStats: [...state.historicalStats, historicalPoint].slice(-365),
         inbox: [...uniqueNewEmails, ...updatedInbox],
         chats: updatedChats,
@@ -1566,9 +1644,13 @@ export const processTurn = async (
         christmasGames: result.christmasGames || state.christmasGames,
         globalGames: result.globalGames || state.globalGames,
         boxScores: (() => {
-            const existingKeys = new Set((state.boxScores || []).map(b => `${b.season ?? 0}-${b.gameId}`));
-            const deduped = boxScoresWithDate.filter(b => !existingKeys.has(`${b.season ?? 0}-${b.gameId}`));
-            return [...(state.boxScores || []), ...deduped];
+            const existingBoxScores = (state.boxScores || []).filter(b => !removedBoxScoreKeys.has(boxScoreKey(b)));
+            const existingKeys = new Set(existingBoxScores.map(boxScoreKey));
+            const deduped = boxScoresWithDate.filter(b => {
+                const key = boxScoreKey(b);
+                return !removedBoxScoreKeys.has(key) && !existingKeys.has(key);
+            });
+            return [...existingBoxScores, ...deduped];
         })(),
         history: shouldAppendActionHistory ? [...historyBase, actionHistoryEntry] : historyBase,
         isProcessing: false,

@@ -27,7 +27,7 @@ export const normalizeReservedJerseys = (state: GameState, teamIds: Iterable<num
 };
 
 export function applyPlayoffLogic(stateWithSim: GameState, dayResults: any[], numGamesPerRound: number[]): GameState {
-    if (stateWithSim.leagueStats?.uiMode === 'euro_isolated' || stateWithSim.leagueStats?.uiMode === 'pba_isolated') return stateWithSim;
+    if (stateWithSim.leagueStats?.uiMode === 'euro_isolated') return stateWithSim;
     let playoffs = stateWithSim.playoffs;
     let schedule = stateWithSim.schedule;
     const dateNorm = normalizeDate(stateWithSim.date);

@@ -9,6 +9,10 @@ export function letterColor(score: number): string {
 }
 
 export function tierColor(label: string): string {
+  if (/franchise|all-star/i.test(label)) return '#3b82f6';
+  if (/starter|rotation/i.test(label)) return '#22c55e';
+  if (/bench contributor|reserve/i.test(label)) return '#eab308';
+  if (/developmental|practice/i.test(label)) return '#f97316';
   if (/superstar|all-star/i.test(label)) return '#3b82f6';
   if (/quality starter|borderline/i.test(label)) return '#22c55e';
   if (/solid starter|bench rotation/i.test(label)) return '#eab308';

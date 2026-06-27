@@ -1,8 +1,8 @@
 import { type GameState, type NBAPlayer } from '../../../types';
 import { runRetirementChecks, runFarewellTourChecks, type RetireeRecord, type FarewellRecord, type MortalityRecord } from '../../playerDevelopment/retirementChecker';
-import { runHOFChecks, type HOFInduction } from '../../playerDevelopment/hofChecker';
+import { runHOFChecks, runPbaHOFChecks, type HOFInduction } from '../../playerDevelopment/hofChecker';
 import { runJerseyRetirementChecks, type JerseyRetirementRecord } from '../../playerDevelopment/jerseyRetirementChecker';
-import { computeContractOffer, getContractLimits, isSupermaxAwardQualified } from '../../../utils/salaryUtils';
+import { computeContractOffer, formatContractTotalUSD, getContractLimits, isSupermaxAwardQualified } from '../../../utils/salaryUtils';
 import { computeMoodScore } from '../../../utils/mood/moodScore';
 import type { MoodTrait } from '../../../utils/mood/moodTypes';
 import { SettingsManager } from '../../SettingsManager';
@@ -15,6 +15,7 @@ import { resolveSeasonRolloverOptionDecisions, type PendingOptionToast } from '.
 import { buildRetireeStaffCandidate } from '../../../utils/staffprobability';
 import { buildPbaCollegePoolFromSource } from '../../pba/collegeSources';
 import { tunePbaDraftProspects } from '../../pba/draftRules';
+import { withNbaBackgroundEconomy } from '../../freeAgency/aiFreeAgencyHelpers';
 type HistoryEntry = NonNullable<GameState['history']>[number];
 type StaffFreeAgent = NonNullable<GameState['staffFreeAgents']>[number];
 interface OptionExtension {
@@ -68,6 +69,8 @@ export function runSeasonRolloverPlayerPass({
   optionDateStr,
   computeBirdRightsForRollover,
 }: SeasonRolloverPlayerPassArgs): SeasonRolloverPlayerPassResult {
+  const economyState = withNbaBackgroundEconomy(state);
+  const economyLeagueStats = economyState.leagueStats;
   const {
     playerOptOutIds,
     playerOptInIds,
@@ -82,6 +85,7 @@ export function runSeasonRolloverPlayerPass({
     currentYear,
     nextYear,
     optionDateStr,
+    leagueStats: economyLeagueStats,
   });
   const optionExtensions = new Map<string, OptionExtension>();
   const optionExtHistory: HistoryEntry[] = [];
@@ -92,12 +96,12 @@ export function runSeasonRolloverPlayerPass({
     const team = state.teams.find(t => t.id === p.tid);
     if (!team) continue;
     const playerForExt = { ...p, hasBirdRights: true } as NBAPlayer;
-    const limits = getContractLimits(playerForExt, state.leagueStats as any);
+    const limits = getContractLimits(playerForExt, economyLeagueStats as any);
     if (!limits.isRookieExtEligible && !limits.isSupermaxEligible) continue;
     const traits: MoodTrait[] = (p as any).moodTraits ?? [];
     const teamPlayers = state.players.filter(player => player.tid === p.tid);
     const { score: moodScore } = computeMoodScore(p, team, state.date, false, false, false, teamPlayers, currentYear);
-    const offer = computeContractOffer(playerForExt, state.leagueStats as any, traits, moodScore);
+    const offer = computeContractOffer(playerForExt, economyLeagueStats as any, traits, moodScore);
     const recentAwards: Array<{ season: number; type: string }> = (p as any).awards ?? [];
     const hasFoundationalAward = recentAwards.some(award => award.season >= currentYear - 2 && /mvp|all.nba/i.test(award.type));
     const wins = (team as any).wins ?? 0;
@@ -138,10 +142,10 @@ export function runSeasonRolloverPlayerPass({
       contractYears: extContractYears,
       amountThousands: Math.round(annualUSD / 1_000),
     });
-    const totalM = Math.round((annualUSD / 1_000_000) * extYears);
+    const totalValue = formatContractTotalUSD(annualUSD, extYears);
     const optTag = offer.hasPlayerOption ? ' (player option)' : '';
     optionExtHistory.push({
-      text: `${p.name} has signed a rookie extension with the ${team.name}: $${totalM}M/${extYears}yr${optTag} (${label})`,
+      text: `${p.name} has signed a rookie extension with the ${team.name}: ${totalValue}/${extYears}yr${optTag} (${label})`,
       date: `Jun 30, ${currentYear}`,
       type: 'Signing',
       playerIds: [p.internalId],
@@ -239,7 +243,26 @@ export function runSeasonRolloverPlayerPass({
         } as any;
       }
       const contractExpired = (p.contract?.exp ?? 0) <= currentYear;
+      const isPbaImportDeal = externalLeagueStatus === 'PBA' && ((p as any).isImport || (p as any).importConference || (p as any).pbaImportContract);
       if (contractExpired) {
+        if (isPbaImportDeal) {
+          return {
+            ...p,
+            age: bumpedAge,
+            tid: -1,
+            status: 'Free Agent' as const,
+            yearsWithTeam: 0,
+            isImport: undefined,
+            importConference: undefined,
+            importTeamId: undefined,
+            pbaImportContract: {
+              ...((p as any).pbaImportContract ?? {}),
+              status: 'released',
+              releaseDate: state.date,
+            },
+            contract: undefined,
+          } as any;
+        }
         const ovrForFlip = p.overallRating ?? 0;
         const flipThresholdByLeague: Record<string, number> = {
           Euroleague: 44,
@@ -284,6 +307,23 @@ export function runSeasonRolloverPlayerPass({
     }
     const contractExp = p.contract.exp ?? 0;
     const newAge = typeof p.age === 'number' ? p.age + 1 : p.age;
+    if ((state.leagueStats as any)?.uiMode === 'pba_isolated' && p.tid >= 0 && p.tid < 100) {
+      const nextAmount = syncedContractAmount(p);
+      const yearsWithTeam = ((p as any).yearsWithTeam ?? 0) + 1;
+      return {
+        ...p,
+        age: newAge,
+        yearsWithTeam,
+        midSeasonExtensionDeclined: undefined,
+        contract: {
+          ...p.contract,
+          exp: Math.max(p.contract.exp ?? nextYear, nextYear),
+          hasPlayerOption: false,
+          hasTeamOption: false,
+          ...(nextAmount ? { amount: nextAmount } : {}),
+        },
+      } as any;
+    }
     if (playerOptInIds.has(p.internalId)) {
       const nextAmount = syncedContractAmount(p) ?? Math.round(optionSalaryUSD(p) / 1_000);
       const yearsWithTeam = ((p as any).yearsWithTeam ?? 0) + 1;
@@ -440,7 +480,7 @@ export function runSeasonRolloverPlayerPass({
     players: playersAfterExtRetire,
     retirees: extRetirees,
     historyEntries: extRetireHistory,
-  } = retireExternalLeaguePlayers(playersAfterExtFA, currentYear, state.date ?? `Jun 30, ${currentYear}`);
+  } = retireExternalLeaguePlayers(playersAfterExtFA, currentYear, state.date ?? `Jun 30, ${currentYear}`, state);
   const protectedFAMarketPlayerIds = getActiveUserBidMarketPlayerIds(state);
   const { players: playersAfterRetire, newRetirees } = runRetirementChecks(
     playersAfterExtRetire,
@@ -469,7 +509,12 @@ export function runSeasonRolloverPlayerPass({
     : playersAfterRetire;
   const { players: playersWithFarewells, newFarewells } = runFarewellTourChecks(playersAfterStaffRolls, currentYear);
   const hofThreshold = SettingsManager.getSettings().hofWSThreshold ?? 50;
-  const { players: playersAfterHOF, newInductees } = runHOFChecks(playersWithFarewells, currentYear, hofThreshold);
+  const nbaHofResult = runHOFChecks(playersWithFarewells, currentYear, hofThreshold);
+  const pbaHofResult = state.leagueStats?.uiMode === 'pba_isolated'
+    ? runPbaHOFChecks(nbaHofResult.players, currentYear)
+    : { players: nbaHofResult.players, newInductees: [] as HOFInduction[] };
+  const playersAfterHOF = pbaHofResult.players;
+  const newInductees = [...nbaHofResult.newInductees, ...pbaHofResult.newInductees];
   const { teams: teamsAfterJerseyRetirements, newRetirements: newJerseyRetirements } =
     runJerseyRetirementChecks(playersAfterHOF, state.teams, currentYear, { leagueStartYear });
   const deaths: MortalityRecord[] = [];

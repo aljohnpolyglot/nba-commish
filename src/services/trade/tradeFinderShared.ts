@@ -25,6 +25,20 @@ export function isTradeExcludedStatus(status: string | undefined, allowPbaRoster
   return EXTERNAL.has(status ?? '');
 }
 
+export function isPbaConferenceImport(player: NBAPlayer): boolean {
+  const tid = Number(player.tid);
+  if (!Number.isFinite(tid) || tid < 2000 || tid >= 3000) return false;
+  const meta = (player as any).pbaImportContract;
+  return !!(player as any).isImport
+    || !!(player as any).importConference
+    || (meta?.league === 'PBA' && meta?.status !== 'released');
+}
+
+export function isTradeExcludedPlayer(player: NBAPlayer, allowPbaRoster = false): boolean {
+  if (allowPbaRoster && isPbaConferenceImport(player)) return true;
+  return isTradeExcludedStatus(player.status, allowPbaRoster);
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface TradeOfferItem {

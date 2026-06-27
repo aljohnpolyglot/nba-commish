@@ -74,6 +74,15 @@ function getScopedRegularSeasonStats(player: NBAPlayer, teamsById: Map<number, N
     return !s.playoffs && (s.gp ?? 0) > 0 && isScopedTeamTid(tid, teamsById, uiMode);
   });
 }
+function getPlayerYearsPro(player: NBAPlayer, regs: any[], classYear: number): number {
+  const statYears = new Set(regs.map(s => Number(s.season)).filter(Number.isFinite)).size;
+  const rawDraftYear = (player as any).draft?.year ?? (player as any).draftYear ?? (player as any).rookieYear;
+  const draftYear = Number(rawDraftYear);
+  const draftYears = Number.isFinite(draftYear) && draftYear > 1900 && draftYear <= classYear
+    ? Math.max(1, classYear - draftYear)
+    : 0;
+  return Math.max(1, draftYears, statYears);
+}
 function rankedTeamLogos(regs: any[], teamsById: Map<number, NBATeam>): TeamLogo[] {
   const byTeam = new Map<number, {
     tid: number;
@@ -88,7 +97,7 @@ function rankedTeamLogos(regs: any[], teamsById: Map<number, NBATeam>): TeamLogo
 
   for (const s of regs) {
     const tid = Number(s.tid);
-    if (tid < 0 || tid >= 100) continue;
+    if (!teamsById.has(tid)) continue;
     const season = Number(s.season) || 9999;
     const current = byTeam.get(tid) ?? {
       tid,
@@ -219,7 +228,7 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
 
     return list.map(p => {
       const regs = getScopedRegularSeasonStats(p, teamsById, uiMode);
-      const yearsPro = new Set(regs.map(s => s.season)).size;
+      const yearsPro = getPlayerYearsPro(p, regs, classYear);
       const age = computeAge(p, classYear);
       const teamLogos = rankedTeamLogos(regs, teamsById);
 
@@ -283,7 +292,7 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
         const teamLogos = rankedTeamLogos(regs, teamsById);
         return {
           player: p,
-          yearsPro: new Set(regs.map(s => s.season)).size,
+          yearsPro: getPlayerYearsPro(p, regs, classYear),
           age: computeAge(p, classYear),
           teamLogos,
           allStars: countAward(p, 'All-Star'),

@@ -9,6 +9,11 @@ interface AllStarOverviewProps {
   onWatchDunkContest?: () => void;
   year: number;
   leagueStats?: any;
+  currentDate?: Date;
+  dates?: {
+    saturday: Date;
+    allStarGame: Date;
+  };
 }
 
 const collapseRepeatedLocation = (label?: string) => {
@@ -21,8 +26,10 @@ const collapseRepeatedLocation = (label?: string) => {
   return parts.join(' ');
 };
 
-export const AllStarOverview: React.FC<AllStarOverviewProps> = ({ phase, allStar, onNavigate, onWatchDunkContest, year, leagueStats }) => {
+export const AllStarOverview: React.FC<AllStarOverviewProps> = ({ phase, allStar, onNavigate, onWatchDunkContest, year, leagueStats, currentDate, dates }) => {
   const isPba = leagueStats?.uiMode === 'pba_isolated';
+  const pastSaturday = !!(currentDate && dates && currentDate >= dates.saturday);
+  const pastSunday = !!(currentDate && dates && currentDate >= dates.allStarGame);
   const upcomingSchedule = isPba
     ? [
         { date: 'All-Star window', label: 'Selections announced' },
@@ -86,7 +93,7 @@ export const AllStarOverview: React.FC<AllStarOverviewProps> = ({ phase, allStar
       id: 'roster' as AllStarTab,
       title: 'All-Star Roster',
       sub: allStar?.reservesAnnounced 
-        ? `${allStar.roster.length} players selected`
+        ? `${(allStar.roster ?? []).length} players selected`
         : allStar?.startersAnnounced 
           ? 'Reserves pending'
           : 'Not yet announced',
@@ -108,14 +115,14 @@ export const AllStarOverview: React.FC<AllStarOverviewProps> = ({ phase, allStar
       id: 'dunk' as AllStarTab,
       title: 'Dunk Contest',
       sub: isPba ? 'All-Star Saturday' : 'Saturday, Feb 14',
-      status: allStar?.dunkContest ? 'done' : 'soon',
+      status: allStar?.dunkContest ? 'done' : ((allStar?.dunkContestAnnounced || (isPba && pastSaturday)) ? 'partial' : 'soon'),
       icon: Zap,
     },
     {
       id: 'three-point' as AllStarTab,
       title: '3-Point Contest',
       sub: isPba ? 'All-Star Saturday' : 'Saturday, Feb 14',
-      status: allStar?.threePointContest ? 'done' : 'soon',
+      status: allStar?.threePointContest ? 'done' : ((allStar?.threePointAnnounced || (isPba && pastSaturday)) ? 'partial' : 'soon'),
       icon: Target,
     },
     ...(!isPba && leagueStats?.allStarShootingStars !== false ? [{
@@ -129,14 +136,14 @@ export const AllStarOverview: React.FC<AllStarOverviewProps> = ({ phase, allStar
       id: 'skills' as AllStarTab,
       title: 'Skills Challenge',
       sub: isPba ? 'All-Star Saturday' : 'Saturday, Feb 14',
-      status: allStar?.skillsChallenge ? 'done' : allStar?.skillsChallengeAnnounced ? 'partial' : 'soon',
+      status: allStar?.skillsChallenge ? 'done' : ((allStar?.skillsChallengeAnnounced || (isPba && pastSaturday)) ? 'partial' : 'soon'),
       icon: Target,
     }] : []),
     {
       id: 'roster' as AllStarTab,
       title: isPba ? 'PBA All-Star Game' : 'All-Star Game',
       sub: isPba ? 'Main event' : 'Sunday, Feb 15 · LA',
-      status: allStar?.allStarGameId ? 'done' : 'soon',
+      status: allStar?.allStarGameId ? 'done' : ((allStar?.bracket || (isPba && pastSunday)) ? 'partial' : 'soon'),
       icon: Trophy,
     },
   ];
@@ -186,22 +193,22 @@ export const AllStarOverview: React.FC<AllStarOverviewProps> = ({ phase, allStar
           {/* Show winner if complete */}
           {ev.id === 'dunk' && allStar?.dunkContest && (
             <div className="mt-2 text-xs font-bold text-amber-400">
-              Winner: {allStar.dunkContest.winnerName}
+              Winner: {allStar.dunkContest?.winnerName ?? 'TBA'}
             </div>
           )}
           {ev.id === 'three-point' && allStar?.threePointContest && (
             <div className="mt-2 text-xs font-bold text-amber-400">
-              Winner: {allStar.threePointContest.winnerName}
+              Winner: {allStar.threePointContest?.winnerName ?? 'TBA'}
             </div>
           )}
           {ev.id === 'shooting-stars' && allStar?.shootingStars && (
             <div className="mt-2 text-xs font-bold text-amber-400">
-              Winner: {collapseRepeatedLocation(allStar.shootingStars.winnerLabel)}
+              Winner: {collapseRepeatedLocation(allStar.shootingStars?.winnerLabel)}
             </div>
           )}
           {ev.id === 'skills' && allStar?.skillsChallenge && (
             <div className="mt-2 text-xs font-bold text-amber-400">
-              Winner: {allStar.skillsChallenge.winnerName}
+              Winner: {allStar.skillsChallenge?.winnerName ?? 'TBA'}
             </div>
           )}
         </button>

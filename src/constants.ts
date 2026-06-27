@@ -492,7 +492,11 @@ export const EXTERNAL_CURRENCY: Record<string, { symbol: string; code: string; r
 /** Format salary in local currency for an external league */
 export function formatExternalSalary(usd: number, league: string): string {
   const cur = EXTERNAL_CURRENCY[league];
-  if (!cur || cur.rate === 1) return `$${(usd / 1_000_000).toFixed(1)}M`;
+  if (!cur || cur.rate === 1) {
+    if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(1)}M`;
+    if (usd >= 1_000) return `$${(usd / 1_000).toFixed(0)}K`;
+    return `$${Math.round(usd)}`;
+  }
   const local = usd * cur.rate;
   if (local >= 1_000_000_000) return `${cur.symbol}${(local / 1_000_000_000).toFixed(1)}B`;
   if (local >= 1_000_000) return `${cur.symbol}${(local / 1_000_000).toFixed(1)}M`;
@@ -583,6 +587,8 @@ export const PBA_ISOLATED_DEFAULTS: Partial<import('./types').LeagueStats> = {
   tradesAllowed: true,
   salaryCap: 427_000,
   draftType: 'pba_draft',
+  draftEligibilityRule: 'pre_1970s',
+  minAgeRequirement: 19,
   pbaConference: 'philippine',
   pbaConferencePhase: 'setup',
   pbaLocalEligibilityMode: 'registered_roster',
@@ -595,8 +601,9 @@ export const PBA_ISOLATED_DEFAULTS: Partial<import('./types').LeagueStats> = {
   foulOutLimit: 6,
   overtimeEnabled: true,
   overtimeDuration: 5,
-  maxPlayersPerTeam: 15,
-  maxStandardPlayersPerTeam: 15,
+  maxPlayersPerTeam: 18,
+  maxStandardPlayersPerTeam: 18,
+  maxTrainingCampRoster: 18,
   twoWayContractsEnabled: false,
   maxTwoWayPlayersPerTeam: 0,
   salaryCapEnabled: false,
@@ -620,6 +627,13 @@ export const PBA_ISOLATED_DEFAULTS: Partial<import('./types').LeagueStats> = {
   stepienRuleEnabled: false,
   tradableDraftPickSeasons: 3,
   allStarGameEnabled: true,
+  allStarMirrorLeagueRules: false,
+  allStarGameFormat: 'timed',
+  allStarQuarterLength: 12,
+  allStarNumQuarters: 4,
+  allStarOvertimeDuration: 5,
+  risingStarsEnabled: false,
+  celebrityGameEnabled: false,
   transferMarket: {
     enabled: false,
     summerStart: '',

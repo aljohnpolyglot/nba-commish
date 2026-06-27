@@ -60,6 +60,11 @@ function computeSalaryUSD(league: string, ovr: number, salaryCap: number): numbe
   return Math.round(salaryCap * (scale.minPct + ovrNorm * (scale.maxPct - scale.minPct)));
 }
 
+function isPhilippinesCountry(country: string): boolean {
+  const key = String(country ?? '').toLowerCase();
+  return key.includes('philippines') || key.includes('filipino');
+}
+
 export interface ExternalFAHistoryEntry {
   text: string;
   date: string;
@@ -85,6 +90,7 @@ export function runExternalFreeAgency(
     const status = (p as any).status ?? '';
     if (!EXTERNAL_LEAGUES.has(status)) return p;
     if ((p as any).diedYear || status === 'Retired') return p;
+    if (status === 'PBA' && ((p as any).isImport || (p as any).importConference || (p as any).pbaImportContract)) return p;
 
     const seed = `extfa_${p.internalId}_${currentYear}`;
     const roll = seededRandom(seed);
@@ -131,6 +137,9 @@ export function runExternalFreeAgency(
     if (status === 'WNBA') return p;
     const targetLeague = resolveNationalityLeague(country, seededRandom(seed + '_league'));
     if (!targetLeague || targetLeague === status || !EXTERNAL_LEAGUES.has(targetLeague) || targetLeague === 'WNBA') {
+      return p;
+    }
+    if (targetLeague === 'PBA' && !isPhilippinesCountry(country)) {
       return p;
     }
     const targetTeams = nonNBATeams.filter(t => t.league === targetLeague);

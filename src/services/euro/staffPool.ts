@@ -108,17 +108,24 @@ function resolvePoolPortrait(member: StaffMember & { reputation?: number }, id: 
   return undefined;
 }
 
+function pbaPoolRating(member: StaffMember & { reputation?: number }): number {
+  const rating = Number((member as any).rating ?? member.reputation ?? 52);
+  return Math.max(42, Math.min(64, Math.round(Number.isFinite(rating) ? rating : 52)));
+}
+
 function freeAgentize(member: StaffMember & { reputation?: number }, id: string, leagueId: string): StaffPoolMember {
+  const pbaRating = leagueId === 'pba' ? pbaPoolRating(member) : undefined;
   return {
     ...member,
     id,
     leagueId,
+    ...(pbaRating != null ? { rating: pbaRating, reputation: pbaRating, staffImageId: undefined } : {}),
     formerTeam: member.team ?? (member as any).formerTeam ?? '',
     formerTeamLogoUrl: member.teamLogoUrl ?? (member as any).formerTeamLogoUrl,
     formerRole: member.role ?? member.position ?? member.jobTitle ?? (member as any).formerRole,
     team: '',
     teamLogoUrl: undefined,
-    playerPortraitUrl: resolvePoolPortrait(member, id, leagueId),
+    playerPortraitUrl: resolvePoolPortrait({ ...member, ...(pbaRating != null ? { rating: pbaRating, reputation: pbaRating } : {}) }, id, leagueId),
     isPlaceholder: true,
   };
 }

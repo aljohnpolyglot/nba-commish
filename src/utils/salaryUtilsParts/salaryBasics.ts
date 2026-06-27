@@ -61,7 +61,27 @@ export const formatSalaryShort = (dollars: number): string =>
     ? `$${(dollars / 1_000_000).toFixed(1)}M`
     : `$${(dollars / 1_000).toFixed(0)}K`;
 
+export const formatContractUSD = (dollars: number): string => {
+  const amount = Math.max(0, Math.round(Number.isFinite(dollars) ? dollars : 0));
+  if (amount >= 1_000_000) {
+    const millions = amount / 1_000_000;
+    const display = millions >= 10 ? Math.round(millions).toString() : millions.toFixed(1).replace(/\.0$/, '');
+    return `$${display}M`;
+  }
+  if (amount >= 1_000) return `$${Math.round(amount / 1_000)}K`;
+  return `$${amount}`;
+};
+
+export const formatContractTotalUSD = (annualUSD: number, years = 1): string =>
+  formatContractUSD(Math.max(0, annualUSD) * Math.max(1, years));
+
 const EXTERNAL_LEAGUES = new Set(Object.keys(EXTERNAL_SALARY_SCALE));
+
+function hasActivePbaImportContract(
+  player: Pick<NBAPlayer, 'status' | 'contract'> & { pbaImportContract?: { status?: string } | null; isImport?: boolean },
+): boolean {
+  return !!player.isImport && player.status === 'PBA' && player.pbaImportContract?.status !== 'released';
+}
 
 export function getPlayerDisplayLeague(
   player: Pick<NBAPlayer, 'tid' | 'status'>,
@@ -110,4 +130,18 @@ export function formatPlayerSalaryDisplay(
   if (salaryUSD <= 0) return '—';
   const league = getPlayerDisplayLeague(player, nonNBATeams);
   return league ? formatExternalSalary(salaryUSD, league) : formatSalaryShort(salaryUSD);
+}
+
+export function getPlayerContractExpiryDisplay(
+  player: Pick<NBAPlayer, 'status' | 'contract'> & { pbaImportContract?: { status?: string } | null; isImport?: boolean },
+  currentYear: number,
+): { label: string; sortYear: number; isExpiring: boolean; isConferenceDeal: boolean } {
+  if (hasActivePbaImportContract(player)) {
+    return { label: 'Conf.', sortYear: currentYear, isExpiring: true, isConferenceDeal: true };
+  }
+  const exp = player.contract?.exp;
+  if (typeof exp !== 'number') {
+    return { label: '—', sortYear: 0, isExpiring: false, isConferenceDeal: false };
+  }
+  return { label: String(exp), sortYear: exp, isExpiring: exp <= currentYear, isConferenceDeal: false };
 }

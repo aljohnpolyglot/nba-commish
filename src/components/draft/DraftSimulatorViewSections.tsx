@@ -10,8 +10,9 @@ import { CompactAdvisorBoardPanel } from './simulator/CompactAdvisorBoardPanel';
 import { POSITIONS, getOrdinalSuffix } from './simulator/helpers';
 import type { DraftSimulatorProspect } from './DraftSimulatorView.helpers';
 import type { GameState } from '../../types';
-import { fuzzRatingValue } from '../../utils/scoutingFuzz';
+import { fuzzDraftRatingValue } from '../../utils/scoutingFuzz';
 import { getTeamFullName } from '../../utils/teamNames';
+import { resolveAnyTeam } from '../../utils/teamLookup';
 
 interface DraftBoardSectionProps {
   allProspects: DraftSimulatorProspect[];
@@ -94,9 +95,9 @@ const ProspectSummary: React.FC<{
       <span className="w-1 h-1 bg-white/20 rounded-full" />
       <span>{(player as any).born?.year ? leagueYear - (player as any).born.year : ((player as any).age ?? '?')}y</span>
       <span className="w-1 h-1 bg-white/20 rounded-full" />
-      <span className="text-indigo-300">OVR {fuzzRatingValue(player.displayOvr ?? 0, state, player as NBAPlayer, 'draft-view-ovr')}</span>
+      <span className="text-indigo-300">OVR {fuzzDraftRatingValue(player.displayOvr ?? 0, state, player as NBAPlayer, 'ovr')}</span>
       <span className="w-1 h-1 bg-white/20 rounded-full" />
-      <span className="text-emerald-400/70">POT {fuzzRatingValue(player.displayPot ?? 0, state, player as NBAPlayer, 'draft-view-pot')}</span>
+      <span className="text-emerald-400/70">POT {fuzzDraftRatingValue(player.displayPot ?? 0, state, player as NBAPlayer, 'pot')}</span>
       {(player as any).college && (
         <>
           <span className="w-1 h-1 bg-white/20 rounded-full" />
@@ -106,6 +107,13 @@ const ProspectSummary: React.FC<{
     </div>
   </div>
 );
+
+function resolveDraftDisplayTeam(team: DraftOrderTeam | undefined, state: GameState): DraftOrderTeam | undefined {
+  if (!team) return undefined;
+  const tid = Number((team as any).id ?? (team as any).tid);
+  const resolved = Number.isFinite(tid) ? resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []) : null;
+  return resolved ? { ...team, ...resolved, logoUrl: resolved.logoUrl ?? team.logoUrl } : team;
+}
 
 export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
   allProspects,
@@ -138,7 +146,11 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
   onToggleAutoSim,
   onSetSimSpeed,
   state,
-}) => (
+}) => {
+  const displayTeamOnClock = resolveDraftDisplayTeam(teamOnClock, state);
+  const displayNextTeam = resolveDraftDisplayTeam(nextTeam, state);
+
+  return (
   <div className="grid lg:grid-cols-[1fr_320px] gap-6">
     <div className="space-y-5">
       <div className="bg-[#1A1A1A] rounded-sm p-5 border border-[#333]">
@@ -152,13 +164,13 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
             <CheckCircle size={16} className="text-emerald-400 shrink-0" />
             <p className="text-emerald-300 font-black text-sm uppercase tracking-tight">Draft Complete</p>
           </div>
-        ) : teamOnClock ? (
+        ) : displayTeamOnClock ? (
           <div className={`flex items-center gap-4 ${isUserOnClock ? 'bg-amber-500/10 border border-amber-500/30 rounded-md p-3 -m-1' : ''}`}>
-            {teamOnClock.logoUrl ? (
-              <img src={teamOnClock.logoUrl} alt={teamOnClock.name} className="w-14 h-14 object-contain" referrerPolicy="no-referrer" />
+            {displayTeamOnClock.logoUrl ? (
+              <img src={displayTeamOnClock.logoUrl} alt={displayTeamOnClock.name} className="w-14 h-14 object-contain" referrerPolicy="no-referrer" />
             ) : (
               <div className="w-14 h-14 rounded-full bg-indigo-900/40 flex items-center justify-center font-black text-indigo-300">
-                {teamOnClock.abbrev}
+                {displayTeamOnClock.abbrev}
               </div>
             )}
             <div className="flex-1">
@@ -170,7 +182,7 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
               )}
               <p className="text-white/70 text-sm leading-relaxed">
                 With the <strong className="text-white">{currentPick}{getOrdinalSuffix(currentPick)}</strong> pick in the {draftYear} {draftLabel},
-                the <strong className="text-white">{getTeamFullName(teamOnClock as any) || teamOnClock.name}</strong> select…
+                the <strong className="text-white">{getTeamFullName(displayTeamOnClock as any) || displayTeamOnClock.name}</strong> select…
               </p>
             </div>
           </div>
@@ -310,14 +322,14 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
     </div>
 
     <div className="space-y-5">
-      {nextTeam && !isDraftComplete && (
+      {displayNextTeam && !isDraftComplete && (
         <div className="bg-[#1A1A1A] rounded-sm p-3 border border-[#333] flex justify-between items-center">
           <div>
             <div className="text-[9px] font-black uppercase text-white/40">Next Up — Pick {currentPick + 1}</div>
-            <div className="font-black text-white text-sm">{getTeamFullName(nextTeam as any) || nextTeam.name}</div>
+            <div className="font-black text-white text-sm">{getTeamFullName(displayNextTeam as any) || displayNextTeam.name}</div>
           </div>
-          {nextTeam.logoUrl && (
-            <img src={nextTeam.logoUrl} alt={nextTeam.name} className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+          {displayNextTeam.logoUrl && (
+            <img src={displayNextTeam.logoUrl} alt={displayNextTeam.name} className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
           )}
         </div>
       )}
@@ -343,14 +355,15 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
             <span className="text-[10px] font-black text-white/30 w-5">{index + 1}</span>
             <span className="text-xs font-bold text-white truncate flex-1">{player.name}</span>
             <span className="text-[10px] font-black text-indigo-300">
-              {fuzzRatingValue(player.displayOvr ?? 0, state, player as NBAPlayer, 'draft-view-ovr')}
+              {fuzzDraftRatingValue(player.displayOvr ?? 0, state, player as NBAPlayer, 'ovr')}
             </span>
           </div>
         ))}
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export const PreDraftProspectsPanel: React.FC<PreDraftProspectsPanelProps> = ({
   allProspects,

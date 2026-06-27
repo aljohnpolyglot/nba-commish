@@ -90,24 +90,51 @@ function externalKnobsForTid(tid: number): SimulatorKnobs {
   return KNOBS_BLEAGUE;
 }
 
-function externalCompetitionKnobsForTid(tid: number, leagueStats?: Partial<LeagueStats>): SimulatorKnobs {
+function buildPbaCompetitionKnobs(
+  leagueBaseKnobs: SimulatorKnobs,
+  leagueStats?: Partial<LeagueStats>,
+): SimulatorKnobs {
+  const fourPointAvailable = leagueStats?.fourPointLine ?? true;
+  return {
+    ...leagueBaseKnobs,
+    ...KNOBS_PBA,
+    quarterLength: leagueStats?.quarterLength ?? leagueBaseKnobs.quarterLength ?? 12,
+    numQuarters: leagueStats?.numQuarters ?? leagueBaseKnobs.numQuarters ?? 4,
+    shotClockSeconds: leagueBaseKnobs.shotClockSeconds,
+    threePointAvailable: leagueBaseKnobs.threePointAvailable && KNOBS_PBA.threePointAvailable,
+    threePointRateMult: (leagueBaseKnobs.threePointRateMult ?? 1) * (KNOBS_PBA.threePointRateMult ?? 1),
+    threePointEfficiencyMult: (leagueBaseKnobs.threePointEfficiencyMult ?? 1) * (KNOBS_PBA.threePointEfficiencyMult ?? 1),
+    paceMultiplier: (leagueBaseKnobs.paceMultiplier ?? 1) * (KNOBS_PBA.paceMultiplier ?? 1),
+    efficiencyMultiplier: (leagueBaseKnobs.efficiencyMultiplier ?? 1) * (KNOBS_PBA.efficiencyMultiplier ?? 1),
+    rimRateMult: (leagueBaseKnobs.rimRateMult ?? 1) * (KNOBS_PBA.rimRateMult ?? 1),
+    lowPostRateMult: (leagueBaseKnobs.lowPostRateMult ?? 1) * (KNOBS_PBA.lowPostRateMult ?? 1),
+    blockRateMult: (leagueBaseKnobs.blockRateMult ?? 1) * (KNOBS_PBA.blockRateMult ?? 1),
+    tovMult: (leagueBaseKnobs.tovMult ?? 1) * (KNOBS_PBA.tovMult ?? 1),
+    ftRateMult: (leagueBaseKnobs.ftRateMult ?? 1) * (KNOBS_PBA.ftRateMult ?? 1),
+    ftEfficiencyMult: (leagueBaseKnobs.ftEfficiencyMult ?? 1) * (KNOBS_PBA.ftEfficiencyMult ?? 1),
+    fourPointAvailable,
+    fourPointRateMult: fourPointAvailable ? Math.max(0.55, Math.min(1.25, Math.pow(27 / Math.max(23, getFourPointDistance(leagueStats)), 0.75))) * (KNOBS_PBA.fourPointRateMult ?? 1) : 0,
+    fourPointEfficiencyMult: fourPointAvailable ? Math.max(0.68, Math.min(1.12, Math.pow(27 / Math.max(23, getFourPointDistance(leagueStats)), 0.55))) * (KNOBS_PBA.fourPointEfficiencyMult ?? 1) : 1,
+  };
+}
+
+function externalCompetitionKnobsForTid(
+  tid: number,
+  leagueBaseKnobs: SimulatorKnobs,
+  leagueStats?: Partial<LeagueStats>,
+): SimulatorKnobs {
   const isEuroClubCompetition = (tid >= 1000 && tid < 2000) || (tid >= 5000 && tid < 6000);
   if (isEuroClubCompetition) {
     return KNOBS_EURO_CLUB_COMPETITION;
   }
   const isPbaTeam = tid >= 2000 && tid < 3000;
-  const fourPointAvailable = isPbaTeam ? (leagueStats?.fourPointLine ?? true) : undefined;
+  if (isPbaTeam) {
+    return buildPbaCompetitionKnobs(leagueBaseKnobs, leagueStats);
+  }
   return {
     ...externalKnobsForTid(tid),
     quarterLength: leagueStats?.quarterLength ?? 12,
     numQuarters: leagueStats?.numQuarters ?? 4,
-    ...(isPbaTeam
-      ? {
-          fourPointAvailable,
-          fourPointRateMult: fourPointAvailable ? Math.max(0.55, Math.min(1.25, Math.pow(27 / Math.max(23, getFourPointDistance(leagueStats)), 0.75))) : 0,
-          fourPointEfficiencyMult: fourPointAvailable ? Math.max(0.68, Math.min(1.12, Math.pow(27 / Math.max(23, getFourPointDistance(leagueStats)), 0.55))) : 1,
-        }
-      : {}),
   };
 }
 
@@ -288,8 +315,8 @@ export function resolveDayGameSetup({
     homeKnobs = isHomeIntl ? intlKnobs : KNOBS_PRESEASON;
     awayKnobs = isHomeIntl ? KNOBS_PRESEASON : intlKnobs;
   } else if (game.competitionId || game.homeTid >= 100 || game.awayTid >= 100) {
-    homeKnobs = game.homeTid >= 100 ? externalCompetitionKnobsForTid(game.homeTid, leagueStats) : leagueBaseKnobs;
-    awayKnobs = game.awayTid >= 100 ? externalCompetitionKnobsForTid(game.awayTid, leagueStats) : leagueBaseKnobs;
+    homeKnobs = game.homeTid >= 100 ? externalCompetitionKnobsForTid(game.homeTid, leagueBaseKnobs, leagueStats) : leagueBaseKnobs;
+    awayKnobs = game.awayTid >= 100 ? externalCompetitionKnobsForTid(game.awayTid, leagueBaseKnobs, leagueStats) : leagueBaseKnobs;
   } else {
     const homeCtx = standingsCtx.get(home.id) ?? { conferenceRank: 8, gbFromLeader: 0, gamesRemaining: 41 };
     const awayCtx = standingsCtx.get(away.id) ?? { conferenceRank: 8, gbFromLeader: 0, gamesRemaining: 41 };

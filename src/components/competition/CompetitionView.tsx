@@ -5,6 +5,7 @@ import { resolveAnyTeam } from '../../utils/teamLookup';
 import { cn } from '../../lib/utils';
 import { formatCurrencyWithCode, normalizeDate } from '../../utils/helpers';
 import { selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
+import { isPbaCompetitionId, selectCountedPbaRegularBoxScores } from '../../services/pba/competitionGames';
 
 type CompetitionRow = { tid: number; w: number; l: number; pf: number; pa: number };
 
@@ -62,12 +63,17 @@ export const CompetitionView: React.FC<{ specId: string }> = ({ specId }) => {
   const isRegularPhase = (phase?: string): boolean =>
     !phase || phase === 'group' || phase.startsWith('r');
   const seasonBoxScores = useMemo(
-    () => state.boxScores.filter(b =>
-      b.competitionId === specId &&
-      isRegularPhase(b.competitionPhase) &&
-      matchesSeason(b),
-    ),
-    [specId, state.boxScores, currentSeason],
+    () => {
+      if (spec && isPbaCompetitionId(spec.id)) {
+        return selectCountedPbaRegularBoxScores(state.boxScores, spec, currentSeason);
+      }
+      return state.boxScores.filter(b =>
+        b.competitionId === specId &&
+        isRegularPhase(b.competitionPhase) &&
+        matchesSeason(b),
+      );
+    },
+    [spec, specId, state.boxScores, currentSeason],
   );
 
   const rows = useMemo<CompetitionRow[]>(() => {

@@ -45,6 +45,10 @@ Für In-App-Repro/Diagnose ist `src/utils/debugCheats.ts` der zentrale Einstiegs
 
 Nicht zuerst das ganze Repo nach Kontext durchsuchen. Erst `debugCheats` nutzen, um den fehlerhaften State/Phase-Pfad einzugrenzen, danach nur die betroffenen Codepfade lesen. Das reduziert Repo-Spam und hält Debugging an echter Laufzeitdiagnose statt an Vermutungen aus UI-Symptomen ausgerichtet.
 
+Für PBA-Saison-/Conference-Bugs keine Save-Repair-/Migration-Cheats bauen, außer der User fragt explizit danach. Diese Saves werden neu durchsimuliert; Zeit und Tokens sollen in Diagnose (`PBASEASON`) und Forward-Fixes für Kalender, Draft, Imports, Awards, All-Star und Conference-Lifecycle gehen.
+
+Background-Leagues im laufenden Save nicht anfassen, solange der User das nicht explizit verlangt. Fixes für eine aktive Liga oder einen Modus müssen scoped bleiben und dürfen keine anderen parallel laufenden Hintergrund-Ligen mutieren, vorsimulieren, resetten oder neu balancen.
+
 ## Planning and Change Intake
 
 Komplexe Features werden in `CHANGELOG.md` als Session-Eintrag dokumentiert (Format: Session N (Datum) — Titel, Bullet-Liste der Änderungen mit File-Pfaden). Vor größeren Refactors prüfen, ob ein TODO-Item dazu existiert; ist keines da, eines anlegen, dann implementieren.

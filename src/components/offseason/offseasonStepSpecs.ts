@@ -217,10 +217,10 @@ export function getOffseasonStepConfirmSpec({
       };
     case 'pbaConferenceAwards':
       return {
-        eyebrow: 'Conference End',
-        title: 'Conference Awards',
-        body: 'Review conference awards and the champion.',
-        confirmLabel: 'View Awards',
+        eyebrow: 'Season Complete',
+        title: 'Season Review',
+        body: 'Review the season awards and all three conference champions.',
+        confirmLabel: 'Review Season',
       };
     case 'coachingSignings':
       return {

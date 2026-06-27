@@ -64,7 +64,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     : pbaIsolated
       ? (state.schedule ?? []).filter((g: Game) =>
           String((g as any).competitionId ?? '').startsWith('pba-') ||
-          ((g.homeTid >= 2000 && g.homeTid < 2100) && (g.awayTid >= 2000 && g.awayTid < 2100))
+          ((g.homeTid >= 2000 && g.homeTid < 2100) && (g.awayTid >= 2000 && g.awayTid < 2100)) ||
+          !!(g as any).isAllStar ||
+          !!(g as any).isRisingStars ||
+          !!(g as any).isCelebrityGame ||
+          !!(g as any).isDunkContest ||
+          !!(g as any).isThreePointContest ||
+          !!(g as any).isShootingStars ||
+          !!(g as any).isSkillsChallenge ||
+          !!(g as any).isHorseContest ||
+          !!(g as any).isThroneEvent
         )
     : (state.schedule ?? []);
 

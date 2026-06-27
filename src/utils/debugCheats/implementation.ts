@@ -19,7 +19,6 @@ import { effectiveRecord, getCapThresholds, getTeamPayrollUSD, getTeamDeadMoneyF
 import { processSimulationResults } from '../../store/logic/turn/postProcessor';
 import { ROSTER_URL } from '../../constants';
 import { copyTextToClipboard, type CheatContext, type CheatResult } from './shared';
-import { injectCompetitionPostseasonGames } from '../../services/competition/competitionResolver';
 import { runFaAudit, runEconAudit } from './economyAuditCheats';
 import { runSample12, runScoreProf, runPlayerDist } from './realisticSamplingCheats';
 import { runTeamCheck, runLeaders, runDistShape } from './realisticSeasonShapeCheats';
@@ -36,7 +35,9 @@ import { KNOBS_DEFAULT } from '../../services/simulation/SimulatorKnobs';
 import { deriveOfficialNbaRecords } from '../nbaOfficialRecords';
 import { rebuildCupGroupStandingsFromSchedule } from '../../services/nbaCup/resolveGroupStage';
 import { isFilipino } from '../../services/pba/importManager';
-import { tunePbaDraftProspects } from '../../services/pba/draftRules';
+import { getPbaDraftPool, tunePbaDraftProspects } from '../../services/pba/draftRules';
+import { logPbaLazySimAudit } from '../pbaLazySimDebug';
+import { logBasketballUniverseAudit } from '../basketballUniverseAudit';
 
 export type { CheatContext, CheatResult } from './shared';
 
@@ -77,7 +78,8 @@ export const CHEAT_CODES = {
   PICKS: 'Draft pick inventory — picks per season, per-team ownership counts, missing-team detector',
   PBADRAFT: 'PBA draft-pool audit — logs current mock-draft visibility inputs, year buckets, Filipino filter matches, and blocked prospects',
   PBADRAFTFIX: 'Retune the current save’s Filipino draft prospects in place — rewrites age/OVR/POT for the already-seeded PBA class',
-  PBAQFREPAIR: 'Repair missing or incomplete PBA quarterfinal games in-place so the bracket can progress (run in pba_isolated only)',
+  PBA_TEST_LAZY_SIM: 'PBA lazy-sim audit — logs regular season, playoffs, finals, awards, imports, conference transitions, and missing checkpoints.',
+  BASKETAUDIT: 'Read-only basketball universe sanity check — NBA schedule/playoffs, Euro competitions, PBA conferences, roster scopes.',
   SALARYAUDIT: 'Players with 3+ NBA seasons played but sparse/missing contractYears — tracks contract history gaps as sim progresses',
   JERSEYAUDIT: 'Jersey retirement audit — shows current candidates, pre-save retirees, and why each case was included or skipped',
   JERSEYRETIREMENT: 'Alias for JERSEYAUDIT',
@@ -181,10 +183,7 @@ function runPbaDraftAudit(state: GameState): CheatResult {
     player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect',
   );
   const pbaProspects = allProspects.filter((player: any) => isFilipino(player));
-  const visibleToMockDraft = pbaProspects.filter((player: any) => {
-    const rawDraftYear = Number((player as any).draft?.year);
-    return !Number.isFinite(rawDraftYear) || rawDraftYear === selectedYear;
-  });
+  const visibleToMockDraft = getPbaDraftPool(pbaProspects as any, selectedYear, state.leagueStats);
   const yearBuckets = new Map<string, number>();
   for (const player of pbaProspects) {
     const rawDraftYear = (player as any).draft?.year;
@@ -1061,33 +1060,21 @@ function formatTpAuditTsv(rows: any[]): string {
   ].join('\n');
 }
 
-async function runPbaQfRepair(ctx: CheatContext): Promise<CheatResult> {
-  const state = getLive(ctx);
-  if ((state.leagueStats as any)?.uiMode !== 'pba_isolated') {
-    return { title: 'PBAQFREPAIR', body: 'Current save is not pba_isolated; no changes made.', ok: false };
-  }
-  const season = state.leagueStats?.year ?? new Date().getFullYear();
-  const specs = (state as any).activeCompetitions ?? [];
-  const oldLen = (state.schedule ?? []).length;
-  const newSchedule = injectCompetitionPostseasonGames(state as any, specs, season);
-  const diff = newSchedule.length - oldLen;
-  if (diff <= 0) {
-    return { title: 'PBAQFREPAIR', body: 'No missing quarterfinal games detected; nothing changed.', ok: true };
-  }
-  await ctx.dispatchAction({ type: 'UPDATE_STATE', payload: { schedule: newSchedule } } as any);
-  console.group('%c🛠️ PBAQFREPAIR', 'color:#ef4444;font-weight:bold');
-  console.log(`Inserted ${diff} game(s) into schedule for PBA quarterfinal repair.`);
-  console.groupEnd();
-  return { title: 'PBAQFREPAIR', body: `Inserted ${diff} schedule game(s). Run Sim Round or reload UI.`, ok: true };
-}
-
 async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult> {
   const { state, dispatchAction, healPlayer } = ctx;
 
   switch (code) {
-    case 'PBAQFREPAIR': {
-      const res = await runPbaQfRepair(ctx);
-      return res;
+    case 'PBA_TEST_LAZY_SIM': {
+      const live = getLive(ctx);
+      if ((live.leagueStats as any)?.uiMode !== 'pba_isolated') {
+        return { title: 'PBA_TEST_LAZY_SIM', body: 'Current save is not pba_isolated.', ok: false };
+      }
+      logPbaLazySimAudit(live, 'manual');
+      return { title: 'PBA_TEST_LAZY_SIM', body: 'PBA lazy-sim audit printed to console.', ok: true };
+    }
+    case 'BASKETAUDIT': {
+      logBasketballUniverseAudit(getLive(ctx), 'manual');
+      return { title: 'BASKETAUDIT', body: 'Basketball universe sanity audit printed to console.', ok: true };
     }
 
     case 'HEALSTUCK': {
@@ -3362,10 +3349,8 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
     }
 
     case 'FIXPOT': {
-      // Universal age-aware estimator clamped to league ovr ceiling. Old players
-      // get pot=ovr (no NBA-tier headroom); young players keep growth room up to
-      // their league cap. PBA cap 46, ChinaCBA cap 50 (raw BBGM).
-      const POT_CAP: Record<string, number> = { PBA: 46, 'China CBA': 50 };
+      // Universal age-aware estimator clamped to selected league ceilings.
+      const POT_CAP: Record<string, number> = { 'China CBA': 50 };
       const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
       let patched = 0;
       const updatedPlayers = state.players.map((p: any) => {

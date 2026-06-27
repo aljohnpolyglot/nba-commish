@@ -18,12 +18,14 @@ interface SeriesDetailPanelProps {
   stateDate: string;
   selectedGameIdx: number;
   onGameIdxChange: (idx: number) => void;
-  onWatch: (game: Game) => void;
+  onWatch?: (game: Game) => void;
   onSimGame: () => void;
   onSimRound: () => void;
   onSimPlayoffs: () => void;
   onClose: () => void;
   isProcessing: boolean;
+  competitionLabel?: string;
+  roundLabels?: Partial<Record<number, string>>;
 }
 
 export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
@@ -43,6 +45,8 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
   onSimPlayoffs,
   onClose,
   isProcessing,
+  competitionLabel,
+  roundLabels: customRoundLabels,
 }) => {
   const labels = useLeagueLabels();
   const [boxScoreTarget, setBoxScoreTarget] = useState<{ game: Game; result: GameResult } | null>(null);
@@ -77,8 +81,8 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
     team2 = teams.find(t => t.id === series.lowerSeedTid);
     team1Wins = series.higherSeedWins;
     team2Wins = series.lowerSeedWins;
-    confLabel = series.conference === 'Finals' ? labels.finals : `${series.conference}ern Conference`;
-    roundLabel = roundLabels[series.round] ?? `Round ${series.round}`;
+    confLabel = competitionLabel ?? (series.conference === 'Finals' ? labels.finals : `${series.conference}ern Conference`);
+    roundLabel = customRoundLabels?.[series.round] ?? roundLabels[series.round] ?? `Round ${series.round}`;
     isComplete = series.status === 'complete';
     winnerId = series.winnerId;
   } else if (playIn) {
@@ -86,7 +90,7 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
     const pi2Tid = Number(playIn.team2Tid);
     team1 = pi1Tid > 0 ? teams.find(t => t.id === pi1Tid) : undefined;
     team2 = pi2Tid > 0 ? teams.find(t => t.id === pi2Tid) : undefined;
-    confLabel = `${playIn.conference}ern Conference`;
+    confLabel = competitionLabel ?? `${playIn.conference}ern Conference`;
     const typeMap: Record<string, string> = { '7v8': '7 vs 8 Seed', '9v10': '9 vs 10 Seed', 'loserGame': 'Loser Game' };
     roundLabel = `Play-In · ${typeMap[playIn.gameType] ?? playIn.gameType}`;
     isComplete = playIn.played;
@@ -119,7 +123,7 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
       />
 
       {/* Panel */}
-      <div className="fixed right-0 top-0 h-full w-96 z-50 bg-[#0d0d0d] border-l border-white/10 flex flex-col overflow-hidden shadow-2xl">
+      <div className="fixed right-0 top-0 h-full w-full sm:w-96 z-50 bg-[#0d0d0d] border-l border-white/10 flex flex-col overflow-hidden shadow-2xl">
 
         {/* Close button */}
         <button
@@ -213,7 +217,7 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
             isProcessing={isProcessing}
             isComplete={isComplete}
             hasPlayedGames={playedGames.length > 0}
-            onWatch={() => nextGame && onWatch(nextGame)}
+            onWatch={onWatch ? () => nextGame && onWatch(nextGame) : undefined}
             onSimGame={onSimGame}
             onSimRound={onSimRound}
             onSimPlayoffs={onSimPlayoffs}

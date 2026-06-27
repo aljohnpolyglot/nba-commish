@@ -68,7 +68,7 @@ export const DraftScoutingView: React.FC = () => {
   const currentLeagueYear = state.leagueStats?.year ?? new Date().getFullYear();
   const currentDateNorm = normalizeDate(state.date ?? '');
   const currentCombineDate = toISODateString(getDraftCombineStartDate(currentLeagueYear, state.leagueStats as any));
-  const showCombineTab = pbaMode || draftYear < currentLeagueYear || (draftYear === currentLeagueYear && currentDateNorm >= currentCombineDate);
+  const showCombineTab = draftYear < currentLeagueYear || (draftYear === currentLeagueYear && currentDateNorm >= currentCombineDate);
   useEffect(() => {
     if (pbaMode) {
       setGistData(null);
@@ -88,8 +88,8 @@ export const DraftScoutingView: React.FC = () => {
     return () => { cancelled = true; };
   }, [draftYear, pbaMode]);
   const prospects = useMemo<MockProspect[]>(() => {
-    return buildMockProspects(state.players, currentLeagueYear, draftYear, gistData, pbaMode);
-  }, [state.players, draftYear, currentLeagueYear, gistData, pbaMode]);
+    return buildMockProspects(state.players, currentLeagueYear, draftYear, gistData, pbaMode, state.leagueStats);
+  }, [state.players, draftYear, currentLeagueYear, gistData, pbaMode, state.leagueStats]);
 
   // Active NBA players — the comparison pool for findTopComparisons in the modal.
   const activePlayers = useMemo(() =>

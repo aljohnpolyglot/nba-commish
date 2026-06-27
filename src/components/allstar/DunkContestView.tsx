@@ -2,9 +2,9 @@ import React from 'react';
 import { Zap, Trophy, Star } from 'lucide-react';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { useGame } from '../../store/GameContext';
-import { getPlayerImage } from '../central/view/bioCache';
 import { calcDunkOdds } from '../../utils/allStarOdds';
 import { DUNK_MOVES } from '../../services/allStar/dunkMoves';
+import { getPlayerImage } from '../../utils/playerImage';
 
 interface DunkContestViewProps {
   allStar: any;
@@ -13,15 +13,22 @@ interface DunkContestViewProps {
   ownTid?: number | null;
 }
 
+const avatarUrl = (name: string, background = '27272a', size = 160) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(String(name).split(' ').map((n: string) => n[0]).join('') || 'P')}&background=${background}&color=fff&size=${size}`;
+
+const getContestPortrait = (player: any) =>
+  getPlayerImage(player) || player?.imgURL || avatarUrl(player?.name ?? player?.playerName ?? 'Player');
+
 export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, players, teams: providedTeams, ownTid }) => {
   const { state } = useGame();
   const teams = providedTeams ?? state.teams;
+  const allStarData = allStar ?? {};
 
-  const dunkContestContestants = allStar.dunkContestContestants ?? [];
-  const dunkContestResult = allStar.dunkContest;
+  const dunkContestContestants = allStarData.dunkContestContestants ?? [];
+  const dunkContestResult = allStarData.dunkContest;
 
   const isAnnounced =
-    allStar.weekendComplete ||
+    allStarData.weekendComplete ||
     !!dunkContestResult ||
     dunkContestContestants.length > 0;
 
@@ -66,7 +73,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
               const odds = calcDunkOdds(fullContestants, player);
               const isFavorite = !odds.startsWith('+');
 
-              const portraitSrc = getPlayerImage(player);
+              const portraitSrc = getContestPortrait(player);
 
               return (
                 <div key={contestant.internalId || contestant.playerId}
@@ -83,7 +90,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                         src={portraitSrc}
                         alt={player.name}
                         className="w-full h-full object-cover object-top"
-                        onError={e => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name.split(' ').map((n: string)=>n[0]).join(''))}&background=27272a&color=fff&size=160`; }}
+                        onError={e => { (e.target as HTMLImageElement).src = avatarUrl(player.name); }}
                         referrerPolicy="no-referrer"
                       />
                     ) : (
@@ -98,7 +105,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                     <PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover>
                   </p>
                   <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-3">
-                    {player.pos} · {allStar.roster?.find((r: any) => r.playerId === player.internalId) 
+                    {player.pos} · {allStarData.roster?.find((r: any) => r.playerId === player.internalId)
                       ? teams.find(t => t.id === player.tid)?.abbrev ?? '' 
                       : teams.find(t => t.id === player.tid)?.abbrev ?? ''}
                   </p>
@@ -152,7 +159,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                 </div>
               );
             }
-            const winnerPortrait = getPlayerImage(winner);
+            const winnerPortrait = getContestPortrait(winner);
             return (
               <div className="flex flex-col items-center text-center mb-10">
                 <div className="relative mb-4">
@@ -162,7 +169,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                         src={winnerPortrait}
                         alt={winner.name}
                         className="w-full h-full object-cover object-top"
-                        onError={e => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(winner.name.split(' ').map((n: string)=>n[0]).join(''))}&background=27272a&color=fff&size=224`; }}
+                        onError={e => { (e.target as HTMLImageElement).src = avatarUrl(winner.name, '27272a', 224); }}
                         referrerPolicy="no-referrer"
                       />
                     ) : (
@@ -205,12 +212,12 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                     <tr className="text-[10px] font-black text-zinc-500 uppercase tracking-widest border-b border-zinc-800 bg-black/20">
                       <th className="px-4 py-3 text-left">#</th>
                       <th className="px-4 py-3 text-left">Player</th>
-                      <th className="px-4 py-3 text-center">R1 D1</th>
-                      <th className="px-4 py-3 text-center">R1 D2</th>
-                      <th className="px-4 py-3 text-center bg-zinc-800/30">R1 Total</th>
-                      <th className="px-4 py-3 text-center">Finals D1</th>
-                      <th className="px-4 py-3 text-center">Finals D2</th>
-                      <th className="px-4 py-3 text-center bg-zinc-800/30">Finals Total</th>
+                      <th className="px-4 py-3 text-center">Round 1 1</th>
+                      <th className="px-4 py-3 text-center">Round 1 2</th>
+                      <th className="px-4 py-3 text-center bg-zinc-800/30">Round 1</th>
+                      <th className="px-4 py-3 text-center">Final 1</th>
+                      <th className="px-4 py-3 text-center">Final 2</th>
+                      <th className="px-4 py-3 text-center bg-zinc-800/30">Final</th>
                       <th className="px-4 py-3 text-center">Result</th>
                     </tr>
                   </thead>
@@ -221,6 +228,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                         // Match by any available name/id field (handles old and new save formats)
                         const r1Name = r1.playerName || r1.playerId;
                         const player = players.find(p => p.internalId === r1.playerId) || players.find(p => p.name === r1Name);
+                        const displayName = player?.name ?? r1.playerName ?? r1.playerId ?? 'Unknown';
                         const finalsRow = (dunkContestResult.round2 ?? []).find((r: any) =>
                           (r.playerName && r.playerName === r1Name) ||
                           (r.playerId && r.playerId === r1Name) ||
@@ -237,11 +245,11 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
-                                {player && getPlayerImage(player) ? (
+                                {player && getContestPortrait(player) ? (
                                   <img
-                                    src={getPlayerImage(player)}
+                                    src={getContestPortrait(player)}
                                     className="w-8 h-8 rounded-full object-cover object-top bg-zinc-800"
-                                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                    onError={e => { (e.target as HTMLImageElement).src = avatarUrl(player?.name ?? r1.playerName, '27272a', 100); }}
                                     alt=""
                                   />
                                 ) : (
@@ -252,11 +260,11 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                                 <div className="text-left">
                                   <p className={`text-sm font-bold ${isWinner ? 'text-yellow-400' : 'text-white'}`}>
                                     {player
-                                      ? <PlayerNameWithHover player={player}>{r1.playerName}</PlayerNameWithHover>
-                                      : r1.playerName}
+                                      ? <PlayerNameWithHover player={player}>{displayName}</PlayerNameWithHover>
+                                      : displayName}
                                   </p>
                                   <p className="text-[10px] text-zinc-600">
-                                    {teams.find(t => t.id === player?.tid)?.abbrev}
+                                    {teams.find(t => t.id === player?.tid)?.abbrev ?? r1.teamAbbrev ?? 'PBA'}
                                   </p>
                                 </div>
                               </div>

@@ -18,18 +18,29 @@ import { getOffseasonDayPlan, logPlanEvent } from '../offseason/offseasonPlan';
 import { autoResolveAllStarHosts } from '../allStar/hostAutoResolver';
 import { PlayoffSeries } from '../../types';
 import { setAssistantGMActive } from '../assistantGMFlag';
+import { isPbaActiveConferenceMode } from '../../utils/uiMode';
+import { logPbaLazySimAudit, shouldLogPbaLazySimCheckpoint } from '../../utils/pbaLazySimDebug';
+import { applyPbaConferenceLifecycle, repairPbaConferenceForDate } from '../pba/conferenceTransition';
 import {
   advanceDateByOne,
   autoResolveEuroSetupOffseasonTasks,
+  autoResolvePbaSetupOffseasonTasks,
   buildAutoNews,
   buildAutoResolveEvents,
   daysBetween,
   getPhaseLabel,
   hasDueUnplayedEuroCompetitionGames,
+  hasDueUnplayedPbaCompetitionGames,
   repairEuroCompetitionScheduleForToday,
 } from './lazySimRunnerHelpers';
 import { buildLazySimPlayoffOutcomes } from './lazySimRunnerPlayoffAwards';
 export { buildAutoResolveEvents } from './lazySimRunnerHelpers';
+
+const prependAutoNewsIfMissing = (state: GameState, item: any): GameState => {
+  const existingIds = new Set((state.news ?? []).map((news: any) => news.id));
+  if (existingIds.has(item.id)) return state;
+  return { ...state, news: [item, ...(state.news ?? [])] };
+};
 
 export interface LazySimOptions {
   /** 'overlay' = show progress UI (long skips, load game). 'silent' = no UI, collect lastSimResults (short skips). */
@@ -92,6 +103,7 @@ export const runLazySim = async (
     mode,
     BATCH_SIZE,
   });
+  logPbaLazySimAudit(initialState, 'start');
 
   if (daysTotal < 0) {
     console.log('[LAZY_SIM] ⛔ daysTotal < 0 — returning initial state');
@@ -158,8 +170,11 @@ export const runLazySim = async (
     while (true) {
       iterNum++;
       const iterStart = perfNow();
-      const currentNorm = normalizeDate(state.date);
+      let currentNorm = normalizeDate(state.date);
       state = autoResolveEuroSetupOffseasonTasks(state, options?.autoResolveOffseasonTasks === true);
+      state = autoResolvePbaSetupOffseasonTasks(state, options?.autoResolveOffseasonTasks === true, targetNorm);
+      state = repairPbaConferenceForDate(state);
+      currentNorm = normalizeDate(state.date);
       currentPhase = getPhaseLabel(currentNorm, state.leagueStats.year, state.leagueStats);
 
       if (state.leagueStats?.uiMode === 'euro_isolated') {
@@ -186,7 +201,10 @@ export const runLazySim = async (
       }
       console.log(`[LAZY_SIM] 🔁 iter ${iterNum} — currentNorm=${currentNorm}, targetNorm=${targetNorm}, state.day=${state.day}, stopBefore=${stopBefore}`);
       const pendingDueEuroGamesAtTop = hasDueUnplayedEuroCompetitionGames(state, currentNorm);
-      const shouldBreakTop = (stopBefore ? currentNorm >= targetNorm : currentNorm > targetNorm) && !pendingDueEuroGamesAtTop;
+      const pendingDuePbaGamesAtTop = hasDueUnplayedPbaCompetitionGames(state, currentNorm);
+      const shouldBreakTop = stopBefore
+        ? currentNorm >= targetNorm
+        : currentNorm > targetNorm && !pendingDueEuroGamesAtTop && !pendingDuePbaGamesAtTop;
       if (shouldBreakTop) {
         console.log(`[LAZY_SIM] 🛑 iter ${iterNum} — break at top (stopBefore=${stopBefore})`);
         break;
@@ -210,7 +228,7 @@ export const runLazySim = async (
           firedEvents.add(compositeKey);
           const autoNews = buildAutoNews(event.key, state);
           if (autoNews) {
-            state = { ...state, news: [autoNews, ...(state.news || [])] };
+            state = prependAutoNewsIfMissing(state, autoNews);
           }
         }
       }
@@ -221,10 +239,11 @@ export const runLazySim = async (
       state = repairEuroCompetitionScheduleForToday(state);
       const lazyPlan = getOffseasonDayPlan(state);
       const pendingEuroCompetitionGames = hasDueUnplayedEuroCompetitionGames(state, currentNorm);
+      const pbaIsolatedMode = state.leagueStats?.uiMode === 'pba_isolated';
       if (lazyPlan.actions.rollover === 'fire' && pendingEuroCompetitionGames) {
         currentPhase = 'Finishing European competition games...';
         report();
-      } else if (lazyPlan.actions.rollover === 'fire') {
+      } else if (lazyPlan.actions.rollover === 'fire' && !pbaIsolatedMode) {
         logPlanEvent('lazySimRunner.rollover', 'fire', `date=${currentNorm}`);
         const rolloverPatch = applySeasonRollover(state);
         state = { ...state, ...rolloverPatch };
@@ -292,6 +311,7 @@ export const runLazySim = async (
         );
         const isTrainingCampChecklistOpen =
           !!state.offseasonChecklist &&
+          !isPbaActiveConferenceMode(state) &&
           state.offseasonChecklist.trainingCamp !== 'done' &&
           state.offseasonChecklist.trainingCamp !== 'skipped';
         const teamsForFatigueTick = isTrainingCampChecklistOpen
@@ -305,6 +325,14 @@ export const runLazySim = async (
           stateWithSim.schedule,
         );
         stateWithSim = { ...stateWithSim, teams: teamsAfterTraining };
+      }
+      const pbaLifecyclePatch = applyPbaConferenceLifecycle(
+        { ...stateWithSim, players: updatedPlayers } as GameState,
+        allSimResults,
+      );
+      if (Object.keys(pbaLifecyclePatch).length > 0) {
+        stateWithSim = { ...stateWithSim, ...pbaLifecyclePatch } as GameState;
+        updatedPlayers = (pbaLifecyclePatch.players ?? updatedPlayers) as GameState['players'];
       }
       const trainingTickMs = perfMs(trainingTickStart);
       console.log(`[LAZY_SIM] ✓ 592 trainingTick — iter ${iterNum}, days=${batchCalendarDays}, ms=${trainingTickMs}`);
@@ -442,9 +470,7 @@ export const runLazySim = async (
       const committedLeagueStats = stateWithSim.leagueStats?.uiMode === 'pba_isolated'
         ? {
             ...runningState.leagueStats,
-            pbaConference: (stateWithSim.leagueStats as any).pbaConference,
-            pbaConferencePhase: (stateWithSim.leagueStats as any).pbaConferencePhase,
-            pbaConferenceChampions: (stateWithSim.leagueStats as any).pbaConferenceChampions,
+            ...stateWithSim.leagueStats,
           }
         : runningState.leagueStats;
 
@@ -482,6 +508,9 @@ export const runLazySim = async (
       daysComplete += batchDays;
 
       const currentNormAfterSim = normalizeDate(state.date);
+      if (shouldLogPbaLazySimCheckpoint(runningState, state)) {
+        logPbaLazySimAudit(state, `post-batch ${iterNum}`);
+      }
       console.log(`[LAZY_SIM] 📍 iter ${iterNum} — post-batch: state.date=${state.date}, currentNormAfterSim=${currentNormAfterSim}, daysComplete=${daysComplete}`);
       console.log('[LAZY_SIM_PERF]', {
         iter: iterNum,
@@ -504,6 +533,12 @@ export const runLazySim = async (
         if (hasDueUnplayedEuroCompetitionGames(state, currentNormAfterSim) && allSimResults.length > 0) {
           console.log(`[LAZY_SIM] 🔁 iter ${iterNum} — continuing for newly injected due Euro competition games`);
           currentPhase = 'Finishing European competition games...';
+          report();
+          continue;
+        }
+        if (hasDueUnplayedPbaCompetitionGames(state, currentNormAfterSim)) {
+          console.log(`[LAZY_SIM] 🔁 iter ${iterNum} — continuing for newly injected due PBA competition games`);
+          currentPhase = 'Finishing PBA playoff games...';
           report();
           continue;
         }
@@ -536,6 +571,10 @@ export const runLazySim = async (
           console.warn(`Auto-resolver ${event.key} (post-loop) failed:`, err);
         }
         firedEvents.add(compositeKey);
+        const autoNews = buildAutoNews(event.key, state);
+        if (autoNews) {
+          state = prependAutoNewsIfMissing(state, autoNews);
+        }
       }
     }
   } finally {
@@ -545,6 +584,7 @@ export const runLazySim = async (
   }
 
   report({ percentComplete: 100, currentPhase: 'Done!', daysComplete: daysTotal });
+  state = repairPbaConferenceForDate(state);
 
   console.log('[LAZY_SIM] 🎯 DONE', {
     finalStateDate: state.date,
@@ -554,6 +594,7 @@ export const runLazySim = async (
     reachedTarget: normalizeDate(state.date) === targetNorm,
     lastBatchCount: lastBatchSimResults.length,
   });
+  logPbaLazySimAudit(state, 'final');
 
   return { state, lastSimResults: lastBatchSimResults };
 };

@@ -196,7 +196,7 @@ export function createHandleEnter({
       dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row } } as any);
       return;
     }
-    if (row === 'pbaImportDecision' || row === 'pbaMuseSelection' || row === 'pbaOpeningCeremony' || row === 'pbaAllStarWeekend') {
+    if (row === 'pbaImportDecision' || row === 'pbaMuseSelection' || row === 'pbaOpeningCeremony') {
       dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row } } as any);
       return;
     }

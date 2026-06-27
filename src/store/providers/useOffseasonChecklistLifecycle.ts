@@ -7,13 +7,15 @@ import {
   defaultOffseasonChecklist,
   getOffseasonState,
   initialEuroOffseasonChecklist,
+  initialPbaEndOfSeasonChecklist,
+  initialPbaInterConferenceChecklist,
   initialPbaChecklist,
   initialPreseasonChecklist,
   isNoDraftLeague,
 } from '../../services/offseason/offseasonState';
 import { hasUnresolvedEuroSeasonCompetitions } from '../../services/competition/competitionResolver';
 import { getHOFCeremonyDateString } from '../../services/playerDevelopment/hofChecker';
-import { isPbaIsolatedMode } from '../../utils/uiMode';
+import { isPbaActiveConferenceMode, isPbaIsolatedMode } from '../../utils/uiMode';
 
 type SetGameState = Dispatch<SetStateAction<GameState>>;
 
@@ -42,13 +44,16 @@ export const useOffseasonChecklistLifecycle = (
       return;
     }
 
-    const inOffseason = phase !== 'inSeason';
+    const isPbaIsolated = isPbaIsolatedMode(state);
+    const pbaConferencePhase = (state.leagueStats as any)?.pbaConferencePhase;
+    const pbaConferenceOffseason = isPbaIsolated && pbaConferencePhase === 'offseason';
+    const inOffseason = phase !== 'inSeason' || pbaConferenceOffseason;
     const cYearForExit = state.date ? new Date(state.date).getUTCFullYear() : 0;
     const userManuallyExited = state.offseasonExitedYear === cYearForExit;
     const isInitialFirstSeason = !state.seasonHistory || state.seasonHistory.length === 0;
     const isFullyInSeason = phase === 'inSeason' && !inOffseason;
     const hasChecklist = !!state.offseasonChecklist;
-    const isPbaIsolated = isPbaIsolatedMode(state);
+    const isPbaActiveConference = isPbaActiveConferenceMode(state);
     const noDraftLeague = isNoDraftLeague(state.leagueStats);
     const lotteryResolved = noDraftLeague || isPbaIsolated || !!(state.draftLotteryResult && state.draftLotteryResult.length > 0);
     const draftNotDone = !noDraftLeague && !isPbaIsolated && !state.draftComplete;
@@ -73,13 +78,15 @@ export const useOffseasonChecklistLifecycle = (
     } catch {}
 
     const isEuroIsolated = state.leagueStats?.uiMode === 'euro_isolated';
-    if (isPbaIsolated && hasChecklist && (state.leagueStats as any)?.pbaConferencePhase !== 'offseason') {
-      setState(prev => ({
-        ...prev,
-        offseasonChecklist: undefined,
-        faTagCounter: undefined,
-        pendingOfferDecisions: [],
-      }));
+    if (isPbaActiveConference) {
+      if (state.offseasonChecklist || state.faTagCounter != null || (state.pendingOfferDecisions?.length ?? 0) > 0) {
+        setState(prev => ({
+          ...prev,
+          offseasonChecklist: undefined,
+          faTagCounter: undefined,
+          pendingOfferDecisions: [],
+        }));
+      }
       return;
     }
 
@@ -93,9 +100,18 @@ export const useOffseasonChecklistLifecycle = (
       return prerequisitesDone && normalizeDate(state.date) >= upcomingTrainingCampIso;
     })();
 
-    if (inOffseason && !hasChecklist && (!userManuallyExited || isRealOffseasonNow || forceGate)) {
+    if (inOffseason && !hasChecklist && (pbaConferenceOffseason || !userManuallyExited || isRealOffseasonNow || forceGate)) {
+      const pbaConference = (state.leagueStats as any)?.pbaConference ?? 'philippine';
+      const pbaSeason = Number((state.leagueStats as any)?.year);
+      const pbaConferenceComplete = ((state.leagueStats as any)?.pbaConferenceChampions ?? []).some((entry: any) =>
+        Number(entry?.season) === pbaSeason && entry?.conference === pbaConference,
+      );
       const checklist = isPbaIsolated
-        ? initialPbaChecklist()
+        ? pbaConferenceComplete
+          ? pbaConference === 'governors'
+            ? initialPbaEndOfSeasonChecklist()
+            : initialPbaInterConferenceChecklist(pbaConference)
+          : initialPbaChecklist()
         : isEuroIsolated && isInitialFirstSeason && !isRealOffseasonNow
         ? initialEuroOffseasonChecklist()
         : isInitialFirstSeason && !isRealOffseasonNow

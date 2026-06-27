@@ -26,6 +26,7 @@ import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
 import { PBA_COMPETITIONS } from '../../../data/templates/philippines/competitions';
 import { getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
+import { selectCountedPbaRegularBoxScores } from '../../../services/pba/competitionGames';
 
 export const NBACentral: React.FC = () => {
   const { state, dispatchAction, selectedTeamId, setSelectedTeamId, healPlayer } = useGame();
@@ -65,11 +66,7 @@ export const NBACentral: React.FC = () => {
       }
     }
     const season = (state.leagueStats as any)?.year ?? new Date().getFullYear();
-    for (const box of state.boxScores ?? []) {
-      const phase = String((box as any).competitionPhase ?? '').toLowerCase();
-      const boxSeason = Number((box as any).season ?? season);
-      if ((box as any).competitionId !== pbaSpec.id || boxSeason !== Number(season)) continue;
-      if (phase && !phase.startsWith('r') && phase !== 'regular' && phase !== 'league' && phase !== 'group') continue;
+    for (const box of selectCountedPbaRegularBoxScores(state.boxScores ?? [], pbaSpec, Number(season))) {
       const homeTid = (box as any).homeTeamId;
       const awayTid = (box as any).awayTeamId;
       const home = records.get(homeTid) ?? { wins: 0, losses: 0 };
@@ -96,6 +93,7 @@ export const NBACentral: React.FC = () => {
           ...(wrapped ?? {}),
           id: team.tid,
           name: team.name,
+          region: team.region,
           abbrev: team.abbrev || String(team.name ?? 'PBA').slice(0, 3).toUpperCase(),
           logoUrl: getResolvedTeamLogoUrl({ ...team, logoUrl: wrapped?.logoUrl }),
           wins: record.wins,

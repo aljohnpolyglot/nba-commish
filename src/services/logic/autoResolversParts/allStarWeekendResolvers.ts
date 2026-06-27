@@ -7,6 +7,10 @@ import {
   buildPbaAllStarLeagueStats,
   buildPbaAllStarPatch,
   buildPbaContestPatch,
+  hasReachedPbaAllStarWeekend,
+  isPbaAllStarStateLocal,
+  pbaAllStarGameNeedsFullLengthRepair,
+  resetPbaAllStarGameForResim,
 } from '../../pba/allStar';
 
 const skipIsolatedNonNbaAllStar = (state: GameState) =>
@@ -79,27 +83,52 @@ export const autoLockThroneField = async (state: GameState): Promise<Partial<Gam
 export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<GameState>> => {
   logPlanEvent('autoResolvers.autoSimAllStarWeekend', 'fire', `date=${state.date}`);
   if (state.leagueStats?.uiMode === 'pba_isolated') {
-    if ((state.allStar as any)?.weekendComplete) {
-      return backfillAllStarAwards(state);
+    const leagueStats = buildPbaAllStarLeagueStats(state.leagueStats);
+    const { stripUnsupportedPbaAllStarGames } = await import('../../pba/allStar');
+    const cleanedSchedule = stripUnsupportedPbaAllStarGames(
+      { ...state, leagueStats } as GameState,
+      state.schedule,
+    );
+    const pbaState = { ...state, leagueStats, schedule: cleanedSchedule } as GameState;
+    if (!hasReachedPbaAllStarWeekend(pbaState)) {
+      return { leagueStats, schedule: cleanedSchedule };
+    }
+    if ((pbaState.allStar as any)?.weekendComplete &&
+      isPbaAllStarStateLocal(pbaState, pbaState.allStar) &&
+      !pbaAllStarGameNeedsFullLengthRepair(pbaState, pbaState.allStar)) {
+      return {
+        ...backfillAllStarAwards(pbaState),
+        leagueStats,
+        schedule: cleanedSchedule,
+      };
     }
     try {
       const { AllStarWeekendOrchestrator } = await import('../../allStar/AllStarWeekendOrchestrator');
-      const leagueStats = buildPbaAllStarLeagueStats(state.leagueStats);
-      const pbaTeams = ((state as any).nonNBATeams ?? [])
+      const repairPatch = pbaAllStarGameNeedsFullLengthRepair(pbaState, pbaState.allStar)
+        ? resetPbaAllStarGameForResim(pbaState, pbaState.allStar)
+        : {};
+      const stateForSim = { ...pbaState, ...repairPatch } as GameState;
+      const pbaTeams = ((stateForSim as any).nonNBATeams ?? [])
         .filter((team: any) => team?.league === 'PBA')
         .map((team: any) => ({ ...team, id: team.tid ?? team.id }));
-      const seedPatch = state.allStar?.reservesAnnounced
-        ? { players: state.players, allStar: state.allStar }
-        : buildPbaAllStarPatch({ ...state, leagueStats } as GameState, state.players);
-      const players = seedPatch?.players ?? state.players;
-      let allStar = (seedPatch?.allStar ?? state.allStar) as any;
-      if (!allStar?.reservesAnnounced) return seedPatch ?? {};
-      allStar = buildPbaContestPatch({ ...state, leagueStats, players, allStar } as GameState, players, allStar);
+      const seedPatch = stateForSim.allStar?.reservesAnnounced && isPbaAllStarStateLocal(stateForSim, stateForSim.allStar)
+        ? { players: stateForSim.players, allStar: stateForSim.allStar }
+        : buildPbaAllStarPatch(stateForSim, stateForSim.players);
+      const players = seedPatch?.players ?? stateForSim.players;
+      let allStar = (seedPatch?.allStar ?? stateForSim.allStar) as any;
+      if (!allStar?.reservesAnnounced) {
+        return {
+          ...(seedPatch ?? {}),
+          ...repairPatch,
+          leagueStats,
+        };
+      }
+      allStar = buildPbaContestPatch({ ...stateForSim, players, allStar } as GameState, players, allStar);
 
-      let schedule = state.schedule;
+      let schedule = stateForSim.schedule;
       if (!allStar.gamesInjected) {
         schedule = AllStarWeekendOrchestrator.injectAllStarGames(
-          state.schedule,
+          stateForSim.schedule,
           pbaTeams,
           leagueStats.year,
           allStar.roster ?? [],
@@ -110,10 +139,10 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
 
       const patch = await AllStarWeekendOrchestrator.simulateWeekend(
         {
-          ...state,
+          ...stateForSim,
           players,
-          teams: state.teams,
-          nonNBATeams: (state as any).nonNBATeams,
+          teams: stateForSim.teams,
+          nonNBATeams: (stateForSim as any).nonNBATeams,
           schedule,
           leagueStats,
           allStar,
@@ -127,7 +156,7 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
         schedule: patch.schedule ?? schedule,
         allStar: finalAllStar,
         players: backfillPbaAllStarAwards(
-          { ...state, leagueStats, players, allStar: finalAllStar } as GameState,
+          { ...stateForSim, leagueStats, players, allStar: finalAllStar } as GameState,
           players,
           finalAllStar,
         ),
@@ -343,4 +372,25 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
     console.warn('autoSimAllStarWeekend failed:', err);
     return {};
   }
+};
+
+export const autoSimBackgroundNbaAllStarWeekend = async (state: GameState): Promise<Partial<GameState>> => {
+  if (state.leagueStats?.uiMode !== 'pba_isolated') return {};
+  const patch = await autoSimAllStarWeekend({
+    ...state,
+    leagueStats: { ...state.leagueStats, uiMode: 'nba' } as any,
+    allStar: (state as any).backgroundNbaAllStar,
+  } as GameState);
+  if (!patch || Object.keys(patch).length === 0) return {};
+  const next: any = { ...patch };
+  if ('allStar' in next) {
+    next.backgroundNbaAllStar = next.allStar;
+    delete next.allStar;
+  }
+  if ('leagueStats' in next) {
+    next.leagueStats = state.leagueStats;
+  }
+  delete next.schedule;
+  delete next.boxScores;
+  return next;
 };

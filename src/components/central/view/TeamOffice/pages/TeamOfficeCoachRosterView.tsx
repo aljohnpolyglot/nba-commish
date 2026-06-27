@@ -7,7 +7,7 @@ import { convertTo2KRating } from '../../../../../utils/helpers';
 import { calculatePlayerOverallForYear, getDisplayPotential } from '../../../../../utils/playerRatings';
 import { computeMoodScore } from '../../../../../utils/mood/moodScore';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
-import { formatPlayerSalaryDisplay, getPlayerCurrentSalaryUSD } from '../../../../../utils/salaryUtils';
+import { formatPlayerSalaryDisplay, getPlayerContractExpiryDisplay, getPlayerCurrentSalaryUSD } from '../../../../../utils/salaryUtils';
 import type { NBAPlayer } from '../../../../../types';
 import { isOnRoster, resolveAnyTeam } from '../../../../../utils/teamLookup';
 import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
@@ -70,6 +70,9 @@ interface RowData {
   currentSalaryUSD: number;
   currentSalaryLabel: string;
   yearsLeft: number;
+  expiryLabel: string;
+  expirySortYear: number;
+  isConferenceDeal: boolean;
   g: number;
   mp: number;
   pts: number;
@@ -149,7 +152,8 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
       const { score: moodScore } = computeMoodScore(
         p, team, state.date, false, false, false, teamPlayers, currentYear,
       );
-      const yearsLeft = Math.max(0, (p.contract?.exp ?? currentYear) - currentYear);
+      const expiry = getPlayerContractExpiryDisplay(p as any, currentYear);
+      const yearsLeft = expiry.isConferenceDeal ? 0 : Math.max(0, (p.contract?.exp ?? currentYear) - currentYear);
       return {
         player: p,
         jerseyNum: (p as any).jerseyNumber ?? '—',
@@ -160,6 +164,9 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
         currentSalaryUSD: getPlayerCurrentSalaryUSD(p as any, currentYear),
         currentSalaryLabel: formatPlayerSalaryDisplay(p as any, currentYear, state.nonNBATeams ?? []),
         yearsLeft,
+        expiryLabel: expiry.label,
+        expirySortYear: expiry.sortYear,
+        isConferenceDeal: expiry.isConferenceDeal,
         g: stats?.g ?? 0,
         mp: stats?.mp ?? 0,
         pts: stats?.pts ?? 0,
@@ -194,7 +201,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
       else if (col === 'k2')     { av = a.k2;   bv = b.k2; }
       else if (col === 'pot')    { av = a.pot;  bv = b.pot; }
       else if (col === 'salary') { av = a.currentSalaryUSD; bv = b.currentSalaryUSD; }
-      else if (col === 'exp')    { av = a.player.contract?.exp ?? 0; bv = b.player.contract?.exp ?? 0; }
+      else if (col === 'exp')    { av = a.expirySortYear; bv = b.expirySortYear; }
       else if (col === 'g')      { av = a.g;    bv = b.g; }
       else if (col === 'mp')     { av = a.mp;   bv = b.mp; }
       else if (col === 'pts')    { av = a.pts;  bv = b.pts; }
@@ -423,8 +430,8 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
                         </td>
 
                         <td className="text-center tabular-nums px-1.5">
-                          <span className={cn('text-[10px] font-bold', isExpiring ? 'text-rose-300 font-black' : 'text-slate-500')}>
-                            {p.contract?.exp ?? '—'}
+                          <span className={cn('text-[10px] font-bold', r.isConferenceDeal ? 'text-amber-300 font-black' : isExpiring ? 'text-rose-300 font-black' : 'text-slate-500')}>
+                            {r.expiryLabel}
                           </span>
                         </td>
 

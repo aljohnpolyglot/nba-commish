@@ -14,6 +14,7 @@ export interface MarketTickResult {
     accepted: boolean;
     winnerTeamName?: string;
     annualM: number;
+    salaryUSD?: number;
     years: number;
     rejectionReason?: string;
   }[];
@@ -22,6 +23,7 @@ export interface MarketTickResult {
     playerName: string;
     signingTeamName: string;
     annualM: number;
+    salaryUSD?: number;
     years: number;
     expiresInDays: number;
   }[];

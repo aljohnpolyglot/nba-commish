@@ -25,6 +25,7 @@ const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React.ReactN
 
 function detectType(text: string, type?: string): string {
   const t = text.toLowerCase();
+  if (type === 'Personnel') return 'Personnel';
   if (type === 'Draft'       || t.includes('overall pick of the') || t.includes('went undrafted in the')) return 'Draft';
   if (type === 'NG Guaranteed' || (t.includes('guaranteed by') && t.includes('january 10'))) return 'NG Guaranteed';
   if (type === 'Death' || t.includes('cause of death') || t.includes(' passed away ') || t.includes(' died at age ')) return 'Retirement';
@@ -35,7 +36,7 @@ function detectType(text: string, type?: string): string {
   if (type === 'Signing'     || t.includes('signed') || t.includes('re-signed') || t.includes('signs with')) return 'Signing';
   if (type === 'Waive'       || t.includes('waived'))  return 'Waive';
   if (type === 'Suspension'  || t.includes('suspended')) return 'Suspension';
-  if (type === 'Personnel'   || t.includes('fired') || t.includes('hired')) return 'Personnel';
+  if (t.includes('fired') || t.includes('hired')) return 'Personnel';
   return 'League Event';
 }
 
@@ -127,10 +128,22 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
     const isDrafted = draft && Number(draft.round) > 0 && Number(draft.pick) > 0 && Number(draft.year) > 0;
     if (!hasDraftEntry && isDrafted) {
       const draftedTid = Number(draft.tid);
-      const draftTeam = resolveAnyTeam(draftedTid, state.teams, nonNBATeams);
-      const isPbaDraft = pbaMode || pbaTeamIds.has(draftedTid) || player.status === 'PBA';
+      const pbaDraftSourceTeam = nonNBATeams.find(
+        (team: any) => team.league === 'PBA' && Number(team.tid ?? team.id) === draftedTid,
+      );
+      const draftTeam = pbaDraftSourceTeam
+        ? resolveAnyTeam(Number(pbaDraftSourceTeam.tid ?? pbaDraftSourceTeam.id), [], [pbaDraftSourceTeam])
+        : resolveAnyTeam(draftedTid, state.teams, nonNBATeams);
+      const isPbaDraft = !!pbaDraftSourceTeam || (
+        pbaMode &&
+        player.status === 'PBA' &&
+        !player.isImport &&
+        !player.importConference &&
+        !(player as any).pbaImportContract
+      );
       const teamsPerRound = isPbaDraft ? (pbaTeamIds.size || 12) : 30;
       const draftLabel = isPbaDraft ? 'PBA Draft' : 'NBA Draft';
+      const fallbackDate = isPbaDraft ? `Oct 5, ${draft.year}` : `Jun 25, ${draft.year}`;
       const ordinal = (n: number) => {
         const s = ['th', 'st', 'nd', 'rd'];
         const v = n % 100;
@@ -138,7 +151,7 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
       };
       entries.push({
         text: `The ${getTeamFullName(draftTeam) || 'team'} select ${player.name} as the ${ordinal((Number(draft.round) - 1) * teamsPerRound + Number(draft.pick))} overall pick of the ${draft.year} ${draftLabel}.`,
-        date: state.date,
+        date: fallbackDate,
         type: 'Draft',
         playerIds: [player.internalId],
         kind: 'Draft',

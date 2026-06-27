@@ -1,4 +1,5 @@
 import type { NBAPlayer } from '../types';
+import { resolveYearsWithCurrentTeamFromStats } from './playerTenure';
 
 type Txn = { season?: number; tid?: number; type?: string; phase?: number; pickNum?: number };
 type TeamRun = { tid: number; startSeason: number; endSeason: number; length: number };
@@ -76,13 +77,7 @@ export function resolveBirdRights(player: NBAPlayer): boolean {
 export function resolveYearsWithCurrentTeam(player: NBAPlayer): number {
   const currentTid = (player as any).tid;
   if (!isNbaTid(currentTid)) return 0;
-
-  const runs = getTeamRuns(player);
-  const currentRun = [...runs].reverse().find(run => run.tid === currentTid);
-  const runYears = currentRun?.length ?? 0;
-  const directYears = Number((player as any).yearsWithTeam ?? 0);
-  const safeDirectYears = Number.isFinite(directYears) ? Math.max(0, directYears) : 0;
-  return Math.max(runYears, safeDirectYears);
+  return resolveYearsWithCurrentTeamFromStats(player);
 }
 
 export function appendPlayerTransaction(player: NBAPlayer, txn: Txn): Txn[] {

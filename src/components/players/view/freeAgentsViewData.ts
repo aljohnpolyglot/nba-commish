@@ -3,6 +3,7 @@ import { getDisplayAge, getDisplayOverall } from '../../../store/playerRatingSto
 import { fuzzRatingValue } from '../../../utils/scoutingFuzz';
 import { getGameDateParts } from '../../../utils/dateUtils';
 import { getCountryFromLoc } from '../../../utils/helpers';
+import { getStandardRosterLimit, getTrainingCampRosterLimit, getTwoWayRosterLimit } from '../../../utils/rosterLimits';
 import { getCapThresholds, getMLEAvailability, getTeamCapProfileFromState, getTeamPayrollUSD } from '../../../utils/salaryUtils';
 
 export const MARKET_POOLS_FULL = [
@@ -69,8 +70,8 @@ export const getUserRosterSlots = (state: any, isGM: boolean, nonNbaIsolated: bo
   const standardCount = roster.length - twoWayCount;
   const { month, day } = state.date ? getGameDateParts(state.date) : getGameDateParts(new Date());
   const isTrainingCamp = (month >= 7 && month <= 9) || (month === 10 && day <= 21);
-  const maxStandard = isTrainingCamp ? (state.leagueStats?.maxTrainingCampRoster ?? 21) : (state.leagueStats?.maxStandardPlayersPerTeam ?? 15);
-  const maxTwoWay = state.leagueStats?.maxTwoWayPlayersPerTeam ?? 3;
+  const maxStandard = isTrainingCamp ? getTrainingCampRosterLimit(state.leagueStats) : getStandardRosterLimit(state.leagueStats);
+  const maxTwoWay = getTwoWayRosterLimit(state.leagueStats);
   const thresholds = getCapThresholds(state.leagueStats as any);
   const userTeam = state.teams.find((team: any) => team.id === state.userTeamId);
   const profile = getTeamCapProfileFromState(state, state.userTeamId, thresholds);
@@ -91,7 +92,7 @@ export const getUserRosterSlots = (state: any, isGM: boolean, nonNbaIsolated: bo
     twoWayCount,
     ngCount,
     guaranteedCount,
-    maxGuaranteed: state.leagueStats?.maxStandardPlayersPerTeam ?? 15,
+    maxGuaranteed: getStandardRosterLimit(state.leagueStats),
     maxStandard,
     maxTwoWay,
     isTrainingCamp,

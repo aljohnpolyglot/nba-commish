@@ -1,20 +1,230 @@
 import type { AllStarPlayer, AllStarVoteCount, GameState, NBAPlayer } from '../../types';
 import { bucketRoster } from '../allStar/AllStarSelectionService';
-import { AllStarDunkContestSim } from '../allStar/AllStarDunkContestSim';
-import { AllStarSkillsChallengeSim } from '../allStar/AllStarSkillsChallengeSim';
-import { AllStarThreePointContestSim } from '../allStar/AllStarThreePointContestSim';
-import { convertTo2KRating, extractNbaId, extractTeamId } from '../../utils/helpers';
+import { getAllStarWeekendDates } from '../allStar/allStarWeekendDates';
+import { convertTo2KRating, extractNbaId, extractTeamId, normalizeDate } from '../../utils/helpers';
+import {
+  selectExternalDunkContestants,
+  selectExternalSkillsContestants,
+  selectExternalThreePointContestants,
+  type ExternalAllStarContestProfile,
+} from '../externalLeague/allStarContestSelection';
+import { isPbaRosterLocal } from './importManager';
 
 const isGuard = (pos?: string) => pos === 'G' || pos === 'PG' || pos === 'SG';
+
+const PBA_ALL_STAR_CONTEST_PROFILE: ExternalAllStarContestProfile = {
+  guardSkillsBoost: 3,
+  centerDunkPenalty: 4,
+};
+
+const isAllStarWeekendEventGame = (game: any): boolean =>
+  !!(
+    game?.isAllStar ||
+    game?.isRisingStars ||
+    game?.isCelebrityGame ||
+    game?.isDunkContest ||
+    game?.isThreePointContest ||
+    game?.isShootingStars ||
+    game?.isSkillsChallenge ||
+    game?.isHorseContest ||
+    game?.isThroneEvent
+  );
+
+const isPbaAllStarWindowDate = (state: GameState, date?: string): boolean => {
+  if (!date) return false;
+  const dates = getAllStarWeekendDates(state.leagueStats.year, { uiMode: 'pba_isolated' });
+  const value = normalizeDate(date);
+  return value >= normalizeDate(dates.breakStart.toISOString()) && value <= normalizeDate(dates.breakEnd.toISOString());
+};
+
+export const emptyPbaAllStarState = (season: number) => ({
+  season,
+  votes: [],
+  roster: [],
+  startersAnnounced: false,
+  reservesAnnounced: false,
+  risingStarsAnnounced: false,
+  celebrityAnnounced: false,
+  shootingStarsAnnounced: false,
+  skillsChallengeAnnounced: false,
+  dunkContestAnnounced: false,
+  threePointAnnounced: false,
+  weekendComplete: false,
+  gamesInjected: false,
+  risingStarsRoster: undefined,
+  risingStarsTeams: undefined,
+  celebrityRoster: undefined,
+  celebrityGameId: undefined,
+  celebrityGameResult: undefined,
+  dunkContestContestants: undefined,
+  threePointContestants: undefined,
+  skillsChallengeContestants: undefined,
+  dunkContest: undefined,
+  threePointContest: undefined,
+  skillsChallenge: undefined,
+  bracket: undefined,
+  allStarGameId: undefined,
+  gameMvp: undefined,
+});
+
+export const hasReachedPbaAllStarRosterAnnouncement = (state: GameState): boolean => {
+  if (state.leagueStats?.uiMode !== 'pba_isolated') return true;
+  if (!state.date) return false;
+  const dates = getAllStarWeekendDates(state.leagueStats.year, { uiMode: 'pba_isolated' });
+  return normalizeDate(state.date) >= normalizeDate(dates.reservesAnnounced.toISOString());
+};
+
+export const hasReachedPbaAllStarContestAnnouncement = (state: GameState): boolean => {
+  if (state.leagueStats?.uiMode !== 'pba_isolated') return true;
+  if (!state.date) return false;
+  const dates = getAllStarWeekendDates(state.leagueStats.year, { uiMode: 'pba_isolated' });
+  return normalizeDate(state.date) >= normalizeDate(dates.dunkContestAnnounced.toISOString());
+};
+
+export const hasReachedPbaAllStarWeekend = (state: GameState): boolean => {
+  if (state.leagueStats?.uiMode !== 'pba_isolated') return true;
+  if (!state.date) return false;
+  const dates = getAllStarWeekendDates(state.leagueStats.year, { uiMode: 'pba_isolated' });
+  return normalizeDate(state.date) >= normalizeDate(dates.saturday.toISOString());
+};
+
+export function sanitizePbaAllStarForDate(state: GameState, allStar: any = state.allStar): any {
+  if (state.leagueStats?.uiMode !== 'pba_isolated') return allStar;
+  const season = state.leagueStats.year;
+  if (!hasReachedPbaAllStarRosterAnnouncement(state)) {
+    return emptyPbaAllStarState(season);
+  }
+  if (!allStar) return allStar;
+  if (!hasReachedPbaAllStarContestAnnouncement(state)) {
+    return {
+      ...allStar,
+      risingStarsAnnounced: false,
+      celebrityAnnounced: false,
+      risingStarsRoster: undefined,
+      risingStarsTeams: undefined,
+      celebrityRoster: undefined,
+      celebrityGameId: undefined,
+      celebrityGameResult: undefined,
+      dunkContestAnnounced: false,
+      threePointAnnounced: false,
+      skillsChallengeAnnounced: false,
+      dunkContestContestants: undefined,
+      threePointContestants: undefined,
+      skillsChallengeContestants: undefined,
+      dunkContest: undefined,
+      threePointContest: undefined,
+      skillsChallenge: undefined,
+    };
+  }
+  return allStar;
+}
+
+const collectPbaAllStarEventIds = (state: GameState, allStar: any = state.allStar): Set<number> => {
+  const ids = new Set<number>();
+  if (Number.isFinite(Number(allStar?.allStarGameId))) ids.add(Number(allStar.allStarGameId));
+  for (const game of allStar?.bracket?.games ?? []) {
+    if (Number.isFinite(Number(game?.gid))) ids.add(Number(game.gid));
+  }
+  for (const game of state.schedule ?? []) {
+    if (isAllStarWeekendEventGame(game) && isPbaAllStarWindowDate(state, game.date)) {
+      ids.add(Number(game.gid));
+    }
+  }
+  return ids;
+};
+
+const normalizeName = (value?: string): string => String(value ?? '').trim().toLowerCase();
+
+const getPbaBracketFinal = (allStar: any): any | undefined => {
+  const games = allStar?.bracket?.games ?? [];
+  return games.find((game: any) => game?.round === 'final') ?? (games.length === 1 ? games[0] : undefined);
+};
+
+const pbaAllStarBoxMatchesFinal = (box: any, finalGame: any, allStar: any): boolean => {
+  if (Number(box?.gameId) !== Number(finalGame?.gid)) return false;
+  if (Number(box?.homeTeamId) !== Number(finalGame?.homeTid)) return false;
+  if (Number(box?.awayTeamId) !== Number(finalGame?.awayTid)) return false;
+  const homeName = allStar?.bracket?.teams?.find((team: any) => Number(team?.tid) === Number(finalGame?.homeTid))?.name;
+  const awayName = allStar?.bracket?.teams?.find((team: any) => Number(team?.tid) === Number(finalGame?.awayTid))?.name;
+  if (box?.homeTeamName && homeName && normalizeName(box.homeTeamName) !== normalizeName(homeName)) return false;
+  if (box?.awayTeamName && awayName && normalizeName(box.awayTeamName) !== normalizeName(awayName)) return false;
+  return Array.isArray(box?.homeStats) && box.homeStats.length > 0 && Array.isArray(box?.awayStats) && box.awayStats.length > 0;
+};
 
 const pbaTeams = (state: GameState): any[] =>
   ((state as any).nonNBATeams ?? [])
     .filter((team: any) => team?.league === 'PBA')
     .map((team: any) => ({ ...team, id: team.tid ?? team.id }));
 
+const hasActivePbaImportContract = (player: NBAPlayer): boolean => {
+  const contract = (player as any).pbaImportContract;
+  return !!contract && contract.status !== 'released';
+};
+
+export const isPbaImportLike = (player: NBAPlayer): boolean =>
+  !!(player as any).isImport ||
+  !!(player as any).importConference ||
+  hasActivePbaImportContract(player);
+
+export const isPbaLocalAllStarEligible = (player: NBAPlayer, state: GameState): boolean => {
+  const tids = new Set(pbaTeams(state).map(team => Number(team.id)));
+  return tids.has(Number(player.tid)) &&
+    player.status !== 'Retired' &&
+    isPbaRosterLocal(player, state.leagueStats as any) &&
+    !isPbaImportLike(player);
+};
+
 const pbaPlayers = (state: GameState, players: NBAPlayer[]): NBAPlayer[] => {
   const tids = new Set(pbaTeams(state).map(team => team.id));
-  return players.filter(player => tids.has(player.tid) && player.status !== 'Retired');
+  return players.filter(player =>
+    tids.has(player.tid) &&
+    isPbaLocalAllStarEligible(player, state)
+  );
+};
+
+const allStarPlayerIdsAreLocal = (allStar: any, localIds: Set<string>): boolean => {
+  const roster = allStar?.roster ?? [];
+  if (!Array.isArray(roster) || roster.length === 0) return false;
+  return roster.every((entry: any) => localIds.has(String(entry?.playerId ?? entry?.internalId ?? '')));
+};
+
+const contestantIdsAreLocal = (contestants: any, localIds: Set<string>): boolean => {
+  if (!Array.isArray(contestants) || contestants.length === 0) return false;
+  return contestants.every((entry: any) => localIds.has(String(entry?.playerId ?? entry?.internalId ?? '')));
+};
+
+const contestantNamesAreLocal = (contestants: any, localNames: Set<string>): boolean => {
+  if (!Array.isArray(contestants) || contestants.length === 0) return false;
+  return contestants.every((entry: any) => localNames.has(String(entry?.playerName ?? entry?.name ?? '').toLowerCase()));
+};
+
+const contestResultIsLocal = (result: any, localIds: Set<string>, localNames: Set<string>): boolean => {
+  if (!result) return true;
+  if (result.winnerId && !localIds.has(String(result.winnerId))) {
+    const winnerName = String(result.winnerName ?? '').toLowerCase();
+    if (!winnerName || !localNames.has(winnerName)) return false;
+  }
+  const contestants = result.contestants;
+  if (!Array.isArray(contestants)) return true;
+  return contestants.every((entry: any) => {
+    const contestantId = String(entry?.playerId ?? entry?.internalId ?? '');
+    if (contestantId && localIds.has(contestantId)) return true;
+    const contestantName = String(entry?.playerName ?? entry?.name ?? '').toLowerCase();
+    return !!contestantName && localNames.has(contestantName);
+  });
+};
+
+export const isPbaAllStarStateLocal = (state: GameState, allStar: any = state.allStar): boolean => {
+  const localPlayers = pbaPlayers(state, state.players ?? []);
+  const localIds = new Set(localPlayers.map(player => player.internalId));
+  const localNames = new Set(localPlayers.map(player => String(player.name ?? '').toLowerCase()).filter(Boolean));
+  return allStarPlayerIdsAreLocal(allStar, localIds) &&
+    (!allStar?.dunkContestAnnounced || contestantIdsAreLocal(allStar?.dunkContestContestants, localIds)) &&
+    (!allStar?.threePointAnnounced || contestantIdsAreLocal(allStar?.threePointContestants, localIds)) &&
+    (!allStar?.skillsChallengeAnnounced || contestantIdsAreLocal(allStar?.skillsChallengeContestants, localIds)) &&
+    contestResultIsLocal(allStar?.dunkContest, localIds, localNames) &&
+    contestResultIsLocal(allStar?.threePointContest, localIds, localNames) &&
+    contestResultIsLocal(allStar?.skillsChallenge, localIds, localNames);
 };
 
 const playerOvr = (player: NBAPlayer): number =>
@@ -39,6 +249,11 @@ export const buildPbaAllStarLeagueStats = (leagueStats: any) => ({
   allStarGameEnabled: true,
   allStarFormat: 'captains_draft',
   allStarTeams: 2,
+  allStarMirrorLeagueRules: false,
+  allStarGameFormat: 'timed',
+  allStarQuarterLength: 12,
+  allStarNumQuarters: 4,
+  allStarOvertimeDuration: 5,
   risingStarsEnabled: false,
   celebrityGameEnabled: false,
   allStarDunkContest: true,
@@ -67,7 +282,11 @@ export const buildPbaAllStarPatch = (
     }),
   );
   const season = state.leagueStats.year;
-  const candidates = pbaPlayers(state, players)
+  const localPool = pbaPlayers(state, players);
+  if ((state.allStar as any)?.weekendComplete && isPbaAllStarStateLocal({ ...state, players } as GameState, state.allStar)) {
+    return { players, allStar: state.allStar as any };
+  }
+  const candidates = localPool
     .map(player => ({
       player,
       team: teamByTid.get(player.tid),
@@ -115,7 +334,6 @@ export const buildPbaAllStarPatch = (
   return {
     players: playersWithAwards,
     allStar: {
-      ...(state.allStar ?? {}),
       season,
       votes,
       roster: bucketedRoster,
@@ -123,11 +341,26 @@ export const buildPbaAllStarPatch = (
       reservesAnnounced: true,
       risingStarsAnnounced: false,
       celebrityAnnounced: false,
+      risingStarsRoster: undefined,
+      risingStarsTeams: undefined,
+      celebrityRoster: undefined,
+      celebrityGameId: undefined,
+      celebrityGameResult: undefined,
       shootingStarsAnnounced: false,
       skillsChallengeAnnounced: false,
       dunkContestAnnounced: false,
       threePointAnnounced: false,
       weekendComplete: false,
+      gamesInjected: false,
+      dunkContestContestants: undefined,
+      threePointContestants: undefined,
+      skillsChallengeContestants: undefined,
+      dunkContest: undefined,
+      threePointContest: undefined,
+      skillsChallenge: undefined,
+      bracket: undefined,
+      allStarGameId: undefined,
+      gameMvp: undefined,
     } as any,
   };
 };
@@ -138,26 +371,122 @@ export const buildPbaContestPatch = (
   allStar: any,
 ): any => {
   const pool = pbaPlayers(state, players);
-  if (pool.length === 0) return allStar;
+  const localIds = new Set(pool.map(player => player.internalId));
+  const localNames = new Set(pool.map(player => String(player.name ?? '').toLowerCase()).filter(Boolean));
+  const existing = allStar ?? {};
+  const keepDunk = existing.dunkContestAnnounced &&
+    contestantIdsAreLocal(existing.dunkContestContestants, localIds) &&
+    contestResultIsLocal(existing.dunkContest, localIds, localNames);
+  const keepThree = existing.threePointAnnounced &&
+    contestantIdsAreLocal(existing.threePointContestants, localIds) &&
+    contestResultIsLocal(existing.threePointContest, localIds, localNames);
+  const keepSkills = existing.skillsChallengeAnnounced &&
+    contestantIdsAreLocal(existing.skillsChallengeContestants, localIds) &&
+    contestResultIsLocal(existing.skillsChallenge, localIds, localNames);
+  const baseAllStar = {
+    season: state.leagueStats.year,
+    votes: [],
+    roster: [],
+    startersAnnounced: false,
+    reservesAnnounced: false,
+    weekendComplete: false,
+    ...existing,
+    ...(!keepDunk ? { dunkContestAnnounced: false, dunkContestContestants: undefined, dunkContest: undefined } : {}),
+    ...(!keepThree ? { threePointAnnounced: false, threePointContestants: undefined, threePointContest: undefined } : {}),
+    ...(!keepSkills ? { skillsChallengeAnnounced: false, skillsChallengeContestants: undefined, skillsChallenge: undefined } : {}),
+    ...(!keepDunk || !keepThree || !keepSkills ? { weekendComplete: false } : {}),
+  };
+  if (pool.length === 0) return baseAllStar;
   const dunkCount = state.leagueStats.allStarDunkContestPlayers ?? 4;
   const threePointCount = state.leagueStats.allStarThreePointContestPlayers ?? 8;
   const skillsCount = Math.min(30, Math.max(3, Math.round(state.leagueStats.allStarSkillsChallengeTeams ?? state.leagueStats.allStarSkillsChallengeTotalPlayers ?? 4)));
   return {
-    ...allStar,
-    ...(!allStar?.dunkContestAnnounced ? {
-      dunkContestContestants: AllStarDunkContestSim.selectContestants(pool, dunkCount),
+    ...baseAllStar,
+    ...(!keepDunk ? {
+      dunkContestContestants: selectExternalDunkContestants(pool, dunkCount, PBA_ALL_STAR_CONTEST_PROFILE),
       dunkContestAnnounced: true,
     } : {}),
-    ...(!allStar?.threePointAnnounced ? {
-      threePointContestants: AllStarThreePointContestSim.selectContestants(pool, state.leagueStats.year, threePointCount),
+    ...(!keepThree ? {
+      threePointContestants: selectExternalThreePointContestants(pool, state.leagueStats.year, threePointCount, PBA_ALL_STAR_CONTEST_PROFILE),
       threePointAnnounced: true,
     } : {}),
-    ...(!allStar?.skillsChallengeAnnounced ? {
-      skillsChallengeContestants: AllStarSkillsChallengeSim.selectContestants(pool, state.leagueStats.year, skillsCount),
+    ...(!keepSkills ? {
+      skillsChallengeContestants: selectExternalSkillsContestants(pool, skillsCount, PBA_ALL_STAR_CONTEST_PROFILE),
       skillsChallengeAnnounced: true,
     } : {}),
   };
 };
+
+export const pbaAllStarGameNeedsFullLengthRepair = (
+  state: GameState,
+  allStar: any = state.allStar,
+): boolean => {
+  if (!allStar?.weekendComplete) return false;
+  const gameIds = collectPbaAllStarEventIds(state, allStar);
+  const finalGame = getPbaBracketFinal(allStar);
+  const scores: Array<{ homeScore: number; awayScore: number }> = [];
+
+  for (const game of allStar?.bracket?.games ?? []) {
+    if (game?.played && (game.round === 'final' || (allStar?.bracket?.games?.length ?? 0) === 1)) {
+      scores.push({ homeScore: Number(game.homeScore ?? 0), awayScore: Number(game.awayScore ?? 0) });
+    }
+  }
+
+  for (const box of state.boxScores ?? []) {
+    const isPbaAllStarBox =
+      gameIds.has(Number(box.gameId)) ||
+      (!!(box as any).isAllStar && isPbaAllStarWindowDate(state, box.date));
+    if (isPbaAllStarBox) {
+      scores.push({ homeScore: Number(box.homeScore ?? 0), awayScore: Number(box.awayScore ?? 0) });
+    }
+  }
+
+  if (scores.some(({ homeScore, awayScore }) => {
+    const high = Math.max(homeScore, awayScore);
+    return high > 0 && high < 60;
+  })) {
+    return true;
+  }
+
+  return !!(finalGame?.played && !(state.boxScores ?? []).some(box => pbaAllStarBoxMatchesFinal(box, finalGame, allStar)));
+};
+
+export const resetPbaAllStarGameForResim = (
+  state: GameState,
+  allStar: any = state.allStar,
+): Pick<GameState, 'schedule' | 'boxScores' | 'allStar'> => {
+  const gameIds = collectPbaAllStarEventIds(state, allStar);
+  const schedule = (state.schedule ?? []).filter(game =>
+    !(isAllStarWeekendEventGame(game) && (gameIds.has(Number(game.gid)) || isPbaAllStarWindowDate(state, game.date)))
+  );
+  const boxScores = (state.boxScores ?? []).filter(box =>
+    !gameIds.has(Number(box.gameId)) &&
+    !((box as any).isAllStar && isPbaAllStarWindowDate(state, box.date))
+  );
+
+  return {
+    schedule,
+    boxScores,
+    allStar: {
+      ...(allStar ?? {}),
+      weekendComplete: false,
+      gamesInjected: false,
+      bracket: undefined,
+      allStarGameId: undefined,
+      gameMvp: undefined,
+    } as any,
+  };
+};
+
+export const stripUnsupportedPbaAllStarGames = (
+  state: GameState,
+  schedule: GameState['schedule'] = state.schedule,
+): GameState['schedule'] =>
+  (schedule ?? []).filter(game => {
+    if (!game) return false;
+    if (!isPbaAllStarWindowDate(state, game.date)) return true;
+    return !game.isRisingStars && !game.isCelebrityGame;
+  });
 
 export const backfillPbaAllStarAwards = (
   state: GameState,

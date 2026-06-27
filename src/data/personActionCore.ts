@@ -112,7 +112,11 @@ export function isPlayerEligible(
       'Free Agent', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia',
     ];
     if (player.tid === -1) return true;
-    if (context?.euroIsolated || context?.pbaIsolated) return false;
+    if (context?.pbaIsolated) {
+      if (player.tid >= 100 && player.status !== 'PBA' && freeOrInt.includes(player.status as never)) return true;
+      return false;
+    }
+    if (context?.euroIsolated) return false;
     if (player.tid >= 100 && freeOrInt.includes(player.status as never)) return true;
     return false;
   }

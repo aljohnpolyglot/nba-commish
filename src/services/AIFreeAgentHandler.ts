@@ -37,6 +37,7 @@ import {
   resolveUserTeamId,
   rollPriorTeamMatch,
   sharesPosition,
+  withNbaBackgroundEconomy,
 } from './freeAgency/aiFreeAgencyHelpers';
 import { createCampInviteEvaluator, createRoundSigner, getProjectedApronHardBlock, type FreeAgencyRoundContext } from './freeAgency/roundShared';
 import type {
@@ -69,6 +70,7 @@ export type {
  */
 export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   if (!SettingsManager.getSettings().allowAIFreeAgency) return [];
+  state = withNbaBackgroundEconomy(state);
 
   // Offseason orchestrator drift check (Session 1 — instrumentation only).
   // AI FA passes 1-5 should not run during the moratorium (verbal-only window).
@@ -280,23 +282,23 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
 }
 
 export function autoTrimOversizedRosters(state: GameState, month?: number, day?: number): WaiverResult[] {
-  return autoTrimOversizedRostersPass(state, month, day);
+  return autoTrimOversizedRostersPass(withNbaBackgroundEconomy(state), month, day);
 }
 
 export function autoPromoteTwoWayExcess(state: GameState, month?: number): PromotionResult[] {
-  return autoPromoteTwoWayExcessPass(state, month);
+  return autoPromoteTwoWayExcessPass(withNbaBackgroundEconomy(state), month);
 }
 
 export function runAIMidSeasonExtensions(state: GameState): ExtensionResult[] {
-  return runAIMidSeasonExtensionsPass(state);
+  return runAIMidSeasonExtensionsPass(withNbaBackgroundEconomy(state));
 }
 
 export function runAISeasonEndExtensions(state: GameState): ExtensionResult[] {
-  return runAISeasonEndExtensionsPass(state);
+  return runAISeasonEndExtensionsPass(withNbaBackgroundEconomy(state));
 }
 
 export function runAIBirdRightsResigns(state: GameState): BirdRightsResignResult[] {
-  return runAIBirdRightsResignsPass(state);
+  return runAIBirdRightsResignsPass(withNbaBackgroundEconomy(state));
 }
 
 export function runAIMleUpgradeSwaps(
@@ -304,5 +306,5 @@ export function runAIMleUpgradeSwaps(
   simMonth: number,
   simDay: number,
 ): MleSwapResult[] {
-  return runAIMleUpgradeSwapsPass(state, simMonth, simDay);
+  return runAIMleUpgradeSwapsPass(withNbaBackgroundEconomy(state), simMonth, simDay);
 }

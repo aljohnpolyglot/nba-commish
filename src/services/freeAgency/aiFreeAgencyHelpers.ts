@@ -1,4 +1,5 @@
 import type { GameState, NBAPlayer, NBATeam } from '../../types';
+import { INITIAL_LEAGUE_STATS } from '../../constants';
 import {
   computeContractOffer,
   contractToUSD,
@@ -20,6 +21,51 @@ import type { TeamStrategyProfile } from '../../utils/teamStrategy';
 const RECENT_SIGNING_GRACE_DAYS = 60;
 const MIN_SALARY_FALLBACK_M = 1.273;
 
+export function withNbaBackgroundEconomy(state: GameState): GameState {
+  if ((state.leagueStats as any)?.uiMode !== 'pba_isolated') return state;
+  return {
+    ...state,
+    leagueStats: {
+      ...state.leagueStats,
+      uiMode: 'nba',
+      currency: 'USD',
+      salaryCap: INITIAL_LEAGUE_STATS.salaryCap,
+      luxuryPayroll: INITIAL_LEAGUE_STATS.luxuryPayroll,
+      luxuryTaxThresholdPercentage: INITIAL_LEAGUE_STATS.luxuryTaxThresholdPercentage,
+      minimumPayrollPercentage: INITIAL_LEAGUE_STATS.minimumPayrollPercentage,
+      apronsEnabled: INITIAL_LEAGUE_STATS.apronsEnabled,
+      numberOfAprons: INITIAL_LEAGUE_STATS.numberOfAprons,
+      firstApronPercentage: INITIAL_LEAGUE_STATS.firstApronPercentage,
+      secondApronPercentage: INITIAL_LEAGUE_STATS.secondApronPercentage,
+      salaryCapEnabled: INITIAL_LEAGUE_STATS.salaryCapEnabled,
+      salaryCapType: INITIAL_LEAGUE_STATS.salaryCapType,
+      minContractType: INITIAL_LEAGUE_STATS.minContractType,
+      minContractStaticAmount: INITIAL_LEAGUE_STATS.minContractStaticAmount,
+      maxContractType: INITIAL_LEAGUE_STATS.maxContractType,
+      maxContractStaticPercentage: INITIAL_LEAGUE_STATS.maxContractStaticPercentage,
+      minContractLength: INITIAL_LEAGUE_STATS.minContractLength,
+      maxContractLengthStandard: INITIAL_LEAGUE_STATS.maxContractLengthStandard,
+      maxContractLengthBird: INITIAL_LEAGUE_STATS.maxContractLengthBird,
+      rookieExtEnabled: (INITIAL_LEAGUE_STATS as any).rookieExtEnabled,
+      rookieExtPct: (INITIAL_LEAGUE_STATS as any).rookieExtPct,
+      rookieExtRosePct: (INITIAL_LEAGUE_STATS as any).rookieExtRosePct,
+      supermaxEnabled: INITIAL_LEAGUE_STATS.supermaxEnabled,
+      supermaxPercentage: INITIAL_LEAGUE_STATS.supermaxPercentage,
+      maxPlayersPerTeam: INITIAL_LEAGUE_STATS.maxPlayersPerTeam,
+      maxStandardPlayersPerTeam: INITIAL_LEAGUE_STATS.maxStandardPlayersPerTeam,
+      maxTwoWayPlayersPerTeam: INITIAL_LEAGUE_STATS.maxTwoWayPlayersPerTeam,
+      maxTrainingCampRoster: INITIAL_LEAGUE_STATS.maxTrainingCampRoster,
+      twoWayContractsEnabled: INITIAL_LEAGUE_STATS.twoWayContractsEnabled,
+      nonGuaranteedContractsEnabled: INITIAL_LEAGUE_STATS.nonGuaranteedContractsEnabled,
+      mleEnabled: (INITIAL_LEAGUE_STATS as any).mleEnabled,
+      roomMlePercentage: (INITIAL_LEAGUE_STATS as any).roomMlePercentage,
+      nonTaxpayerMlePercentage: (INITIAL_LEAGUE_STATS as any).nonTaxpayerMlePercentage,
+      taxpayerMlePercentage: (INITIAL_LEAGUE_STATS as any).taxpayerMlePercentage,
+      mleUsage: (state.leagueStats as any).backgroundNbaMleUsage ?? (state.leagueStats as any).mleUsage ?? {},
+    } as GameState['leagueStats'],
+  };
+}
+
 interface DateClampedOffer {
   salaryUSD: number;
   years: number;
@@ -39,6 +85,7 @@ interface ScoreFreeAgentFitArgs {
 }
 
 export function defaultMaxRoster(leagueStats: { uiMode?: string | null } | undefined): number {
+  if (leagueStats?.uiMode === 'pba_isolated') return 18;
   return leagueStats?.uiMode === 'euro_isolated' ? 12 : 15;
 }
 

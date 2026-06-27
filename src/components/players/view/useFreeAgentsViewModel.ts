@@ -8,13 +8,20 @@ import { formatGameDateShort, getCurrentOffseasonFAMoratoriumEnd, getGameDatePar
 import { calcPot2K } from '../../../services/trade/tradeValueEngine';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import type { NBAPlayer } from '../../../types';
-import { isEuroIsolatedMode, isNonNbaIsolatedMode } from '../../../utils/uiMode';
+import { isEuroIsolatedMode, isNonNbaIsolatedMode, isPbaActiveConferenceMode, isPbaIsolatedMode } from '../../../utils/uiMode';
+import {
+  getEffectivePbaConference,
+  isImportEligible,
+  isPbaRosterLocal,
+} from '../../../services/pba/importManager';
 import { getDisplayAge, getDisplayOverall } from '../../../store/playerRatingStore';
 import { fuzzRatingValue } from '../../../utils/scoutingFuzz';
+import { getStandardRosterLimit, getTrainingCampRosterLimit, getTwoWayRosterLimit } from '../../../utils/rosterLimits';
 import {
   MARKET_POOLS_EURO,
   MARKET_POOLS_FICTIONAL,
   MARKET_POOLS_FULL,
+  MARKET_POOLS_PBA,
   NON_NBA_STATUS_LABELS,
   ON_ROSTER_STATUSES,
   type FreeAgentViewMode,
@@ -29,8 +36,13 @@ export function useFreeAgentsViewModel() {
   const isGM = state.gameMode === 'gm';
   const isFictional = state.leagueType === 'fictional';
   const euroIsolated = isEuroIsolatedMode(state);
+  const pbaIsolated = isPbaIsolatedMode(state);
+  const pbaImportSearchOpen = pbaIsolated && (
+    state.offseasonChecklist?.pbaImportSearch === 'pending' ||
+    state.offseasonChecklist?.pbaImportSearch === 'in-progress'
+  );
   const nonNbaIsolated = isNonNbaIsolatedMode(state);
-  const marketPools = nonNbaIsolated ? MARKET_POOLS_EURO : isFictional ? MARKET_POOLS_FICTIONAL : MARKET_POOLS_FULL;
+  const marketPools = pbaIsolated ? MARKET_POOLS_PBA : euroIsolated ? MARKET_POOLS_EURO : isFictional ? MARKET_POOLS_FICTIONAL : MARKET_POOLS_FULL;
 
   const [viewMode, setViewMode] = useState<FreeAgentViewMode>('available');
   const [searchTerm, setSearchTerm] = useState('');
@@ -85,7 +97,7 @@ export function useFreeAgentsViewModel() {
   };
 
   const handleSimDayClick = () => {
-    if (state.offseasonChecklist) {
+    if (state.offseasonChecklist && !isPbaActiveConferenceMode(state)) {
       setOffseasonBlockOpen(true);
       return;
     }
@@ -97,13 +109,25 @@ export function useFreeAgentsViewModel() {
       state.players.filter(player => {
         if (player.status === 'Retired' || player.hof || player.tid === -100) return false;
         if (player.tid === -2 || player.status === 'Prospect' || player.status === 'Draft Prospect') return false;
+        if (pbaIsolated) {
+          const draftYear = Number((player as any).draft?.year ?? 0);
+          if (Number.isFinite(draftYear) && draftYear > seasonYear) return false;
+          if (player.tid !== -1 && player.status !== 'Free Agent') return false;
+          if (pbaImportSearchOpen) {
+            const conference = getEffectivePbaConference(state.leagueStats as any);
+            return !isPbaRosterLocal(player, state.leagueStats as any) &&
+              isImportEligible(player, conference, state.leagueStats as any).eligible &&
+              getDisplayAge(player, seasonYear) >= 19;
+          }
+          return isPbaRosterLocal(player, state.leagueStats as any) && getDisplayAge(player, seasonYear) >= 19;
+        }
         if (nonNbaIsolated && (player.tid ?? -1) >= 0) return false;
         const isInternational = NON_NBA_STATUS_LABELS.includes((player.status || '') as any);
         const isNBAFreeAgent = player.tid === -1 || player.status === 'Free Agent';
         if (!isInternational && !isNBAFreeAgent) return false;
         return getDisplayAge(player, seasonYear) >= 19;
       }),
-    [state.players, seasonYear, nonNbaIsolated],
+    [state.players, seasonYear, nonNbaIsolated, pbaIsolated, pbaImportSearchOpen, state.leagueStats],
   );
 
   const upcomingFAs = useMemo(
@@ -130,8 +154,8 @@ export function useFreeAgentsViewModel() {
     const standardCount = roster.length - twoWayCount;
     const { month, day } = state.date ? getGameDateParts(state.date) : getGameDateParts(new Date());
     const isTrainingCamp = (month >= 7 && month <= 9) || (month === 10 && day <= 21);
-    const maxStandard = isTrainingCamp ? (state.leagueStats?.maxTrainingCampRoster ?? 21) : (state.leagueStats?.maxStandardPlayersPerTeam ?? 15);
-    const maxTwoWay = state.leagueStats?.maxTwoWayPlayersPerTeam ?? 3;
+    const maxStandard = isTrainingCamp ? getTrainingCampRosterLimit(state.leagueStats) : getStandardRosterLimit(state.leagueStats);
+    const maxTwoWay = getTwoWayRosterLimit(state.leagueStats);
     const userTeam = state.teams.find(team => team.id === state.userTeamId);
     const profile = getTeamCapProfileFromState(state, state.userTeamId, getCapThresholds(state.leagueStats as any));
     const payroll = getTeamPayrollUSD(state.players, state.userTeamId, userTeam, state.leagueStats?.year);
@@ -150,7 +174,7 @@ export function useFreeAgentsViewModel() {
       twoWayCount,
       ngCount,
       guaranteedCount: standardCount - ngCount,
-      maxGuaranteed: state.leagueStats?.maxStandardPlayersPerTeam ?? 15,
+      maxGuaranteed: getStandardRosterLimit(state.leagueStats),
       maxStandard,
       maxTwoWay,
       isTrainingCamp,

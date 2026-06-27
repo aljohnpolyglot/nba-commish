@@ -1,4 +1,5 @@
 import type { GameState, NBAPlayer } from '../types';
+import { INITIAL_LEAGUE_STATS } from '../constants';
 import { getCapThresholds, getMLEAvailability, getTeamPayrollUSD, hasBirdRights } from '../utils/salaryUtils';
 import {
   canSignMultiYear,
@@ -26,17 +27,53 @@ import type { MarketTickResult } from './faMarketTickerTypes';
 
 export type { MarketTickResult } from './faMarketTickerTypes';
 
-export function tickFAMarkets(state: GameState): MarketTickResult {
-  const currentDay = state.day;
-  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-  const playerById = new Map(state.players.map(p => [p.internalId, p]));
+function withBackgroundNbaEconomy(state: GameState): GameState {
+  if (state.leagueStats?.uiMode !== 'pba_isolated') return state;
+  const current = state.leagueStats as any;
+  const nbaDefaults = INITIAL_LEAGUE_STATS as any;
+  return {
+    ...state,
+    leagueStats: {
+      ...current,
+      uiMode: 'nba',
+      currency: 'USD',
+      salaryCapEnabled: true,
+      salaryCapType: nbaDefaults.salaryCapType ?? 'soft',
+      salaryCap: nbaDefaults.salaryCap,
+      luxuryPayroll: nbaDefaults.luxuryPayroll,
+      luxuryTaxEnabled: nbaDefaults.luxuryTaxEnabled ?? true,
+      apronsEnabled: nbaDefaults.apronsEnabled ?? true,
+      minimumPayrollEnabled: nbaDefaults.minimumPayrollEnabled ?? true,
+      minContractType: nbaDefaults.minContractType,
+      minContractStaticAmount: nbaDefaults.minContractStaticAmount,
+      maxContractType: nbaDefaults.maxContractType,
+      maxContractStaticPercentage: nbaDefaults.maxContractStaticPercentage,
+      mleEnabled: nbaDefaults.mleEnabled ?? true,
+      biannualEnabled: nbaDefaults.biannualEnabled ?? true,
+      playerOptionsEnabled: nbaDefaults.playerOptionsEnabled ?? true,
+      rookieScaleType: nbaDefaults.rookieScaleType,
+      maxPlayersPerTeam: nbaDefaults.maxPlayersPerTeam ?? 15,
+      maxStandardPlayersPerTeam: nbaDefaults.maxStandardPlayersPerTeam ?? 15,
+      twoWayContractsEnabled: nbaDefaults.twoWayContractsEnabled ?? true,
+      maxTwoWayPlayersPerTeam: nbaDefaults.maxTwoWayPlayersPerTeam ?? 3,
+      mleUsage: current.backgroundNbaMleUsage ?? {},
+    },
+  };
+}
 
-  if (state.leagueStats?.uiMode === 'euro_isolated') {
+export function tickFAMarkets(state: GameState): MarketTickResult {
+  const pbaBackgroundMode = state.leagueStats?.uiMode === 'pba_isolated';
+  const marketState = withBackgroundNbaEconomy(state);
+  const currentDay = marketState.day;
+  const currentYear = marketState.leagueStats?.year ?? new Date().getFullYear();
+  const playerById = new Map(marketState.players.map(p => [p.internalId, p]));
+
+  if (marketState.leagueStats?.uiMode === 'euro_isolated') {
     return buildEmptyMarketTickResult();
   }
 
-  if (state.date) {
-    const os = getOffseasonState(state.date, state.leagueStats as any, state.schedule as any);
+  if (marketState.date) {
+    const os = getOffseasonState(marketState.date, marketState.leagueStats as any, marketState.schedule as any);
     logOffseasonDrift(
       'faMarketTicker.tickFAMarkets',
       ['moratorium', 'birdRights', 'openFA', 'preCamp'],
@@ -60,13 +97,14 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
         accepted: false,
         winnerTeamName: opts.winnerTeamName,
         annualM: Math.round(bid.salaryUSD / 100_000) / 10,
+        salaryUSD: bid.salaryUSD,
         years: bid.years,
         rejectionReason: opts.reason,
       });
     }
   };
 
-  const allMarkets = state.faBidding?.markets ?? [];
+  const allMarkets = marketState.faBidding?.markets ?? [];
   const existing: FreeAgentMarket[] = [];
   for (const market of allMarkets) {
     const player = playerById.get(market.playerId);
@@ -90,12 +128,12 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       const reason = !player
         ? 'player vanished from state'
         : player.tid >= 0
-          ? `player.tid=${player.tid} (signed by ${state.teams.find(t => t.id === player.tid)?.name ?? 'unknown team'})`
+          ? `player.tid=${player.tid} (signed by ${marketState.teams.find(t => t.id === player.tid)?.name ?? 'unknown team'})`
           : `player.status=${player.status}, decidesOnDay=${market.decidesOnDay}, openedDay=${(market as any).openedDay}, currentDay=${currentDay}`;
       console.warn(`[FA-MARKET] Dropping user-bid market for ${market.playerName ?? player?.name ?? market.playerId}: ${reason}`);
     }
     if (!player) emitUserBidRejection(market, market.playerName ?? 'Unknown', { reason: 'is no longer available' });
-    else if (player.tid >= 0) emitUserBidRejection(market, player.name, { winnerTeamName: state.teams.find(t => t.id === player.tid)?.name ?? 'another team' });
+    else if (player.tid >= 0) emitUserBidRejection(market, player.name, { winnerTeamName: marketState.teams.find(t => t.id === player.tid)?.name ?? 'another team' });
     else emitUserBidRejection(market, player.name, { reason: 'market closed before resolution' });
   }
 
@@ -104,7 +142,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
   const rfaMatchResolutions: MarketTickResult['rfaMatchResolutions'] = [];
   const userBidRejectedForCap = new Set<string>();
   const localMleUsage: NonNullable<GameState['leagueStats']>['mleUsage'] = {
-    ...(((state.leagueStats as any)?.mleUsage ?? {}) as any),
+    ...(((marketState.leagueStats as any)?.mleUsage ?? {}) as any),
   };
   let mleUsageChanged = false;
 
@@ -113,17 +151,17 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       .filter(mut => mut.tid === teamId && mut.contract?.amount != null)
       .reduce((sum, mut) => sum + ((mut.contract?.amount ?? 0) * 1_000), 0);
 
-  const maxStandardRoster = ((state.leagueStats as any)?.maxStandardPlayersPerTeam
-    ?? (state.leagueStats as any)?.maxPlayersPerTeam
+  const maxStandardRoster = ((marketState.leagueStats as any)?.maxStandardPlayersPerTeam
+    ?? (marketState.leagueStats as any)?.maxPlayersPerTeam
     ?? 15) as number;
-  const maxTrainingCampRoster = ((state.leagueStats as any)?.maxTrainingCampRoster ?? 21) as number;
-  const effectiveMaxRoster = isPreseasonCampWindow(state.date, state.leagueStats as any)
+  const maxTrainingCampRoster = ((marketState.leagueStats as any)?.maxTrainingCampRoster ?? 21) as number;
+  const effectiveMaxRoster = isPreseasonCampWindow(marketState.date, marketState.leagueStats as any)
     ? maxTrainingCampRoster
     : maxStandardRoster;
 
   const getProjectedStandardRosterCount = (teamId: number): number => {
     let count = 0;
-    for (const player of state.players) {
+    for (const player of marketState.players) {
       if (player.tid === teamId && !(player as any).twoWay) count++;
     }
     for (const mutation of playerMutations.values()) {
@@ -135,11 +173,11 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
   const getMleTypeForBid = (bid: FreeAgentBid, player: NBAPlayer, payrollUSD: number): 'room' | 'non_taxpayer' | 'taxpayer' | null => {
     const priorTid = getRFAPriorTid(player);
     if (bid.teamId === priorTid && hasBirdRights(player)) return null;
-    const thresholds = getCapThresholds(state.leagueStats as any);
+    const thresholds = getCapThresholds(marketState.leagueStats as any);
     const capSpace = thresholds.salaryCap - payrollUSD;
     if (capSpace >= bid.salaryUSD) return null;
     const mle = getMLEAvailability(bid.teamId, payrollUSD, bid.salaryUSD, thresholds, {
-      ...(state.leagueStats as any),
+      ...(marketState.leagueStats as any),
       mleUsage: localMleUsage,
     });
     return !mle.blocked && bid.salaryUSD <= mle.available ? mle.type : null;
@@ -163,10 +201,10 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
       const hasActiveUserBid = market.bids.some(b => b.isUserBid && b.status === 'active');
       const hasActiveAiBid = market.bids.some(b => !b.isUserBid && b.status === 'active');
       if (!hasActiveUserBid || hasActiveAiBid) continue;
-      const player = state.players.find(p => p.internalId === market.playerId);
+      const player = marketState.players.find(p => p.internalId === market.playerId);
       if (!player || player.tid >= 0 || player.status !== 'Free Agent') continue;
 
-      const aiBids = generateAIBids(player, state, 5);
+      const aiBids = generateAIBids(player, marketState, 5);
       if (aiBids.length === 0) continue;
       const decisionDay = Math.max(
         market.decidesOnDay ?? currentDay,
@@ -191,7 +229,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
         decidesOnDay: decisionDay,
         season: market.season ?? currentYear,
         openedDay: market.openedDay ?? currentDay,
-        openedDate: market.openedDate ?? state.date,
+        openedDate: market.openedDate ?? marketState.date,
       };
       userMarketCountered = true;
       console.log(`[FA-MARKET] Added ${freshAiBids.length} AI counter-bids to user market for ${player.name}.`);
@@ -203,7 +241,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     for (let i = 0; i < workingMarkets.length; i++) {
       const market = workingMarkets[i];
       if (market.resolved) continue;
-      const player = state.players.find(p => p.internalId === market.playerId);
+      const player = marketState.players.find(p => p.internalId === market.playerId);
       if (!player) continue;
       const activeBids = market.bids.filter(b => b.status === 'active');
       if (activeBids.length === 0 || activeBids.some(b => b.isUserBid)) continue;
@@ -217,11 +255,11 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     }
   };
 
-  const dateParts = state.date ? getGameDateParts(state.date) : null;
+  const dateParts = marketState.date ? getGameDateParts(marketState.date) : null;
   const inSummerFAWindow = !!dateParts && dateParts.month >= 7 && dateParts.month <= 9;
   if (inSummerFAWindow) {
-    const effectiveFAStart = toISODateString(getCurrentOffseasonEffectiveFAStart(state.date, state.leagueStats as any, state.schedule as any));
-    if (compareGameDates(state.date, effectiveFAStart) < 0) {
+    const effectiveFAStart = toISODateString(getCurrentOffseasonEffectiveFAStart(marketState.date, marketState.leagueStats as any, marketState.schedule as any));
+    if (compareGameDates(marketState.date, effectiveFAStart) < 0) {
       return {
         updatedMarkets: workingMarkets,
         signedPlayerIds,
@@ -238,15 +276,15 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
     }
   }
 
-  const postPreseasonResolve = isPostPreseason(state.date);
-  const allowMultiYearResolve = canSignMultiYear(state.date, currentYear, state.leagueStats as any);
-  const postDeadlineResolve = isPastTradeDeadline(state.date, currentYear, state.leagueStats as any);
+  const postPreseasonResolve = isPostPreseason(marketState.date);
+  const allowMultiYearResolve = canSignMultiYear(marketState.date, currentYear, marketState.leagueStats as any);
+  const postDeadlineResolve = isPastTradeDeadline(marketState.date, currentYear, marketState.leagueStats as any);
   const resolutionMaxYears = postDeadlineResolve && !allowMultiYearResolve ? 1 : postPreseasonResolve ? 2 : Infinity;
-  const moratoriumActive = isInMoratorium(state.date, currentYear, state.leagueStats as any, state.schedule as any);
-  const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(state.date, state.leagueStats as any, state.schedule as any);
+  const moratoriumActive = isInMoratorium(marketState.date, currentYear, marketState.leagueStats as any, marketState.schedule as any);
+  const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(marketState.date, marketState.leagueStats as any, marketState.schedule as any);
   const moratoriumEndDay = (() => {
-    if (!state.date) return currentDay;
-    const today = parseGameDate(state.date);
+    if (!marketState.date) return currentDay;
+    const today = parseGameDate(marketState.date);
     if (isNaN(today.getTime()) || isNaN(moratoriumEnd.getTime())) return currentDay;
     return currentDay + Math.max(0, Math.ceil((moratoriumEnd.getTime() - today.getTime()) / 86_400_000));
   })();
@@ -266,7 +304,7 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
   }
 
   const resolutionContext = {
-    state,
+    state: marketState,
     currentDay,
     currentYear,
     workingMarkets,
@@ -296,14 +334,18 @@ export function tickFAMarkets(state: GameState): MarketTickResult {
   resolvePendingRfaMatches(resolutionContext);
   withdrawExhaustedTeamBids(resolutionContext);
   closeBlockedLoyalMarkets();
-  openNewMarkets({ state, currentDay, currentYear, workingMarkets, moratoriumEndDay });
+  openNewMarkets({ state: marketState, currentDay, currentYear, workingMarkets, moratoriumEndDay });
 
   const pendingPlayerIds = collectPendingPlayerIds(workingMarkets);
   const shouldStopSim = userMarketCountered || userBidResolutions.length > 0 || rfaOfferSheets.length > 0;
 
   return {
     updatedMarkets: workingMarkets,
-    ...(mleUsageChanged ? { leagueStats: { ...(state.leagueStats as any), mleUsage: localMleUsage } } : {}),
+    ...(mleUsageChanged ? {
+      leagueStats: pbaBackgroundMode
+        ? { ...(state.leagueStats as any), backgroundNbaMleUsage: localMleUsage }
+        : { ...(marketState.leagueStats as any), mleUsage: localMleUsage },
+    } : {}),
     signedPlayerIds,
     playerMutations,
     historyEntries,

@@ -29,6 +29,7 @@ export interface HistoryEntry {
   date: string;
   type?: string;
   tid?: number;
+  league?: string;
   commissioner?: boolean;
   playerIds?: string[];
 }

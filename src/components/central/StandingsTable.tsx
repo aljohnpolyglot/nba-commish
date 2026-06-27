@@ -2,6 +2,8 @@ import React from 'react';
 import type { NBATeam } from '../../types';
 import { useGame } from '../../store/GameContext';
 import { getOwnTeamId } from '../../utils/helpers';
+import { getTeamFullName } from '../../utils/teamNames';
+import { getResolvedTeamLogoUrl, getTeamPrimaryColor } from '../../utils/teamAssets';
 
 interface StandingsTableProps {
     teams: NBATeam[];
@@ -10,6 +12,30 @@ interface StandingsTableProps {
     selectedTeamId: number | null;
     phase?: 'preseason' | 'regular' | 'playoffs' | 'offseason';
 }
+
+const TeamMark: React.FC<{ team: NBATeam }> = ({ team }) => {
+    const [failed, setFailed] = React.useState(false);
+    const logoUrl = getResolvedTeamLogoUrl(team);
+    if (logoUrl && !failed) {
+        return (
+            <img
+                src={logoUrl}
+                alt=""
+                className="h-6 w-6 object-contain"
+                referrerPolicy="no-referrer"
+                onError={() => setFailed(true)}
+            />
+        );
+    }
+    return (
+        <span
+            className="flex h-6 w-6 items-center justify-center rounded text-[8px] font-black text-white"
+            style={{ backgroundColor: getTeamPrimaryColor(team) }}
+        >
+            {team.abbrev ?? 'TM'}
+        </span>
+    );
+};
 
 const StandingsTable: React.FC<StandingsTableProps> = ({ teams, conference, onSelectTeam, selectedTeamId, phase }) => {
     const { state } = useGame();
@@ -55,8 +81,8 @@ const StandingsTable: React.FC<StandingsTableProps> = ({ teams, conference, onSe
                 >
                     <div className="flex items-center flex-1 min-w-0">
                         <span className="font-mono w-6 text-zinc-600 text-xs">{index + 1}</span>
-                        <img src={team.logoUrl} alt={team.name} className="h-6 w-6 mx-2 flex-shrink-0" referrerPolicy="no-referrer"/>
-                        <span className="font-medium text-zinc-200 truncate">{team.name}</span>
+                        <span className="mx-2 flex-shrink-0"><TeamMark team={team} /></span>
+                        <span className="font-medium text-zinc-200 truncate">{getTeamFullName(team)}</span>
                         {isOwn && <span className="ml-1.5 text-[8px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1 py-0.5 rounded border border-indigo-500/40 flex-shrink-0">You</span>}
                     </div>
                     <div className="font-mono text-zinc-400 flex space-x-4 flex-shrink-0 text-xs">

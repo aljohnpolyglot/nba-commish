@@ -24,6 +24,7 @@ import { findCollegeTeamProfile, type CollegeTeamProfile } from '../../services/
 import { HybridRadarChart, letterColor, ordinal, tierColor } from './DraftScoutingModalShared';
 import { DraftScoutingCombineTab } from './DraftScoutingCombineTab';
 import { fuzzRatingValue } from '../../utils/scoutingFuzz';
+import { isPbaIsolatedMode } from '../../utils/uiMode';
 
 export interface DraftScoutingModalProps {
   player: NBAPlayer | null;
@@ -74,18 +75,19 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
   const { state } = useGame();
   const [tab, setTab] = useState<Tab>('overview');
   React.useEffect(() => { setTab('overview'); }, [player?.internalId]);
+  const projectionContext = isPbaIsolatedMode(state) ? 'pba' : 'nba';
 
   const data = useMemo(() => {
     if (!player) return null;
-    const report = generateStructuredScoutingReport(player);
+    const report = generateStructuredScoutingReport(player, projectionContext);
     const tendencies = getTendencies(player);
-    const risk = getRiskProfile(player);
+    const risk = getRiskProfile(player, projectionContext);
     const grades = getSkillGrades(player);
     const physical = getPhysicalSnapshot(player);
     const blurb = getBackgroundBlurb(player, draftYear);
     const archetype = inferArchetype(player);
     return { report, tendencies, risk, grades, physical, blurb, archetype };
-  }, [player, draftYear]);
+  }, [player, draftYear, projectionContext]);
 
   const comparisons = useMemo(() => {
     if (preComputedComps) return preComputedComps;

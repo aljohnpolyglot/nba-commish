@@ -1,14 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { SaveManager, SaveMetadata } from '../services/SaveManager';
-import { Play, Upload, Download, Trash2, FolderOpen, Plus, Settings2, Trophy, Zap, Target, Sparkles, CircleDot } from 'lucide-react';
+import { Play, Upload, Download, Trash2, FolderOpen, Plus, Settings2, Trophy, Zap, Target, Sparkles, CircleDot, Medal } from 'lucide-react';
 import { useGame } from '../store/GameContext';
 import { SettingsModal } from './modals/SettingsModal';
 
 interface MainMenuProps {
   onStartNew: () => void;
   onLoadSave: (state: any) => void;
-  onPlayMiniGame?: (game: 'throne' | 'dunk' | '3point' | 'shooting-stars' | 'skills' | 'horse') => void;
+  onPlayMiniGame?: (game: 'throne' | 'dunk' | '3point' | 'shooting-stars' | 'skills' | 'horse' | 'olympics') => void;
 }
+
+const formatSaveGameDate = (value: string): string => {
+  const isoMatch = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))).toLocaleDateString('en-US', {
+      timeZone: 'UTC',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleDateString('en-US', {
+      timeZone: 'UTC',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+  return value;
+};
 
 export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPlayMiniGame }) => {
   const [saves, setSaves] = useState<SaveMetadata[]>([]);
@@ -204,6 +227,19 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPl
               </button>
 
               <button
+                onClick={() => onPlayMiniGame?.('olympics')}
+                className="w-full flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-800 rounded-xl transition-all group mt-2"
+              >
+                <div className="flex items-center gap-3">
+                  <Medal size={20} className="text-amber-500 group-hover:text-amber-400" />
+                  <div className="text-left">
+                    <h4 className="font-bold text-white text-sm">Olympics</h4>
+                    <p className="text-slate-400 text-xs">Track, field, combat, and more</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
                 onClick={() => onPlayMiniGame?.('horse')}
                 className="w-full flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 hover:border-yellow-500/50 hover:bg-slate-800 rounded-xl transition-all group mt-2"
               >
@@ -245,7 +281,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPl
                         <span className="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded-md">
                           Day {save.day}
                         </span>
-                        <p className="text-xs text-slate-500 mt-1">{save.gameDate}</p>
+                        <p className="text-xs text-slate-500 mt-1">{formatSaveGameDate(save.gameDate)}</p>
                       </div>
                     </div>
                     

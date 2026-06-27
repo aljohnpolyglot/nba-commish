@@ -3,7 +3,7 @@ import { autoPromoteTwoWayExcess, autoTrimOversizedRosters, runAIFreeAgencyRound
 import { buildShamsTransactionPost } from '../../../../services/social/templates/charania';
 import { findShamsPhoto } from '../../../../services/social/charaniaphotos';
 import { getInsiderHandle, getInsiderWoj } from '../../../../data/social/handles';
-import { buildStretchedSchedule, seasonLabelToYear } from '../../../../utils/salaryUtils';
+import { buildStretchedSchedule, formatContractTotalUSD, formatContractUSD, seasonLabelToYear } from '../../../../utils/salaryUtils';
 import { convertTo2KRating, calculateSocialEngagement } from '../../../../utils/helpers';
 import { formatGameDateShort, parseGameDate } from '../../../../utils/dateUtils';
 import { computeTradeEligibleDate } from '../../../../utils/signingMoratorium';
@@ -54,7 +54,7 @@ function applyTwoWayPromotions(stateWithSim: GameState, simMonth: number): GameS
         history: [
             ...(stateWithSim.history ?? []),
             ...promotions.map(pr => ({
-                text: `${pr.playerName} has been promoted from two-way to a standard contract by the ${pr.teamName}: $${(pr.newSalaryUSD / 1_000_000).toFixed(1)}M/1yr`,
+                text: `${pr.playerName} has been promoted from two-way to a standard contract by the ${pr.teamName}: ${formatContractUSD(pr.newSalaryUSD)}/1yr`,
                 date: stateWithSim.date,
                 type: 'Signing',
                 playerIds: [pr.playerId],
@@ -318,14 +318,12 @@ function applyOpenMarketSignings(stateWithSim: GameState, simMonth: number, simD
     const faDateStr = formatGameDateShort(nextState.date);
     const faIsoDate = parseGameDate(nextState.date).toISOString().slice(0, 10);
     const faHistoryEntries = signings.map(s => {
-        const annualM = Math.round(s.salaryUSD / 100_000) / 10;
-        const totalRaw = annualM * (s.contractYears ?? 1);
-        const totalStr = totalRaw < 1 ? totalRaw.toFixed(1) : Math.round(totalRaw).toString();
+        const totalValue = formatContractTotalUSD(s.salaryUSD, s.contractYears ?? 1);
         const optTag = s.hasPlayerOption ? ' (player option)' : '';
         const twoWayTag = (s as any).twoWay ? ' (two-way)' : '';
         const ngTag = (s as any).nonGuaranteed ? ' (non-guaranteed)' : '';
         return {
-            text: `${s.playerName} signs with the ${s.teamName}: $${totalStr}M/${s.contractYears ?? 1}yr${optTag}${twoWayTag}${ngTag}`,
+            text: `${s.playerName} signs with the ${s.teamName}: ${totalValue}/${s.contractYears ?? 1}yr${optTag}${twoWayTag}${ngTag}`,
             date: faDateStr,
             type: 'Signing',
             playerIds: [s.playerId],
@@ -334,7 +332,7 @@ function applyOpenMarketSignings(stateWithSim: GameState, simMonth: number, simD
     });
     const faNewsItems = signings.map(s => {
         const annualM = Math.round(s.salaryUSD / 100_000) / 10;
-        const totalM = Math.round(annualM * (s.contractYears ?? 1));
+        const totalValue = formatContractTotalUSD(s.salaryUSD, s.contractYears ?? 1);
         const optTag = s.hasPlayerOption ? ' (player option)' : '';
         const isMax = annualM >= 30;
         const insider = getInsiderHandle(nextState.leagueType);
@@ -342,7 +340,7 @@ function applyOpenMarketSignings(stateWithSim: GameState, simMonth: number, simD
         return {
             id: `fa-signing-${s.playerId}-${faIsoDate}`,
             headline: isMax ? `${s.playerName} Lands Max Deal with ${s.teamName}` : `${s.playerName} Signs with ${s.teamName}`,
-            content: `${s.playerName} has agreed to a ${s.contractYears ?? 1}-year, $${totalM}M deal with the ${s.teamName}${optTag}. ${isMax ? `Sources: ${insider.name}.` : `Sources: ${woj.name}.`}`,
+            content: `${s.playerName} has agreed to a ${s.contractYears ?? 1}-year, ${totalValue} deal with the ${s.teamName}${optTag}. ${isMax ? `Sources: ${insider.name}.` : `Sources: ${woj.name}.`}`,
             date: faIsoDate,
             type: 'transaction',
             read: false,
@@ -350,7 +348,10 @@ function applyOpenMarketSignings(stateWithSim: GameState, simMonth: number, simD
         };
     });
     const mleSignings = signings.filter(s => s.mleTypeUsed);
-    const updatedMleUsage = { ...((nextState.leagueStats as any).mleUsage ?? {}) };
+    const isPbaMode = nextState.leagueStats?.uiMode === 'pba_isolated';
+    const updatedMleUsage = {
+        ...((isPbaMode ? (nextState.leagueStats as any).backgroundNbaMleUsage : (nextState.leagueStats as any).mleUsage) ?? {}),
+    };
     for (const s of mleSignings) {
         updatedMleUsage[s.teamId] = {
             type: s.mleTypeUsed,
@@ -393,7 +394,11 @@ function applyOpenMarketSignings(stateWithSim: GameState, simMonth: number, simD
 
     nextState = {
         ...nextState,
-        leagueStats: mleSignings.length > 0 ? { ...nextState.leagueStats, mleUsage: updatedMleUsage } : nextState.leagueStats,
+        leagueStats: mleSignings.length > 0
+            ? isPbaMode
+                ? { ...nextState.leagueStats, backgroundNbaMleUsage: updatedMleUsage }
+                : { ...nextState.leagueStats, mleUsage: updatedMleUsage }
+            : nextState.leagueStats,
         history: [...(nextState.history ?? []), ...faHistoryEntries],
         news: faNewsItems.length > 0 ? [...faNewsItems, ...(nextState.news ?? [])] : (nextState.news ?? []),
         socialFeed: shamsFATransactions.length > 0
@@ -428,7 +433,10 @@ function applyMleSwapPass(stateWithSim: GameState): GameState {
     const currentSeasonYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
     let updatedPlayers = [...stateWithSim.players];
     const swapHistory: any[] = [];
-    const swapMleUsage = { ...((stateWithSim.leagueStats as any).mleUsage ?? {}) };
+    const isPbaMode = stateWithSim.leagueStats?.uiMode === 'pba_isolated';
+    const swapMleUsage = {
+        ...((isPbaMode ? (stateWithSim.leagueStats as any).backgroundNbaMleUsage : (stateWithSim.leagueStats as any).mleUsage) ?? {}),
+    };
 
     for (const swap of mleSwaps) {
         const { sign: s, waive: w } = swap;
@@ -463,10 +471,9 @@ function applyMleSwapPass(stateWithSim: GameState): GameState {
                 ? releaseToFreeAgency(p, w.teamId, stateWithSim.date, currentSeasonYear)
                 : p,
         );
-        const annualM = Math.round(s.salaryUSD / 100_000) / 10;
-        const totalM = Math.round(annualM * (s.contractYears ?? 1));
+        const totalValue = formatContractTotalUSD(s.salaryUSD, s.contractYears ?? 1);
         swapHistory.push(
-            { text: `${s.playerName} signs with the ${s.teamName}: $${totalM}M/${s.contractYears ?? 1}yr (MLE)`, date: swapDateStr, type: 'Signing', playerIds: [s.playerId], tid: s.teamId },
+            { text: `${s.playerName} signs with the ${s.teamName}: ${totalValue}/${s.contractYears ?? 1}yr (MLE)`, date: swapDateStr, type: 'Signing', playerIds: [s.playerId], tid: s.teamId },
             { text: `${w.playerName} waived by the ${w.teamName}`, date: swapDateStr, type: 'Waiver', playerIds: [w.playerId], tid: w.teamId },
         );
         swapMleUsage[s.teamId] = {
@@ -479,7 +486,9 @@ function applyMleSwapPass(stateWithSim: GameState): GameState {
         ...stateWithSim,
         players: updatedPlayers,
         history: [...(stateWithSim.history ?? []), ...swapHistory],
-        leagueStats: { ...stateWithSim.leagueStats, mleUsage: swapMleUsage },
+        leagueStats: isPbaMode
+            ? { ...stateWithSim.leagueStats, backgroundNbaMleUsage: swapMleUsage }
+            : { ...stateWithSim.leagueStats, mleUsage: swapMleUsage },
     }, mleSwaps.map(s => s.sign.teamId));
 }
 export function applyAIFreeAgencyPass(

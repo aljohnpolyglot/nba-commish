@@ -19,7 +19,7 @@ import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 import { formatPickLabel } from '../draft/draftClassStrength';
 import { wouldStepienViolateForTid } from './stepienRule';
 import { generateCounterOffers } from './tradeFinderCore';
-import { isTradeExcludedStatus, roleToMode, type TradeOfferItem } from './tradeFinderShared';
+import { isTradeExcludedPlayer, roleToMode, type TradeOfferItem } from './tradeFinderShared';
 
 export function generateAITradeProposal(input: {
   buyerTid: number;
@@ -50,7 +50,7 @@ export function generateAITradeProposal(input: {
   // Find a target player on the seller's team (non-untouchable, best TV).
   // Walking expirings and recently-signed players are excluded from proposals.
   const sellerRoster = players
-    .filter(p => p.tid === sellerTid && !isTradeExcludedStatus(p.status, allowPbaRoster)
+    .filter(p => p.tid === sellerTid && !isTradeExcludedPlayer(p, allowPbaRoster)
               && !isWalkingExpiring(p, currentYear, isPostDeadlinePreFA ?? false)
               && !(recentlySignedLockMs && isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats)))
     .sort((a, b) => calcPlayerTV(b, sellerMode, currentYear, tvContext) - calcPlayerTV(a, sellerMode, currentYear, tvContext));

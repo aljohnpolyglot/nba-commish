@@ -1,9 +1,28 @@
-import type { DraftPick, GameState, TradeProposal } from '../types';
+import type { DraftPick, GameState, NBATeam, TradeProposal } from '../types';
 import { DEFAULT_TRADABLE_PICK_SEASONS } from './draft/DraftPickGenerator';
 import { buildFullDraftSlotMap, formatPickLabel } from './draft/draftClassStrength';
 import { generateTPEsFromTrade } from '../utils/tradeExceptionUtils';
 import { validateStepienRule } from './trade/stepienRule';
 import { validateCBATradeRules } from '../utils/cbaTradeRules';
+import { resolveAnyTeam } from '../utils/teamLookup';
+import { isPbaIsolatedMode } from '../utils/uiMode';
+
+function getKnownTradeTeams(state: GameState): NBATeam[] {
+  const teams = new Map<number, NBATeam>();
+  for (const team of state.teams ?? []) teams.set(team.id, team);
+  for (const team of state.nonNBATeams ?? []) {
+    const resolved = resolveAnyTeam(team.tid, state.teams, state.nonNBATeams ?? []);
+    if (resolved) teams.set(resolved.id, { ...resolved, cashUsedInTrades: (team as any).cashUsedInTrades } as NBATeam);
+  }
+  return Array.from(teams.values());
+}
+
+function getTradeHistoryLeague(team: NBATeam): string | undefined {
+  const teamId = Number((team as any)?.id ?? -1);
+  if (teamId >= 0 && teamId < 100) return undefined;
+  const league = String((team as any)?.league ?? (team as any)?.conference ?? '').trim();
+  return league || undefined;
+}
 
 function validateAITradeExecution(
   proposal: TradeProposal,
@@ -63,8 +82,9 @@ function validateAITradeExecution(
   if (playersRequested.length + picksRequested.length === 0 && cashFromReceiver === 0) {
     return { ok: false, reason: 'AI trade failed revalidation: receiver side empty.' };
   }
-  const proposingTeamCashUsed = (state.teams.find(t => t.id === proposingTeamId) as any)?.cashUsedInTrades ?? 0;
-  const receivingTeamCashUsed = (state.teams.find(t => t.id === receivingTeamId) as any)?.cashUsedInTrades ?? 0;
+  const knownTeams = getKnownTradeTeams(state);
+  const proposingTeamCashUsed = (knownTeams.find(t => t.id === proposingTeamId) as any)?.cashUsedInTrades ?? 0;
+  const receivingTeamCashUsed = (knownTeams.find(t => t.id === receivingTeamId) as any)?.cashUsedInTrades ?? 0;
   if (proposingTeamCashUsed + cashFromProposer > 7_500_000 + 1) {
     return { ok: false, reason: 'AI trade failed revalidation: proposer cash cap.' };
   }
@@ -72,27 +92,28 @@ function validateAITradeExecution(
     return { ok: false, reason: 'AI trade failed revalidation: receiver cash cap.' };
   }
 
-  const cba = validateCBATradeRules({
-    teamAId: proposingTeamId,
-    teamBId: receivingTeamId,
-    teamAPlayers: offeredPlayers,
-    teamBPlayers: requestedPlayers,
-    teamAPicks: offeredPicksState,
-    teamBPicks: requestedPicksState,
-    teamACashUSD: cashFromProposer,
-    teamBCashUSD: cashFromReceiver,
-    teams: state.teams,
-    players: state.players,
-    leagueStats: state.leagueStats,
-    currentDate: state.date,
-    currentYear: state.leagueStats?.year ?? new Date().getFullYear(),
-    teamAReceivesSignAndTrade: proposal.isSignAndTrade === true,
-    teamBReceivesSignAndTrade: proposal.isSignAndTrade === true,
-  });
-  if (!cba.ok) {
-    return { ok: false, reason: `AI trade failed revalidation: ${cba.reason}` };
+  if (!isPbaIsolatedMode(state)) {
+    const cba = validateCBATradeRules({
+      teamAId: proposingTeamId,
+      teamBId: receivingTeamId,
+      teamAPlayers: offeredPlayers,
+      teamBPlayers: requestedPlayers,
+      teamAPicks: offeredPicksState,
+      teamBPicks: requestedPicksState,
+      teamACashUSD: cashFromProposer,
+      teamBCashUSD: cashFromReceiver,
+      teams: knownTeams,
+      players: state.players,
+      leagueStats: state.leagueStats,
+      currentDate: state.date,
+      currentYear: state.leagueStats?.year ?? new Date().getFullYear(),
+      teamAReceivesSignAndTrade: proposal.isSignAndTrade === true,
+      teamBReceivesSignAndTrade: proposal.isSignAndTrade === true,
+    });
+    if (!cba.ok) {
+      return { ok: false, reason: `AI trade failed revalidation: ${cba.reason}` };
+    }
   }
-
   return { ok: true };
 }
 
@@ -103,8 +124,8 @@ export function executeAITrade(proposal: TradeProposal, state: GameState): Parti
     picksOffered, picksRequested,
   } = proposal;
 
-  const proposingTeam = state.teams.find(t => t.id === proposingTeamId);
-  const receivingTeam = state.teams.find(t => t.id === receivingTeamId);
+  const proposingTeam = resolveAnyTeam(proposingTeamId, state.teams, state.nonNBATeams ?? []);
+  const receivingTeam = resolveAnyTeam(receivingTeamId, state.teams, state.nonNBATeams ?? []);
   if (!proposingTeam || !receivingTeam) return {};
 
   const validation = validateAITradeExecution(proposal, state);
@@ -133,11 +154,12 @@ export function executeAITrade(proposal: TradeProposal, state: GameState): Parti
   const offeredNames = playersOffered.map(id => state.players.find(p => p.internalId === id)?.name).filter(Boolean);
   const requestedNames = playersRequested.map(id => state.players.find(p => p.internalId === id)?.name).filter(Boolean);
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-  const lotterySlotByTid = buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams);
+  const knownTeams = getKnownTradeTeams(state);
+  const lotterySlotByTid = buildFullDraftSlotMap((state as any).draftLotteryResult, knownTeams);
   const formatPickDesc = (dpid: number): string => {
     const pk = state.draftPicks.find(p => p.dpid === dpid);
     if (!pk) return 'pick';
-    const origTeam = state.teams.find(t => t.id === pk.originalTid);
+    const origTeam = resolveAnyTeam(pk.originalTid, state.teams, state.nonNBATeams ?? []);
     return `${formatPickLabel(pk, currentYear, lotterySlotByTid, false)} (${origTeam?.abbrev ?? '?'})`;
   };
   const offeredPicks = picksOffered.map(formatPickDesc);
@@ -175,11 +197,12 @@ export function executeAITrade(proposal: TradeProposal, state: GameState): Parti
     type: 'Trade' as const,
     playerIds: [...playersOffered, ...playersRequested],
     tid: proposingTeamId,
+    league: getTradeHistoryLeague(proposingTeam),
   };
 
   const tpeEnabled = state.leagueStats?.tradeExceptionsEnabled !== false;
   let updatedTeams = state.teams;
-  if (tpeEnabled) {
+  if (tpeEnabled && proposingTeamId < 100 && receivingTeamId < 100) {
     const sentByProp = state.players.filter(p => playersOffered.includes(p.internalId));
     const sentByRecv = state.players.filter(p => playersRequested.includes(p.internalId));
     const txnForTPE = {
@@ -191,6 +214,7 @@ export function executeAITrade(proposal: TradeProposal, state: GameState): Parti
     updatedTeams = generateTPEsFromTrade(txnForTPE, state.teams, state.players, state.leagueStats, state.date);
   }
 
+  let updatedNonNBATeams = state.nonNBATeams;
   if (cashOut > 0 || cashIn > 0) {
     updatedTeams = updatedTeams.map(t => {
       if (t.id === proposingTeamId && cashOut > 0) {
@@ -201,9 +225,20 @@ export function executeAITrade(proposal: TradeProposal, state: GameState): Parti
       }
       return t;
     });
+    if (updatedNonNBATeams) {
+      updatedNonNBATeams = updatedNonNBATeams.map(t => {
+        if (t.tid === proposingTeamId && cashOut > 0) {
+          return { ...t, cashUsedInTrades: ((t as any).cashUsedInTrades ?? 0) + cashOut } as any;
+        }
+        if (t.tid === receivingTeamId && cashIn > 0) {
+          return { ...t, cashUsedInTrades: ((t as any).cashUsedInTrades ?? 0) + cashIn } as any;
+        }
+        return t;
+      });
+    }
   }
 
-  return {
+  const patch: Partial<GameState> = {
     players: updatedPlayers,
     draftPicks: updatedPicks,
     teams: updatedTeams,
@@ -212,4 +247,6 @@ export function executeAITrade(proposal: TradeProposal, state: GameState): Parti
       p.id === proposal.id ? { ...p, status: 'executed' as const } : p
     ),
   };
+  if (updatedNonNBATeams !== state.nonNBATeams) patch.nonNBATeams = updatedNonNBATeams;
+  return patch;
 }

@@ -73,6 +73,27 @@ const EXTERNAL_LEAGUE_STATUSES = new Set([
   'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa', 'China CBA', 'NBL Australia',
 ]);
 
+function clampPbaDraftRookieOverall(player: NBAPlayer, overall: number, currentYear: number, rating?: any): number {
+  if (player.status !== 'PBA') return overall;
+  const version = String((player as any).pbaDraftTunedVersion ?? '');
+  if (!version.startsWith('pba-draft-')) return overall;
+  const draftYear = Number((player as any).draft?.year);
+  if (!Number.isFinite(draftYear) || draftYear < currentYear - 3) return overall;
+  const seasonsSinceDraft = Math.max(0, currentYear - draftYear);
+  const tunedCap =
+    seasonsSinceDraft <= 1 ? 39 :
+    seasonsSinceDraft === 2 ? 40 :
+    seasonsSinceDraft === 3 ? 41 :
+    seasonsSinceDraft === 4 ? 42 :
+    43;
+  const cap = Math.min(
+    tunedCap,
+    Number(rating?.pot ?? tunedCap + 2),
+    Number(rating?.ovr ?? player.overallRating ?? overall),
+  );
+  return Math.min(overall, cap);
+}
+
 function isYouthExternalProspect(player: NBAPlayer, age: number): boolean {
   return age < 19
     && EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')
@@ -570,6 +591,7 @@ function progressPlayer(
   } else {
     updatedPlayer.overallRating = calculatePlayerOverallForYear(updatedPlayer, currentYear);
   }
+  updatedPlayer.overallRating = clampPbaDraftRookieOverall(player, updatedPlayer.overallRating, currentYear, rating);
 
   // Fix 8: cap adult external-league progression at the league's OVR ceiling.
   // Prevents NBA-boosted returners (e.g. high-OVR cut player returning to B-League)
@@ -584,7 +606,7 @@ function progressPlayer(
         i === ratingIdx ? cappedRating : r,
       );
     }
-  } else if (EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')) {
+  } else if (EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '') && player.status !== 'PBA') {
     const ovrCap = EXTERNAL_LEAGUE_OVR_CAP[player.status!];
     if (ovrCap !== undefined && updatedPlayer.overallRating > ovrCap) {
       updatedPlayer.overallRating = ovrCap;
@@ -795,6 +817,7 @@ export function applySeasonalBreakouts(
           up.overallRating = EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')
             ? calculateLeagueOverall(rating)
             : calculatePlayerOverallForYear(up, currentYear);
+          up.overallRating = clampPbaDraftRookieOverall(player, up.overallRating, currentYear, rating);
           return up;
         }
       }
@@ -807,6 +830,7 @@ export function applySeasonalBreakouts(
     updatedPlayer.overallRating = EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')
       ? calculateLeagueOverall(rating)
       : calculatePlayerOverallForYear(updatedPlayer, currentYear);
+    updatedPlayer.overallRating = clampPbaDraftRookieOverall(player, updatedPlayer.overallRating, currentYear, rating);
     return updatedPlayer;
   });
 

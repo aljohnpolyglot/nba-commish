@@ -34,6 +34,7 @@ import { ensureNonNBAFetched, getNonNBAGistData } from './nonNBACache';
 import { extractNbaId, hdPortrait } from '../../../utils/helpers';
 import { classifyBoxScoreGame } from '../../../utils/gameClassification';
 import { isEuroIsolatedMode } from '../../../utils/uiMode';
+import { getConferenceSpec, type PbaConference } from '../../../services/pba/conferenceTransition';
 import {
   ensureBiosLoaded, getBioBySlug, fmtHeight,
 } from '../../../data/realPlayerDataFetcher';
@@ -56,8 +57,13 @@ function deepGet(obj: any, ...paths: string[][]): any {
   return null;
 }
 
-const buildHeroStatsFromSave = (stats: any[] | undefined, season: number) => {
-  const seasonStats = (stats ?? []).filter(s => s.season === season && !s.playoffs && (s.gp ?? 0) > 0);
+const buildHeroStatsFromSave = (stats: any[] | undefined, season: number, competitionId?: string) => {
+  const seasonStats = (stats ?? []).filter(s =>
+    s.season === season &&
+    !s.playoffs &&
+    (s.gp ?? 0) > 0 &&
+    (!competitionId || String(s.competitionId ?? '') === competitionId)
+  );
   if (seasonStats.length > 0) {
     const totals = seasonStats.reduce((acc: any, s: any) => ({
       gp: acc.gp + (s.gp || 0),
@@ -108,6 +114,7 @@ const buildHeroStatsFromBoxScores = (
   nbaCup: any,
   nbaCupHistory: any,
   leagueStats?: { uiMode?: string | null },
+  competitionId?: string,
 ) => {
   let gp = 0;
   let pts = 0;
@@ -118,9 +125,10 @@ const buildHeroStatsFromBoxScores = (
 
   for (const box of boxScores ?? []) {
     const meta = classifyBoxScoreGame(box as any, schedule ?? [], playoffs, nbaCup, nbaCupHistory, season, leagueStats);
-    if (meta.seasonYear !== season || meta.isPreseason || meta.isPlayoff || meta.isPlayIn || meta.isCupFinal) {
+    if (meta.seasonYear !== season || meta.isPreseason || meta.isPlayoff || meta.isPlayIn || meta.isCupFinal || meta.isAllStar || (box as any).isExhibition) {
       continue;
     }
+    if (competitionId && String((box as any).competitionId ?? '') !== competitionId) continue;
 
     const phase = String((box as any).competitionPhase ?? '').toLowerCase();
     if (['play-in', 'qf', 'quarterfinals', 'sf', 'semifinals', 'final', 'final-four'].includes(phase)) {
@@ -341,6 +349,9 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
 
   const liveHeroStats = useMemo(() => {
     const season = state.leagueStats?.year ?? maxSeason;
+    const pbaCompetitionId = state.leagueStats?.uiMode === 'pba_isolated'
+      ? getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id
+      : undefined;
     if (isEuroIsolatedMode(state)) {
       return buildHeroStatsFromSave(player.stats, season);
     }
@@ -353,7 +364,8 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
       state.nbaCup,
       state.nbaCupHistory,
       state.leagueStats,
-    ) ?? buildHeroStatsFromSave(player.stats, season);
+      pbaCompetitionId,
+    ) ?? buildHeroStatsFromSave(player.stats, season, pbaCompetitionId);
   }, [
     maxSeason,
     player.internalId,
@@ -365,6 +377,7 @@ export const PlayerBioView: React.FC<PlayerBioViewProps> = ({ player, onBack, on
     state.nbaCupHistory,
     state.leagueStats?.year,
     state.leagueStats?.uiMode,
+    (state.leagueStats as any)?.pbaConference,
   ]);
 
   useEffect(() => {

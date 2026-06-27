@@ -4,6 +4,8 @@ import { Game, NBATeam } from '../../../../types';
 import { normalizeDate, getOwnTeamId } from '../../../../utils/helpers';
 import { getAllStarWeekendDates } from '../../../../services/allStar/AllStarWeekendOrchestrator';
 import { resolveAnyTeam } from '../../../../utils/teamLookup';
+import { getConferenceSpec, getPbaCalendarPosition, type PbaConference } from '../../../../services/pba/conferenceTransition';
+import { dateForCompetitionSeason } from '../../../../services/competition/competitionSeasonState';
 
 interface CalendarMonthGridProps {
   year: number;
@@ -69,7 +71,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
   const allStarDateSet = new Set<string>();
   const addWeekend = (targetYear: number) => {
     try {
-      const dates = getAllStarWeekendDates(targetYear);
+      const dates = getAllStarWeekendDates(targetYear, state.leagueStats);
       [dates.risingStars, dates.saturday, dates.allStarGame].forEach(date => {
         allStarDateSet.add(normalizeDate(date.toISOString()));
       });
@@ -77,6 +79,21 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
   };
   addWeekend(year);
   addWeekend(year + 1);
+  const pbaConference = pbaIsolated
+    ? (((state.leagueStats as any)?.pbaConference as PbaConference | undefined) ?? getPbaCalendarPosition(state.date).conference)
+    : null;
+  const pbaSeasonYear = pbaIsolated
+    ? Number((state.leagueStats as any)?.year ?? getPbaCalendarPosition(state.date).seasonYear)
+    : null;
+  const pbaSpec = pbaIsolated && pbaConference ? getConferenceSpec(pbaConference) : null;
+  const pbaRounds = pbaSpec?.playoffFormat?.rounds ?? [];
+  const pbaPlayoffStart = pbaSpec && pbaSeasonYear != null && pbaRounds.length > 0
+    ? normalizeDate(dateForCompetitionSeason(pbaSpec, pbaSeasonYear, pbaRounds[0].start.month, pbaRounds[0].start.day))
+    : null;
+  const pbaPlayoffEnd = pbaSpec && pbaSeasonYear != null && pbaRounds.length > 0
+    ? normalizeDate(dateForCompetitionSeason(pbaSpec, pbaSeasonYear, pbaRounds[pbaRounds.length - 1].end.month, pbaRounds[pbaRounds.length - 1].end.day))
+    : null;
+  const pbaPlayoffLabel = pbaSpec?.shortName ?? 'PBA PO';
 
   return (
     <div className={`grid grid-cols-7 ${euroIsolated ? 'gap-px bg-slate-800' : 'gap-1 md:gap-2'}`}>
@@ -99,7 +116,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         const dateObj = new Date(dateStr);
         const highlighted = getHighlightedEvent(dateObj);
         const isAllStarGame = (g: Game) => g.isAllStar || g.isRisingStars || g.isCelebrityGame || g.isDunkContest || g.isThreePointContest;
-        const isAllStarWeekend = !euroIsolated && !pbaIsolated && (games.some(isAllStarGame) || allStarDateSet.has(dateNorm));
+        const isAllStarWeekend = !euroIsolated && (games.some(isAllStarGame) || allStarDateSet.has(dateNorm));
         const hasPlayoff = games.some((g: Game) => g.isPlayoff);
         const hasPlayIn = games.some((g: Game) => g.isPlayIn);
         const hasFinals = games.some((g: Game) => g.isPlayoff && finalsGameIds.has(g.gid));
@@ -112,6 +129,8 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         const calMonth1 = month + 1;
         const inPlayInWindow = calMonth1 === 4 && day >= 15 && day <= 18;
         const inPlayoffWindow = (calMonth1 === 4 && day >= 19) || calMonth1 === 5 || (calMonth1 === 6 && day <= 22);
+        const inCurrentPbaPlayoffWindow = !!(pbaIsolated && pbaPlayoffStart && pbaPlayoffEnd && dateNorm >= pbaPlayoffStart && dateNorm <= pbaPlayoffEnd);
+        const showPbaConferencePlayoff = !!(pbaIsolated && (hasPlayoff || inCurrentPbaPlayoffWindow));
         const showPlayIn = !euroIsolated && state.leagueStats?.playIn !== false && (hasPlayIn || (!pbaIsolated && inPlayInWindow));
         const showPlayoff = !euroIsolated && (hasPlayoff || (!pbaIsolated && inPlayoffWindow));
         const showNbaCalendarEvents = state.leagueStats?.uiMode !== 'euro_isolated' && state.leagueStats?.uiMode !== 'pba_isolated';
@@ -136,7 +155,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         const userWon = userPlayed && !isUserScrimmage && userScore > oppScore;
         const isUserFinals = !!userGame?.isPlayoff && finalsGameIds.has(userGame.gid);
         const isUserPreseason = !!userGame?.isPreseason && !isUserScrimmage;
-        const featureCompetitionGame = euroIsolated ? games.find((g: Game) => !!g.competitionId && !(g as any).isCupTBD) : undefined;
+        const featureCompetitionGame = (euroIsolated || pbaIsolated) ? games.find((g: Game) => !!g.competitionId && !(g as any).isCupTBD) : undefined;
         const featureAway = featureCompetitionGame ? resolveTeam(featureCompetitionGame.awayTid) : null;
         const featureHome = featureCompetitionGame ? resolveTeam(featureCompetitionGame.homeTid) : null;
         const hasKeyLeagueEvent = isTradeDeadline || isDraftLottery || inCombineWindow || isDraft || isFAMoratorium || isFAOpen || isTrainingCamp;
@@ -161,6 +180,8 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         const eventBg = !hasRichGM
           ? (isAllStarWeekend
               ? 'bg-gradient-to-br from-amber-600/35 to-amber-900/30 border-amber-400/50 hover:from-amber-500/45 hover:to-amber-900/40'
+            : showPbaConferencePlayoff
+              ? 'bg-gradient-to-br from-indigo-700/35 to-indigo-950/40 border-amber-400/40 hover:from-indigo-600/45'
             : hasFinals
               ? 'bg-gradient-to-br from-amber-600/35 to-yellow-950/30 border-yellow-300/55 hover:from-amber-500/45'
             : hasPlayoff
@@ -194,6 +215,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         const dayColor = isToday ? 'text-emerald-400'
           : isSelected ? 'text-white'
           : isAllStarWeekend ? 'text-amber-300'
+          : showPbaConferencePlayoff && !hasRichGM ? 'text-amber-200'
           : hasFinals && !hasRichGM ? 'text-yellow-200'
           : (hasPlayoff || (!pbaIsolated && inPlayoffWindow)) && !hasRichGM ? 'text-amber-200'
           : (hasPlayIn || (!pbaIsolated && inPlayInWindow)) && !hasRichGM ? 'text-violet-200'
@@ -246,6 +268,15 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
             {!isAllStarWeekend && !hasRichGM && !hasFinals && showPlayoff && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <Trophy size={24} className={`md:w-7 md:h-7 ${hasPlayoff ? 'text-amber-300/55' : 'text-amber-300/25'}`} strokeWidth={1.5} />
+              </div>
+            )}
+
+            {!isAllStarWeekend && !hasRichGM && !hasFinals && !showPlayoff && showPbaConferencePlayoff && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
+                <Trophy size={24} className={`md:w-7 md:h-7 ${hasPlayoff ? 'text-amber-300/55' : 'text-amber-300/25'}`} strokeWidth={1.5} />
+                <span className="hidden md:block text-[7px] font-black uppercase tracking-widest text-amber-300/70">
+                  {pbaPlayoffLabel}
+                </span>
               </div>
             )}
 
@@ -441,7 +472,9 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
                   )}
                 </div>
                 <span className="hidden md:block max-w-[90%] truncate text-[7px] font-black uppercase tracking-widest text-white/40">
-                  {featureCompetitionGame.competitionId === 'euroleague' ? 'EuroLeague' : 'Endesa'}
+                  {String(featureCompetitionGame.competitionId ?? '').startsWith('pba-')
+                    ? String(featureCompetitionGame.competitionId).replace('pba-', '').replace(/-/g, ' ')
+                    : featureCompetitionGame.competitionId === 'euroleague' ? 'EuroLeague' : 'Endesa'}
                   {games.length > 1 ? ` +${games.length - 1}` : ''}
                 </span>
               </div>

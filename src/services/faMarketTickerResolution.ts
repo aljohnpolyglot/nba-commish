@@ -2,7 +2,7 @@ import type { GameState, HistoryEntry, NBAPlayer } from '../types';
 import { calculateSocialEngagement } from '../utils/helpers';
 import { clearWaiverMarkers } from '../utils/contractCleanup';
 import { computeTradeEligibleDate } from '../utils/signingMoratorium';
-import { getCapThresholds, getMLEAvailability, getTeamPayrollUSD, hasBirdRights } from '../utils/salaryUtils';
+import { formatContractTotalUSD, getCapThresholds, getMLEAvailability, getTeamPayrollUSD, hasBirdRights } from '../utils/salaryUtils';
 import { isRfaMatchingEnabled } from '../utils/ruleFlags';
 import { parseGameDate } from '../utils/dateUtils';
 import { getInsiderHandle, getInsiderWoj } from '../data/social/handles';
@@ -158,15 +158,15 @@ export function resolveDueMarkets(ctx: ResolutionContext): void {
           playerName: player.name,
           signingTeamName: team.name,
           annualM: Math.round(winner.salaryUSD / 100_000) / 10,
+          salaryUSD: winner.salaryUSD,
           years: winner.years,
           expiresInDays: matchWindowDays,
         });
       }
-      const annualMOS = Math.round(winner.salaryUSD / 100_000) / 10;
-      const totalMOS = Math.round(annualMOS * winner.years);
+      const totalOfferValue = formatContractTotalUSD(winner.salaryUSD, winner.years);
       const priorTeamForHist = ctx.state.teams.find(t => t.id === priorTid);
       ctx.historyEntries.push({
-        text: `${player.name} signs offer sheet with the ${team.name}: $${totalMOS}M/${winner.years}yr${optionTag(winner.option)} — ${priorTeamForHist?.name ?? 'prior team'} has ${matchWindowDays} days to match.`,
+        text: `${player.name} signs offer sheet with the ${team.name}: ${totalOfferValue}/${winner.years}yr${optionTag(winner.option)} — ${priorTeamForHist?.name ?? 'prior team'} has ${matchWindowDays} days to match.`,
         date: ctx.state.date,
         type: 'Signing',
         playerIds: [player.internalId],
@@ -175,7 +175,7 @@ export function resolveDueMarkets(ctx: ResolutionContext): void {
       ctx.newsItems.push({
         id: `rfa-offer-sheet-${player.internalId}-${ctx.state.date}`,
         headline: `${player.name} Signs Offer Sheet with ${team.name}`,
-        content: `${player.name} (RFA) has agreed to a ${winner.years}-year, $${totalMOS}M offer sheet with the ${team.name}. The ${priorTeamForHist?.name ?? 'prior team'} has ${matchWindowDays} days to match. Sources: Adrian Wojnarowski.`,
+        content: `${player.name} (RFA) has agreed to a ${winner.years}-year, ${totalOfferValue} offer sheet with the ${team.name}. The ${priorTeamForHist?.name ?? 'prior team'} has ${matchWindowDays} days to match. Sources: Adrian Wojnarowski.`,
         date: ctx.state.date,
         type: 'transaction',
         read: false,
@@ -238,7 +238,7 @@ export function resolveDueMarkets(ctx: ResolutionContext): void {
     ctx.signedPlayerIds.add(player.internalId);
 
     const annualM = Math.round(winner.salaryUSD / 100_000) / 10;
-    const totalM = Math.round(annualM * finalYears);
+    const totalValue = formatContractTotalUSD(winner.salaryUSD, finalYears);
     const twoWayTag = isTwoWay ? ' (two-way)' : '';
     const ngTag = isNonGuaranteed ? ' (non-guaranteed)' : '';
     const userWon = !!winner.isUserBid;
@@ -249,11 +249,12 @@ export function resolveDueMarkets(ctx: ResolutionContext): void {
         accepted: userWon,
         winnerTeamName: userWon ? undefined : (winnerTeam?.name ?? winner.teamName),
         annualM,
+        salaryUSD: winner.salaryUSD,
         years: finalYears,
       });
     }
     ctx.historyEntries.push({
-      text: `${player.name} signs with the ${team.name}: $${totalM}M/${finalYears}yr${optionTag(winner.option)}${twoWayTag}${ngTag}`,
+      text: `${player.name} signs with the ${team.name}: ${totalValue}/${finalYears}yr${optionTag(winner.option)}${twoWayTag}${ngTag}`,
       date: ctx.state.date,
       type: 'Signing',
       playerIds: [player.internalId],
@@ -270,7 +271,7 @@ export function resolveDueMarkets(ctx: ResolutionContext): void {
     ctx.newsItems.push({
       id: `fa-market-signing-${player.internalId}-${ctx.state.date}`,
       headline,
-      content: `${player.name} has agreed to a ${finalYears}-year, $${totalM}M deal with the ${team.name}${optionTag(winner.option)}${twoWayTag}${ngTag}. ${annualM >= 30 ? `Sources: ${faInsiderName}.` : `Sources: ${faWojName}.`}`,
+      content: `${player.name} has agreed to a ${finalYears}-year, ${totalValue} deal with the ${team.name}${optionTag(winner.option)}${twoWayTag}${ngTag}. ${annualM >= 30 ? `Sources: ${faInsiderName}.` : `Sources: ${faWojName}.`}`,
       date: ctx.state.date,
       type: 'transaction',
       read: false,
@@ -437,11 +438,10 @@ export function resolvePendingRfaMatches(ctx: ResolutionContext): void {
       userInvolved: userTeamIdRFA === priorTid || userTeamIdRFA === offerBid.teamId,
     });
 
-    const annualMM = Math.round(offerBid.salaryUSD / 100_000) / 10;
-    const totalMM = Math.round(annualMM * finalYearsRFA);
+    const totalRfaValue = formatContractTotalUSD(offerBid.salaryUSD, finalYearsRFA);
     if (willMatch) {
       ctx.historyEntries.push({
-        text: `${priorTeam.name} matched ${signingTeam.name}'s offer sheet on ${player.name}: $${totalMM}M/${finalYearsRFA}yr.`,
+        text: `${priorTeam.name} matched ${signingTeam.name}'s offer sheet on ${player.name}: ${totalRfaValue}/${finalYearsRFA}yr.`,
         date: ctx.state.date,
         type: 'Signing',
         playerIds: [player.internalId],
@@ -450,7 +450,7 @@ export function resolvePendingRfaMatches(ctx: ResolutionContext): void {
       ctx.newsItems.push({
         id: `rfa-matched-${player.internalId}-${ctx.state.date}`,
         headline: `${priorTeam.name} Match ${signingTeam.name}'s Offer for ${player.name}`,
-        content: `The ${priorTeam.name} have matched the ${signingTeam.name}'s ${finalYearsRFA}-year, $${totalMM}M offer sheet for ${player.name}, retaining the restricted free agent. Sources: Adrian Wojnarowski.`,
+        content: `The ${priorTeam.name} have matched the ${signingTeam.name}'s ${finalYearsRFA}-year, ${totalRfaValue} offer sheet for ${player.name}, retaining the restricted free agent. Sources: Adrian Wojnarowski.`,
         date: ctx.state.date,
         type: 'transaction',
         read: false,
@@ -458,7 +458,7 @@ export function resolvePendingRfaMatches(ctx: ResolutionContext): void {
       });
     } else {
       ctx.historyEntries.push({
-        text: `${player.name} signs with the ${signingTeam.name}: $${totalMM}M/${finalYearsRFA}yr (${priorTeam.name} declined to match).`,
+        text: `${player.name} signs with the ${signingTeam.name}: ${totalRfaValue}/${finalYearsRFA}yr (${priorTeam.name} declined to match).`,
         date: ctx.state.date,
         type: 'Signing',
         playerIds: [player.internalId],
@@ -467,7 +467,7 @@ export function resolvePendingRfaMatches(ctx: ResolutionContext): void {
       ctx.newsItems.push({
         id: `rfa-not-matched-${player.internalId}-${ctx.state.date}`,
         headline: `${signingTeam.name} Land ${player.name} as ${priorTeam.name} Decline Match`,
-        content: `${player.name} (${finalYearsRFA}yr · $${totalMM}M) joins the ${signingTeam.name} after the ${priorTeam.name} declined to match the offer sheet.`,
+        content: `${player.name} (${finalYearsRFA}yr · ${totalRfaValue}) joins the ${signingTeam.name} after the ${priorTeam.name} declined to match the offer sheet.`,
         date: ctx.state.date,
         type: 'transaction',
         read: false,

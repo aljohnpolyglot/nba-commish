@@ -1,6 +1,6 @@
 import type { TycoonState, TycoonTier } from '../../types/tycoon';
 
-export type StaffMarket = 'nba' | 'euro';
+export type StaffMarket = 'nba' | 'euro' | 'pba';
 
 const NBA_ROLE_MARKET_PROFILES: Record<string, { base: number; floor: number; ceiling: number }> = {
   'Head Coach': { base: 7_500_000, floor: 2_500_000, ceiling: 22_000_000 },
@@ -20,6 +20,16 @@ const EURO_ROLE_MARKET_PROFILES: Record<string, { base: number; floor: number; c
   'Player Development Coach': { base: 230_000, floor: 115_000, ceiling: 600_000 },
   'Chief Scout': { base: 250_000, floor: 125_000, ceiling: 650_000 },
   'Head of Analytics': { base: 210_000, floor: 100_000, ceiling: 550_000 },
+};
+
+const PBA_ROLE_MARKET_PROFILES: Record<string, { base: number; floor: number; ceiling: number }> = {
+  'Head Coach': { base: 12_000_000, floor: 4_000_000, ceiling: 60_000_000 },
+  'Assistant Coach': { base: 3_200_000, floor: 1_400_000, ceiling: 9_000_000 },
+  'Head of Sports Science': { base: 2_800_000, floor: 1_200_000, ceiling: 8_000_000 },
+  'Head Physio': { base: 2_400_000, floor: 1_100_000, ceiling: 7_000_000 },
+  'Player Development Coach': { base: 3_000_000, floor: 1_300_000, ceiling: 8_500_000 },
+  'Chief Scout': { base: 4_500_000, floor: 1_800_000, ceiling: 12_000_000 },
+  'Head of Analytics': { base: 2_700_000, floor: 1_200_000, ceiling: 8_000_000 },
 };
 
 export const EURO_STAFF_PAYROLL_SHARE = 0.22;
@@ -42,7 +52,9 @@ function roundSalary(value: number): number {
 }
 
 function getRoleMarketProfiles(market: StaffMarket): Record<string, { base: number; floor: number; ceiling: number }> {
-  return market === 'euro' ? EURO_ROLE_MARKET_PROFILES : NBA_ROLE_MARKET_PROFILES;
+  if (market === 'euro') return EURO_ROLE_MARKET_PROFILES;
+  if (market === 'pba') return PBA_ROLE_MARKET_PROFILES;
+  return NBA_ROLE_MARKET_PROFILES;
 }
 
 export function fallbackStaffPayrollEUR(wages: number): number {

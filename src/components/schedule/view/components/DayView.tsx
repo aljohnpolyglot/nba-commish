@@ -9,6 +9,7 @@ import { useLeagueLabels } from '../../../../utils/leagueLabels';
 import { CompetitionBadge } from '../../../competition/CompetitionBadge';
 import { isNoDraftLeague } from '../../../../services/offseason/offseasonState';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../../utils/uiMode';
+import { findBoxScoreForGame } from '../../../../utils/boxScoreLookup';
 
 interface DayViewProps {
   selectedDate: string;
@@ -92,7 +93,7 @@ export const DayView: React.FC<DayViewProps> = ({
   const isAllStarGameDay    = selectedDateNorm === allStarGameStr;
   const isCelebrityGameDay  = selectedDateNorm === allStarFriStr;
 
-  const isAllStarWeekend = !euroIsolated && !pbaIsolated && (isRisingStarsDay || isSaturdayEventsDay || isAllStarGameDay || isCelebrityGameDay);
+  const isAllStarWeekend = !euroIsolated && (isRisingStarsDay || isSaturdayEventsDay || isAllStarGameDay || isCelebrityGameDay);
 
   // Draft calendar events — derived from leagueStats so dates update when scheduler changes
   const draftLotteryDateStr = toISODateString(getDraftLotteryDate(seasonYear, ls));
@@ -137,7 +138,7 @@ export const DayView: React.FC<DayViewProps> = ({
 
   const getWinnerBestPerformer = (game: Game) => {
     if (!game.played || !boxScores || !players) return null;
-    const boxScore = boxScores.find(b => b.gameId === game.gid);
+    const boxScore = findBoxScoreForGame(boxScores as any, game.gid, game.date);
     if (!boxScore) return null;
     const winnerId = game.homeScore > game.awayScore ? game.homeTid : game.awayTid;
     const winnerStats = winnerId === game.homeTid
@@ -530,7 +531,7 @@ export const DayView: React.FC<DayViewProps> = ({
                               )
                             : isIntlPreseason ? (game.played ? 'Intl Preseason · Final' : `Intl Preseason${(game as any).city ? ` · ${(game as any).city}` : ''}`)
                             : game.played ? (() => {
-                                const bs = boxScores?.find(b => b.gameId === game.gid);
+                                const bs = findBoxScoreForGame(boxScores as any, game.gid, game.date);
                                 if (!bs?.isOT) return 'Final';
                                 return bs.otCount && bs.otCount > 1 ? `Final ${bs.otCount}OT` : 'Final OT';
                               })()

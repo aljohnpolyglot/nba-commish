@@ -132,6 +132,87 @@ export async function handleDirectDispatchAction({
     return true;
   }
 
+  if (action.type === 'REPAIR_PBA_ALL_STAR_WEEKEND') {
+    const prev = stateRef.current;
+    if ((prev.leagueStats as any)?.uiMode !== 'pba_isolated') return true;
+    const {
+      backfillPbaAllStarAwards,
+      buildPbaAllStarLeagueStats,
+      buildPbaAllStarPatch,
+      buildPbaContestPatch,
+      isPbaAllStarStateLocal,
+      pbaAllStarGameNeedsFullLengthRepair,
+      resetPbaAllStarGameForResim,
+    } = await import('../../services/pba/allStar');
+    if (!pbaAllStarGameNeedsFullLengthRepair(prev, prev.allStar)) return true;
+
+    const { AllStarWeekendOrchestrator } = await import('../../services/allStar/AllStarWeekendOrchestrator');
+    const leagueStats = buildPbaAllStarLeagueStats(prev.leagueStats);
+    const resetPatch = resetPbaAllStarGameForResim({ ...prev, leagueStats } as GameState, prev.allStar);
+    const stateForSim = { ...prev, ...resetPatch, leagueStats } as GameState;
+    let players = stateForSim.players ?? [];
+    let allStar = stateForSim.allStar as any;
+    const seedPatch = allStar?.reservesAnnounced && isPbaAllStarStateLocal(stateForSim, allStar)
+      ? { players, allStar }
+      : buildPbaAllStarPatch(stateForSim, players);
+    players = seedPatch?.players ?? players;
+    allStar = seedPatch?.allStar ?? allStar;
+
+    if (!allStar?.reservesAnnounced) {
+      setState(current => ({
+        ...current,
+        leagueStats,
+        schedule: stateForSim.schedule,
+        boxScores: stateForSim.boxScores,
+        players,
+        allStar,
+      }));
+      return true;
+    }
+
+    allStar = buildPbaContestPatch({ ...stateForSim, players, allStar } as GameState, players, allStar);
+    const pbaTeams = ((stateForSim as any).nonNBATeams ?? [])
+      .filter((team: any) => team?.league === 'PBA')
+      .map((team: any) => ({ ...team, id: team.tid ?? team.id }));
+    let schedule = stateForSim.schedule;
+    if (!allStar.gamesInjected) {
+      schedule = AllStarWeekendOrchestrator.injectAllStarGames(
+        schedule,
+        pbaTeams,
+        leagueStats.year,
+        allStar.roster ?? [],
+        leagueStats,
+      );
+      allStar = { ...allStar, gamesInjected: true };
+    }
+
+    const patch = await AllStarWeekendOrchestrator.simulateWeekend(
+      {
+        ...stateForSim,
+        players,
+        schedule,
+        leagueStats,
+        allStar,
+      } as GameState,
+      { friday: false, saturday: true, sunday: true },
+    );
+    const finalAllStar = patch.allStar ?? allStar;
+    const finalPlayers = backfillPbaAllStarAwards(
+      { ...stateForSim, leagueStats, players, allStar: finalAllStar } as GameState,
+      players,
+      finalAllStar,
+    );
+    setState(current => ({
+      ...current,
+      leagueStats,
+      schedule: patch.schedule ?? schedule,
+      boxScores: patch.boxScores ?? stateForSim.boxScores,
+      players: finalPlayers,
+      allStar: finalAllStar,
+    }));
+    return true;
+  }
+
   if (action.type === 'SAVE_CONTEST_RESULT') {
     const { contest, result, contestants } = action.payload;
     setState(prev => {

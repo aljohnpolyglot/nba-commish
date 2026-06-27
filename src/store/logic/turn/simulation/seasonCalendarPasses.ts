@@ -2,7 +2,6 @@ import { formatExternalSalary } from '../../../../constants';
 import type { GameState, NBAPlayer as Player } from '../../../../types';
 import { normalizeDate } from '../../../../utils/helpers';
 import { routeUnsignedPlayers } from '../../../../services/externalSigningRouter';
-import type { ExternalRoutingResult } from '../../../../services/externalSigningRouter';
 import { getActiveUserBidMarketPlayerIds } from '../../../../services/freeAgencyBidding';
 import { applyMidSeasonExtensionsPass, applySeasonEndExtensionsPass } from './extensionPasses';
 import { applyDailyProgression, applySeasonalBreakouts } from '../../../../services/playerDevelopment/ProgressionEngine';
@@ -114,44 +113,44 @@ export function applySeasonCalendarPasses(stateWithSim: GameState): SeasonCalend
       };
     }
 
-    const protectedRoutingPlayerIds = getActiveUserBidMarketPlayerIds(stateWithSim);
-    const { results: routedResults, players: routedPlayers } = routeUnsignedPlayers(stateWithSim, {
-      protectedPlayerIds: protectedRoutingPlayerIds,
-      excludedDestinationLeagues: (stateWithSim.leagueStats as any)?.uiMode === 'pba_isolated'
-        ? new Set<ExternalRoutingResult['league']>(['PBA'])
-        : undefined,
-    });
-    if (routedResults.length > 0) {
-      stateWithSim = { ...stateWithSim, players: routedPlayers };
-      const routingNews = routedResults.slice(0, 5).map((r, i) => {
-        const isDomestic = r.league === 'G-League';
-        const salaryStr = r.salaryUSD ? formatExternalSalary(r.salaryUSD, r.league) + '/yr' : '';
-        return {
-          id: `ext-route-${r.playerId}-${Date.now()}-${i}`,
-          headline: `${r.playerName} Signs ${isDomestic ? 'with' : 'Overseas with'} ${r.teamName}`,
-          content: `Unable to land an NBA deal, ${r.playerName} has signed with ${r.teamName} in the ${r.league}${salaryStr ? ' for ' + salaryStr : ''}.`,
-          date: stateWithSim.date,
-          type: 'roster' as const,
-          isNew: true,
-          read: false,
-        };
+    const isolatedMode = stateWithSim.leagueStats?.uiMode === 'euro_isolated' || stateWithSim.leagueStats?.uiMode === 'pba_isolated';
+    if (!isolatedMode) {
+      const protectedRoutingPlayerIds = getActiveUserBidMarketPlayerIds(stateWithSim);
+      const { results: routedResults, players: routedPlayers } = routeUnsignedPlayers(stateWithSim, {
+        protectedPlayerIds: protectedRoutingPlayerIds,
       });
-      const routingHistory = routedResults.map(r => {
-        const isDomestic = r.league === 'G-League';
-        const salaryStr = r.salaryUSD ? formatExternalSalary(r.salaryUSD, r.league) + '/yr' : '';
-        return {
-          text: `${r.playerName} signs ${isDomestic ? 'with' : 'overseas with'} ${r.teamName} (${r.league})${salaryStr ? ': ' + salaryStr : ''}.`,
-          date: stateWithSim.date,
-          type: 'Signing',
-          league: r.league,
-          playerIds: [r.playerId],
+      if (routedResults.length > 0) {
+        stateWithSim = { ...stateWithSim, players: routedPlayers };
+        const routingNews = routedResults.slice(0, 5).map((r, i) => {
+          const isDomestic = r.league === 'G-League';
+          const salaryStr = r.salaryUSD ? formatExternalSalary(r.salaryUSD, r.league) + '/yr' : '';
+          return {
+            id: `ext-route-${r.playerId}-${Date.now()}-${i}`,
+            headline: `${r.playerName} Signs ${isDomestic ? 'with' : 'Overseas with'} ${r.teamName}`,
+            content: `Unable to land an NBA deal, ${r.playerName} has signed with ${r.teamName} in the ${r.league}${salaryStr ? ' for ' + salaryStr : ''}.`,
+            date: stateWithSim.date,
+            type: 'roster' as const,
+            isNew: true,
+            read: false,
+          };
+        });
+        const routingHistory = routedResults.map(r => {
+          const isDomestic = r.league === 'G-League';
+          const salaryStr = r.salaryUSD ? formatExternalSalary(r.salaryUSD, r.league) + '/yr' : '';
+          return {
+            text: `${r.playerName} signs ${isDomestic ? 'with' : 'overseas with'} ${r.teamName} (${r.league})${salaryStr ? ': ' + salaryStr : ''}.`,
+            date: stateWithSim.date,
+            type: 'Signing',
+            league: r.league,
+            playerIds: [r.playerId],
+          };
+        });
+        stateWithSim = {
+          ...stateWithSim,
+          news: [...routingNews, ...(stateWithSim.news ?? [])].slice(0, 200),
+          history: [...(stateWithSim.history ?? []), ...routingHistory],
         };
-      });
-      stateWithSim = {
-        ...stateWithSim,
-        news: [...routingNews, ...(stateWithSim.news ?? [])].slice(0, 200),
-        history: [...(stateWithSim.history ?? []), ...routingHistory],
-      };
+      }
     }
   }
 

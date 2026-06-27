@@ -13,6 +13,13 @@ export {
   autoSelectThreePointContestants,
   autoSelectShootingStarsContestants,
   autoSelectSkillsChallengeContestants,
+  autoSimBackgroundNbaVotes,
+  autoAnnounceBackgroundNbaStarters,
+  autoAnnounceBackgroundNbaReserves,
+  autoSelectBackgroundNbaDunkContestants,
+  autoSelectBackgroundNbaThreePointContestants,
+  autoSelectBackgroundNbaShootingStarsContestants,
+  autoSelectBackgroundNbaSkillsChallengeContestants,
 } from './autoResolversParts/allStarSelectionResolvers';
 
 export {
@@ -21,6 +28,7 @@ export {
   autoOpenThroneVoting,
   autoLockThroneField,
   autoSimAllStarWeekend,
+  autoSimBackgroundNbaAllStarWeekend,
 } from './autoResolversParts/allStarWeekendResolvers';
 
 export {

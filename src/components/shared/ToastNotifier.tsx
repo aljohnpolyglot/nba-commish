@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle, XCircle, TrendingDown, Bandage, AlertTriangle, Zap, Star, Heart, Trophy, Award, FileSignature, ShieldAlert, Siren } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
+import { formatContractTotalUSD, formatContractUSD } from '../../utils/salaryUtils';
 
 type ToastItem =
-  | { type: 'fa-accepted'; playerName: string; annualM: number; years: number }
+  | { type: 'fa-accepted'; playerName: string; annualM: number; salaryUSD?: number; years: number }
   | { type: 'fa-rejected'; playerName: string; winnerTeamName: string; rejectionReason?: string }
-  | { type: 'fa-bid-submitted'; playerName: string; teamName: string; annualM: number; years: number; resolvesInDays: number }
+  | { type: 'fa-bid-submitted'; playerName: string; teamName: string; annualM: number; salaryUSD?: number; years: number; resolvesInDays: number }
   | { type: 'eliminated'; teamName: string }
   | { type: 'injury'; playerName: string; injuryType: string; gamesRemaining: number; pos?: string; teamName?: string }
   | { type: 'fight'; playerName: string; opponentName: string; teamName: string; severity: 'scuffle' | 'ejection' | 'brawl' }
@@ -17,13 +18,13 @@ type ToastItem =
   | { type: 'feat-league'; playerName: string; teamName: string; oppName: string; homeScore: number; awayScore: number; isHome: boolean; won: boolean; pts: number; reb: number; ast: number }
   | { type: 'award'; playerName: string; teamName: string; teamAbbrev: string; awardLabel: string }
   | { type: 'playoffs'; teamName: string; body: string }
-  | { type: 'option'; playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number }
+  | { type: 'option'; playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number; amountUSD?: number }
   | { type: 'death'; entityType: 'player' | 'staff'; playerName: string; teamName: string; roleLabel?: string; cause: string; deathType: 'natural' | 'tragic' }
   | { type: 'rotation-budget'; delta: number }
   // ── RFA matching offer-sheet ───────────────────────────────────────────
   // 'rfa-offer-received' shown to the user when their RFA has a winning offer
   // sheet from another team — has Match/Decline action buttons + 12s duration.
-  | { type: 'rfa-offer-received'; playerId: string; playerName: string; signingTeamName: string; annualM: number; years: number; expiresInDays: number }
+  | { type: 'rfa-offer-received'; playerId: string; playerName: string; signingTeamName: string; annualM: number; salaryUSD?: number; years: number; expiresInDays: number }
   | { type: 'rfa-matched'; playerName: string; priorTeamName: string; signingTeamName: string }
   | { type: 'rfa-not-matched'; playerName: string; signingTeamName: string }
   | { type: 'transfer-accepted'; playerName: string; sellerTeamName: string; feeEUR: number }
@@ -106,7 +107,7 @@ export const ToastNotifier: React.FC = () => {
     if (!pending || pending.length === 0) return;
     const items: ToastItem[] = pending.map(p =>
       p.accepted
-        ? { type: 'fa-accepted', playerName: p.playerName, annualM: p.annualM, years: p.years }
+        ? { type: 'fa-accepted', playerName: p.playerName, annualM: p.annualM, salaryUSD: (p as any).salaryUSD, years: p.years }
         : { type: 'fa-rejected', playerName: p.playerName, winnerTeamName: p.winnerTeamName ?? '', rejectionReason: p.rejectionReason }
     );
     setQueue(q => [...q, ...items]);
@@ -244,10 +245,10 @@ export const ToastNotifier: React.FC = () => {
 
   // Drain pendingOptionToasts (GM-mode player/team option decisions at season rollover)
   useEffect(() => {
-    const pending = (state as any).pendingOptionToasts as { playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number }[] | undefined;
+    const pending = (state as any).pendingOptionToasts as { playerName: string; teamName: string; pos: string; decision: 'player-in' | 'player-out' | 'team-exercised' | 'team-declined'; amountM?: number; amountUSD?: number }[] | undefined;
     if (!pending || pending.length === 0) return;
     const items: ToastItem[] = pending.map(p => ({
-      type: 'option', playerName: p.playerName, teamName: p.teamName, pos: p.pos, decision: p.decision, amountM: p.amountM,
+      type: 'option', playerName: p.playerName, teamName: p.teamName, pos: p.pos, decision: p.decision, amountM: p.amountM, amountUSD: p.amountUSD,
     }));
     setQueue(q => [...q, ...items]);
     dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingOptionToasts: [] } });
@@ -351,6 +352,9 @@ function statLine(pts: number, reb: number, ast: number): string {
   return `${parts[0]}, ${parts[1]} and ${parts[2]}`;
 }
 
+const annualUSDFromToast = (item: { annualM: number; salaryUSD?: number }): number =>
+  Math.max(0, Math.round(item.salaryUSD ?? item.annualM * 1_000_000));
+
 // ── Card shell (used by all toast types) ────────────────────────────────────
 const Card: React.FC<{
   type: ToastItem['type'];
@@ -377,9 +381,10 @@ const Card: React.FC<{
 // ── Per-type render ─────────────────────────────────────────────────────────
 const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
   if (item.type === 'fa-accepted') {
+    const annualValue = annualUSDFromToast(item);
     return (
       <Card type={item.type} icon={CheckCircle} header={item.playerName} label="Signed">
-        Accepted your offer — <span className="text-[#FDB927] font-bold">${item.annualM}M / {item.years}yr</span>.
+        Accepted your offer — <span className="text-[#FDB927] font-bold">{formatContractTotalUSD(annualValue, item.years)} / {item.years}yr</span>.
       </Card>
     );
   }
@@ -395,9 +400,10 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
   }
 
   if (item.type === 'fa-bid-submitted') {
+    const annualValue = annualUSDFromToast(item);
     return (
       <Card type={item.type} icon={FileSignature} header={item.playerName} label="Offer Submitted">
-        <span className="text-white font-bold">{item.teamName}</span> offered <span className="text-[#FDB927] font-bold">${item.annualM}M / {item.years}yr</span> — decision in ~{item.resolvesInDays} {item.resolvesInDays === 1 ? 'day' : 'days'}.
+        <span className="text-white font-bold">{item.teamName}</span> offered <span className="text-[#FDB927] font-bold">{formatContractTotalUSD(annualValue, item.years)} / {item.years}yr</span> — decision in ~{item.resolvesInDays} {item.resolvesInDays === 1 ? 'day' : 'days'}.
       </Card>
     );
   }
@@ -486,7 +492,7 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
     let body: React.ReactNode;
     switch (item.decision) {
       case 'player-in':
-        body = <>{name} accepted his player option{item.amountM ? <> — <span className="text-[#FDB927] font-bold">${item.amountM}M</span></> : null}.</>;
+        body = <>{name} accepted his player option{item.amountM || item.amountUSD ? <> — <span className="text-[#FDB927] font-bold">{formatContractUSD(item.amountUSD ?? item.amountM! * 1_000_000)}</span></> : null}.</>;
         break;
       case 'player-out':
         body = <>{name} declined his player option and will hit free agency.</>;
@@ -592,6 +598,7 @@ const RFAOfferToast: React.FC<{ item: Extract<ToastItem, { type: 'rfa-offer-rece
       payload: { playerId: item.playerId },
     } as any);
   };
+  const annualValue = annualUSDFromToast(item);
   return (
     <div className={`min-w-[340px] max-w-[460px] rounded-xl border shadow-2xl backdrop-blur-md ${a.bg} ${a.border} overflow-hidden`} onClick={(e) => e.stopPropagation()}>
       <div className={`flex items-center gap-2 px-4 py-1.5 border-b ${a.border} bg-black/30`}>
@@ -602,7 +609,7 @@ const RFAOfferToast: React.FC<{ item: Extract<ToastItem, { type: 'rfa-offer-rece
       <div className="px-4 py-2.5 text-[13px] leading-snug text-white/90 font-medium">
         <div className="mb-2">
           <span className="text-rose-300 font-bold">{item.signingTeamName}</span> offered{' '}
-          <span className="text-[#FDB927] font-bold tabular-nums">${item.annualM}M/{item.years}yr</span>.
+          <span className="text-[#FDB927] font-bold tabular-nums">{formatContractTotalUSD(annualValue, item.years)}/{item.years}yr</span>.
           <div className="text-[11px] text-white/60 mt-0.5">{item.expiresInDays}-day window — match to retain via Bird Rights, or decline and they walk.</div>
         </div>
         <div className="flex gap-2 mt-2">

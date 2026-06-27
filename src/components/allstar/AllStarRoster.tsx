@@ -6,6 +6,7 @@ import { getPlayerImage } from '../central/view/bioCache';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { ALL_STAR_ASSETS } from '../../services/allStar/AllStarSelectionService';
 import { AllStarRosterPanels, buildAllStarRosterPanels } from './AllStarRosterPanels';
+import { findBoxScoreForGame } from '../../utils/boxScoreLookup';
 
 const EAST_LOGO  = ALL_STAR_ASSETS.eastLogo;
 const WEST_LOGO  = ALL_STAR_ASSETS.westLogo;
@@ -29,10 +30,35 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
     () => new Map<string, any>((state.players ?? []).map((p: any) => [p.internalId, p])),
     [state.players],
   );
+  const resolveScheduledGame = React.useCallback((gameMeta: any) => {
+    if (!gameMeta) return undefined;
+    const candidates = (state.schedule ?? []).filter((g: any) => g.gid === gameMeta.gid);
+    if (candidates.length === 0) return undefined;
+    const exact = candidates.find((g: any) =>
+      g.homeTid === gameMeta.homeTid &&
+      g.awayTid === gameMeta.awayTid &&
+      (!!g.isAllStar || !!g.isRisingStars || !!g.isCelebrityGame)
+    );
+    if (exact) return exact;
+    const dated = [...candidates]
+      .filter((g: any) => !!g.isAllStar || !!g.isRisingStars || !!g.isCelebrityGame)
+      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return dated[0] ?? candidates[candidates.length - 1];
+  }, [state.schedule]);
 
-  const gameId = allStar?.allStarGameId;
-  const game = state.schedule?.find((g: any) => g.gid === gameId);
-  const boxScore = state.boxScores?.find((r: any) => r.gameId === gameId || (r.homeTeamId === -1 && r.awayTeamId === -2));
+  const bracket = allStar?.bracket;
+  const finalBracketGame = bracket?.games?.find((bg: any) => bg.round === 'final')
+    ?? bracket?.games?.find((bg: any) => bg.gid === allStar?.allStarGameId);
+  const game = resolveScheduledGame(finalBracketGame)
+    ?? (!isPba ? resolveScheduledGame({ gid: allStar?.allStarGameId, homeTid: undefined, awayTid: undefined }) : undefined);
+  const homeBracket = bracket?.teams?.find((t: any) => t.tid === game?.homeTid);
+  const awayBracket = bracket?.teams?.find((t: any) => t.tid === game?.awayTid);
+  const boxScore = game ? findBoxScoreForGame(state.boxScores, game.gid, game.date, {
+    homeTid: game.homeTid,
+    awayTid: game.awayTid,
+    homeTeamName: homeBracket?.name,
+    awayTeamName: awayBracket?.name,
+  }) : undefined;
   const isToday = game && normalizeDate(game.date) === normalizeDate(state.date);
   const canWatch = isToday && !game?.played;
   const gameModeLabel = game?.gameFormat === 'target_score'
@@ -41,11 +67,10 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
       ? `Elam Ending · +${state.leagueStats?.allStarOvertimeTargetPoints ?? 24}`
       : 'Timed Game';
 
-  const bracket = allStar?.bracket;
-  const homeBracket = bracket?.teams?.find((t: any) => t.tid === game?.homeTid);
-  const awayBracket = bracket?.teams?.find((t: any) => t.tid === game?.awayTid);
   const homeFinalName = boxScore?.homeTeamName ?? homeBracket?.name ?? (isPba ? 'Team A' : 'East All-Stars');
   const awayFinalName = boxScore?.awayTeamName ?? awayBracket?.name ?? (isPba ? 'Team B' : 'West All-Stars');
+  const finalHomeScore = boxScore?.homeScore ?? finalBracketGame?.homeScore ?? game?.homeScore ?? 0;
+  const finalAwayScore = boxScore?.awayScore ?? finalBracketGame?.awayScore ?? game?.awayScore ?? 0;
 
   // Captains_draft: swap East/West logos for the captains' portraits.
   const formatEarly = state.leagueStats?.allStarFormat ?? 'east_vs_west';
@@ -106,7 +131,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
             const homeT = bracket.teams?.find((t: any) => t.tid === g.homeTid);
             const awayT = bracket.teams?.find((t: any) => t.tid === g.awayTid);
             const isFinal = g.round === 'final';
-            const sched = state.schedule?.find((s: any) => s.gid === g.gid);
+            const sched = resolveScheduledGame(g);
             return (
               <div key={g.gid} className={`bg-slate-900 rounded-2xl border ${isFinal ? 'border-amber-500/40' : 'border-slate-800'} p-5`}>
                 <div className={`text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${isFinal ? 'text-amber-400' : 'text-sky-400'}`}>
@@ -132,7 +157,11 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
                 )}
                 {sched && (
                   <div className="flex justify-center mt-3">
-                    <button onClick={() => onViewBoxScore?.(sched)} className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-all">
+                    <button onClick={() => onViewBoxScore?.({
+                      ...sched,
+                      expectedHomeTeamName: homeT?.name,
+                      expectedAwayTeamName: awayT?.name,
+                    })} className="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-all">
                       View Box Score
                     </button>
                   </div>
@@ -141,7 +170,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
             );
           })}
         </div>
-      ) : boxScore ? (
+      ) : boxScore || finalBracketGame?.played ? (
         <div className="bg-slate-900 rounded-2xl border border-slate-800 p-8 text-center">
           <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">
             Sunday Night · Final Score
@@ -155,8 +184,8 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
                   <img src={EAST_LOGO} className="w-8 h-8 object-contain" alt="Home" />
                 )}
               </div>
-              <div className={`text-5xl font-black mb-1 ${boxScore.homeScore > boxScore.awayScore ? 'text-white' : 'text-slate-600'}`}>
-                {boxScore.homeScore}
+              <div className={`text-5xl font-black mb-1 ${finalHomeScore > finalAwayScore ? 'text-white' : 'text-slate-600'}`}>
+                {finalHomeScore}
               </div>
               <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">{homeFinalName}</div>
             </div>
@@ -169,8 +198,8 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
                   <img src={WEST_LOGO} className="w-8 h-8 object-contain" alt="Away" />
                 )}
               </div>
-              <div className={`text-5xl font-black mb-1 ${boxScore.awayScore > boxScore.homeScore ? 'text-white' : 'text-slate-600'}`}>
-                {boxScore.awayScore}
+              <div className={`text-5xl font-black mb-1 ${finalAwayScore > finalHomeScore ? 'text-white' : 'text-slate-600'}`}>
+                {finalAwayScore}
               </div>
               <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">{awayFinalName}</div>
             </div>
@@ -182,7 +211,11 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
             </div>
             {game && (
               <button
-                onClick={() => onViewBoxScore?.(game)}
+                onClick={() => onViewBoxScore?.({
+                  ...game,
+                  expectedHomeTeamName: homeBracket?.name,
+                  expectedAwayTeamName: awayBracket?.name,
+                })}
                 className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-bold transition-all"
               >
                 View Box Score

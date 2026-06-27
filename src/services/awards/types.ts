@@ -30,7 +30,7 @@ export type EligibilityKey =
   | 'min-games' | 'rookie-year' | 'under-22' | 'under-23'
   | 'bench-role' | 'pos-G' | 'pos-F' | 'pos-C';
 
-export type UIMode = 'nba' | 'euro_isolated' | 'fictional';
+export type UIMode = 'nba' | 'euro_isolated' | 'pba_isolated' | 'fictional';
 
 export interface TrophyDef {
   /** Lucide icon name (e.g. 'star', 'trophy', 'flame'). */

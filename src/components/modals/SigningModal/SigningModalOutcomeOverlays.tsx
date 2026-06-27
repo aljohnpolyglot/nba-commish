@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import type { NBAPlayer } from '../../../types';
+import { formatContractTotalUSD } from '../../../utils/salaryUtils';
 import { LEAGUE_LOGOS, OverlayShell, PlayerThumb } from './SigningModalOverlayShared';
 
 interface BidSubmittedOverlayProps {
@@ -23,8 +24,7 @@ export function SigningModalBidSubmittedOverlay({
   portraitFallback,
   teamColors,
 }: BidSubmittedOverlayProps): ReactElement {
-  const annualM = Math.round(bidSubmitted.salary / 100_000) / 10;
-  const totalM = Math.round(annualM * bidSubmitted.years);
+  const totalValue = formatContractTotalUSD(bidSubmitted.salary, bidSubmitted.years);
   const optTag = bidSubmitted.option === 'PLAYER'
     ? ' with a player option'
     : bidSubmitted.option === 'TEAM'
@@ -43,7 +43,7 @@ export function SigningModalBidSubmittedOverlay({
           Offer on the Table
         </h2>
         <p className="text-white/80 italic mb-6 leading-relaxed text-sm">
-          You've offered {player.name} <span className="text-[#FDB927] font-bold">${totalM}M / {bidSubmitted.years}yr</span>{optTag}. Track the live market in Team Intel for the exact decision date.
+          You've offered {player.name} <span className="text-[#FDB927] font-bold">{totalValue} / {bidSubmitted.years}yr</span>{optTag}. Track the live market in Team Intel for the exact decision date.
         </p>
         <p className="text-[10px] text-white/40 mb-6 leading-relaxed">
           Resubmit anytime to adjust your terms — only your most recent bid stands.

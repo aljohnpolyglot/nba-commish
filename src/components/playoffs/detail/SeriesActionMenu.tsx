@@ -9,7 +9,7 @@ interface SeriesActionMenuProps {
   isProcessing: boolean;
   isComplete: boolean;
   hasPlayedGames: boolean;
-  onWatch: () => void;
+  onWatch?: () => void;
   onSimGame: () => void;
   onSimRound: () => void;
   onSimPlayoffs: () => void;
@@ -35,14 +35,16 @@ export const SeriesActionMenu: React.FC<SeriesActionMenuProps> = ({
     <div className="flex flex-col gap-1.5 mt-3">
       {isToday && !isComplete && nextGame && (
         <>
-          <button
-            onClick={onWatch}
-            disabled={isProcessing}
-            className="w-full flex items-center gap-3 px-4 py-2.5 bg-white text-black font-black text-xs rounded-xl hover:bg-emerald-400 transition-all disabled:opacity-50"
-          >
-            <Play size={14} fill="currentColor" />
-            Watch Game {gameNum}
-          </button>
+          {onWatch && (
+            <button
+              onClick={onWatch}
+              disabled={isProcessing}
+              className="w-full flex items-center gap-3 px-4 py-2.5 bg-white text-black font-black text-xs rounded-xl hover:bg-emerald-400 transition-all disabled:opacity-50"
+            >
+              <Play size={14} fill="currentColor" />
+              Watch Game {gameNum}
+            </button>
+          )}
           <button
             onClick={onSimGame}
             disabled={isProcessing}

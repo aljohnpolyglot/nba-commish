@@ -16,7 +16,7 @@ import { getLockedStrategy, lockStrategy } from '../../../../../../store/coachSt
 import { calculateCoachSliders } from '../lib/coachSliders';
 import { resolveAnyTeam, isOnRoster } from '../../../../../../utils/teamLookup';
 import { getGameDateParts } from '../../../../../../utils/dateUtils';
-import { computeBaselineFromService, computeStrengthOptimalBaseline, OUTLOOK_OPTIONS, type OutlookKey } from './idealRotationBaseline';
+import { computeBaselineFromService, computeStrengthOptimalBaseline, OUTLOOK_OPTIONS, PBA_IDEAL_KNOBS, type OutlookKey } from './idealRotationBaseline';
 import { IdealRotationReseedModal } from './IdealRotationReseedModal';
 import {
   IdealRotationFloatingMinutes,
@@ -34,6 +34,7 @@ interface IdealRotationTabProps {
 export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
   const { state } = useGame();
   const isEuroClubTeam = useMemo(() => isEuroClubTeamId(teamId), [teamId]);
+  const isPbaTeam = useMemo(() => teamId >= 2000 && teamId < 3000, [teamId]);
   const gameLengthMinutes = (state.leagueStats?.quarterLength ?? (isEuroClubTeam ? 10 : 12)) * (state.leagueStats?.numQuarters ?? 4);
   const targetMinutes = gameLengthMinutes * 5;
   const maxPlayerMinutes = gameLengthMinutes;
@@ -120,9 +121,24 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
           state.leagueStats?.quarterLength ?? 10,
           state.leagueStats?.numQuarters ?? 4,
           'euro_club',
+          state.leagueStats,
         )
-      : computeStrengthOptimalBaseline(team, roster, currentYear, reseedDepth, bias, targetMinutes, maxPlayerMinutes);
-  }, [reseedOpen, team, reseedOutlook, isEuroClubTeam, state.players, roster, currentYear, standingsCtx, reseedDepth, state.leagueStats?.quarterLength, state.leagueStats?.numQuarters, targetMinutes, maxPlayerMinutes]);
+      : isPbaTeam
+        ? computeBaselineFromService(
+            team,
+            state.players,
+            roster,
+            currentYear,
+            standingsCtx,
+            reseedDepth,
+            state.leagueStats?.quarterLength ?? 12,
+            state.leagueStats?.numQuarters ?? 4,
+            'default',
+            state.leagueStats,
+            PBA_IDEAL_KNOBS,
+          )
+        : computeStrengthOptimalBaseline(team, roster, currentYear, reseedDepth, bias, targetMinutes, maxPlayerMinutes);
+  }, [reseedOpen, team, reseedOutlook, isEuroClubTeam, isPbaTeam, state.players, roster, currentYear, standingsCtx, reseedDepth, state.leagueStats, state.leagueStats?.quarterLength, state.leagueStats?.numQuarters, targetMinutes, maxPlayerMinutes]);
 
   const [tick, setTick] = useState(0);
   const saved = useMemo(() => getIdealRotation(teamId), [teamId, tick, rosterIdKey]);
@@ -139,8 +155,23 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
           state.leagueStats?.quarterLength ?? 10,
           state.leagueStats?.numQuarters ?? 4,
           'euro_club',
+          state.leagueStats,
         )
-      : computeStrengthOptimalBaseline(team, roster, currentYear, benchDepth, 1.0, targetMinutes, maxPlayerMinutes);
+      : isPbaTeam
+        ? computeBaselineFromService(
+            team,
+            state.players,
+            roster,
+            currentYear,
+            standingsCtx,
+            benchDepth,
+            state.leagueStats?.quarterLength ?? 12,
+            state.leagueStats?.numQuarters ?? 4,
+            'default',
+            state.leagueStats,
+            PBA_IDEAL_KNOBS,
+          )
+        : computeStrengthOptimalBaseline(team, roster, currentYear, benchDepth, 1.0, targetMinutes, maxPlayerMinutes);
     const byOvr = [...roster].sort((a, b) => getDisplayOverall(b) - getDisplayOverall(a)).map(player => player.internalId);
     const fallback = baseline.starterIds.length ? baseline.starterIds : (projectedStarters.length ? projectedStarters : byOvr);
 
@@ -158,7 +189,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
       saveIdealRotation(teamId, { starterIds: reconciledStarters, minutes: reconciledMinutes, locked: true, benchOrder: saved.benchOrder });
     }
     return { starters: reconciledStarters, minutes: reconciledMinutes };
-  }, [isEuroClubTeam, team, state.players, state.leagueStats?.quarterLength, state.leagueStats?.numQuarters, roster, currentYear, standingsCtx, benchDepth, targetMinutes, maxPlayerMinutes, projectedStarters, locked, saved, rosterIds, canEdit, teamId]);
+  }, [isEuroClubTeam, isPbaTeam, team, state.players, state.leagueStats, state.leagueStats?.quarterLength, state.leagueStats?.numQuarters, roster, currentYear, standingsCtx, benchDepth, targetMinutes, maxPlayerMinutes, projectedStarters, locked, saved, rosterIds, canEdit, teamId]);
 
   const playersById = useMemo(() => new Map(state.players.map(player => [player.internalId, player] as const)), [state.players]);
   const benchPlayers = useMemo(() => {

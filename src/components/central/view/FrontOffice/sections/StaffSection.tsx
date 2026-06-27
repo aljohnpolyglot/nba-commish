@@ -67,7 +67,11 @@ export const StaffSection: React.FC<{
   const currentYear: number = state.leagueStats?.year ?? new Date().getFullYear();
   const currency: string = state.leagueStats?.currency ?? 'EUR';
   const tid = team.id ?? team.tid;
-  const staffMarket: StaffMarket = tid >= 0 && tid < 100 ? 'nba' : 'euro';
+  const staffMarket: StaffMarket = tid >= 0 && tid < 100
+    ? 'nba'
+    : tid >= 2000 && tid < 2100
+      ? 'pba'
+      : 'euro';
   const teamName = getTeamFullName(team);
   const teamLogoUrl = team.logoUrl ?? team.imgURL ?? team.teamLogoUrl ?? team.imgURLSmall;
   const isGMOwnTeam = state.gameMode === 'gm' && (team.id ?? team.tid) === state.userTeamId;
@@ -242,6 +246,12 @@ export const StaffSection: React.FC<{
     if (!needCandidatePools) return new Map<string, StaffCandidate[]>();
     const normalizeNameKey = (value: string | undefined | null) => String(value ?? '').trim().toLowerCase();
     const isAllowedNationality = (_nationalityRaw: unknown) => true;
+    const staffCandidateRating = (member: any, computed: number) => {
+      if (userLeagueId !== 'pba') return computed;
+      const stored = Number(member?.rating ?? member?.reputation ?? computed);
+      const value = Number.isFinite(stored) ? stored : computed;
+      return Math.max(42, Math.min(64, Math.round(value)));
+    };
     const employedNames = new Set<string>();
     for (const nbaTeam of (state.teams ?? []) as any[]) {
       for (const member of (nbaTeam?.tycoon?.staffMembers ?? []) as any[]) {
@@ -289,7 +299,8 @@ export const StaffSection: React.FC<{
             attributeOverrides: member.attributeOverrides,
           });
           const career = getStaffCareerSnapshot(member, currentYear);
-          const rating = resolveStaffRating(r.role, { ...member, coachingYears: Math.max(1, career.yearsExperience), playingYears: 0 });
+          const computedRating = resolveStaffRating(r.role, { ...member, coachingYears: Math.max(1, career.yearsExperience), playingYears: 0 });
+          const rating = staffCandidateRating(member, computedRating);
           const baseSalary = normalizeStaffSalary(
             tycoonTier,
             r.role,
@@ -480,7 +491,7 @@ export const StaffSection: React.FC<{
             role: r.role,
             attributeOverrides: player.attributeOverrides,
           });
-          const rating = resolveStaffRating(r.role, {
+          const computedRating = resolveStaffRating(r.role, {
             ...player,
             ...attrs,
             coachingYears: 0,
@@ -489,6 +500,7 @@ export const StaffSection: React.FC<{
               ((player.stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length) || 1,
             ),
           });
+          const rating = staffCandidateRating(player, computedRating);
           const yearsExperience = Math.max(
             1,
             ((player.stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length) || 1,

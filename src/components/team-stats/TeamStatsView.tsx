@@ -11,6 +11,7 @@ import { useLeagueLabels } from '../../utils/leagueLabels';
 import { getDisplayAge } from '../../store/playerRatingStore';
 import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
 import { getConferenceSpec, type PbaConference } from '../../services/pba/conferenceTransition';
+import { isPbaCompetitionId, makeCountedPbaRegularBoxSet, pbaBoxIdentity } from '../../services/pba/competitionGames';
 
 type StatType = 'team' | 'opponent' | 'shotLocations' | 'oppShotLocations' | 'advanced';
 type Phase = 'regular' | 'playoffs' | 'cup' | 'combined';
@@ -91,9 +92,9 @@ export const TeamStatsView: React.FC = () => {
   }, [pbaIsolated, phase]);
 
   useEffect(() => {
-    if (!pbaIsolated || pbaCompetitionFilter === PBA_COMBINED_FILTER || pbaCompetitionFilter === currentPbaCompetitionId) return;
-    setPbaCompetitionFilter(currentPbaCompetitionId);
-  }, [currentPbaCompetitionId, pbaCompetitionFilter, pbaIsolated]);
+    if (!pbaIsolated) return;
+    setPbaCompetitionFilter(prev => prev === PBA_COMBINED_FILTER ? prev : currentPbaCompetitionId);
+  }, [currentPbaCompetitionId, pbaIsolated]);
 
   const pbaCompetitionOptions = useMemo(() => [
     ...PBA_COMPETITIONS.map(spec => ({ id: spec.id, label: spec.displayName.replace(/^PBA\s+/, '') })),
@@ -108,6 +109,12 @@ export const TeamStatsView: React.FC = () => {
         : [pbaCompetitionFilter],
     );
   }, [pbaIsolated, pbaCompetitionFilter]);
+
+  const countedPbaRegularBoxes = useMemo(() => {
+    if (!pbaIsolated) return undefined;
+    const specs = PBA_COMPETITIONS.filter(spec => pbaCompetitionIds?.has(spec.id));
+    return makeCountedPbaRegularBoxSet(state.boxScores as any[], specs, season === 'all' ? undefined : season);
+  }, [pbaCompetitionIds, pbaIsolated, season, state.boxScores]);
 
   const availableSeasons = useMemo(() => {
     const years = new Set<number>();
@@ -234,6 +241,7 @@ export const TeamStatsView: React.FC = () => {
       const gameSeason = Number(game.season ?? meta.seasonYear);
       if (season !== 'all' && gameSeason !== season) return;
       if (phase === 'regular' && (meta.isPreseason || meta.isPlayoff || meta.isPlayIn || meta.excludeFromRecord)) return;
+      if (phase === 'regular' && countedPbaRegularBoxes && isPbaCompetitionId(game.competitionId) && !countedPbaRegularBoxes.has(pbaBoxIdentity(game))) return;
       if (phase === 'playoffs' && !meta.isPlayoff) return;
       if (phase === 'cup' && !meta.isNBACup) return;
       if (phase === 'combined' && (meta.isPreseason || meta.isPlayIn)) return;
@@ -332,7 +340,7 @@ export const TeamStatsView: React.FC = () => {
         tovPct, orbPct, ftFga, dEfgPct, dTovPct, drbPct, dFtFga,
       };
     });
-  }, [scopedTeams, state.boxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats, season, phase, pbaCompetitionIds, playerAgeMap]);
+  }, [scopedTeams, state.boxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats, season, phase, pbaCompetitionIds, countedPbaRegularBoxes, playerAgeMap]);
 
   const sortedStats = useMemo(() => {
     const filtered = teamStats.filter(row => {
