@@ -1,0 +1,371 @@
+{
+  "templateModal": {
+    "title": "Fine Templates",
+    "description": "Select a policy or misconduct template to prefill the reason and era-adjusted amount.",
+    "amountUnit": "league currency",
+    "baseSeason": 2026
+  },
+  "templates": [
+    {
+      "id": "technical-regular-1-5",
+      "name": "Regular Season Technical Fouls 1–5",
+      "reason": "Automatic fine under the regular-season progressive technical-foul schedule.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 2000,
+      "scope": "regular_season"
+    },
+    {
+      "id": "technical-regular-6-10",
+      "name": "Regular Season Technical Fouls 6–10",
+      "reason": "Automatic fine under the regular-season progressive technical-foul schedule.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 3000,
+      "scope": "regular_season"
+    },
+    {
+      "id": "technical-regular-11-15",
+      "name": "Regular Season Technical Fouls 11–15",
+      "reason": "Automatic fine under the regular-season progressive technical-foul schedule.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 4000,
+      "scope": "regular_season"
+    },
+    {
+      "id": "technical-regular-16",
+      "name": "Regular Season Technical Foul 16",
+      "reason": "Automatic fine and one-game suspension for the sixteenth regular-season technical foul.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 5000,
+      "scope": "regular_season",
+      "automaticSuspensionGames": 1
+    },
+    {
+      "id": "technical-regular-additional",
+      "name": "Additional Regular Season Technical Foul",
+      "reason": "Automatic fine for each regular-season technical foul after the sixteenth; every second additional technical also carries a one-game suspension.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 5000,
+      "scope": "regular_season"
+    },
+    {
+      "id": "technical-playoffs-1-2",
+      "name": "Playoff Technical Fouls 1–2",
+      "reason": "Automatic fine under the playoff progressive technical-foul schedule.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 2000,
+      "scope": "playoffs"
+    },
+    {
+      "id": "technical-playoffs-3-4",
+      "name": "Playoff Technical Fouls 3–4",
+      "reason": "Automatic fine under the playoff progressive technical-foul schedule.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 3000,
+      "scope": "playoffs"
+    },
+    {
+      "id": "technical-playoffs-5-6",
+      "name": "Playoff Technical Fouls 5–6",
+      "reason": "Automatic fine under the playoff progressive technical-foul schedule.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 4000,
+      "scope": "playoffs"
+    },
+    {
+      "id": "technical-playoffs-7",
+      "name": "Playoff Technical Foul 7",
+      "reason": "Automatic fine and one-game suspension for the seventh playoff technical foul.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 5000,
+      "scope": "playoffs",
+      "automaticSuspensionGames": 1
+    },
+    {
+      "id": "technical-playoffs-additional",
+      "name": "Additional Playoff Technical Foul",
+      "reason": "Automatic fine for each playoff technical foul after the seventh; every second additional technical also carries a one-game suspension.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 5000,
+      "scope": "playoffs"
+    },
+    {
+      "id": "first-ejection",
+      "name": "First Ejection",
+      "reason": "Automatic fine for a first ejection under the progressive ejection schedule.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 2000,
+      "scope": "all_games"
+    },
+    {
+      "id": "subsequent-ejection",
+      "name": "Subsequent Ejection",
+      "reason": "Automatic progressive ejection fine, increasing by the era-adjusted equivalent of $2,000 after each prior ejection.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 4000,
+      "scope": "all_games"
+    },
+    {
+      "id": "rim-hanging",
+      "name": "Deliberate Rim Hanging",
+      "reason": "Deliberately hanging on the basket ring without the action being necessary to prevent injury.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 2000,
+      "scope": "all_games"
+    },
+    {
+      "id": "flagrant-two",
+      "name": "Flagrant Foul — Penalty 2",
+      "reason": "A confirmed flagrant foul—penalty two carrying the minimum automatic fine.",
+      "enforcement": "automatic",
+      "baseAmountUSD": 2000,
+      "minimumAmountUSD": 2000,
+      "scope": "all_games"
+    },
+    {
+      "id": "physical-contact-official",
+      "name": "Physical Contact with an Official",
+      "reason": "Deliberate or aggressive physical contact with a game official.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 50000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "verbal-offense-official",
+      "name": "Verbal Abuse of an Official",
+      "reason": "Abusive, threatening, or sustained non-physical misconduct directed at a game official.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 25000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "dangerous-physical-act",
+      "name": "Dangerous Physical Act",
+      "reason": "Striking, kicking, kneeing, elbowing, or another reckless physical act that created a serious injury risk.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 50000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "fighting",
+      "name": "Fighting / Punching",
+      "reason": "Initiating, escalating, or materially participating in an on-court fight or punching incident.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 50000,
+      "maximumAmountUSD": 50000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "entering-fight-area-active",
+      "name": "Leaving Bench — Active Involvement",
+      "reason": "Leaving the immediate bench area during an altercation and actively participating in or escalating the incident.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 50000,
+      "maximumAmountUSD": 50000,
+      "suspensionEligible": true,
+      "minimumSuspensionGames": 1,
+      "scope": "league"
+    },
+    {
+      "id": "entering-fight-area",
+      "name": "Leaving Bench — No Active Involvement",
+      "reason": "Leaving the immediate bench area during an altercation without actively joining the fight.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 25000,
+      "maximumAmountUSD": 50000,
+      "suspensionEligible": true,
+      "minimumSuspensionGames": 1,
+      "scope": "league"
+    },
+    {
+      "id": "unsportsmanlike-conduct",
+      "name": "Unsportsmanlike Conduct",
+      "reason": "Serious unsportsmanlike conduct beyond the ordinary in-game penalty.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 25000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "taunting-obscene-gesture",
+      "name": "Taunting / Obscene Gesture",
+      "reason": "Taunting, an obscene gesture, or inappropriate language directed at an opponent, official, spectator, or broadcast audience.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 15000,
+      "maximumAmountUSD": 100000,
+      "scope": "league"
+    },
+    {
+      "id": "ball-into-stands",
+      "name": "Ball Thrown into Stands",
+      "reason": "Throwing or kicking the ball into the spectator area with force outside the normal course of play.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 25000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "flopping",
+      "name": "Flopping",
+      "reason": "A confirmed flopping violation subject to league discipline.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 5000,
+      "maximumAmountUSD": 100000,
+      "scope": "league"
+    },
+    {
+      "id": "criticism-officials",
+      "name": "Public Criticism of Officials",
+      "reason": "Public comments that improperly attacked the integrity, competence, or impartiality of game officials.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 25000,
+      "maximumAmountUSD": 100000,
+      "scope": "league"
+    },
+    {
+      "id": "social-media-misconduct",
+      "name": "Social Media Misconduct",
+      "reason": "Inappropriate, threatening, or harmful social-media activity that violated league conduct standards.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 25000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "conduct-detrimental-league",
+      "name": "Conduct Detrimental to the League",
+      "reason": "Conduct detrimental to the league or professional basketball that damaged competitive integrity, safety, or public trust.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 75000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "public-misconduct",
+      "name": "Public Misconduct",
+      "reason": "Public behavior that brought the player, team, or league into disrepute.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 50000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "gambling",
+      "name": "Unauthorized Gambling",
+      "reason": "Unauthorized wagering or gambling-related activity that threatened league integrity.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 100000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "inside-information",
+      "name": "Inside Information Leak",
+      "reason": "Providing confidential team, player, injury, or strategy information for wagering or improper competitive use.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 100000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "harassment-bullying",
+      "name": "Harassment / Bullying",
+      "reason": "Harassment, bullying, threats, or repeated abusive conduct toward a league participant.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 50000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "discriminatory-conduct",
+      "name": "Discriminatory Conduct",
+      "reason": "Discriminatory remarks or conduct that violated league workplace and public-behavior standards.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 100000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "domestic-violence",
+      "name": "Domestic Violence",
+      "reason": "A substantiated domestic-violence incident or related criminal disposition requiring league discipline.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 100000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "weapon-misconduct",
+      "name": "Weapon Misconduct",
+      "reason": "Possessing, storing, displaying, or threatening another person with a weapon in violation of league safety standards.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 100000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "criminal-assault",
+      "name": "Criminal Assault",
+      "reason": "A serious off-court assault or violent criminal incident supported by an investigation, plea, or conviction.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 100000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "personal-conduct",
+      "name": "Personal Conduct Violation",
+      "reason": "Serious personal misconduct requiring league discipline after review of the available evidence.",
+      "enforcement": "commissioner_discretion",
+      "baseAmountUSD": 50000,
+      "maximumAmountUSD": 100000,
+      "suspensionEligible": true,
+      "scope": "league"
+    },
+    {
+      "id": "conduct-detrimental-team",
+      "name": "Conduct Detrimental to the Team",
+      "reason": "Conduct that disrupted team operations or materially damaged the organization.",
+      "enforcement": "team_discretion",
+      "baseAmountUSD": 25000,
+      "suspensionEligible": true,
+      "scope": "team"
+    },
+    {
+      "id": "missed-team-activity",
+      "name": "Missed Team Activity",
+      "reason": "Unexcused absence from a required practice, workout, meeting, shootaround, treatment session, or team event.",
+      "enforcement": "team_discretion",
+      "baseAmountUSD": 10000,
+      "suspensionEligible": true,
+      "scope": "team"
+    },
+    {
+      "id": "insubordination",
+      "name": "Insubordination",
+      "reason": "Repeated refusal to follow reasonable instructions from coaches or team officials.",
+      "enforcement": "team_discretion",
+      "baseAmountUSD": 25000,
+      "suspensionEligible": true,
+      "scope": "team"
+    }
+  ]
+}

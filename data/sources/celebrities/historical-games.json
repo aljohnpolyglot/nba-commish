@@ -1,0 +1,937 @@
+{
+  "all_star_celebrity_games": [
+    {
+      "year": 2003,
+      "location": "Georgia World Congress Center, Atlanta, Georgia",
+      "teams": [
+        {
+          "team_name": "Sir Charles and the Court Jesters",
+          "head_coach": "Charles Barkley",
+          "roster": [
+            {"name": "Mark McGrath", "occupation": "Singer", "years_joined": [2003, 2004, 2005], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":20,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Ice Cube", "occupation": "Actor/Rapper", "years_joined": [2003, 2005, 2006], "ratings": {"diq":35,"dnk":10,"drb":45,"endu":55,"fg":45,"ft":50,"hgt":25,"ins":30,"jmp":45,"oiq":45,"pss":40,"reb":30,"spd":55,"stre":35,"tp":40}},
+            {"name": "Nelly", "occupation": "Rapper/Producer", "years_joined": [2003, 2004, 2005, 2006, 2007], "ratings": {"diq":45,"dnk":25,"drb":55,"endu":65,"fg":55,"ft":60,"hgt":30,"ins":40,"jmp":55,"oiq":55,"pss":50,"reb":35,"spd":65,"stre":45,"tp":45}},
+            {"name": "Tim McGraw", "occupation": "Singer", "years_joined": [2003], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":20,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Ticha Penicheiro", "occupation": "WNBA player", "years_joined": [2003], "ratings": {"diq":75,"dnk":5,"drb":85,"endu":75,"fg":70,"ft":85,"hgt":30,"ins":55,"jmp":50,"oiq":85,"pss":95,"reb":45,"spd":70,"stre":40,"tp":70}},
+            {"name": "Moses Malone", "occupation": "NBA legend", "years_joined": [2003], "ratings": {"diq":80,"dnk":65,"drb":50,"endu":50,"fg":65,"ft":75,"hgt":85,"ins":85,"jmp":30,"oiq":75,"pss":45,"reb":95,"spd":25,"stre":90,"tp":15}},
+            {"name": "Nikki McCray", "occupation": "WNBA player", "years_joined": [2003], "ratings": {"diq":75,"dnk":5,"drb":80,"endu":75,"fg":75,"ft":85,"hgt":30,"ins":55,"jmp":50,"oiq":85,"pss":80,"reb":45,"spd":70,"stre":40,"tp":75}},
+            {"name": "Spud Webb", "occupation": "NBA legend", "years_joined": [2003], "ratings": {"diq":75,"dnk":40,"drb":85,"endu":70,"fg":70,"ft":85,"hgt":0,"ins":40,"jmp":95,"oiq":80,"pss":85,"reb":20,"spd":95,"stre":35,"tp":75}}
+          ]
+        },
+        {
+          "team_name": "Kenny Smith and the Jets",
+          "head_coach": "Kenny Smith",
+          "roster": [
+            {"name": "Justin Timberlake", "occupation": "Singer/Actor", "years_joined": [2003], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":45,"hgt":25,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":45,"stre":30,"tp":30}},
+            {"name": "Jamie Foxx", "occupation": "Singer/Actor", "years_joined": [2003, 2007, 2018], "ratings": {"diq":25,"dnk":5,"drb":30,"endu":40,"fg":30,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":30,"pss":30,"reb":25,"spd":45,"stre":30,"tp":25}},
+            {"name": "Roger Lodge", "occupation": "Actor/TV host", "years_joined": [2003, 2004, 2005], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":20,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Rebecca Lobo", "occupation": "WNBA player", "years_joined": [2003], "ratings": {"diq":75,"dnk":5,"drb":80,"endu":75,"fg":75,"ft":85,"hgt":45,"ins":65,"jmp":50,"oiq":85,"pss":80,"reb":65,"spd":60,"stre":50,"tp":75}},
+            {"name": "Sue Bird", "occupation": "WNBA player", "years_joined": [2003, 2004, 2019], "ratings": {"diq":80,"dnk":0,"drb":85,"endu":85,"fg":80,"ft":90,"hgt":25,"ins":40,"jmp":45,"oiq":90,"pss":95,"reb":35,"spd":75,"stre":35,"tp":85}},
+            {"name": "Jonathan Lipnicki", "occupation": "Actor", "years_joined": [2003], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":15,"ft":25,"hgt":10,"ins":10,"jmp":25,"oiq":15,"pss":15,"reb":10,"spd":40,"stre":15,"tp":15}},
+            {"name": "Manute Bol", "occupation": "NBA legend", "years_joined": [2003], "ratings": {"diq":85,"dnk":45,"drb":40,"endu":45,"fg":60,"ft":60,"hgt":100,"ins":75,"jmp":20,"oiq":70,"pss":40,"reb":85,"spd":15,"stre":75,"tp":35}},
+            {"name": "Anthony Anderson", "occupation": "Actor", "years_joined": [2003, 2015, 2016, 2018, 2026], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":30,"fg":25,"ft":35,"hgt":25,"ins":25,"jmp":25,"oiq":25,"pss":25,"reb":25,"spd":35,"stre":40,"tp":25}},
+            {"name": "Muggsy Bogues", "occupation": "NBA legend", "years_joined": [2003, 2016], "ratings": {"diq":75,"dnk":0,"drb":85,"endu":70,"fg":70,"ft":85,"hgt":0,"ins":40,"jmp":75,"oiq":80,"pss":85,"reb":20,"spd":85,"stre":35,"tp":75}},
+            {"name": "Brian McKnight", "occupation": "Singer", "years_joined": [2003, 2005], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":40,"fg":35,"ft":45,"hgt":25,"ins":25,"jmp":30,"oiq":30,"pss":30,"reb":25,"spd":45,"stre":35,"tp":30}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2004,
+      "location": "Los Angeles Convention Center, Los Angeles, California",
+      "teams": [
+        {
+          "team_name": "Buffalo Braves",
+          "head_coach": "P Diddy",
+          "assistant_coaches": ["Paris Hilton"],
+          "general_manager": "Greg Anthony",
+          "roster": [
+            {"name": "Sue Bird", "occupation": "WNBA player", "years_joined": [2003, 2004, 2019], "ratings": {"diq":80,"dnk":0,"drb":85,"endu":85,"fg":80,"ft":90,"hgt":25,"ins":40,"jmp":45,"oiq":90,"pss":95,"reb":35,"spd":75,"stre":35,"tp":85}},
+            {"name": "Nick Carter", "occupation": "Singer/actor", "years_joined": [2004], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Tom Cavanagh", "occupation": "Actor", "years_joined": [2004, 2016], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":40,"hgt":25,"ins":25,"jmp":30,"oiq":30,"pss":30,"reb":25,"spd":40,"stre":30,"tp":30}},
+            {"name": "Morris Chestnut", "occupation": "Actor", "years_joined": [2004], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":35,"oiq":25,"pss":25,"reb":25,"spd":45,"stre":35,"tp":25}},
+            {"name": "DJ Clue", "occupation": "DJ", "years_joined": [2004, 2005], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":20,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Donald Faison", "occupation": "Actor", "years_joined": [2004, 2005, 2006, 2007, 2009], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":45,"stre":30,"tp":30}},
+            {"name": "Mark Jackson", "occupation": "NBA player", "years_joined": [2004], "ratings": {"diq":80,"dnk":25,"drb":85,"endu":70,"fg":70,"ft":80,"hgt":40,"ins":60,"jmp":45,"oiq":85,"pss":90,"reb":50,"spd":60,"stre":55,"tp":75}},
+            {"name": "Roger Lodge", "occupation": "Blind Date host", "years_joined": [2003, 2004, 2005], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":20,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Cuttino Mobley", "occupation": "NBA Player", "years_joined": [2004], "ratings": {"diq":75,"dnk":50,"drb":80,"endu":75,"fg":75,"ft":80,"hgt":45,"ins":65,"jmp":65,"oiq":80,"pss":70,"reb":50,"spd":70,"stre":55,"tp":80}},
+            {"name": "Nelly", "occupation": "Rapper", "years_joined": [2003, 2004, 2005, 2006, 2007], "ratings": {"diq":45,"dnk":25,"drb":55,"endu":65,"fg":55,"ft":60,"hgt":30,"ins":40,"jmp":55,"oiq":55,"pss":50,"reb":35,"spd":65,"stre":45,"tp":45}},
+            {"name": "Henry Simmons", "occupation": "Actor", "years_joined": [2004], "ratings": {"diq":20,"dnk":10,"drb":20,"endu":40,"fg":25,"ft":35,"hgt":35,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":30,"spd":45,"stre":45,"tp":25}},
+            {"name": "James Lafferty", "occupation": "Actor", "years_joined": [2004, 2008], "ratings": {"diq":35,"dnk":15,"drb":35,"endu":50,"fg":40,"ft":45,"hgt":30,"ins":35,"jmp":40,"oiq":35,"pss":35,"reb":30,"spd":50,"stre":35,"tp":35}}
+          ]
+        },
+        {
+          "team_name": "Minneapolis Lakers",
+          "head_coach": "Ashton Kutcher",
+          "assistant_coaches": ["Lisa Leslie"],
+          "general_manager": "Bill Walton",
+          "roster": [
+            {"name": "Bill Bellamy", "occupation": "Actor/comedian", "years_joined": [2004], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Nick Cannon", "occupation": "Actor/singer", "years_joined": [2004, 2006, 2007, 2011, 2013, 2014, 2015, 2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":50,"stre":25,"tp":35}},
+            {"name": "Kevin Hart", "occupation": "Actor/comedian", "years_joined": [2004, 2011, 2012, 2013, 2014, 2015, 2016], "ratings": {"diq":50,"dnk":0,"drb":75,"endu":80,"fg":55,"ft":60,"hgt":0,"ins":30,"jmp":45,"oiq":60,"pss":70,"reb":20,"spd":85,"stre":25,"tp":50}},
+            {"name": "Steve Howey", "occupation": "Actor", "years_joined": [2004], "ratings": {"diq":20,"dnk":10,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":35,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":30,"spd":40,"stre":40,"tp":25}},
+            {"name": "Richard Jefferson", "occupation": "NBA Player", "years_joined": [2004], "ratings": {"diq":75,"dnk":70,"drb":80,"endu":80,"fg":80,"ft":80,"hgt":55,"ins":70,"jmp":80,"oiq":80,"pss":75,"reb":60,"spd":75,"stre":65,"tp":80}},
+            {"name": "Mark McGrath", "occupation": "Singer/Extra host", "years_joined": [2003, 2004, 2005], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":20,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Frankie Muniz", "occupation": "Actor", "years_joined": [2004], "ratings": {"diq":20,"dnk":0,"drb":25,"endu":40,"fg":25,"ft":35,"hgt":5,"ins":15,"jmp":30,"oiq":25,"pss":30,"reb":15,"spd":55,"stre":15,"tp":25}},
+            {"name": "Sean Paul", "occupation": "Reggae artist", "years_joined": [2004], "ratings": {"diq":25,"dnk":5,"drb":30,"endu":40,"fg":30,"ft":35,"hgt":20,"ins":20,"jmp":35,"oiq":25,"pss":30,"reb":20,"spd":45,"stre":25,"tp":25}},
+            {"name": "Michael Rapaport", "occupation": "Actor", "years_joined": [2004, 2009, 2010, 2011, 2015], "ratings": {"diq":45,"dnk":5,"drb":45,"endu":55,"fg":45,"ft":50,"hgt":30,"ins":35,"jmp":35,"oiq":45,"pss":45,"reb":35,"spd":45,"stre":35,"tp":45}},
+            {"name": "Nikki Teasley", "occupation": "WNBA player", "years_joined": [2004], "ratings": {"diq":75,"dnk":5,"drb":80,"endu":75,"fg":70,"ft":80,"hgt":30,"ins":50,"jmp":50,"oiq":85,"pss":85,"reb":40,"spd":70,"stre":40,"tp":75}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2005,
+      "location": "Colorado Convention Center, Denver, Colorado",
+      "teams": [
+        {
+          "team_name": "Team Denver",
+          "head_coach": "Andre Miller",
+          "assistant_coaches": ["Vivica A. Fox"],
+          "general_manager": "Greg Anthony",
+          "roster": [
+            {"name": "DJ Clue", "occupation": "Rapper", "years_joined": [2004, 2005], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":20,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Jermaine Dupri", "occupation": "Rapper", "years_joined": [2005], "ratings": {"diq":25,"dnk":0,"drb":30,"endu":40,"fg":30,"ft":35,"hgt":5,"ins":15,"jmp":35,"oiq":30,"pss":30,"reb":15,"spd":45,"stre":20,"tp":30}},
+            {"name": "Becky Hammon", "occupation": "WNBA player", "years_joined": [2005, 2006, 2010], "ratings": {"diq":80,"dnk":0,"drb":85,"endu":80,"fg":80,"ft":90,"hgt":15,"ins":45,"jmp":45,"oiq":90,"pss":90,"reb":35,"spd":75,"stre":35,"tp":85}},
+            {"name": "Lisa Leslie", "occupation": "WNBA player", "years_joined": [2005, 2009], "ratings": {"diq":85,"dnk":25,"drb":70,"endu":80,"fg":80,"ft":80,"hgt":50,"ins":85,"jmp":55,"oiq":85,"pss":70,"reb":85,"spd":60,"stre":70,"tp":60}},
+            {"name": "Roger Lodge", "occupation": "Blind Date host", "years_joined": [2003, 2004, 2005], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":20,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Danny Masterson", "occupation": "Actor", "years_joined": [2005], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Mark McGrath", "occupation": "Singer/Extra host", "years_joined": [2003, 2004, 2005], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":20,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Wilmer Valderrama", "occupation": "Actor", "years_joined": [2005], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":20,"ins":20,"jmp":35,"oiq":25,"pss":25,"reb":20,"spd":45,"stre":25,"tp":25}}
+          ]
+        },
+        {
+          "team_name": "Team Nuggets",
+          "head_coach": "Earl Boykins",
+          "assistant_coaches": ["Gabrielle Union"],
+          "general_manager": "Stephen A. Smith",
+          "roster": [
+            {"name": "Ryan Cabrera", "occupation": "Singer", "years_joined": [2005], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":20,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Donald Faison", "occupation": "Actor", "years_joined": [2004, 2005, 2006, 2007, 2009], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":45,"stre":30,"tp":30}},
+            {"name": "Kevin Frazier", "occupation": "Entertainment Tonight correspondent", "years_joined": [2005, 2006], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":30,"oiq":25,"pss":30,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "Eric Koston", "occupation": "Professional skateboarder", "years_joined": [2005], "ratings": {"diq":30,"dnk":10,"drb":35,"endu":60,"fg":30,"ft":35,"hgt":20,"ins":25,"jmp":55,"oiq":30,"pss":30,"reb":25,"spd":65,"stre":35,"tp":30}},
+            {"name": "Brian McKnight", "occupation": "Singer", "years_joined": [2003, 2005], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":40,"fg":35,"ft":45,"hgt":25,"ins":25,"jmp":30,"oiq":30,"pss":30,"reb":25,"spd":45,"stre":35,"tp":30}},
+            {"name": "Nelly", "occupation": "Rapper", "years_joined": [2003, 2004, 2005, 2006, 2007], "ratings": {"diq":45,"dnk":25,"drb":55,"endu":65,"fg":55,"ft":60,"hgt":30,"ins":40,"jmp":55,"oiq":55,"pss":50,"reb":35,"spd":65,"stre":45,"tp":45}},
+            {"name": "Nykesha Sales", "occupation": "WNBA player", "years_joined": [2005], "ratings": {"diq":75,"dnk":5,"drb":75,"endu":75,"fg":75,"ft":80,"hgt":30,"ins":55,"jmp":50,"oiq":80,"pss":75,"reb":45,"spd":70,"stre":40,"tp":75}},
+            {"name": "Diana Taurasi", "occupation": "WNBA player", "years_joined": [2005], "ratings": {"diq":85,"dnk":5,"drb":85,"endu":85,"fg":85,"ft":90,"hgt":30,"ins":50,"jmp":50,"oiq":90,"pss":90,"reb":45,"spd":75,"stre":45,"tp":90}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2006,
+      "location": "George R. Brown Convention Center, Houston, Texas",
+      "teams": [
+        {
+          "team_name": "H-Town Team",
+          "head_coach": "Eva Longoria",
+          "general_manager": "Stephen A. Smith",
+          "roster": [
+            {"name": "Carlos Bernard", "occupation": "Actor", "years_joined": [2006], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Chris Brown", "occupation": "Singer", "years_joined": [2006], "ratings": {"diq":30,"dnk":20,"drb":35,"endu":60,"fg":35,"ft":40,"hgt":25,"ins":30,"jmp":65,"oiq":30,"pss":30,"reb":25,"spd":70,"stre":35,"tp":30}},
+            {"name": "Nick Cannon", "occupation": "Actor/singer", "years_joined": [2004, 2006, 2007, 2011, 2013, 2014, 2015, 2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":50,"stre":25,"tp":35}},
+            {"name": "Becky Hammon", "occupation": "WNBA player", "years_joined": [2005, 2006, 2010], "ratings": {"diq":80,"dnk":0,"drb":85,"endu":80,"fg":80,"ft":90,"hgt":15,"ins":45,"jmp":45,"oiq":90,"pss":90,"reb":35,"spd":75,"stre":35,"tp":85}},
+            {"name": "Nelly", "occupation": "Singer/actor", "years_joined": [2003, 2004, 2005, 2006, 2007], "ratings": {"diq":45,"dnk":25,"drb":55,"endu":65,"fg":55,"ft":60,"hgt":30,"ins":40,"jmp":55,"oiq":55,"pss":50,"reb":35,"spd":65,"stre":45,"tp":45}},
+            {"name": "Tony Potts", "occupation": "Access Hollywood correspondent", "years_joined": [2006, 2007, 2008], "ratings": {"diq":35,"dnk":10,"drb":35,"endu":50,"fg":40,"ft":45,"hgt":35,"ins":35,"jmp":40,"oiq":35,"pss":35,"reb":40,"spd":45,"stre":45,"tp":35}},
+            {"name": "Brandon Routh", "occupation": "Actor", "years_joined": [2006], "ratings": {"diq":25,"dnk":15,"drb":25,"endu":45,"fg":30,"ft":35,"hgt":40,"ins":30,"jmp":45,"oiq":25,"pss":25,"reb":35,"spd":50,"stre":50,"tp":25}}
+          ]
+        },
+        {
+          "team_name": "Clutch City Team",
+          "head_coach": "Queen Latifah",
+          "general_manager": "Greg Anthony",
+          "roster": [
+            {"name": "Bow Wow", "occupation": "Hip-hop artist/actor", "years_joined": [2006, 2007], "ratings": {"diq":30,"dnk":0,"drb":40,"endu":50,"fg":35,"ft":40,"hgt":15,"ins":25,"jmp":45,"oiq":35,"pss":35,"reb":20,"spd":65,"stre":25,"tp":35}},
+            {"name": "Swin Cash", "occupation": "WNBA player", "years_joined": [2006, 2008, 2011], "ratings": {"diq":75,"dnk":5,"drb":75,"endu":80,"fg":75,"ft":80,"hgt":35,"ins":60,"jmp":55,"oiq":80,"pss":70,"reb":60,"spd":70,"stre":50,"tp":70}},
+            {"name": "Ice Cube", "occupation": "Rapper/actor", "years_joined": [2003, 2005, 2006], "ratings": {"diq":35,"dnk":10,"drb":45,"endu":55,"fg":45,"ft":50,"hgt":25,"ins":30,"jmp":45,"oiq":45,"pss":40,"reb":30,"spd":55,"stre":35,"tp":40}},
+            {"name": "Donald Faison", "occupation": "Actor", "years_joined": [2004, 2005, 2006, 2007, 2009], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":45,"stre":30,"tp":30}},
+            {"name": "Andrew Firestone", "occupation": "ABC's The Bachelor (Season 3)", "years_joined": [2006], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Kevin Frazier", "occupation": "Entertainment Tonight correspondent", "years_joined": [2005, 2006], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":30,"oiq":25,"pss":30,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "Chris Meloni", "occupation": "Actor", "years_joined": [2006], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":35,"tp":25}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2007,
+      "location": "Las Vegas Convention Center, Winchester, Nevada",
+      "teams": [
+        {
+          "team_name": "East",
+          "head_coach": "Tim Legler",
+          "assistant_coaches": ["James Pickens Jr."],
+          "roster": [
+            {"name": "David Arquette", "occupation": "Actor", "years_joined": [2007], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Michael Clarke Duncan", "occupation": "Actor", "years_joined": [2007], "ratings": {"diq":25,"dnk":20,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":45,"ins":40,"jmp":30,"oiq":25,"pss":25,"reb":45,"spd":35,"stre":65,"tp":20}},
+            {"name": "Taye Diggs", "occupation": "Actor", "years_joined": [2007], "ratings": {"diq":25,"dnk":10,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":40,"oiq":25,"pss":25,"reb":25,"spd":45,"stre":35,"tp":25}},
+            {"name": "Donald Faison", "occupation": "Actor", "years_joined": [2004, 2005, 2006, 2007, 2009], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":45,"stre":30,"tp":30}},
+            {"name": "Bobby Flay", "occupation": "TV chef", "years_joined": [2007], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":20,"ins":15,"jmp":25,"oiq":25,"pss":25,"reb":20,"spd":35,"stre":25,"tp":25}},
+            {"name": "Jamie Kennedy", "occupation": "Actor/comedian", "years_joined": [2007], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Nelly", "occupation": "Hip-hop artist/actor", "years_joined": [2003, 2004, 2005, 2006, 2007], "ratings": {"diq":45,"dnk":25,"drb":55,"endu":65,"fg":55,"ft":60,"hgt":30,"ins":40,"jmp":55,"oiq":55,"pss":50,"reb":35,"spd":65,"stre":45,"tp":45}},
+            {"name": "Katie Smith", "occupation": "WNBA player", "years_joined": [2007], "ratings": {"diq":80,"dnk":0,"drb":80,"endu":80,"fg":80,"ft":85,"hgt":25,"ins":45,"jmp":45,"oiq":85,"pss":85,"reb":35,"spd":70,"stre":35,"tp":85}},
+            {"name": "LaDainian Tomlinson", "occupation": "NFL player", "years_joined": [2007], "ratings": {"diq":35,"dnk":45,"drb":30,"endu":85,"fg":35,"ft":40,"hgt":25,"ins":35,"jmp":85,"oiq":30,"pss":30,"reb":40,"spd":90,"stre":65,"tp":25}},
+            {"name": "Carrot Top", "occupation": "Comedian", "years_joined": [2007], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":35,"fg":20,"ft":30,"hgt":25,"ins":15,"jmp":25,"oiq":15,"pss":20,"reb":15,"spd":40,"stre":30,"tp":20}},
+            {"name": "Chris Tucker", "occupation": "Actor/comedian", "years_joined": [2007, 2008, 2009, 2010], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":20,"spd":45,"stre":25,"tp":30}}
+          ]
+        },
+        {
+          "team_name": "West",
+          "head_coach": "Greg Anthony",
+          "assistant_coaches": ["Wayne Newton"],
+          "roster": [
+            {"name": "Bow Wow", "occupation": "Hip-hop artist/actor", "years_joined": [2006, 2007], "ratings": {"diq":30,"dnk":0,"drb":40,"endu":50,"fg":35,"ft":40,"hgt":15,"ins":25,"jmp":45,"oiq":35,"pss":35,"reb":20,"spd":65,"stre":25,"tp":35}},
+            {"name": "Reggie Bush", "occupation": "NFL player", "years_joined": [2007], "ratings": {"diq":35,"dnk":50,"drb":30,"endu":85,"fg":35,"ft":40,"hgt":30,"ins":40,"jmp":90,"oiq":30,"pss":30,"reb":35,"spd":95,"stre":60,"tp":25}},
+            {"name": "Nick Cannon", "occupation": "Actor/comedian", "years_joined": [2004, 2006, 2007, 2011, 2013, 2014, 2015, 2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":50,"stre":25,"tp":35}},
+            {"name": "Tamika Catchings", "occupation": "WNBA player", "years_joined": [2007, 2011, 2012, 2013, 2014], "ratings": {"diq":85,"dnk":5,"drb":80,"endu":85,"fg":80,"ft":85,"hgt":35,"ins":60,"jmp":55,"oiq":85,"pss":80,"reb":65,"spd":75,"stre":50,"tp":75}},
+            {"name": "James Denton", "occupation": "Actor", "years_joined": [2007, 2009], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":30,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":35,"tp":25}},
+            {"name": "Jamie Foxx", "occupation": "Actor/comedian/singer", "years_joined": [2003, 2007, 2018], "ratings": {"diq":25,"dnk":5,"drb":30,"endu":40,"fg":30,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":30,"pss":30,"reb":25,"spd":45,"stre":30,"tp":25}},
+            {"name": "Tony Potts", "occupation": "Access Hollywood correspondent", "years_joined": [2006, 2007, 2008], "ratings": {"diq":35,"dnk":10,"drb":35,"endu":50,"fg":40,"ft":45,"hgt":35,"ins":35,"jmp":40,"oiq":35,"pss":35,"reb":40,"spd":45,"stre":45,"tp":35}},
+            {"name": "Jonathan Silverman", "occupation": "Actor", "years_joined": [2007], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2008,
+      "location": "Ernest N. Morial Convention Center, New Orleans, Louisiana",
+      "teams": [
+        {
+          "team_name": "Team New Orleans",
+          "head_coach": "Gabrielle Union",
+          "general_manager": "Stephen A. Smith",
+          "roster": [
+            {"name": "A. J. Calloway", "occupation": "Extra correspondent", "years_joined": [2008], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Seth Gilliam", "occupation": "Actor", "years_joined": [2008], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Zach Gilford", "occupation": "Actor", "years_joined": [2008], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":20,"jmp":35,"oiq":25,"pss":25,"reb":20,"spd":45,"stre":30,"tp":25}},
+            {"name": "Taylor Hicks", "occupation": "Singer/2006 American Idol winner", "years_joined": [2008], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":25,"oiq":25,"pss":25,"reb":20,"spd":35,"stre":30,"tp":25}},
+            {"name": "James Lafferty", "occupation": "Actor", "years_joined": [2004, 2008], "ratings": {"diq":35,"dnk":15,"drb":35,"endu":50,"fg":40,"ft":45,"hgt":30,"ins":35,"jmp":40,"oiq":35,"pss":35,"reb":30,"spd":50,"stre":35,"tp":35}},
+            {"name": "Ne-Yo", "occupation": "Singer/actor", "years_joined": [2008, 2012, 2013], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":25,"jmp":40,"oiq":30,"pss":30,"reb":25,"spd":50,"stre":30,"tp":30}},
+            {"name": "Terrell Owens", "occupation": "NFL player", "years_joined": [2008, 2009, 2010, 2025], "ratings": {"diq":40,"dnk":60,"drb":35,"endu":85,"fg":45,"ft":50,"hgt":40,"ins":50,"jmp":85,"oiq":40,"pss":35,"reb":60,"spd":90,"stre":75,"tp":35}},
+            {"name": "Master P", "occupation": "Hip-hop artist", "years_joined": [2008, 2017], "ratings": {"diq":45,"dnk":10,"drb":45,"endu":55,"fg":45,"ft":50,"hgt":40,"ins":40,"jmp":40,"oiq":45,"pss":45,"reb":40,"spd":45,"stre":45,"tp":40}},
+            {"name": "Ruth Riley", "occupation": "WNBA player", "years_joined": [2008], "ratings": {"diq":75,"dnk":10,"drb":60,"endu":75,"fg":75,"ft":80,"hgt":50,"ins":75,"jmp":40,"oiq":80,"pss":65,"reb":70,"spd":55,"stre":60,"tp":50}}
+          ]
+        },
+        {
+          "team_name": "Team Hornets",
+          "head_coach": "Alyssa Milano",
+          "general_manager": "Bill Walton",
+          "roster": [
+            {"name": "Swin Cash", "occupation": "WNBA player", "years_joined": [2006, 2008, 2011], "ratings": {"diq":75,"dnk":5,"drb":75,"endu":80,"fg":75,"ft":80,"hgt":35,"ins":60,"jmp":55,"oiq":80,"pss":70,"reb":60,"spd":70,"stre":50,"tp":70}},
+            {"name": "Common", "occupation": "Rapper/actor", "years_joined": [2008, 2010, 2011, 2012, 2013, 2015, 2018, 2020], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":55,"fg":40,"ft":45,"hgt":30,"ins":30,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":50,"stre":35,"tp":40}},
+            {"name": "Terry Crews", "occupation": "Actor", "years_joined": [2008], "ratings": {"diq":25,"dnk":30,"drb":25,"endu":50,"fg":30,"ft":40,"hgt":40,"ins":45,"jmp":50,"oiq":25,"pss":25,"reb":45,"spd":50,"stre":85,"tp":20}},
+            {"name": "James Kyson Lee", "occupation": "Actor", "years_joined": [2008], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Floyd Mayweather", "occupation": "Boxer", "years_joined": [2008], "ratings": {"diq":30,"dnk":0,"drb":30,"endu":85,"fg":30,"ft":40,"hgt":15,"ins":20,"jmp":50,"oiq":30,"pss":30,"reb":20,"spd":75,"stre":45,"tp":25}},
+            {"name": "Tony Potts", "occupation": "Access Hollywood correspondent", "years_joined": [2006, 2007, 2008], "ratings": {"diq":35,"dnk":10,"drb":35,"endu":50,"fg":40,"ft":45,"hgt":35,"ins":35,"jmp":40,"oiq":35,"pss":35,"reb":40,"spd":45,"stre":45,"tp":35}},
+            {"name": "Chris Tucker", "occupation": "Actor/comedian", "years_joined": [2007, 2008, 2009, 2010], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":20,"spd":45,"stre":25,"tp":30}},
+            {"name": "Deion Sanders", "occupation": "NFL legend", "years_joined": [2008], "ratings": {"diq":35,"dnk":40,"drb":30,"endu":80,"fg":35,"ft":40,"hgt":30,"ins":35,"jmp":85,"oiq":30,"pss":30,"reb":35,"spd":95,"stre":50,"tp":25}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2009,
+      "location": "Phoenix Convention Center, Phoenix, Arizona",
+      "teams": [
+        {
+          "team_name": "East Sunrisers",
+          "head_coach": "Julius Erving",
+          "roster": [
+            {"name": "Dominique Wilkins", "occupation": "NBA legend", "years_joined": [2009], "ratings": {"diq":75,"dnk":80,"drb":80,"endu":65,"fg":75,"ft":80,"hgt":55,"ins":75,"jmp":85,"oiq":80,"pss":70,"reb":60,"spd":75,"stre":65,"tp":65}},
+            {"name": "Rick Fox", "occupation": "Los Angeles Lakers legend", "years_joined": [2009, 2010, 2011, 2016], "ratings": {"diq":75,"dnk":45,"drb":75,"endu":65,"fg":75,"ft":80,"hgt":55,"ins":60,"jmp":55,"oiq":80,"pss":75,"reb":55,"spd":60,"stre":55,"tp":80}},
+            {"name": "Kara Lawson", "occupation": "WNBA player", "years_joined": [2009], "ratings": {"diq":80,"dnk":0,"drb":85,"endu":80,"fg":80,"ft":90,"hgt":25,"ins":45,"jmp":45,"oiq":85,"pss":85,"reb":35,"spd":70,"stre":40,"tp":85}},
+            {"name": "James Denton", "occupation": "Actor", "years_joined": [2007, 2009], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":30,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":35,"tp":25}},
+            {"name": "Zachary Levi", "occupation": "Actor", "years_joined": [2009, 2011], "ratings": {"diq":25,"dnk":10,"drb":25,"endu":45,"fg":30,"ft":35,"hgt":40,"ins":30,"jmp":40,"oiq":25,"pss":25,"reb":35,"spd":45,"stre":35,"tp":25}},
+            {"name": "Terrell Owens", "occupation": "NFL player", "years_joined": [2008, 2009, 2010, 2025], "ratings": {"diq":40,"dnk":60,"drb":35,"endu":85,"fg":45,"ft":50,"hgt":40,"ins":50,"jmp":85,"oiq":40,"pss":35,"reb":60,"spd":90,"stre":75,"tp":35}},
+            {"name": "Special K Daley", "occupation": "Harlem Globetrotters", "years_joined": [2009, 2010], "ratings": {"diq":65,"dnk":40,"drb":95,"endu":75,"fg":70,"ft":75,"hgt":40,"ins":55,"jmp":65,"oiq":75,"pss":95,"reb":35,"spd":75,"stre":45,"tp":70}},
+            {"name": "Wildkat Edgerson", "occupation": "Harlem Globetrotters", "years_joined": [2009], "ratings": {"diq":65,"dnk":65,"drb":85,"endu":75,"fg":65,"ft":70,"hgt":50,"ins":65,"jmp":80,"oiq":70,"pss":85,"reb":50,"spd":80,"stre":55,"tp":50}},
+            {"name": "Nancy Lieberman", "occupation": "WNBA legend", "years_joined": [2009, 2010], "ratings": {"diq":80,"dnk":0,"drb":90,"endu":75,"fg":75,"ft":85,"hgt":25,"ins":40,"jmp":40,"oiq":90,"pss":95,"reb":35,"spd":60,"stre":30,"tp":75}}
+          ]
+        },
+        {
+          "team_name": "West Sunsetters",
+          "head_coach": "Magic Johnson",
+          "roster": [
+            {"name": "Clyde Drexler", "occupation": "NBA legend", "years_joined": [2009, 2013], "ratings": {"diq":75,"dnk":80,"drb":80,"endu":65,"fg":75,"ft":80,"hgt":55,"ins":70,"jmp":85,"oiq":80,"pss":75,"reb":60,"spd":75,"stre":60,"tp":70}},
+            {"name": "Dan Majerle", "occupation": "Phoenix Suns legend", "years_joined": [2009], "ratings": {"diq":75,"dnk":45,"drb":70,"endu":65,"fg":75,"ft":80,"hgt":50,"ins":55,"jmp":55,"oiq":75,"pss":70,"reb":50,"spd":60,"stre":60,"tp":85}},
+            {"name": "Lisa Leslie", "occupation": "WNBA player", "years_joined": [2005, 2009], "ratings": {"diq":85,"dnk":25,"drb":70,"endu":80,"fg":80,"ft":80,"hgt":50,"ins":85,"jmp":55,"oiq":85,"pss":70,"reb":85,"spd":60,"stre":70,"tp":60}},
+            {"name": "Donald Faison", "occupation": "Actor", "years_joined": [2004, 2005, 2006, 2007, 2009], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":45,"stre":30,"tp":30}},
+            {"name": "Michael Rapaport", "occupation": "Actor", "years_joined": [2004, 2009, 2010, 2011, 2015], "ratings": {"diq":45,"dnk":5,"drb":45,"endu":55,"fg":45,"ft":50,"hgt":30,"ins":35,"jmp":35,"oiq":45,"pss":45,"reb":35,"spd":45,"stre":35,"tp":45}},
+            {"name": "Chris Tucker", "occupation": "Actor/comedian", "years_joined": [2007, 2008, 2009, 2010], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":20,"spd":45,"stre":25,"tp":30}},
+            {"name": "Scooter Christensen", "occupation": "Harlem Globetrotters", "years_joined": [2009, 2010], "ratings": {"diq":65,"dnk":20,"drb":95,"endu":75,"fg":70,"ft":75,"hgt":25,"ins":45,"jmp":60,"oiq":75,"pss":95,"reb":25,"spd":75,"stre":35,"tp":75}},
+            {"name": "Handles Franklin", "occupation": "Harlem Globetrotters", "years_joined": [2009], "ratings": {"diq":65,"dnk":20,"drb":95,"endu":75,"fg":65,"ft":75,"hgt":30,"ins":45,"jmp":60,"oiq":75,"pss":95,"reb":25,"spd":75,"stre":35,"tp":65}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2010,
+      "location": "Dallas Convention Center, Dallas, Texas",
+      "teams": [
+        {
+          "team_name": "East",
+          "head_coach": "Alonzo Mourning",
+          "assistant_coaches": ["Mario Lopez"],
+          "roster": [
+            {"name": "Dr. Oz", "occupation": "Doctor/TV host", "years_joined": [2010, 2019], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":30,"hgt":25,"ins":15,"jmp":20,"oiq":15,"pss":20,"reb":15,"spd":30,"stre":25,"tp":20}},
+            {"name": "Chris Tucker", "occupation": "Actor/comedian", "years_joined": [2007, 2008, 2009, 2010], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":20,"spd":45,"stre":25,"tp":30}},
+            {"name": "Joel Moore", "occupation": "Actor", "years_joined": [2010, 2016], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":35,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "Pitbull", "occupation": "Musician", "years_joined": [2010], "ratings": {"diq":20,"dnk":0,"drb":25,"endu":40,"fg":25,"ft":35,"hgt":15,"ins":15,"jmp":35,"oiq":25,"pss":25,"reb":15,"spd":45,"stre":25,"tp":25}},
+            {"name": "Terrell Owens", "occupation": "Football player", "years_joined": [2008, 2009, 2010, 2025], "ratings": {"diq":40,"dnk":60,"drb":35,"endu":85,"fg":45,"ft":50,"hgt":40,"ins":50,"jmp":85,"oiq":40,"pss":35,"reb":60,"spd":90,"stre":75,"tp":35}},
+            {"name": "Flight Time Lang", "occupation": "Harlem Globetrotters", "years_joined": [2010], "ratings": {"diq":65,"dnk":50,"drb":90,"endu":75,"fg":65,"ft":70,"hgt":35,"ins":55,"jmp":75,"oiq":70,"pss":90,"reb":35,"spd":80,"stre":45,"tp":65}},
+            {"name": "Big Easy Lofton", "occupation": "Harlem Globetrotters", "years_joined": [2010], "ratings": {"diq":65,"dnk":35,"drb":85,"endu":70,"fg":65,"ft":70,"hgt":55,"ins":65,"jmp":50,"oiq":70,"pss":85,"reb":60,"spd":60,"stre":70,"tp":50}},
+            {"name": "Angel McCoughtry", "occupation": "WNBA player", "years_joined": [2010], "ratings": {"diq":80,"dnk":5,"drb":80,"endu":80,"fg":80,"ft":85,"hgt":35,"ins":60,"jmp":55,"oiq":85,"pss":75,"reb":55,"spd":75,"stre":45,"tp":75}},
+            {"name": "Nancy Lieberman", "occupation": "WNBA legend/Basketball Hall of Famer", "years_joined": [2009, 2010], "ratings": {"diq":80,"dnk":0,"drb":90,"endu":75,"fg":75,"ft":85,"hgt":25,"ins":40,"jmp":40,"oiq":90,"pss":95,"reb":35,"spd":60,"stre":30,"tp":75}},
+            {"name": "Rick Fox", "occupation": "NBA legend", "years_joined": [2009, 2010, 2011, 2016], "ratings": {"diq":75,"dnk":45,"drb":75,"endu":65,"fg":75,"ft":80,"hgt":55,"ins":60,"jmp":55,"oiq":80,"pss":75,"reb":55,"spd":60,"stre":55,"tp":80}}
+          ]
+        },
+        {
+          "team_name": "West",
+          "head_coach": "Magic Johnson",
+          "assistant_coaches": ["Drake"],
+          "roster": [
+            {"name": "Anthony Kim", "occupation": "Golfer", "years_joined": [2010], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":45,"fg":25,"ft":35,"hgt":15,"ins":15,"jmp":25,"oiq":25,"pss":25,"reb":15,"spd":35,"stre":25,"tp":25}},
+            {"name": "Terrence J", "occupation": "TV host", "years_joined": [2010, 2013, 2014, 2016, 2019], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":20,"spd":45,"stre":25,"tp":30}},
+            {"name": "Mark Cuban", "occupation": "Dallas Mavericks owner", "years_joined": [2010, 2017], "ratings": {"diq":35,"dnk":0,"drb":25,"endu":35,"fg":35,"ft":40,"hgt":35,"ins":30,"jmp":25,"oiq":35,"pss":30,"reb":30,"spd":35,"stre":35,"tp":40}},
+            {"name": "Common", "occupation": "Actor/musician", "years_joined": [2008, 2010, 2011, 2012, 2013, 2015, 2018, 2020], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":55,"fg":40,"ft":45,"hgt":30,"ins":30,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":50,"stre":35,"tp":40}},
+            {"name": "Michael Rapaport", "occupation": "Actor", "years_joined": [2004, 2009, 2010, 2011, 2015], "ratings": {"diq":45,"dnk":5,"drb":45,"endu":55,"fg":45,"ft":50,"hgt":30,"ins":35,"jmp":35,"oiq":45,"pss":45,"reb":35,"spd":45,"stre":35,"tp":45}},
+            {"name": "Scooter Christensen", "occupation": "Harlem Globetrotters", "years_joined": [2009, 2010], "ratings": {"diq":65,"dnk":20,"drb":95,"endu":75,"fg":70,"ft":75,"hgt":25,"ins":45,"jmp":60,"oiq":75,"pss":95,"reb":25,"spd":75,"stre":35,"tp":75}},
+            {"name": "Special K Daley", "occupation": "Harlem Globetrotters", "years_joined": [2009, 2010], "ratings": {"diq":65,"dnk":40,"drb":95,"endu":75,"fg":70,"ft":75,"hgt":40,"ins":55,"jmp":65,"oiq":75,"pss":95,"reb":35,"spd":75,"stre":45,"tp":70}},
+            {"name": "Becky Hammon", "occupation": "WNBA player", "years_joined": [2005, 2006, 2010], "ratings": {"diq":80,"dnk":0,"drb":85,"endu":80,"fg":80,"ft":90,"hgt":15,"ins":45,"jmp":45,"oiq":90,"pss":90,"reb":35,"spd":75,"stre":35,"tp":85}},
+            {"name": "Chris Mullin", "occupation": "NBA legend", "years_joined": [2010, 2011, 2012, 2015], "ratings": {"diq":80,"dnk":35,"drb":75,"endu":65,"fg":85,"ft":90,"hgt":55,"ins":60,"jmp":50,"oiq":85,"pss":80,"reb":55,"spd":60,"stre":55,"tp":90}},
+            {"name": "Robert Horry", "occupation": "NBA legend", "years_joined": [2010], "ratings": {"diq":80,"dnk":50,"drb":70,"endu":65,"fg":75,"ft":80,"hgt":65,"ins":60,"jmp":60,"oiq":80,"pss":70,"reb":65,"spd":60,"stre":60,"tp":85}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2011,
+      "location": "Los Angeles Convention Center, Los Angeles, California",
+      "teams": [
+        {
+          "team_name": "West",
+          "head_coach": "Magic Johnson",
+          "assistant_coaches": ["Ty Burrell"],
+          "general_manager": "Jimmy Kimmel",
+          "roster": [
+            {"name": "Justin Bieber", "occupation": "singer", "years_joined": [2011, 2018], "ratings": {"diq":45,"dnk":5,"drb":60,"endu":70,"fg":50,"ft":60,"hgt":15,"ins":35,"jmp":45,"oiq":55,"pss":60,"reb":25,"spd":70,"stre":25,"tp":50}},
+            {"name": "Swin Cash", "occupation": "current WNBA player", "years_joined": [2006, 2008, 2011], "ratings": {"diq":75,"dnk":5,"drb":75,"endu":80,"fg":75,"ft":80,"hgt":35,"ins":60,"jmp":55,"oiq":80,"pss":70,"reb":60,"spd":70,"stre":50,"tp":70}},
+            {"name": "Rick Fox", "occupation": "former NBA player/actor", "years_joined": [2009, 2010, 2011, 2016], "ratings": {"diq":75,"dnk":45,"drb":75,"endu":65,"fg":75,"ft":80,"hgt":55,"ins":60,"jmp":55,"oiq":80,"pss":75,"reb":55,"spd":60,"stre":55,"tp":80}},
+            {"name": "A.C. Green", "occupation": "former NBA player", "years_joined": [2011], "ratings": {"diq":75,"dnk":50,"drb":60,"endu":70,"fg":70,"ft":75,"hgt":70,"ins":75,"jmp":55,"oiq":75,"pss":60,"reb":80,"spd":55,"stre":75,"tp":40}},
+            {"name": "Rob Kardashian", "occupation": "TV personality/model", "years_joined": [2011], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Zachary Levi", "occupation": "actor/singer", "years_joined": [2009, 2011], "ratings": {"diq":25,"dnk":10,"drb":25,"endu":45,"fg":30,"ft":35,"hgt":40,"ins":30,"jmp":40,"oiq":25,"pss":25,"reb":35,"spd":45,"stre":35,"tp":25}},
+            {"name": "Romeo Miller", "occupation": "entertainer/actor", "years_joined": [2011, 2014, 2017], "ratings": {"diq":50,"dnk":15,"drb":65,"endu":65,"fg":60,"ft":65,"hgt":25,"ins":45,"jmp":50,"oiq":65,"pss":60,"reb":30,"spd":65,"stre":35,"tp":55}},
+            {"name": "Jalen Rose", "occupation": "former NBA player/ESPN analyst", "years_joined": [2011], "ratings": {"diq":75,"dnk":45,"drb":80,"endu":65,"fg":75,"ft":80,"hgt":60,"ins":65,"jmp":55,"oiq":80,"pss":80,"reb":55,"spd":60,"stre":55,"tp":75}},
+            {"name": "Trey Songz", "occupation": "singer-songwriter", "years_joined": [2011, 2013], "ratings": {"diq":30,"dnk":10,"drb":35,"endu":50,"fg":35,"ft":40,"hgt":30,"ins":30,"jmp":45,"oiq":30,"pss":30,"reb":25,"spd":55,"stre":35,"tp":35}}
+          ]
+        },
+        {
+          "team_name": "East",
+          "head_coach": "Bill Walton",
+          "assistant_coaches": ["Jason Alexander"],
+          "general_manager": "Bill Simmons",
+          "roster": [
+            {"name": "Nick Cannon", "occupation": "TV personality/actor", "years_joined": [2004, 2006, 2007, 2011, 2013, 2014, 2015, 2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":50,"stre":25,"tp":35}},
+            {"name": "Tamika Catchings", "occupation": "current WNBA player", "years_joined": [2007, 2011, 2012, 2013, 2014], "ratings": {"diq":85,"dnk":5,"drb":80,"endu":85,"fg":80,"ft":85,"hgt":35,"ins":60,"jmp":55,"oiq":85,"pss":80,"reb":65,"spd":75,"stre":50,"tp":75}},
+            {"name": "Common", "occupation": "rapper/actor", "years_joined": [2008, 2010, 2011, 2012, 2013, 2015, 2018, 2020], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":55,"fg":40,"ft":45,"hgt":30,"ins":30,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":50,"stre":35,"tp":40}},
+            {"name": "Arne Duncan", "occupation": "US Secretary of Education", "years_joined": [2011, 2012, 2013, 2014], "ratings": {"diq":65,"dnk":20,"drb":65,"endu":70,"fg":65,"ft":70,"hgt":45,"ins":55,"jmp":40,"oiq":75,"pss":75,"reb":55,"spd":55,"stre":50,"tp":60}},
+            {"name": "Chris Mullin", "occupation": "former NBA player/ESPN analyst", "years_joined": [2010, 2011, 2012, 2015], "ratings": {"diq":80,"dnk":35,"drb":75,"endu":65,"fg":85,"ft":90,"hgt":55,"ins":60,"jmp":50,"oiq":85,"pss":80,"reb":55,"spd":60,"stre":55,"tp":90}},
+            {"name": "Scottie Pippen", "occupation": "NBA legend", "years_joined": [2011], "ratings": {"diq":85,"dnk":60,"drb":80,"endu":70,"fg":75,"ft":80,"hgt":60,"ins":65,"jmp":65,"oiq":85,"pss":80,"reb":65,"spd":70,"stre":65,"tp":70}},
+            {"name": "Michael Rapaport", "occupation": "entertainer/actor", "years_joined": [2004, 2009, 2010, 2011, 2015], "ratings": {"diq":45,"dnk":5,"drb":45,"endu":55,"fg":45,"ft":50,"hgt":30,"ins":35,"jmp":35,"oiq":45,"pss":45,"reb":35,"spd":45,"stre":35,"tp":45}},
+            {"name": "Mitch Richmond", "occupation": "former NBA player", "years_joined": [2011, 2012], "ratings": {"diq":75,"dnk":45,"drb":75,"endu":65,"fg":80,"ft":85,"hgt":45,"ins":60,"jmp":55,"oiq":80,"pss":70,"reb":50,"spd":65,"stre":55,"tp":85}},
+            {"name": "Jason Sudeikis", "occupation": "TV personality/actor", "years_joined": [2011, 2016], "ratings": {"diq":45,"dnk":5,"drb":45,"endu":55,"fg":50,"ft":55,"hgt":30,"ins":35,"jmp":35,"oiq":50,"pss":50,"reb":30,"spd":50,"stre":30,"tp":50}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2012,
+      "location": "Orange County Convention Center, Orlando, Florida",
+      "teams": [
+        {
+          "team_name": "West",
+          "head_coach": "Kevin Durant",
+          "roster": [
+            {"name": "Javier Colon", "occupation": "Singer and songwriter/The Voice season 1 winner", "years_joined": [2012], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":20,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Common", "occupation": "Rapper/actor", "years_joined": [2008, 2010, 2011, 2012, 2013, 2015, 2018, 2020], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":55,"fg":40,"ft":45,"hgt":30,"ins":30,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":50,"stre":35,"tp":40}},
+            {"name": "Tim Hardaway", "occupation": "NBA legend", "years_joined": [2012], "ratings": {"diq":80,"dnk":15,"drb":90,"endu":70,"fg":75,"ft":85,"hgt":15,"ins":55,"jmp":55,"oiq":85,"pss":90,"reb":35,"spd":75,"stre":45,"tp":80}},
+            {"name": "Chris Mullin", "occupation": "NBA legend/ESPN analyst", "years_joined": [2010, 2011, 2012, 2015], "ratings": {"diq":80,"dnk":35,"drb":75,"endu":65,"fg":85,"ft":90,"hgt":55,"ins":60,"jmp":50,"oiq":85,"pss":80,"reb":55,"spd":60,"stre":55,"tp":90}},
+            {"name": "Ne-Yo", "occupation": "Singer/actor", "years_joined": [2008, 2012, 2013], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":25,"jmp":40,"oiq":30,"pss":30,"reb":25,"spd":50,"stre":30,"tp":30}},
+            {"name": "Mitch Richmond", "occupation": "NBA legend", "years_joined": [2011, 2012], "ratings": {"diq":75,"dnk":45,"drb":75,"endu":65,"fg":80,"ft":85,"hgt":45,"ins":60,"jmp":55,"oiq":80,"pss":70,"reb":50,"spd":65,"stre":55,"tp":85}},
+            {"name": "Drew Scott", "occupation": "Real estate expert, co-host of Property Brothers", "years_joined": [2012, 2016, 2018], "ratings": {"diq":25,"dnk":10,"drb":25,"endu":45,"fg":30,"ft":35,"hgt":40,"ins":30,"jmp":35,"oiq":25,"pss":25,"reb":35,"spd":40,"stre":40,"tp":25}},
+            {"name": "J.B. Smoove", "occupation": "Actor/comedian", "years_joined": [2012, 2019], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":35,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "Jesse Williams", "occupation": "Actor/model", "years_joined": [2012, 2014, 2015], "ratings": {"diq":30,"dnk":10,"drb":35,"endu":50,"fg":35,"ft":40,"hgt":30,"ins":30,"jmp":45,"oiq":30,"pss":30,"reb":25,"spd":55,"stre":35,"tp":35}}
+          ]
+        },
+        {
+          "team_name": "East",
+          "head_coach": "Dwight Howard",
+          "roster": [
+            {"name": "Nick Anderson", "occupation": "NBA legend", "years_joined": [2012], "ratings": {"diq":75,"dnk":45,"drb":75,"endu":65,"fg":75,"ft":75,"hgt":50,"ins":65,"jmp":55,"oiq":75,"pss":70,"reb":55,"spd":65,"stre":60,"tp":75}},
+            {"name": "Tamika Catchings", "occupation": "WNBA player", "years_joined": [2007, 2011, 2012, 2013, 2014], "ratings": {"diq":85,"dnk":5,"drb":80,"endu":85,"fg":80,"ft":85,"hgt":35,"ins":60,"jmp":55,"oiq":85,"pss":80,"reb":65,"spd":75,"stre":50,"tp":75}},
+            {"name": "J. Cole", "occupation": "Rapper", "years_joined": [2012], "ratings": {"diq":55,"dnk":45,"drb":75,"endu":75,"fg":65,"ft":70,"hgt":40,"ins":50,"jmp":65,"oiq":65,"pss":65,"reb":40,"spd":75,"stre":45,"tp":65}},
+            {"name": "Arne Duncan", "occupation": "US Secretary of Education", "years_joined": [2011, 2012, 2013, 2014], "ratings": {"diq":65,"dnk":20,"drb":65,"endu":70,"fg":65,"ft":70,"hgt":45,"ins":55,"jmp":40,"oiq":75,"pss":75,"reb":55,"spd":55,"stre":50,"tp":60}},
+            {"name": "Doug Gottlieb", "occupation": "ESPN analyst", "years_joined": [2012], "ratings": {"diq":60,"dnk":10,"drb":70,"endu":55,"fg":55,"ft":65,"hgt":25,"ins":40,"jmp":40,"oiq":65,"pss":80,"reb":35,"spd":55,"stre":35,"tp":60}},
+            {"name": "Vinny Guadagnino", "occupation": "Jersey Shore personality", "years_joined": [2012], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":40,"fg":25,"ft":35,"hgt":20,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Penny Hardaway", "occupation": "NBA legend", "years_joined": [2012], "ratings": {"diq":80,"dnk":50,"drb":85,"endu":70,"fg":75,"ft":80,"hgt":60,"ins":65,"jmp":60,"oiq":85,"pss":85,"reb":55,"spd":70,"stre":55,"tp":75}},
+            {"name": "Kevin Hart", "occupation": "Actor/comedian", "years_joined": [2004, 2011, 2012, 2013, 2014, 2015, 2016], "ratings": {"diq":50,"dnk":0,"drb":75,"endu":80,"fg":55,"ft":60,"hgt":0,"ins":30,"jmp":45,"oiq":60,"pss":70,"reb":20,"spd":85,"stre":25,"tp":50}},
+            {"name": "Jonathan Scott", "occupation": "Contractor, co-host of Property Brothers", "years_joined": [2012, 2016], "ratings": {"diq":25,"dnk":10,"drb":25,"endu":45,"fg":30,"ft":35,"hgt":40,"ins":30,"jmp":35,"oiq":25,"pss":25,"reb":35,"spd":40,"stre":40,"tp":25}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2013,
+      "location": "George R. Brown Convention Center, Houston, Texas",
+      "teams": [
+        {
+          "team_name": "East",
+          "head_coach": "LeBron James",
+          "assistant_coaches": ["Queen Latifah"],
+          "roster": [
+            {"name": "Usain Bolt", "occupation": "100m, 200m and 4 × 100 m sprinter", "years_joined": [2013], "ratings": {"diq":30,"dnk":50,"drb":30,"endu":85,"fg":35,"ft":45,"hgt":40,"ins":40,"jmp":85,"oiq":30,"pss":30,"reb":35,"spd":99,"stre":55,"tp":25}},
+            {"name": "Bruce Bowen", "occupation": "Former NBA player", "years_joined": [2013, 2014], "ratings": {"diq":85,"dnk":35,"drb":65,"endu":70,"fg":75,"ft":75,"hgt":55,"ins":55,"jmp":55,"oiq":75,"pss":65,"reb":50,"spd":65,"stre":60,"tp":85}},
+            {"name": "Nick Cannon", "occupation": "TV personality/actor", "years_joined": [2004, 2006, 2007, 2011, 2013, 2014, 2015, 2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":50,"stre":25,"tp":35}},
+            {"name": "Tamika Catchings", "occupation": "WNBA player", "years_joined": [2007, 2011, 2012, 2013, 2014], "ratings": {"diq":85,"dnk":5,"drb":80,"endu":85,"fg":80,"ft":85,"hgt":35,"ins":60,"jmp":55,"oiq":85,"pss":80,"reb":65,"spd":75,"stre":50,"tp":75}},
+            {"name": "Rocsi Diaz", "occupation": "Entertainment Tonight correspondent", "years_joined": [2013], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":15,"ins":15,"jmp":25,"oiq":25,"pss":25,"reb":15,"spd":40,"stre":20,"tp":25}},
+            {"name": "Sean Elliott", "occupation": "NBA legend", "years_joined": [2013], "ratings": {"diq":75,"dnk":45,"drb":70,"endu":65,"fg":75,"ft":80,"hgt":60,"ins":65,"jmp":55,"oiq":80,"pss":70,"reb":55,"spd":65,"stre":55,"tp":80}},
+            {"name": "Josh Hutcherson", "occupation": "Actor", "years_joined": [2013], "ratings": {"diq":35,"dnk":5,"drb":35,"endu":45,"fg":45,"ft":40,"hgt":15,"ins":25,"jmp":40,"oiq":35,"pss":35,"reb":20,"spd":50,"stre":25,"tp":45}},
+            {"name": "Ne-Yo", "occupation": "Singer/actor", "years_joined": [2008, 2012, 2013], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":25,"jmp":40,"oiq":30,"pss":30,"reb":25,"spd":50,"stre":30,"tp":30}},
+            {"name": "Trey Songz", "occupation": "Singer-songwriter", "years_joined": [2011, 2013], "ratings": {"diq":30,"dnk":10,"drb":35,"endu":50,"fg":35,"ft":40,"hgt":30,"ins":30,"jmp":45,"oiq":30,"pss":30,"reb":25,"spd":55,"stre":35,"tp":35}}
+          ]
+        },
+        {
+          "team_name": "West",
+          "head_coach": "Kobe Bryant",
+          "assistant_coaches": ["Samantha Harris"],
+          "roster": [
+            {"name": "Common", "occupation": "Rapper/actor", "years_joined": [2008, 2010, 2011, 2012, 2013, 2015, 2018, 2020], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":55,"fg":40,"ft":45,"hgt":30,"ins":30,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":50,"stre":35,"tp":40}},
+            {"name": "Clyde Drexler", "occupation": "NBA legend", "years_joined": [2009, 2013], "ratings": {"diq":75,"dnk":80,"drb":80,"endu":65,"fg":75,"ft":80,"hgt":55,"ins":70,"jmp":85,"oiq":80,"pss":75,"reb":60,"spd":75,"stre":60,"tp":70}},
+            {"name": "Kevin Hart", "occupation": "Comedian/actor", "years_joined": [2004, 2011, 2012, 2013, 2014, 2015, 2016], "ratings": {"diq":50,"dnk":0,"drb":75,"endu":80,"fg":55,"ft":60,"hgt":0,"ins":30,"jmp":45,"oiq":60,"pss":70,"reb":20,"spd":85,"stre":25,"tp":50}},
+            {"name": "Arne Duncan", "occupation": "U.S. Secretary of Education", "years_joined": [2011, 2012, 2013, 2014], "ratings": {"diq":65,"dnk":20,"drb":65,"endu":70,"fg":65,"ft":70,"hgt":45,"ins":55,"jmp":40,"oiq":75,"pss":75,"reb":55,"spd":55,"stre":50,"tp":60}},
+            {"name": "Terrence Jenkins", "occupation": "E! News co-anchor", "years_joined": [2010, 2013, 2014, 2016, 2019], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":20,"spd":45,"stre":25,"tp":30}},
+            {"name": "Maya Moore", "occupation": "WNBA player", "years_joined": [2013], "ratings": {"diq":85,"dnk":15,"drb":85,"endu":85,"fg":85,"ft":90,"hgt":35,"ins":65,"jmp":65,"oiq":90,"pss":85,"reb":60,"spd":75,"stre":50,"tp":85}},
+            {"name": "Dikembe Mutombo", "occupation": "NBA legend", "years_joined": [2013], "ratings": {"diq":85,"dnk":65,"drb":40,"endu":60,"fg":60,"ft":65,"hgt":100,"ins":80,"jmp":40,"oiq":75,"pss":40,"reb":95,"spd":30,"stre":90,"tp":15}},
+            {"name": "Ryen Russillo", "occupation": "SVP & Russillo co-host", "years_joined": [2013], "ratings": {"diq":35,"dnk":10,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":35,"ins":35,"jmp":35,"oiq":35,"pss":35,"reb":35,"spd":40,"stre":50,"tp":30}},
+            {"name": "John Schriffen", "occupation": "ABC News correspondent", "years_joined": [2013], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2014,
+      "location": "Sprint Arena, New Orleans, Louisiana",
+      "teams": [
+        {
+          "team_name": "East",
+          "head_coach": "Jalen Rose",
+          "assistant_coaches": ["David Jacoby", "Brandon Franklin"],
+          "roster": [
+            {"name": "Bruce Bowen", "occupation": "Former NBA player", "years_joined": [2013, 2014], "ratings": {"diq":85,"dnk":35,"drb":65,"endu":70,"fg":75,"ft":75,"hgt":55,"ins":55,"jmp":55,"oiq":75,"pss":65,"reb":50,"spd":65,"stre":60,"tp":85}},
+            {"name": "Nick Cannon", "occupation": "TV personality/actor", "years_joined": [2004, 2006, 2007, 2011, 2013, 2014, 2015, 2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":50,"stre":25,"tp":35}},
+            {"name": "Skylar Diggins", "occupation": "WNBA player", "years_joined": [2014, 2015], "ratings": {"diq":80,"dnk":5,"drb":85,"endu":80,"fg":80,"ft":85,"hgt":25,"ins":45,"jmp":55,"oiq":85,"pss":90,"reb":35,"spd":80,"stre":35,"tp":80}},
+            {"name": "Arne Duncan", "occupation": "U.S. Secretary of Education", "years_joined": [2011, 2012, 2013, 2014], "ratings": {"diq":65,"dnk":20,"drb":65,"endu":70,"fg":65,"ft":70,"hgt":45,"ins":55,"jmp":40,"oiq":75,"pss":75,"reb":55,"spd":55,"stre":50,"tp":60}},
+            {"name": "Mike Greenberg", "occupation": "ESPN Radio's Mike & Mike co-host", "years_joined": [2014], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":30,"fg":25,"ft":30,"hgt":25,"ins":15,"jmp":25,"oiq":25,"pss":25,"reb":20,"spd":35,"stre":25,"tp":25}},
+            {"name": "Kristen Ledlow", "occupation": "NBA Inside Stuff co-host", "years_joined": [2014, 2015], "ratings": {"diq":35,"dnk":0,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":20,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":45,"stre":25,"tp":35}},
+            {"name": "Romeo Miller", "occupation": "Entertainer/actor", "years_joined": [2011, 2014, 2017], "ratings": {"diq":50,"dnk":15,"drb":65,"endu":65,"fg":60,"ft":65,"hgt":25,"ins":45,"jmp":50,"oiq":65,"pss":60,"reb":30,"spd":65,"stre":35,"tp":55}},
+            {"name": "Stan Verrett", "occupation": "ESPN's SportsCenter anchor", "years_joined": [2014], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":30,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "Wale", "occupation": "Rapper", "years_joined": [2014], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":30,"pss":30,"reb":25,"spd":50,"stre":30,"tp":35}}
+          ]
+        },
+        {
+          "team_name": "West",
+          "head_coach": "Bill Simmons",
+          "assistant_coaches": ["Zach Lowe"],
+          "roster": [
+            {"name": "Tamika Catchings", "occupation": "WNBA player", "years_joined": [2007, 2011, 2012, 2013, 2014], "ratings": {"diq":85,"dnk":5,"drb":80,"endu":85,"fg":80,"ft":85,"hgt":35,"ins":60,"jmp":55,"oiq":85,"pss":80,"reb":65,"spd":75,"stre":50,"tp":75}},
+            {"name": "Elena Delle Donne", "occupation": "WNBA player", "years_joined": [2014, 2016], "ratings": {"diq":85,"dnk":10,"drb":80,"endu":85,"fg":90,"ft":95,"hgt":55,"ins":70,"jmp":55,"oiq":90,"pss":80,"reb":70,"spd":70,"stre":55,"tp":90}},
+            {"name": "Snoop Dogg", "occupation": "Rapper/actor", "years_joined": [2014], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":45,"fg":40,"ft":45,"hgt":40,"ins":30,"jmp":35,"oiq":35,"pss":40,"reb":35,"spd":45,"stre":30,"tp":35}},
+            {"name": "Mike Golic", "occupation": "ESPN Radio's Mike & Mike co-host", "years_joined": [2014], "ratings": {"diq":25,"dnk":10,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":45,"ins":35,"jmp":30,"oiq":25,"pss":25,"reb":40,"spd":35,"stre":60,"tp":25}},
+            {"name": "Kevin Hart", "occupation": "Comedian/actor", "years_joined": [2004, 2011, 2012, 2013, 2014, 2015, 2016], "ratings": {"diq":50,"dnk":0,"drb":75,"endu":80,"fg":55,"ft":60,"hgt":0,"ins":30,"jmp":45,"oiq":60,"pss":70,"reb":20,"spd":85,"stre":25,"tp":50}},
+            {"name": "Erin Heatherton", "occupation": "Victoria's Secret model", "years_joined": [2014], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":30,"hgt":30,"ins":15,"jmp":25,"oiq":15,"pss":15,"reb":15,"spd":40,"stre":20,"tp":20}},
+            {"name": "Terrence Jenkins", "occupation": "E! News co-anchor", "years_joined": [2010, 2013, 2014, 2016, 2019], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":20,"spd":45,"stre":25,"tp":30}},
+            {"name": "Michael B. Jordan", "occupation": "Actor", "years_joined": [2014, 2018], "ratings": {"diq":35,"dnk":15,"drb":40,"endu":55,"fg":40,"ft":45,"hgt":30,"ins":35,"jmp":45,"oiq":35,"pss":35,"reb":30,"spd":55,"stre":45,"tp":35}},
+            {"name": "Jesse Williams", "occupation": "Actor", "years_joined": [2012, 2014, 2015], "ratings": {"diq":30,"dnk":10,"drb":35,"endu":50,"fg":35,"ft":40,"hgt":30,"ins":30,"jmp":45,"oiq":30,"pss":30,"reb":25,"spd":55,"stre":35,"tp":35}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2015,
+      "location": "Madison Square Garden, New York City",
+      "teams": [
+        {
+          "team_name": "West",
+          "head_coach": "Mike Golic",
+          "assistant_coaches": ["Spike Lee", "Pete Sampras"],
+          "roster": [
+            {"name": "Anthony Anderson", "occupation": "Actor", "years_joined": [2003, 2015, 2016, 2018, 2026], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":30,"fg":25,"ft":35,"hgt":25,"ins":25,"jmp":25,"oiq":25,"pss":25,"reb":25,"spd":35,"stre":40,"tp":25}},
+            {"name": "Win Butler", "occupation": "Singer", "years_joined": [2015, 2016, 2017, 2018], "ratings": {"diq":55,"dnk":15,"drb":55,"endu":65,"fg":55,"ft":60,"hgt":45,"ins":45,"jmp":45,"oiq":55,"pss":50,"reb":55,"spd":50,"stre":50,"tp":50}},
+            {"name": "Nick Cannon", "occupation": "TV personality, actor", "years_joined": [2004, 2006, 2007, 2011, 2013, 2014, 2015, 2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":50,"stre":25,"tp":35}},
+            {"name": "Mo'ne Davis", "occupation": "Little League pitcher", "years_joined": [2015], "ratings": {"diq":40,"dnk":0,"drb":45,"endu":55,"fg":45,"ft":50,"hgt":0,"ins":20,"jmp":40,"oiq":40,"pss":45,"reb":15,"spd":65,"stre":20,"tp":40}},
+            {"name": "Skylar Diggins", "occupation": "WNBA player", "years_joined": [2014, 2015], "ratings": {"diq":80,"dnk":5,"drb":85,"endu":80,"fg":80,"ft":85,"hgt":25,"ins":45,"jmp":55,"oiq":85,"pss":90,"reb":35,"spd":80,"stre":35,"tp":80}},
+            {"name": "Ansel Elgort", "occupation": "Actor", "years_joined": [2015, 2017], "ratings": {"diq":30,"dnk":10,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":40,"ins":35,"jmp":40,"oiq":30,"pss":30,"reb":35,"spd":45,"stre":40,"tp":30}},
+            {"name": "Chris Mullin", "occupation": "Former NBA player", "years_joined": [2010, 2011, 2012, 2015], "ratings": {"diq":80,"dnk":35,"drb":75,"endu":65,"fg":85,"ft":90,"hgt":55,"ins":60,"jmp":50,"oiq":85,"pss":80,"reb":55,"spd":60,"stre":55,"tp":90}},
+            {"name": "Robert Pera", "occupation": "Memphis Grizzlies owner", "years_joined": [2015], "ratings": {"diq":45,"dnk":10,"drb":45,"endu":50,"fg":45,"ft":50,"hgt":35,"ins":35,"jmp":40,"oiq":45,"pss":45,"reb":35,"spd":45,"stre":40,"tp":45}},
+            {"name": "Sarah Silverman", "occupation": "Comedian, actress", "years_joined": [2015], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":30,"hgt":15,"ins":15,"jmp":20,"oiq":15,"pss":15,"reb":15,"spd":30,"stre":20,"tp":20}},
+            {"name": "Jesse Williams", "occupation": "Actor", "years_joined": [2012, 2014, 2015], "ratings": {"diq":30,"dnk":10,"drb":35,"endu":50,"fg":35,"ft":40,"hgt":30,"ins":30,"jmp":45,"oiq":30,"pss":30,"reb":25,"spd":55,"stre":35,"tp":35}}
+          ]
+        },
+        {
+          "team_name": "East",
+          "head_coach": "Mike Greenberg",
+          "assistant_coaches": ["Carmelo Anthony", "Isaiah Austin"],
+          "roster": [
+            {"name": "Abhishek Bachchan", "occupation": "Bollywood actor", "years_joined": [2015], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":35,"ins":25,"jmp":30,"oiq":20,"pss":25,"reb":25,"spd":35,"stre":35,"tp":20}},
+            {"name": "Chadwick Boseman", "occupation": "Actor", "years_joined": [2015], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":30,"ins":30,"jmp":40,"oiq":30,"pss":30,"reb":25,"spd":50,"stre":35,"tp":30}},
+            {"name": "Tina Charles", "occupation": "WNBA player", "years_joined": [2015], "ratings": {"diq":80,"dnk":10,"drb":70,"endu":80,"fg":80,"ft":80,"hgt":45,"ins":80,"jmp":50,"oiq":85,"pss":70,"reb":85,"spd":60,"stre":70,"tp":60}},
+            {"name": "Common", "occupation": "Rapper, actor", "years_joined": [2008, 2010, 2011, 2012, 2013, 2015, 2018, 2020], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":55,"fg":40,"ft":45,"hgt":30,"ins":30,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":50,"stre":35,"tp":40}},
+            {"name": "Kevin Hart", "occupation": "Comedian, actor", "years_joined": [2004, 2011, 2012, 2013, 2014, 2015, 2016], "ratings": {"diq":50,"dnk":0,"drb":75,"endu":80,"fg":55,"ft":60,"hgt":0,"ins":30,"jmp":45,"oiq":60,"pss":70,"reb":20,"spd":85,"stre":25,"tp":50}},
+            {"name": "Allan Houston", "occupation": "Former NBA player", "years_joined": [2015], "ratings": {"diq":75,"dnk":35,"drb":75,"endu":65,"fg":80,"ft":85,"hgt":55,"ins":55,"jmp":50,"oiq":80,"pss":70,"reb":50,"spd":60,"stre":55,"tp":85}},
+            {"name": "Kristen Ledlow", "occupation": "NBA Inside Stuff co-host", "years_joined": [2014, 2015], "ratings": {"diq":35,"dnk":0,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":20,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":45,"stre":25,"tp":35}},
+            {"name": "Blake Leeper", "occupation": "Paralympic athlete", "years_joined": [2015], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":75,"fg":30,"ft":35,"hgt":25,"ins":20,"jmp":65,"oiq":25,"pss":25,"reb":20,"spd":85,"stre":40,"tp":25}},
+            {"name": "Michael Rapaport", "occupation": "Actor", "years_joined": [2004, 2009, 2010, 2011, 2015], "ratings": {"diq":45,"dnk":5,"drb":45,"endu":55,"fg":45,"ft":50,"hgt":30,"ins":35,"jmp":35,"oiq":45,"pss":45,"reb":35,"spd":45,"stre":35,"tp":45}},
+            {"name": "Shoni Schimmel", "occupation": "WNBA player", "years_joined": [2015], "ratings": {"diq":75,"dnk":5,"drb":80,"endu":75,"fg":75,"ft":80,"hgt":25,"ins":45,"jmp":50,"oiq":80,"pss":80,"reb":35,"spd":70,"stre":35,"tp":85}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2016,
+      "location": "Ricoh Coliseum, Toronto",
+      "teams": [
+        {
+          "team_name": "Team USA",
+          "head_coach": "Kevin Hart",
+          "assistant_coaches": ["Becky Hammon", "Isaiah Thomas", "Andre Drummond"],
+          "roster": [
+            {"name": "Anthony Anderson", "occupation": "Actor", "years_joined": [2003, 2015, 2016, 2018, 2026], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":30,"fg":25,"ft":35,"hgt":25,"ins":25,"jmp":25,"oiq":25,"pss":25,"reb":25,"spd":35,"stre":40,"tp":25}},
+            {"name": "Chauncey Billups", "occupation": "Former NBA player", "years_joined": [2016], "ratings": {"diq":85,"dnk":25,"drb":85,"endu":70,"fg":80,"ft":90,"hgt":40,"ins":55,"jmp":50,"oiq":90,"pss":85,"reb":45,"spd":65,"stre":60,"tp":85}},
+            {"name": "Muggsy Bogues", "occupation": "Former NBA player", "years_joined": [2003, 2016], "ratings": {"diq":75,"dnk":0,"drb":85,"endu":70,"fg":70,"ft":85,"hgt":0,"ins":40,"jmp":75,"oiq":80,"pss":85,"reb":20,"spd":85,"stre":35,"tp":75}},
+            {"name": "Nick Cannon", "occupation": "TV personality, actor", "years_joined": [2004, 2006, 2007, 2011, 2013, 2014, 2015, 2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":50,"stre":25,"tp":35}},
+            {"name": "Elena Delle Donne", "occupation": "WNBA player", "years_joined": [2014, 2016], "ratings": {"diq":85,"dnk":10,"drb":80,"endu":85,"fg":90,"ft":95,"hgt":55,"ins":70,"jmp":55,"oiq":90,"pss":80,"reb":70,"spd":70,"stre":55,"tp":90}},
+            {"name": "O'Shea Jackson, Jr.", "occupation": "Actor", "years_joined": [2016], "ratings": {"diq":30,"dnk":10,"drb":35,"endu":50,"fg":35,"ft":40,"hgt":30,"ins":30,"jmp":40,"oiq":30,"pss":30,"reb":30,"spd":50,"stre":35,"tp":35}},
+            {"name": "Terrence J", "occupation": "TV personality, actor", "years_joined": [2010, 2013, 2014, 2016, 2019], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":20,"spd":45,"stre":25,"tp":30}},
+            {"name": "Marc Lasry", "occupation": "Milwaukee Bucks owner", "years_joined": [2016, 2017, 2018, 2019, 2020], "ratings": {"diq":25,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":30,"ins":20,"jmp":20,"oiq":25,"pss":25,"reb":25,"spd":30,"stre":35,"tp":25}},
+            {"name": "Joel David Moore", "occupation": "Actor", "years_joined": [2010, 2016], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":35,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "Jason Sudeikis", "occupation": "Actor, comedian", "years_joined": [2011, 2016], "ratings": {"diq":45,"dnk":5,"drb":45,"endu":55,"fg":50,"ft":55,"hgt":30,"ins":35,"jmp":35,"oiq":50,"pss":50,"reb":30,"spd":50,"stre":30,"tp":50}}
+          ]
+        },
+        {
+          "team_name": "Team Canada",
+          "head_coach": "Drake",
+          "assistant_coaches": ["Steve Nash", "José Bautista", "DeMar DeRozan"],
+          "roster": [
+            {"name": "Eugenie Bouchard", "occupation": "Professional tennis player", "years_joined": [2016], "ratings": {"diq":25,"dnk":0,"drb":25,"endu":75,"fg":30,"ft":35,"hgt":25,"ins":20,"jmp":55,"oiq":25,"pss":25,"reb":20,"spd":70,"stre":35,"tp":25}},
+            {"name": "Win Butler", "occupation": "Singer, Arcade Fire", "years_joined": [2015, 2016, 2017, 2018], "ratings": {"diq":55,"dnk":15,"drb":55,"endu":65,"fg":55,"ft":60,"hgt":45,"ins":45,"jmp":45,"oiq":55,"pss":50,"reb":55,"spd":50,"stre":50,"tp":50}},
+            {"name": "Tom Cavanagh", "occupation": "Actor", "years_joined": [2004, 2016], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":40,"hgt":25,"ins":25,"jmp":30,"oiq":30,"pss":30,"reb":25,"spd":40,"stre":30,"tp":30}},
+            {"name": "Rick Fox", "occupation": "NBA TV analyst", "years_joined": [2009, 2010, 2011, 2016], "ratings": {"diq":75,"dnk":45,"drb":75,"endu":65,"fg":75,"ft":80,"hgt":55,"ins":60,"jmp":55,"oiq":80,"pss":75,"reb":55,"spd":60,"stre":55,"tp":80}},
+            {"name": "Stephan James", "occupation": "Actor", "years_joined": [2016], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":20,"spd":45,"stre":30,"tp":25}},
+            {"name": "Tracy McGrady", "occupation": "Former NBA player", "years_joined": [2016, 2018], "ratings": {"diq":80,"dnk":65,"drb":85,"endu":70,"fg":80,"ft":80,"hgt":60,"ins":70,"jmp":75,"oiq":85,"pss":80,"reb":60,"spd":75,"stre":60,"tp":80}},
+            {"name": "Milos Raonic", "occupation": "Professional tennis player", "years_joined": [2016], "ratings": {"diq":25,"dnk":25,"drb":30,"endu":75,"fg":30,"ft":35,"hgt":55,"ins":35,"jmp":50,"oiq":25,"pss":30,"reb":40,"spd":60,"stre":50,"tp":25}},
+            {"name": "Drew Scott", "occupation": "TV host, Property Brothers", "years_joined": [2012, 2016, 2018], "ratings": {"diq":25,"dnk":10,"drb":25,"endu":45,"fg":30,"ft":35,"hgt":40,"ins":30,"jmp":35,"oiq":25,"pss":25,"reb":35,"spd":40,"stre":40,"tp":25}},
+            {"name": "Jonathan Scott", "occupation": "TV host, Property Brothers", "years_joined": [2012, 2016], "ratings": {"diq":25,"dnk":10,"drb":25,"endu":45,"fg":30,"ft":35,"hgt":40,"ins":30,"jmp":35,"oiq":25,"pss":25,"reb":35,"spd":40,"stre":40,"tp":25}},
+            {"name": "Tammy Sutton-Brown", "occupation": "Former WNBA player", "years_joined": [2016], "ratings": {"diq":75,"dnk":15,"drb":65,"endu":75,"fg":75,"ft":75,"hgt":50,"ins":75,"jmp":50,"oiq":75,"pss":65,"reb":75,"spd":55,"stre":70,"tp":40}},
+            {"name": "Kris Wu", "occupation": "Actor, rapper", "years_joined": [2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":35,"ins":30,"jmp":35,"oiq":30,"pss":30,"reb":30,"spd":45,"stre":35,"tp":35}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2017,
+      "location": "Mercedes-Benz Superdome, New Orleans, Louisiana",
+      "teams": [
+        {
+          "team_name": "Team East",
+          "head_coach": "Jemele Hill",
+          "assistant_coaches": ["Kyle Lowry", "Fat Joe", "DJ Khaled"],
+          "roster": [
+            {"name": "Brandon Armstrong", "occupation": "Social media star, former NBA D-League player", "years_joined": [2017, 2018], "ratings": {"diq":60,"dnk":35,"drb":65,"endu":70,"fg":65,"ft":70,"hgt":35,"ins":55,"jmp":55,"oiq":65,"pss":65,"reb":45,"spd":65,"stre":45,"tp":65}},
+            {"name": "Win Butler", "occupation": "Musician", "years_joined": [2015, 2016, 2017, 2018], "ratings": {"diq":55,"dnk":15,"drb":55,"endu":65,"fg":55,"ft":60,"hgt":45,"ins":45,"jmp":45,"oiq":55,"pss":50,"reb":55,"spd":50,"stre":50,"tp":50}},
+            {"name": "Nick Cannon", "occupation": "TV personality, actor, rapper", "years_joined": [2004, 2006, 2007, 2011, 2013, 2014, 2015, 2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":50,"stre":25,"tp":35}},
+            {"name": "Rachel DeMita", "occupation": "NBA2K TV personality", "years_joined": [2017, 2018], "ratings": {"diq":45,"dnk":0,"drb":45,"endu":55,"fg":50,"ft":55,"hgt":25,"ins":35,"jmp":35,"oiq":45,"pss":45,"reb":25,"spd":50,"stre":30,"tp":50}},
+            {"name": "Ansel Elgort", "occupation": "Actor", "years_joined": [2015, 2017], "ratings": {"diq":30,"dnk":10,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":40,"ins":35,"jmp":40,"oiq":30,"pss":30,"reb":35,"spd":45,"stre":40,"tp":30}},
+            {"name": "Marc Lasry", "occupation": "Milwaukee Bucks owner", "years_joined": [2016, 2017, 2018, 2019, 2020], "ratings": {"diq":25,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":30,"ins":20,"jmp":20,"oiq":25,"pss":25,"reb":25,"spd":30,"stre":35,"tp":25}},
+            {"name": "Caleb McLaughlin", "occupation": "Actor", "years_joined": [2017, 2018], "ratings": {"diq":25,"dnk":0,"drb":30,"endu":45,"fg":30,"ft":35,"hgt":15,"ins":20,"jmp":40,"oiq":25,"pss":25,"reb":15,"spd":50,"stre":20,"tp":25}},
+            {"name": "Peter Rosenberg", "occupation": "Media personality", "years_joined": [2017], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":25,"oiq":20,"pss":25,"reb":20,"spd":35,"stre":25,"tp":25}},
+            {"name": "Oscar Schmidt", "occupation": "Olympic Basketball legend", "years_joined": [2017], "ratings": {"diq":80,"dnk":15,"drb":70,"endu":55,"fg":85,"ft":90,"hgt":60,"ins":65,"jmp":40,"oiq":85,"pss":70,"reb":55,"spd":45,"stre":60,"tp":95}},
+            {"name": "Lindsay Whalen", "occupation": "WNBA player", "years_joined": [2017], "ratings": {"diq":85,"dnk":0,"drb":85,"endu":80,"fg":80,"ft":85,"hgt":25,"ins":50,"jmp":45,"oiq":90,"pss":90,"reb":35,"spd":70,"stre":40,"tp":75}},
+            {"name": "Jason Williams", "occupation": "Former NBA player", "years_joined": [2017, 2018, 2026], "ratings": {"diq":80,"dnk":25,"drb":90,"endu":65,"fg":75,"ft":80,"hgt":35,"ins":55,"jmp":55,"oiq":85,"pss":95,"reb":35,"spd":75,"stre":45,"tp":80}},
+            {"name": "Kris Wu", "occupation": "Actor, rapper", "years_joined": [2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":35,"ins":30,"jmp":35,"oiq":30,"pss":30,"reb":30,"spd":45,"stre":35,"tp":35}}
+          ]
+        },
+        {
+          "team_name": "Team West",
+          "head_coach": "Michael Smith",
+          "assistant_coaches": ["Draymond Green", "Rocsi Diaz"],
+          "roster": [
+            {"name": "Mark Cuban", "occupation": "Dallas Mavericks owner", "years_joined": [2010, 2017], "ratings": {"diq":35,"dnk":0,"drb":25,"endu":35,"fg":35,"ft":40,"hgt":35,"ins":30,"jmp":25,"oiq":35,"pss":30,"reb":30,"spd":35,"stre":35,"tp":40}},
+            {"name": "Baron Davis", "occupation": "Former NBA player", "years_joined": [2017, 2025], "ratings": {"diq":80,"dnk":55,"drb":85,"endu":65,"fg":75,"ft":80,"hgt":40,"ins":65,"jmp":65,"oiq":85,"pss":85,"reb":45,"spd":75,"stre":60,"tp":75}},
+            {"name": "Andy Grammer", "occupation": "Musician", "years_joined": [2017], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Jiang Jinfu", "occupation": "Actor, model", "years_joined": [2017], "ratings": {"diq":35,"dnk":15,"drb":35,"endu":50,"fg":35,"ft":40,"hgt":30,"ins":30,"jmp":45,"oiq":30,"pss":30,"reb":30,"spd":55,"stre":35,"tp":30}},
+            {"name": "Anthony Mackie", "occupation": "Actor", "years_joined": [2017], "ratings": {"diq":25,"dnk":10,"drb":25,"endu":45,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":25,"spd":45,"stre":40,"tp":25}},
+            {"name": "Romeo Miller", "occupation": "Actor", "years_joined": [2011, 2014, 2017], "ratings": {"diq":50,"dnk":15,"drb":65,"endu":65,"fg":60,"ft":65,"hgt":25,"ins":45,"jmp":50,"oiq":65,"pss":60,"reb":30,"spd":65,"stre":35,"tp":55}},
+            {"name": "Hasan Minhaj", "occupation": "Actor, comedian", "years_joined": [2017, 2019, 2023], "ratings": {"diq":25,"dnk":0,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":45,"stre":25,"tp":30}},
+            {"name": "Nneka Ogwumike", "occupation": "WNBA player", "years_joined": [2017], "ratings": {"diq":80,"dnk":15,"drb":75,"endu":80,"fg":85,"ft":85,"hgt":40,"ins":85,"jmp":60,"oiq":85,"pss":70,"reb":80,"spd":70,"stre":60,"tp":65}},
+            {"name": "Master P", "occupation": "Actor, rapper", "years_joined": [2008, 2017], "ratings": {"diq":45,"dnk":10,"drb":45,"endu":55,"fg":45,"ft":50,"hgt":40,"ins":40,"jmp":40,"oiq":45,"pss":45,"reb":40,"spd":45,"stre":45,"tp":40}},
+            {"name": "Candace Parker", "occupation": "WNBA player", "years_joined": [2017, 2018], "ratings": {"diq":85,"dnk":25,"drb":80,"endu":85,"fg":85,"ft":85,"hgt":45,"ins":80,"jmp":60,"oiq":90,"pss":85,"reb":80,"spd":75,"stre":60,"tp":75}},
+            {"name": "Aarón Sánchez", "occupation": "Celebrity chef", "years_joined": [2017], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":30,"hgt":20,"ins":15,"jmp":20,"oiq":15,"pss":20,"reb":15,"spd":30,"stre":25,"tp":20}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2018,
+      "location": "Los Angeles Convention Center, Los Angeles, California",
+      "teams": [
+        {
+          "team_name": "Team Lakers",
+          "head_coach": "Rachel Nichols",
+          "assistant_coaches": ["Tracy McGrady", "Michael B. Jordan"],
+          "roster": [
+            {"name": "Justin Bieber", "occupation": "Singer", "years_joined": [2011, 2018], "ratings": {"diq":45,"dnk":5,"drb":60,"endu":70,"fg":50,"ft":60,"hgt":15,"ins":35,"jmp":45,"oiq":55,"pss":60,"reb":25,"spd":70,"stre":25,"tp":50}},
+            {"name": "Steelo Brim", "occupation": "TV personality, host, actor", "years_joined": [2018], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":20,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Nick Cannon", "occupation": "TV personality, actor, rapper", "years_joined": [2004, 2006, 2007, 2011, 2013, 2014, 2015, 2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":25,"spd":50,"stre":25,"tp":35}},
+            {"name": "Terence Crawford", "occupation": "Boxer", "years_joined": [2018], "ratings": {"diq":35,"dnk":10,"drb":35,"endu":85,"fg":35,"ft":45,"hgt":20,"ins":30,"jmp":65,"oiq":35,"pss":35,"reb":25,"spd":85,"stre":60,"tp":30}},
+            {"name": "Rachel DeMita", "occupation": "NBA 2KTV personality", "years_joined": [2017, 2018], "ratings": {"diq":45,"dnk":0,"drb":45,"endu":55,"fg":50,"ft":55,"hgt":25,"ins":35,"jmp":35,"oiq":45,"pss":45,"reb":25,"spd":50,"stre":30,"tp":50}},
+            {"name": "Jerry Ferrara", "occupation": "Actor", "years_joined": [2018], "ratings": {"diq":25,"dnk":0,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":15,"ins":20,"jmp":25,"oiq":25,"pss":25,"reb":15,"spd":40,"stre":25,"tp":30}},
+            {"name": "Flea", "occupation": "Musician", "years_joined": [2018], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":15,"ins":15,"jmp":30,"oiq":20,"pss":20,"reb":15,"spd":40,"stre":25,"tp":25}},
+            {"name": "Michael B. Jordan", "occupation": "Actor", "years_joined": [2014, 2018], "ratings": {"diq":35,"dnk":15,"drb":40,"endu":55,"fg":40,"ft":45,"hgt":30,"ins":35,"jmp":45,"oiq":35,"pss":35,"reb":30,"spd":55,"stre":45,"tp":35}},
+            {"name": "Marc Lasry", "occupation": "Milwaukee Bucks owner", "years_joined": [2016, 2017, 2018, 2019, 2020], "ratings": {"diq":25,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":30,"ins":20,"jmp":20,"oiq":25,"pss":25,"reb":25,"spd":30,"stre":35,"tp":25}},
+            {"name": "Tracy McGrady", "occupation": "Former NBA player", "years_joined": [2016, 2018], "ratings": {"diq":80,"dnk":65,"drb":85,"endu":70,"fg":80,"ft":80,"hgt":60,"ins":70,"jmp":75,"oiq":85,"pss":80,"reb":60,"spd":75,"stre":60,"tp":80}},
+            {"name": "Caleb McLaughlin", "occupation": "Actor", "years_joined": [2017, 2018], "ratings": {"diq":25,"dnk":0,"drb":30,"endu":45,"fg":30,"ft":35,"hgt":15,"ins":20,"jmp":40,"oiq":25,"pss":25,"reb":15,"spd":50,"stre":20,"tp":25}},
+            {"name": "Candace Parker", "occupation": "WNBA player", "years_joined": [2017, 2018], "ratings": {"diq":85,"dnk":25,"drb":80,"endu":85,"fg":85,"ft":85,"hgt":45,"ins":80,"jmp":60,"oiq":90,"pss":85,"reb":80,"spd":75,"stre":60,"tp":75}},
+            {"name": "Nate Robinson", "occupation": "Former NBA player", "years_joined": [2018, 2020], "ratings": {"diq":75,"dnk":65,"drb":85,"endu":70,"fg":75,"ft":80,"hgt":0,"ins":55,"jmp":95,"oiq":80,"pss":80,"reb":25,"spd":90,"stre":45,"tp":80}},
+            {"name": "Drew Scott", "occupation": "Actor", "years_joined": [2012, 2016, 2018], "ratings": {"diq":25,"dnk":10,"drb":25,"endu":45,"fg":30,"ft":35,"hgt":40,"ins":30,"jmp":35,"oiq":25,"pss":25,"reb":35,"spd":40,"stre":40,"tp":25}},
+            {"name": "Kris Wu", "occupation": "Actor, rapper", "years_joined": [2016, 2017, 2018], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":35,"ins":30,"jmp":35,"oiq":30,"pss":30,"reb":30,"spd":45,"stre":35,"tp":35}}
+          ]
+        },
+        {
+          "team_name": "Team Clippers",
+          "head_coach": "Katie Nolan",
+          "assistant_coaches": ["Paul Pierce", "Common"],
+          "roster": [
+            {"name": "Anthony Anderson", "occupation": "Actor", "years_joined": [2003, 2015, 2016, 2018, 2026], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":30,"fg":25,"ft":35,"hgt":25,"ins":25,"jmp":25,"oiq":25,"pss":25,"reb":25,"spd":35,"stre":40,"tp":25}},
+            {"name": "Brandon Armstrong", "occupation": "Social media star, former NBA D-League player", "years_joined": [2017, 2018], "ratings": {"diq":60,"dnk":35,"drb":65,"endu":70,"fg":65,"ft":70,"hgt":35,"ins":55,"jmp":55,"oiq":65,"pss":65,"reb":45,"spd":65,"stre":45,"tp":65}},
+            {"name": "Miles Brown", "occupation": "Actor", "years_joined": [2018], "ratings": {"diq":15,"dnk":0,"drb":20,"endu":30,"fg":20,"ft":25,"hgt":5,"ins":10,"jmp":25,"oiq":15,"pss":20,"reb":10,"spd":45,"stre":15,"tp":15}},
+            {"name": "Win Butler", "occupation": "Musician", "years_joined": [2015, 2016, 2017, 2018], "ratings": {"diq":55,"dnk":15,"drb":55,"endu":65,"fg":55,"ft":60,"hgt":45,"ins":45,"jmp":45,"oiq":55,"pss":50,"reb":55,"spd":50,"stre":50,"tp":50}},
+            {"name": "Common", "occupation": "Rapper, actor", "years_joined": [2008, 2010, 2011, 2012, 2013, 2015, 2018, 2020], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":55,"fg":40,"ft":45,"hgt":30,"ins":30,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":50,"stre":35,"tp":40}},
+            {"name": "Andre De Grasse", "occupation": "Olympic sprinter", "years_joined": [2018, 2026], "ratings": {"diq":30,"dnk":35,"drb":30,"endu":85,"fg":35,"ft":40,"hgt":25,"ins":35,"jmp":80,"oiq":30,"pss":30,"reb":30,"spd":99,"stre":55,"tp":25}},
+            {"name": "Stefanie Dolson", "occupation": "WNBA player", "years_joined": [2018, 2019], "ratings": {"diq":80,"dnk":5,"drb":70,"endu":75,"fg":80,"ft":80,"hgt":45,"ins":85,"jmp":40,"oiq":85,"pss":80,"reb":85,"spd":50,"stre":75,"tp":65}},
+            {"name": "Jamie Foxx", "occupation": "Actor, comedian, singer", "years_joined": [2003, 2007, 2018], "ratings": {"diq":25,"dnk":5,"drb":30,"endu":40,"fg":30,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":30,"pss":30,"reb":25,"spd":45,"stre":30,"tp":25}},
+            {"name": "Paul Pierce", "occupation": "Former NBA player", "years_joined": [2018], "ratings": {"diq":80,"dnk":45,"drb":80,"endu":65,"fg":80,"ft":85,"hgt":55,"ins":65,"jmp":55,"oiq":85,"pss":75,"reb":55,"spd":60,"stre":65,"tp":85}},
+            {"name": "Dascha Polanco", "occupation": "Actress", "years_joined": [2018], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":25,"hgt":25,"ins":15,"jmp":20,"oiq":15,"pss":15,"reb":15,"spd":30,"stre":25,"tp":20}},
+            {"name": "Quavo", "occupation": "Rapper, recording artist", "years_joined": [2018, 2019, 2020, 2022], "ratings": {"diq":50,"dnk":15,"drb":65,"endu":65,"fg":60,"ft":65,"hgt":30,"ins":45,"jmp":50,"oiq":65,"pss":60,"reb":35,"spd":65,"stre":40,"tp":55}},
+            {"name": "Offset", "occupation": "Rapper", "years_joined": [2018], "ratings": {"diq":35,"dnk":5,"drb":45,"endu":55,"fg":45,"ft":45,"hgt":25,"ins":35,"jmp":45,"oiq":40,"pss":40,"reb":25,"spd":55,"stre":30,"tp":35}},
+            {"name": "Bubba Watson", "occupation": "Golfer", "years_joined": [2018], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":45,"fg":30,"ft":35,"hgt":35,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":35,"tp":30}},
+            {"name": "Jason Williams", "occupation": "Former NBA player", "years_joined": [2017, 2018, 2026], "ratings": {"diq":80,"dnk":25,"drb":90,"endu":65,"fg":75,"ft":80,"hgt":35,"ins":55,"jmp":55,"oiq":85,"pss":95,"reb":35,"spd":75,"stre":45,"tp":80}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2019,
+      "location": "Bojangles' Coliseum, Charlotte, North Carolina",
+      "teams": [
+        {
+          "team_name": "Away",
+          "head_coach": "Sue Bird",
+          "assistant_coaches": ["Monté Morris"],
+          "roster": [
+            {"name": "Ronnie 2K", "occupation": "Director of influencer marketing, 2K Sports", "years_joined": [2019, 2020], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":45,"fg":40,"ft":45,"hgt":40,"ins":35,"jmp":35,"oiq":35,"pss":35,"reb":40,"spd":45,"stre":40,"tp":35}},
+            {"name": "Ray Allen", "occupation": "Former NBA Player", "years_joined": [2019], "ratings": {"diq":80,"dnk":40,"drb":75,"endu":65,"fg":85,"ft":90,"hgt":45,"ins":55,"jmp":55,"oiq":85,"pss":70,"reb":45,"spd":65,"stre":55,"tp":95}},
+            {"name": "AJ Buckley", "occupation": "Actor", "years_joined": [2019], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":35,"tp":25}},
+            {"name": "Bad Bunny", "occupation": "Rapper", "years_joined": [2019, 2020], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":55,"fg":40,"ft":45,"hgt":30,"ins":35,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":55,"stre":35,"tp":40}},
+            {"name": "Stefanie Dolson", "occupation": "WNBA player", "years_joined": [2018, 2019], "ratings": {"diq":80,"dnk":5,"drb":70,"endu":75,"fg":80,"ft":80,"hgt":45,"ins":85,"jmp":40,"oiq":85,"pss":80,"reb":85,"spd":50,"stre":75,"tp":65}},
+            {"name": "Marc Lasry", "occupation": "Milwaukee Bucks owner", "years_joined": [2016, 2017, 2018, 2019, 2020], "ratings": {"diq":25,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":30,"ins":20,"jmp":20,"oiq":25,"pss":25,"reb":25,"spd":30,"stre":35,"tp":25}},
+            {"name": "Hasan Minhaj", "occupation": "Actor, comedian", "years_joined": [2017, 2019, 2023], "ratings": {"diq":25,"dnk":0,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":45,"stre":25,"tp":30}},
+            {"name": "Quavo", "occupation": "Rapper, recording artist", "years_joined": [2018, 2019, 2020, 2022], "ratings": {"diq":50,"dnk":15,"drb":65,"endu":65,"fg":60,"ft":65,"hgt":30,"ins":45,"jmp":50,"oiq":65,"pss":60,"reb":35,"spd":65,"stre":40,"tp":55}},
+            {"name": "Adam Ray", "occupation": "About Last Night host", "years_joined": [2019], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":25,"ins":20,"jmp":25,"oiq":20,"pss":25,"reb":20,"spd":35,"stre":30,"tp":25}},
+            {"name": "Amanda Seales", "occupation": "Actor, comedian, recording artist", "years_joined": [2019], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":15,"ins":15,"jmp":25,"oiq":20,"pss":20,"reb":15,"spd":35,"stre":20,"tp":20}},
+            {"name": "James Shaw Jr.", "occupation": "Hometown hero", "years_joined": [2019], "ratings": {"diq":30,"dnk":10,"drb":30,"endu":55,"fg":35,"ft":40,"hgt":35,"ins":35,"jmp":45,"oiq":30,"pss":30,"reb":35,"spd":55,"stre":50,"tp":30}},
+            {"name": "Brad Williams", "occupation": "About Last Night host", "years_joined": [2019], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":25,"hgt":0,"ins":10,"jmp":20,"oiq":15,"pss":15,"reb":10,"spd":35,"stre":15,"tp":20}}
+          ]
+        },
+        {
+          "team_name": "Home",
+          "head_coach": "Dawn Staley",
+          "assistant_coaches": ["Lisa Boyer"],
+          "roster": [
+            {"name": "Mike Colter", "occupation": "Actor (Luke Cage)", "years_joined": [2019], "ratings": {"diq":25,"dnk":15,"drb":25,"endu":45,"fg":30,"ft":35,"hgt":35,"ins":35,"jmp":45,"oiq":25,"pss":25,"reb":45,"spd":45,"stre":60,"tp":25}},
+            {"name": "Chris Daughtry", "occupation": "Singer, Daughtry", "years_joined": [2019], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":20,"ins":20,"jmp":25,"oiq":20,"pss":25,"reb":20,"spd":35,"stre":30,"tp":25}},
+            {"name": "Terrence Jenkins", "occupation": "TV personality, actor", "years_joined": [2010, 2013, 2014, 2016, 2019], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":35,"pss":35,"reb":20,"spd":45,"stre":25,"tp":30}},
+            {"name": "Famous Los", "occupation": "Comedian, social media influencer", "years_joined": [2019, 2020], "ratings": {"diq":60,"dnk":20,"drb":75,"endu":70,"fg":65,"ft":70,"hgt":35,"ins":50,"jmp":55,"oiq":65,"pss":70,"reb":40,"spd":75,"stre":40,"tp":70}},
+            {"name": "Dr. Oz", "occupation": "TV personality", "years_joined": [2010, 2019], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":30,"hgt":25,"ins":15,"jmp":20,"oiq":15,"pss":20,"reb":15,"spd":30,"stre":25,"tp":20}},
+            {"name": "Rapsody", "occupation": "Rapper", "years_joined": [2019], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":15,"ins":15,"jmp":25,"oiq":20,"pss":20,"reb":15,"spd":35,"stre":20,"tp":25}},
+            {"name": "Bo Rinehart", "occupation": "Musician, NEEDTOBREATHE", "years_joined": [2019], "ratings": {"diq":20,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "J.B. Smoove", "occupation": "Actor, comedian (Curb Your Enthusiasm)", "years_joined": [2012, 2019], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":35,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "Steve Smith", "occupation": "Former NFL player", "years_joined": [2019], "ratings": {"diq":35,"dnk":25,"drb":35,"endu":80,"fg":35,"ft":40,"hgt":15,"ins":35,"jmp":80,"oiq":35,"pss":35,"reb":35,"spd":85,"stre":65,"tp":30}},
+            {"name": "A'ja Wilson", "occupation": "WNBA player", "years_joined": [2019, 2020], "ratings": {"diq":85,"dnk":15,"drb":80,"endu":85,"fg":85,"ft":85,"hgt":45,"ins":85,"jmp":60,"oiq":90,"pss":75,"reb":85,"spd":70,"stre":65,"tp":75}},
+            {"name": "Jay Williams", "occupation": "ESPN analyst, former NBA player", "years_joined": [2019], "ratings": {"diq":75,"dnk":25,"drb":75,"endu":65,"fg":75,"ft":80,"hgt":35,"ins":55,"jmp":55,"oiq":80,"pss":85,"reb":40,"spd":70,"stre":45,"tp":75}},
+            {"name": "Jason Weismann", "occupation": "Hometown hero", "years_joined": [2019], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":45,"fg":30,"ft":35,"hgt":30,"ins":30,"jmp":35,"oiq":25,"pss":25,"reb":30,"spd":40,"stre":45,"tp":25}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2020,
+      "location": "Wintrust Arena, Chicago, Illinois",
+      "teams": [
+        {
+          "team_name": "Team Stephen A.",
+          "head_coach": "Stephen A. Smith",
+          "assistant_coaches": ["Guy Fieri"],
+          "roster": [
+            {"name": "Ronnie 2K", "occupation": "Marketing director at 2K Sports", "years_joined": [2019, 2020], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":45,"fg":40,"ft":45,"hgt":40,"ins":35,"jmp":35,"oiq":35,"pss":35,"reb":40,"spd":45,"stre":40,"tp":35}},
+            {"name": "Anthony Spice Adams", "occupation": "AKA Cream E. Biggums, actor, comedian, former NFL defensive tackle", "years_joined": [2020], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":30,"ins":35,"jmp":25,"oiq":25,"pss":25,"reb":35,"spd":35,"stre":80,"tp":25}},
+            {"name": "Taylor Bennett", "occupation": "Rapper, recording artist", "years_joined": [2020], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":20,"ins":25,"jmp":35,"oiq":30,"pss":30,"reb":20,"spd":45,"stre":25,"tp":30}},
+            {"name": "LaRoyce Hawkins", "occupation": "Actor (Chicago P.D.)", "years_joined": [2020], "ratings": {"diq":25,"dnk":10,"drb":30,"endu":45,"fg":30,"ft":35,"hgt":35,"ins":30,"jmp":40,"oiq":25,"pss":25,"reb":30,"spd":45,"stre":45,"tp":25}},
+            {"name": "Lil Rel Howery", "occupation": "Actor, comedian", "years_joined": [2020], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":15,"ins":15,"jmp":20,"oiq":20,"pss":20,"reb":15,"spd":30,"stre":25,"tp":20}},
+            {"name": "Marc Lasry", "occupation": "Milwaukee Bucks co-owner", "years_joined": [2016, 2017, 2018, 2019, 2020], "ratings": {"diq":25,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":30,"ins":20,"jmp":20,"oiq":25,"pss":25,"reb":25,"spd":30,"stre":35,"tp":25}},
+            {"name": "Darius Miles", "occupation": "Former NBA player", "years_joined": [2020], "ratings": {"diq":75,"dnk":60,"drb":75,"endu":65,"fg":75,"ft":70,"hgt":55,"ins":65,"jmp":70,"oiq":75,"pss":70,"reb":60,"spd":70,"stre":55,"tp":70}},
+            {"name": "Katelyn Ohashi", "occupation": "Gymnast", "years_joined": [2020], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":60,"fg":25,"ft":30,"hgt":5,"ins":10,"jmp":75,"oiq":20,"pss":20,"reb":10,"spd":65,"stre":20,"tp":20}},
+            {"name": "Quavo", "occupation": "Rapper, recording artist", "years_joined": [2018, 2019, 2020, 2022], "ratings": {"diq":50,"dnk":15,"drb":65,"endu":65,"fg":60,"ft":65,"hgt":30,"ins":45,"jmp":50,"oiq":65,"pss":60,"reb":35,"spd":65,"stre":40,"tp":55}},
+            {"name": "Chance the Rapper", "occupation": "Rapper, recording artist", "years_joined": [2020], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":30,"ins":25,"jmp":35,"oiq":30,"pss":30,"reb":25,"spd":45,"stre":30,"tp":30}},
+            {"name": "A'ja Wilson", "occupation": "WNBA player", "years_joined": [2019, 2020], "ratings": {"diq":85,"dnk":15,"drb":80,"endu":85,"fg":85,"ft":85,"hgt":45,"ins":85,"jmp":60,"oiq":90,"pss":75,"reb":85,"spd":70,"stre":65,"tp":75}},
+            {"name": "Nate Robinson", "occupation": "Former NBA player", "years_joined": [2018, 2020], "ratings": {"diq":75,"dnk":65,"drb":85,"endu":70,"fg":75,"ft":80,"hgt":0,"ins":55,"jmp":95,"oiq":80,"pss":80,"reb":25,"spd":90,"stre":45,"tp":80}}
+          ]
+        },
+        {
+          "team_name": "Team Wilbon",
+          "head_coach": "Michael Wilbon",
+          "assistant_coaches": ["Jesse Williams"],
+          "roster": [
+            {"name": "Chef José Andrés", "occupation": "Chef & humanitarian", "years_joined": [2020], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":30,"fg":25,"ft":30,"hgt":25,"ins":20,"jmp":20,"oiq":20,"pss":25,"reb":20,"spd":30,"stre":30,"tp":25}},
+            {"name": "Jon Batiste", "occupation": "Musician, bandleader (The Late Show with Stephen Colbert)", "years_joined": [2020], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":30,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "Kane Brown", "occupation": "4x AMA award-winning artist", "years_joined": [2020, 2022, 2023], "ratings": {"diq":45,"dnk":10,"drb":50,"endu":55,"fg":50,"ft":55,"hgt":30,"ins":35,"jmp":45,"oiq":45,"pss":45,"reb":35,"spd":55,"stre":35,"tp":45}},
+            {"name": "Bad Bunny", "occupation": "Rapper", "years_joined": [2019, 2020], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":55,"fg":40,"ft":45,"hgt":30,"ins":35,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":55,"stre":35,"tp":40}},
+            {"name": "Hannibal Buress", "occupation": "Actor, comedian", "years_joined": [2020], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":25,"ins":20,"jmp":25,"oiq":20,"pss":20,"reb":20,"spd":35,"stre":35,"tp":25}},
+            {"name": "Common", "occupation": "Rapper, recording artist", "years_joined": [2008, 2010, 2011, 2012, 2013, 2015, 2018, 2020], "ratings": {"diq":35,"dnk":5,"drb":40,"endu":55,"fg":40,"ft":45,"hgt":30,"ins":30,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":50,"stre":35,"tp":40}},
+            {"name": "Chelsea Gray", "occupation": "WNBA player", "years_joined": [2020], "ratings": {"diq":85,"dnk":0,"drb":85,"endu":80,"fg":80,"ft":85,"hgt":25,"ins":50,"jmp":45,"oiq":90,"pss":95,"reb":35,"spd":75,"stre":45,"tp":85}},
+            {"name": "Jidenna", "occupation": "Recording artist", "years_joined": [2020], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":35,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":30,"spd":45,"stre":35,"tp":30}},
+            {"name": "Famous Los", "occupation": "Comedian, social media influencer", "years_joined": [2019, 2020], "ratings": {"diq":60,"dnk":20,"drb":75,"endu":70,"fg":65,"ft":70,"hgt":35,"ins":50,"jmp":55,"oiq":65,"pss":70,"reb":40,"spd":75,"stre":40,"tp":70}},
+            {"name": "Alex Moffat", "occupation": "Actor and comedian (Saturday Night Live)", "years_joined": [2020], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":25,"tp":30}},
+            {"name": "Quentin Richardson", "occupation": "Former NBA player", "years_joined": [2020], "ratings": {"diq":75,"dnk":40,"drb":75,"endu":65,"fg":75,"ft":75,"hgt":45,"ins":55,"jmp":55,"oiq":75,"pss":70,"reb":50,"spd":60,"stre":55,"tp":85}},
+            {"name": "Horace Grant", "occupation": "Former NBA player", "years_joined": [2020], "ratings": {"diq":80,"dnk":45,"drb":65,"endu":60,"fg":70,"ft":70,"hgt":70,"ins":75,"jmp":50,"oiq":80,"pss":65,"reb":75,"spd":55,"stre":75,"tp":30}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2022,
+      "location": "Wolstein Center, Cleveland, Ohio",
+      "teams": [
+        {
+          "team_name": "Team Walton",
+          "head_coach": "Bill Walton",
+          "roster": [
+            {"name": "Jimmie Allen", "occupation": "Singer, songwriter", "years_joined": [2022], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":25,"spd":45,"stre":30,"tp":25}},
+            {"name": "Brittney Elena", "occupation": "Host, actress, athlete and model", "years_joined": [2022], "ratings": {"diq":40,"dnk":5,"drb":45,"endu":55,"fg":40,"ft":45,"hgt":25,"ins":30,"jmp":45,"oiq":40,"pss":40,"reb":30,"spd":55,"stre":30,"tp":40}},
+            {"name": "Machine Gun Kelly", "occupation": "Rapper, songwriter", "years_joined": [2022], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":45,"ins":30,"jmp":40,"oiq":30,"pss":30,"reb":35,"spd":45,"stre":30,"tp":35}},
+            {"name": "Dearica Hamby", "occupation": "WNBA player", "years_joined": [2022], "ratings": {"diq":80,"dnk":10,"drb":75,"endu":80,"fg":80,"ft":80,"hgt":35,"ins":80,"jmp":60,"oiq":85,"pss":70,"reb":80,"spd":70,"stre":55,"tp":65}},
+            {"name": "Noah Carlock", "occupation": "Fanatics All-In Challenge winner", "years_joined": [2022], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":20,"pss":20,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Kareem Hunt", "occupation": "NFL player", "years_joined": [2022], "ratings": {"diq":35,"dnk":50,"drb":35,"endu":85,"fg":35,"ft":40,"hgt":25,"ins":40,"jmp":85,"oiq":30,"pss":30,"reb":40,"spd":90,"stre":75,"tp":25}},
+            {"name": "Matt James", "occupation": "ABC's The Bachelor", "years_joined": [2022], "ratings": {"diq":45,"dnk":35,"drb":45,"endu":60,"fg":45,"ft":50,"hgt":45,"ins":45,"jmp":55,"oiq":45,"pss":40,"reb":50,"spd":60,"stre":55,"tp":35}},
+            {"name": "Quavo", "occupation": "Rapper, recording artist", "years_joined": [2018, 2019, 2020, 2022], "ratings": {"diq":50,"dnk":15,"drb":65,"endu":65,"fg":60,"ft":65,"hgt":30,"ins":45,"jmp":50,"oiq":65,"pss":60,"reb":35,"spd":65,"stre":40,"tp":55}},
+            {"name": "Ranveer Singh", "occupation": "Actor", "years_joined": [2022, 2023], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":25,"ins":20,"jmp":25,"oiq":20,"pss":20,"reb":20,"spd":40,"stre":25,"tp":20}},
+            {"name": "Alex Toussaint", "occupation": "Peloton instructor", "years_joined": [2022, 2023], "ratings": {"diq":65,"dnk":20,"drb":65,"endu":95,"fg":65,"ft":70,"hgt":35,"ins":50,"jmp":60,"oiq":65,"pss":65,"reb":45,"spd":75,"stre":45,"tp":60}},
+            {"name": "Anderson Varejão", "occupation": "Former NBA player", "years_joined": [2022], "ratings": {"diq":80,"dnk":45,"drb":65,"endu":65,"fg":70,"ft":70,"hgt":65,"ins":70,"jmp":55,"oiq":80,"pss":70,"reb":80,"spd":55,"stre":70,"tp":30}}
+          ]
+        },
+        {
+          "team_name": "Team Nique",
+          "head_coach": "Dominique Wilkins",
+          "roster": [
+            {"name": "Anuel AA", "occupation": "Singer", "years_joined": [2022, 2024], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "Justin Bibb", "occupation": "Mayor of Cleveland", "years_joined": [2022], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":30,"fg":25,"ft":30,"hgt":25,"ins":20,"jmp":25,"oiq":20,"pss":25,"reb":20,"spd":35,"stre":25,"tp":25}},
+            {"name": "Kane Brown", "occupation": "4x AMA award-winning artist", "years_joined": [2020, 2022, 2023], "ratings": {"diq":45,"dnk":10,"drb":50,"endu":55,"fg":50,"ft":55,"hgt":30,"ins":35,"jmp":45,"oiq":45,"pss":45,"reb":35,"spd":55,"stre":35,"tp":45}},
+            {"name": "Myles Garrett", "occupation": "NFL player", "years_joined": [2022], "ratings": {"diq":40,"dnk":75,"drb":40,"endu":85,"fg":45,"ft":45,"hgt":50,"ins":65,"jmp":95,"oiq":35,"pss":35,"reb":70,"spd":85,"stre":99,"tp":25}},
+            {"name": "Daniel Gibson", "occupation": "Former NBA player", "years_joined": [2022], "ratings": {"diq":75,"dnk":25,"drb":80,"endu":65,"fg":75,"ft":85,"hgt":35,"ins":45,"jmp":55,"oiq":80,"pss":75,"reb":35,"spd":70,"stre":40,"tp":85}},
+            {"name": "Tiffany Haddish", "occupation": "Comedian, actress and author", "years_joined": [2022], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":25,"hgt":15,"ins":15,"jmp":20,"oiq":15,"pss":20,"reb":15,"spd":30,"stre":20,"tp":15}},
+            {"name": "Jack Harlow", "occupation": "Rapper, recording artist", "years_joined": [2022], "ratings": {"diq":40,"dnk":10,"drb":45,"endu":50,"fg":45,"ft":50,"hgt":35,"ins":35,"jmp":40,"oiq":40,"pss":45,"reb":30,"spd":50,"stre":35,"tp":50}},
+            {"name": "Crissa Jackson", "occupation": "Harlem Globetrotters player", "years_joined": [2022], "ratings": {"diq":65,"dnk":10,"drb":90,"endu":75,"fg":65,"ft":70,"hgt":20,"ins":40,"jmp":50,"oiq":70,"pss":90,"reb":25,"spd":75,"stre":30,"tp":65}},
+            {"name": "Anjali Ranadivé", "occupation": "Singer, songwriter", "years_joined": [2022], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":15,"ins":15,"jmp":25,"oiq":20,"pss":20,"reb":15,"spd":35,"stre":20,"tp":25}},
+            {"name": "Gianmarco Tamberi", "occupation": "Olympic high jump champion", "years_joined": [2022, 2024], "ratings": {"diq":35,"dnk":65,"drb":35,"endu":85,"fg":40,"ft":45,"hgt":40,"ins":45,"jmp":99,"oiq":35,"pss":30,"reb":50,"spd":85,"stre":45,"tp":30}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2023,
+      "location": "Jon M. Huntsman Center, Salt Lake City, Utah",
+      "teams": [
+        {
+          "team_name": "Team Ryan",
+          "head_coach": "Lisa Leslie",
+          "assistant_coaches": ["Fat Joe", "Alex Bregman"],
+          "honorary_captain": "Ryan Smith",
+          "roster": [
+            {"name": "Kane Brown", "occupation": "5x AMA award-winning artist", "years_joined": [2020, 2022, 2023], "ratings": {"diq":45,"dnk":10,"drb":50,"endu":55,"fg":50,"ft":55,"hgt":30,"ins":35,"jmp":45,"oiq":45,"pss":45,"reb":35,"spd":55,"stre":35,"tp":45}},
+            {"name": "Cordae", "occupation": "Rapper, recording artist", "years_joined": [2023], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":25,"jmp":35,"oiq":30,"pss":30,"reb":25,"spd":45,"stre":30,"tp":35}},
+            {"name": "Diamond DeShields", "occupation": "WNBA player", "years_joined": [2023], "ratings": {"diq":80,"dnk":15,"drb":80,"endu":80,"fg":80,"ft":85,"hgt":30,"ins":60,"jmp":65,"oiq":85,"pss":75,"reb":50,"spd":80,"stre":45,"tp":75}},
+            {"name": "Calvin Johnson", "occupation": "Former NFL player", "years_joined": [2023], "ratings": {"diq":40,"dnk":75,"drb":40,"endu":85,"fg":45,"ft":50,"hgt":55,"ins":60,"jmp":95,"oiq":40,"pss":35,"reb":70,"spd":90,"stre":85,"tp":35}},
+            {"name": "Marcos Mion", "occupation": "TV host", "years_joined": [2023], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "The Miz", "occupation": "Professional wrestler", "years_joined": [2023], "ratings": {"diq":30,"dnk":10,"drb":30,"endu":65,"fg":40,"ft":40,"hgt":35,"ins":35,"jmp":45,"oiq":30,"pss":30,"reb":40,"spd":50,"stre":65,"tp":45}},
+            {"name": "Albert Pujols", "occupation": "Former MLB player", "years_joined": [2023], "ratings": {"diq":35,"dnk":5,"drb":30,"endu":65,"fg":40,"ft":45,"hgt":40,"ins":40,"jmp":30,"oiq":35,"pss":35,"reb":45,"spd":35,"stre":75,"tp":35}},
+            {"name": "Everett Osborne", "occupation": "Actor", "years_joined": [2023], "ratings": {"diq":45,"dnk":25,"drb":50,"endu":55,"fg":50,"ft":55,"hgt":40,"ins":45,"jmp":55,"oiq":45,"pss":45,"reb":40,"spd":60,"stre":45,"tp":45}},
+            {"name": "Ozuna", "occupation": "Rapper, recording artist", "years_joined": [2023], "ratings": {"diq":25,"dnk":5,"drb":30,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":25,"spd":45,"stre":30,"tp":30}},
+            {"name": "Guillermo Rodriguez", "occupation": "ABC's Jimmy Kimmel Live correspondent", "years_joined": [2023], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":25,"fg":20,"ft":25,"hgt":5,"ins":10,"jmp":15,"oiq":15,"pss":20,"reb":10,"spd":25,"stre":20,"tp":20}},
+            {"name": "Sinqua Walls", "occupation": "Actor", "years_joined": [2023], "ratings": {"diq":40,"dnk":15,"drb":45,"endu":50,"fg":45,"ft":50,"hgt":35,"ins":40,"jmp":45,"oiq":40,"pss":40,"reb":35,"spd":50,"stre":40,"tp":45}}
+          ]
+        },
+        {
+          "team_name": "Team Dwyane",
+          "head_coach": "Giannis Antetokounmpo",
+          "assistant_coaches": ["Alex Antetokounmpo", "Thanasis Antetokounmpo", "Lindsey Vonn"],
+          "honorary_captain": "Dwyane Wade",
+          "roster": [
+            {"name": "Nicky Jam", "occupation": "Latin global music icon and actor", "years_joined": [2023], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":35,"tp":25}},
+            {"name": "Jesser", "occupation": "YouTuber", "years_joined": [2023], "ratings": {"diq":45,"dnk":15,"drb":50,"endu":50,"fg":55,"ft":55,"hgt":35,"ins":40,"jmp":40,"oiq":45,"pss":45,"reb":35,"spd":50,"stre":35,"tp":60}},
+            {"name": "Simu Liu", "occupation": "Actor", "years_joined": [2023, 2026], "ratings": {"diq":35,"dnk":10,"drb":35,"endu":50,"fg":40,"ft":45,"hgt":30,"ins":35,"jmp":45,"oiq":35,"pss":35,"reb":35,"spd":55,"stre":45,"tp":35}},
+            {"name": "Hasan Minhaj", "occupation": "Comedian", "years_joined": [2017, 2019, 2023], "ratings": {"diq":25,"dnk":0,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":20,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":45,"stre":25,"tp":30}},
+            {"name": "DK Metcalf", "occupation": "NFL player", "years_joined": [2023], "ratings": {"diq":40,"dnk":85,"drb":45,"endu":90,"fg":50,"ft":50,"hgt":45,"ins":60,"jmp":99,"oiq":40,"pss":35,"reb":65,"spd":95,"stre":85,"tp":40}},
+            {"name": "Janelle Monáe", "occupation": "Actress, singer, songwriter", "years_joined": [2023], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":25,"hgt":10,"ins":10,"jmp":20,"oiq":15,"pss":15,"reb":10,"spd":35,"stre":15,"tp":15}},
+            {"name": "Arike Ogunbowale", "occupation": "WNBA player", "years_joined": [2023], "ratings": {"diq":80,"dnk":0,"drb":85,"endu":85,"fg":85,"ft":90,"hgt":15,"ins":55,"jmp":55,"oiq":85,"pss":80,"reb":40,"spd":80,"stre":40,"tp":90}},
+            {"name": "21 Savage", "occupation": "Rapper, recording artist", "years_joined": [2023], "ratings": {"diq":30,"dnk":5,"drb":35,"endu":45,"fg":35,"ft":40,"hgt":25,"ins":25,"jmp":40,"oiq":30,"pss":30,"reb":25,"spd":50,"stre":30,"tp":35}},
+            {"name": "Ranveer Singh", "occupation": "Actor", "years_joined": [2022, 2023], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":25,"ins":20,"jmp":25,"oiq":20,"pss":20,"reb":20,"spd":40,"stre":25,"tp":20}},
+            {"name": "Frances Tiafoe", "occupation": "Tennis player", "years_joined": [2023], "ratings": {"diq":35,"dnk":20,"drb":35,"endu":85,"fg":40,"ft":45,"hgt":35,"ins":35,"jmp":65,"oiq":35,"pss":35,"reb":40,"spd":80,"stre":55,"tp":35}},
+            {"name": "Alex Toussaint", "occupation": "Athlete", "years_joined": [2022, 2023], "ratings": {"diq":65,"dnk":20,"drb":65,"endu":95,"fg":65,"ft":70,"hgt":35,"ins":50,"jmp":60,"oiq":65,"pss":65,"reb":45,"spd":75,"stre":45,"tp":60}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2024,
+      "location": "Lucas Oil Stadium, Indianapolis, Indiana",
+      "teams": [
+        {
+          "team_name": "Team Shannon",
+          "head_coach": "Shannon Sharpe",
+          "assistant_coaches": ["50 Cent"],
+          "roster": [
+            {"name": "Micah Parsons", "occupation": "NFL player", "years_joined": [2024], "ratings": {"diq":45,"dnk":80,"drb":45,"endu":90,"fg":55,"ft":55,"hgt":40,"ins":65,"jmp":90,"oiq":45,"pss":40,"reb":75,"spd":90,"stre":95,"tp":45}},
+            {"name": "Conor Daly", "occupation": "Racing driver", "years_joined": [2024], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":55,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":25,"spd":50,"stre":35,"tp":25}},
+            {"name": "Quincy Isaiah", "occupation": "Actor", "years_joined": [2024], "ratings": {"diq":30,"dnk":15,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":40,"ins":35,"jmp":45,"oiq":30,"pss":30,"reb":35,"spd":50,"stre":45,"tp":30}},
+            {"name": "Jewell Loyd", "occupation": "WNBA player", "years_joined": [2024], "ratings": {"diq":80,"dnk":5,"drb":85,"endu":85,"fg":85,"ft":85,"hgt":25,"ins":55,"jmp":60,"oiq":85,"pss":80,"reb":40,"spd":80,"stre":45,"tp":85}},
+            {"name": "Kai Cenat", "occupation": "Streamer", "years_joined": [2024, 2025], "ratings": {"diq":15,"dnk":0,"drb":20,"endu":35,"fg":20,"ft":25,"hgt":5,"ins":15,"jmp":30,"oiq":15,"pss":20,"reb":15,"spd":45,"stre":15,"tp":20}},
+            {"name": "Dylan Wang", "occupation": "Actor", "years_joined": [2024, 2025, 2026], "ratings": {"diq":40,"dnk":10,"drb":45,"endu":50,"fg":45,"ft":50,"hgt":30,"ins":35,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":55,"stre":35,"tp":45}},
+            {"name": "Lilly Singh", "occupation": "Actress", "years_joined": [2024], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":25,"hgt":15,"ins":15,"jmp":20,"oiq":15,"pss":15,"reb":15,"spd":35,"stre":20,"tp":20}},
+            {"name": "Sir", "occupation": "Singer/songwriter", "years_joined": [2024], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":25,"spd":45,"stre":30,"tp":25}},
+            {"name": "Walker Hayes", "occupation": "Country singer", "years_joined": [2024, 2025], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":30,"ins":30,"jmp":35,"oiq":30,"pss":35,"reb":30,"spd":45,"stre":35,"tp":35}},
+            {"name": "Anuel AA", "occupation": "Singer", "years_joined": [2022, 2024], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "Puka Nacua", "occupation": "NFL player", "years_joined": [2024], "ratings": {"diq":45,"dnk":65,"drb":45,"endu":90,"fg":50,"ft":50,"hgt":35,"ins":50,"jmp":85,"oiq":45,"pss":45,"reb":55,"spd":95,"stre":75,"tp":40}}
+          ]
+        },
+        {
+          "team_name": "Team Stephen A.",
+          "head_coach": "Stephen A. Smith",
+          "assistant_coaches": ["Lil Wayne", "A'ja Wilson"],
+          "roster": [
+            {"name": "Jennifer Hudson", "occupation": "Actress, producer, and talk show host", "years_joined": [2024], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":25,"hgt":20,"ins":15,"jmp":20,"oiq":15,"pss":15,"reb":15,"spd":30,"stre":25,"tp":20}},
+            {"name": "Metta Sandiford-Artest", "occupation": "Former NBA player", "years_joined": [2024], "ratings": {"diq":80,"dnk":40,"drb":75,"endu":65,"fg":75,"ft":75,"hgt":55,"ins":65,"jmp":55,"oiq":80,"pss":70,"reb":65,"spd":60,"stre":80,"tp":75}},
+            {"name": "Jack Ryan", "occupation": "Basketball entertainer", "years_joined": [2024], "ratings": {"diq":65,"dnk":10,"drb":95,"endu":70,"fg":70,"ft":75,"hgt":30,"ins":45,"jmp":45,"oiq":70,"pss":95,"reb":30,"spd":65,"stre":35,"tp":75}},
+            {"name": "AJ McLean", "occupation": "Singer", "years_joined": [2024], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "C. J. Stroud", "occupation": "NFL player", "years_joined": [2024], "ratings": {"diq":55,"dnk":50,"drb":60,"endu":85,"fg":65,"ft":65,"hgt":40,"ins":55,"jmp":75,"oiq":55,"pss":65,"reb":50,"spd":80,"stre":65,"tp":60}},
+            {"name": "Kwame Onwuachi", "occupation": "Chef", "years_joined": [2024], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":30,"ins":20,"jmp":25,"oiq":20,"pss":20,"reb":25,"spd":35,"stre":35,"tp":20}},
+            {"name": "Natasha Cloud", "occupation": "WNBA player", "years_joined": [2024], "ratings": {"diq":85,"dnk":0,"drb":85,"endu":80,"fg":80,"ft":85,"hgt":25,"ins":50,"jmp":55,"oiq":90,"pss":95,"reb":40,"spd":80,"stre":40,"tp":80}},
+            {"name": "Adam Blackstone", "occupation": "Musician", "years_joined": [2024], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":30,"fg":25,"ft":30,"hgt":25,"ins":20,"jmp":20,"oiq":20,"pss":25,"reb":20,"spd":30,"stre":25,"tp":25}},
+            {"name": "Gianmarco Tamberi", "occupation": "Olympic high jump champion", "years_joined": [2022, 2024], "ratings": {"diq":35,"dnk":65,"drb":35,"endu":85,"fg":40,"ft":45,"hgt":40,"ins":45,"jmp":99,"oiq":35,"pss":30,"reb":50,"spd":85,"stre":45,"tp":30}},
+            {"name": "Tristan Jass", "occupation": "YouTuber", "years_joined": [2024], "ratings": {"diq":50,"dnk":25,"drb":65,"endu":60,"fg":60,"ft":65,"hgt":30,"ins":50,"jmp":55,"oiq":55,"pss":65,"reb":40,"spd":65,"stre":40,"tp":75}},
+            {"name": "Mecole Hardman", "occupation": "NFL player", "years_joined": [2024], "ratings": {"diq":35,"dnk":45,"drb":35,"endu":85,"fg":40,"ft":45,"hgt":20,"ins":35,"jmp":85,"oiq":35,"pss":35,"reb":35,"spd":99,"stre":50,"tp":30}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2025,
+      "location": "Oakland Arena, Oakland, California",
+      "teams": [
+        {
+          "team_name": "Team Bonds",
+          "head_coach": "Barry Bonds",
+          "assistant_coaches": ["2 Chainz"],
+          "roster": [
+            {"name": "Kai Cenat", "occupation": "Online streamer, YouTuber, and influencer", "years_joined": [2024, 2025], "ratings": {"diq":15,"dnk":0,"drb":20,"endu":35,"fg":20,"ft":25,"hgt":5,"ins":15,"jmp":30,"oiq":15,"pss":20,"reb":15,"spd":45,"stre":15,"tp":20}},
+            {"name": "Baron Davis", "occupation": "Former NBA player", "years_joined": [2017, 2025], "ratings": {"diq":80,"dnk":55,"drb":85,"endu":65,"fg":75,"ft":80,"hgt":40,"ins":65,"jmp":65,"oiq":85,"pss":85,"reb":45,"spd":75,"stre":60,"tp":75}},
+            {"name": "Rome Flynn", "occupation": "Actor", "years_joined": [2025, 2026], "ratings": {"diq":50,"dnk":15,"drb":50,"endu":60,"fg":60,"ft":65,"hgt":35,"ins":45,"jmp":50,"oiq":55,"pss":55,"reb":45,"spd":60,"stre":45,"tp":55}},
+            {"name": "Rickea Jackson", "occupation": "WNBA player", "years_joined": [2025], "ratings": {"diq":80,"dnk":10,"drb":80,"endu":80,"fg":85,"ft":85,"hgt":35,"ins":75,"jmp":60,"oiq":85,"pss":75,"reb":60,"spd":75,"stre":50,"tp":80}},
+            {"name": "Mickey Guyton", "occupation": "Singer, songwriter", "years_joined": [2025], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":25,"hgt":20,"ins":15,"jmp":20,"oiq":15,"pss":15,"reb":15,"spd":30,"stre":20,"tp":15}},
+            {"name": "Tucker Halpern", "occupation": "Musician", "years_joined": [2025], "ratings": {"diq":35,"dnk":15,"drb":35,"endu":45,"fg":40,"ft":45,"hgt":50,"ins":45,"jmp":40,"oiq":35,"pss":35,"reb":55,"spd":45,"stre":55,"tp":35}},
+            {"name": "Noah Kahan", "occupation": "Singer/songwriter", "years_joined": [2025], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":25,"ins":20,"jmp":25,"oiq":20,"pss":20,"reb":20,"spd":35,"stre":25,"tp":25}},
+            {"name": "Danny Ramirez", "occupation": "Actor", "years_joined": [2025], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":20,"spd":40,"stre":30,"tp":25}},
+            {"name": "Masai Russell", "occupation": "Olympic sprinter", "years_joined": [2025], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":85,"fg":30,"ft":35,"hgt":20,"ins":20,"jmp":75,"oiq":25,"pss":25,"reb":20,"spd":99,"stre":35,"tp":25}},
+            {"name": "Pablo Schreiber", "occupation": "Actor", "years_joined": [2025], "ratings": {"diq":30,"dnk":15,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":45,"ins":35,"jmp":40,"oiq":30,"pss":30,"reb":40,"spd":45,"stre":50,"tp":30}},
+            {"name": "Dylan Wang", "occupation": "Actor", "years_joined": [2024, 2025, 2026], "ratings": {"diq":40,"dnk":10,"drb":45,"endu":50,"fg":45,"ft":50,"hgt":30,"ins":35,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":55,"stre":35,"tp":45}}
+          ]
+        },
+        {
+          "team_name": "Team Rice",
+          "head_coach": "Jerry Rice",
+          "assistant_coaches": ["Khaby Lame"],
+          "roster": [
+            {"name": "Matt Barnes", "occupation": "Former NBA player", "years_joined": [2025], "ratings": {"diq":80,"dnk":45,"drb":75,"endu":65,"fg":75,"ft":75,"hgt":55,"ins":60,"jmp":55,"oiq":80,"pss":70,"reb":60,"spd":65,"stre":60,"tp":80}},
+            {"name": "Bayley", "occupation": "Professional wrestler", "years_joined": [2025], "ratings": {"diq":25,"dnk":0,"drb":25,"endu":60,"fg":30,"ft":35,"hgt":20,"ins":30,"jmp":35,"oiq":25,"pss":25,"reb":30,"spd":45,"stre":55,"tp":25}},
+            {"name": "Chris Brickley", "occupation": "Basketball trainer", "years_joined": [2025, 2026], "ratings": {"diq":70,"dnk":15,"drb":85,"endu":65,"fg":80,"ft":85,"hgt":35,"ins":50,"jmp":45,"oiq":75,"pss":80,"reb":35,"spd":60,"stre":40,"tp":85}},
+            {"name": "AP Dhillon", "occupation": "Singer, songwriter", "years_joined": [2025], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":25,"spd":40,"stre":30,"tp":25}},
+            {"name": "Druski", "occupation": "Comedian, actor, and influencer", "years_joined": [2025], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":30,"fg":25,"ft":30,"hgt":30,"ins":20,"jmp":20,"oiq":20,"pss":20,"reb":25,"spd":30,"stre":35,"tp":25}},
+            {"name": "Walker Hayes", "occupation": "Singer, songwriter", "years_joined": [2024, 2025], "ratings": {"diq":30,"dnk":5,"drb":30,"endu":45,"fg":35,"ft":40,"hgt":30,"ins":30,"jmp":35,"oiq":30,"pss":35,"reb":30,"spd":45,"stre":35,"tp":35}},
+            {"name": "Shelby McEwen", "occupation": "Olympic High Jumper", "years_joined": [2025], "ratings": {"diq":35,"dnk":75,"drb":35,"endu":85,"fg":40,"ft":45,"hgt":40,"ins":45,"jmp":99,"oiq":35,"pss":30,"reb":45,"spd":85,"stre":45,"tp":30}},
+            {"name": "Terrell Owens", "occupation": "Former NFL player", "years_joined": [2008, 2009, 2010, 2025], "ratings": {"diq":40,"dnk":60,"drb":35,"endu":85,"fg":45,"ft":50,"hgt":40,"ins":50,"jmp":85,"oiq":40,"pss":35,"reb":60,"spd":90,"stre":75,"tp":35}},
+            {"name": "Shaboozey", "occupation": "Singer, songwriter", "years_joined": [2025], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":25,"ins":25,"jmp":35,"oiq":25,"pss":25,"reb":25,"spd":45,"stre":30,"tp":25}},
+            {"name": "Oliver Stark", "occupation": "Actor", "years_joined": [2025], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":40,"fg":30,"ft":35,"hgt":35,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":30,"spd":40,"stre":35,"tp":25}},
+            {"name": "Kayla Thornton", "occupation": "WNBA player", "years_joined": [2025], "ratings": {"diq":80,"dnk":5,"drb":75,"endu":80,"fg":80,"ft":80,"hgt":35,"ins":75,"jmp":60,"oiq":80,"pss":70,"reb":75,"spd":70,"stre":60,"tp":70}}
+          ]
+        }
+      ]
+    },
+    {
+      "year": 2026,
+      "location": "Kia Forum, Inglewood, California",
+      "halftime_performance": "CORTIS",
+      "teams": [
+        {
+          "team_name": "Team Giannis",
+          "head_coach": "Giannis Antetokounmpo",
+          "assistant_coaches": [
+            "Alex Antetokounmpo",
+            "Thanasis Antetokounmpo",
+            "Mookie Betts"
+          ],
+          "roster": [
+            {"name": "Cafu", "occupation": "Former soccer player", "years_joined": [2026], "ratings": {"diq":40,"dnk":10,"drb":30,"endu":75,"fg":30,"ft":35,"hgt":30,"ins":30,"jmp":45,"oiq":35,"pss":45,"reb":35,"spd":70,"stre":50,"tp":25}},
+            {"name": "Jenna Bandy", "occupation": "Influencer", "years_joined": [2026], "ratings": {"diq":40,"dnk":5,"drb":45,"endu":50,"fg":45,"ft":50,"hgt":25,"ins":30,"jmp":35,"oiq":45,"pss":45,"reb":30,"spd":50,"stre":30,"tp":50}},
+            {"name": "Shams Charania", "occupation": "Sports reporter", "years_joined": [2026], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":30,"fg":25,"ft":30,"hgt":25,"ins":20,"jmp":25,"oiq":25,"pss":25,"reb":20,"spd":35,"stre":25,"tp":25}},
+            {"name": "Tacko Fall", "occupation": "Former NBA player", "years_joined": [2026], "ratings": {"diq":70,"dnk":85,"drb":25,"endu":50,"fg":65,"ft":50,"hgt":100,"ins":80,"jmp":20,"oiq":65,"pss":30,"reb":85,"spd":15,"stre":85,"tp":10}},
+            {"name": "Rome Flynn", "occupation": "Actor", "years_joined": [2025, 2026], "ratings": {"diq":50,"dnk":15,"drb":50,"endu":60,"fg":60,"ft":65,"hgt":35,"ins":45,"jmp":50,"oiq":55,"pss":55,"reb":45,"spd":60,"stre":45,"tp":55}},
+            {"name": "Glorilla", "occupation": "Rapper", "years_joined": [2026], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":25,"hgt":15,"ins":15,"jmp":20,"oiq":15,"pss":15,"reb":15,"spd":35,"stre":20,"tp":20}},
+            {"name": "Keegan-Michael Key", "occupation": "Actor, comedian", "years_joined": [2026], "ratings": {"diq":25,"dnk":5,"drb":25,"endu":35,"fg":30,"ft":35,"hgt":35,"ins":25,"jmp":30,"oiq":25,"pss":25,"reb":30,"spd":35,"stre":30,"tp":25}},
+            {"name": "Jeremy Lin", "occupation": "Former NBA player", "years_joined": [2026], "ratings": {"diq":80,"dnk":35,"drb":85,"endu":70,"fg":75,"ft":80,"hgt":40,"ins":60,"jmp":55,"oiq":85,"pss":85,"reb":40,"spd":75,"stre":45,"tp":75}},
+            {"name": "Rick Schnall", "occupation": "Businessman", "years_joined": [2026], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":25,"fg":20,"ft":25,"hgt":25,"ins":15,"jmp":15,"oiq":15,"pss":15,"reb":15,"spd":25,"stre":25,"tp":15}},
+            {"name": "Amon-Ra St. Brown", "occupation": "Detroit Lions wide receiver", "years_joined": [2026], "ratings": {"diq":40,"dnk":65,"drb":40,"endu":90,"fg":45,"ft":45,"hgt":35,"ins":45,"jmp":85,"oiq":40,"pss":40,"reb":50,"spd":95,"stre":75,"tp":35}},
+            {"name": "Dylan Wang", "occupation": "Actor", "years_joined": [2024, 2025, 2026], "ratings": {"diq":40,"dnk":10,"drb":45,"endu":50,"fg":45,"ft":50,"hgt":30,"ins":35,"jmp":40,"oiq":40,"pss":40,"reb":30,"spd":55,"stre":35,"tp":45}}
+          ]
+        },
+        {
+          "team_name": "Team Anthony",
+          "head_coach": "Anthony Anderson",
+          "assistant_coaches": [
+            "Chris Brickley",
+            "Lethal Shooter"
+          ],
+          "roster": [
+            {"name": "Keenan Allen", "occupation": "Los Angeles Chargers wide receiver", "years_joined": [2026], "ratings": {"diq":40,"dnk":60,"drb":40,"endu":85,"fg":45,"ft":45,"hgt":40,"ins":45,"jmp":80,"oiq":40,"pss":40,"reb":50,"spd":90,"stre":70,"tp":35}},
+            {"name": "Badshah", "occupation": "Rapper", "years_joined": [2026], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":25,"ins":20,"jmp":25,"oiq":20,"pss":20,"reb":20,"spd":35,"stre":25,"tp":25}},
+            {"name": "Andre De Grasse", "occupation": "Sprinter", "years_joined": [2018, 2026], "ratings": {"diq":30,"dnk":35,"drb":30,"endu":85,"fg":35,"ft":40,"hgt":25,"ins":35,"jmp":80,"oiq":30,"pss":30,"reb":30,"spd":99,"stre":55,"tp":25}},
+            {"name": "Mat Ishbia", "occupation": "Businessman, owner of the Phoenix Suns", "years_joined": [2026], "ratings": {"diq":35,"dnk":5,"drb":35,"endu":40,"fg":35,"ft":40,"hgt":25,"ins":25,"jmp":30,"oiq":35,"pss":40,"reb":25,"spd":40,"stre":30,"tp":40}},
+            {"name": "Cody Jones", "occupation": "Member of Dude Perfect", "years_joined": [2026], "ratings": {"diq":35,"dnk":5,"drb":35,"endu":45,"fg":45,"ft":50,"hgt":40,"ins":30,"jmp":35,"oiq":35,"pss":35,"reb":35,"spd":45,"stre":35,"tp":65}},
+            {"name": "Simu Liu", "occupation": "Actor", "years_joined": [2023, 2026], "ratings": {"diq":35,"dnk":10,"drb":35,"endu":50,"fg":40,"ft":45,"hgt":30,"ins":35,"jmp":45,"oiq":35,"pss":35,"reb":35,"spd":55,"stre":45,"tp":35}},
+            {"name": "Mustard", "occupation": "Record producer", "years_joined": [2026], "ratings": {"diq":20,"dnk":0,"drb":20,"endu":30,"fg":25,"ft":30,"hgt":25,"ins":20,"jmp":20,"oiq":20,"pss":25,"reb":20,"spd":30,"stre":35,"tp":20}},
+            {"name": "Adrien Nunez", "occupation": "Influencer", "years_joined": [2026], "ratings": {"diq":45,"dnk":30,"drb":45,"endu":55,"fg":50,"ft":55,"hgt":45,"ins":40,"jmp":55,"oiq":45,"pss":40,"reb":40,"spd":60,"stre":45,"tp":60}},
+            {"name": "Taylor Frankie Paul", "occupation": "Influencer", "years_joined": [2026], "ratings": {"diq":15,"dnk":0,"drb":15,"endu":30,"fg":20,"ft":25,"hgt":20,"ins":15,"jmp":20,"oiq":15,"pss":15,"reb":15,"spd":35,"stre":20,"tp":20}},
+            {"name": "Nicolas Vansteenberghe", "occupation": "Influencer", "years_joined": [2026], "ratings": {"diq":20,"dnk":5,"drb":20,"endu":35,"fg":25,"ft":30,"hgt":25,"ins":20,"jmp":25,"oiq":20,"pss":20,"reb":20,"spd":40,"stre":25,"tp":25}},
+            {"name": "Jason Williams", "occupation": "Former NBA player", "years_joined": [2017, 2018, 2026], "ratings": {"diq":80,"dnk":25,"drb":90,"endu":65,"fg":75,"ft":80,"hgt":35,"ins":55,"jmp":55,"oiq":85,"pss":95,"reb":35,"spd":75,"stre":45,"tp":80}}
+          ]
+        }
+      ]
+    }
+  ]
+}

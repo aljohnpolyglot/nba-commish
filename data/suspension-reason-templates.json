@@ -1,0 +1,233 @@
+{
+  "templateModal": {
+    "title": "Suspension Templates",
+    "description": "Select a template to prefill the reason and suggested duration.",
+    "durationUnit": "games"
+  },
+  "templates": [
+    {
+      "id": "conduct-detrimental",
+      "name": "Conduct Detrimental",
+      "reason": "Conduct detrimental to the team, including behavior that disrupted team operations or damaged the organization.",
+      "minGames": 1,
+      "averageGames": 3,
+      "maxGames": 8
+    },
+    {
+      "id": "insubordination",
+      "name": "Insubordination",
+      "reason": "Repeated refusal to follow reasonable instructions from coaches, team officials, or league personnel.",
+      "minGames": 1,
+      "averageGames": 4,
+      "maxGames": 10
+    },
+    {
+      "id": "missed-team-activities",
+      "name": "Missed Team Activities",
+      "reason": "Unexcused absence from a required practice, meeting, shootaround, treatment session, or team event.",
+      "minGames": 1,
+      "averageGames": 2,
+      "maxGames": 5
+    },
+    {
+      "id": "repeated-absence",
+      "name": "Repeated Absence",
+      "reason": "Multiple unexcused absences or repeated failure to report to the team as scheduled.",
+      "minGames": 2,
+      "averageGames": 5,
+      "maxGames": 12
+    },
+    {
+      "id": "public-misconduct",
+      "name": "Public Misconduct",
+      "reason": "Public behavior that brought the player, team, or league into disrepute.",
+      "minGames": 1,
+      "averageGames": 4,
+      "maxGames": 10
+    },
+    {
+      "id": "social-media-misconduct",
+      "name": "Social Media Misconduct",
+      "reason": "Inappropriate, threatening, or harmful social-media activity that violated team or league conduct standards.",
+      "minGames": 1,
+      "averageGames": 3,
+      "maxGames": 8
+    },
+    {
+      "id": "harassment-bullying",
+      "name": "Harassment / Bullying",
+      "reason": "Harassment, bullying, or repeated abusive conduct toward a teammate, employee, official, or other league participant.",
+      "minGames": 3,
+      "averageGames": 10,
+      "maxGames": 25
+    },
+    {
+      "id": "discriminatory-conduct",
+      "name": "Discriminatory Conduct",
+      "reason": "Discriminatory remarks or conduct that violated league standards for workplace and public behavior.",
+      "minGames": 5,
+      "averageGames": 20,
+      "maxGames": 50
+    },
+    {
+      "id": "referee-abuse",
+      "name": "Referee Abuse",
+      "reason": "Abusive, threatening, or aggressive behavior toward a game official beyond normal on-court dissent.",
+      "minGames": 1,
+      "averageGames": 2,
+      "maxGames": 5
+    },
+    {
+      "id": "dangerous-play",
+      "name": "Dangerous Play",
+      "reason": "A reckless or excessively dangerous basketball act that created a substantial risk of injury.",
+      "minGames": 2,
+      "averageGames": 5,
+      "maxGames": 15
+    },
+    {
+      "id": "on-court-fight",
+      "name": "On-Court Fight",
+      "reason": "Initiating or significantly escalating a physical altercation during a game.",
+      "minGames": 3,
+      "averageGames": 8,
+      "maxGames": 20
+    },
+    {
+      "id": "bench-clearing-incident",
+      "name": "Bench-Clearing Incident",
+      "reason": "Leaving the bench area and participating in or escalating an on-court altercation.",
+      "minGames": 1,
+      "averageGames": 3,
+      "maxGames": 8
+    },
+    {
+      "id": "fan-confrontation",
+      "name": "Fan Confrontation",
+      "reason": "Aggressive physical or verbal confrontation with a spectator before, during, or after a game.",
+      "minGames": 5,
+      "averageGames": 15,
+      "maxGames": 30
+    },
+    {
+      "id": "entered-stands",
+      "name": "Entered the Stands",
+      "reason": "Entering the spectator area and engaging in a physical confrontation with fans.",
+      "minGames": 30,
+      "averageGames": 58,
+      "maxGames": 86
+    },
+    {
+      "id": "teammate-assault",
+      "name": "Teammate Assault",
+      "reason": "Physically attacking or seriously attempting to injure a teammate during a team activity.",
+      "minGames": 10,
+      "averageGames": 30,
+      "maxGames": 68
+    },
+    {
+      "id": "coach-staff-assault",
+      "name": "Coach / Staff Assault",
+      "reason": "Threatening, choking, striking, or otherwise physically attacking a coach or team employee.",
+      "minGames": 20,
+      "averageGames": 50,
+      "maxGames": 82
+    },
+    {
+      "id": "threats-intimidation",
+      "name": "Threats / Intimidation",
+      "reason": "Serious threats, intimidation, or coercive behavior directed at a teammate, coach, employee, official, or witness.",
+      "minGames": 5,
+      "averageGames": 15,
+      "maxGames": 38
+    },
+    {
+      "id": "weapon-at-facility",
+      "name": "Weapon at Facility",
+      "reason": "Possessing, storing, displaying, or threatening another person with a weapon at a team or league facility.",
+      "minGames": 38,
+      "averageGames": 44,
+      "maxGames": 50
+    },
+    {
+      "id": "firearm-display",
+      "name": "Firearm Display",
+      "reason": "Publicly displaying a firearm in a manner that violated league conduct and safety standards.",
+      "minGames": 8,
+      "averageGames": 18,
+      "maxGames": 25
+    },
+    {
+      "id": "domestic-violence",
+      "name": "Domestic Violence",
+      "reason": "A substantiated domestic-violence incident or related criminal disposition requiring league discipline.",
+      "minGames": 20,
+      "averageGames": 27,
+      "maxGames": 40
+    },
+    {
+      "id": "criminal-assault",
+      "name": "Criminal Assault",
+      "reason": "A serious off-court assault or violent criminal incident supported by an investigation, plea, or conviction.",
+      "minGames": 10,
+      "averageGames": 25,
+      "maxGames": 50
+    },
+    {
+      "id": "investigation-noncompliance",
+      "name": "Investigation Noncompliance",
+      "reason": "Refusal to cooperate with a team or league investigation, including withholding information or ignoring directives.",
+      "minGames": 3,
+      "averageGames": 10,
+      "maxGames": 25
+    },
+    {
+      "id": "unauthorized-gambling",
+      "name": "Unauthorized Gambling",
+      "reason": "Unauthorized sports wagering or gambling-related activity that created a conflict with league integrity rules.",
+      "minGames": 10,
+      "averageGames": 30,
+      "maxGames": 82
+    },
+    {
+      "id": "inside-information",
+      "name": "Inside Information Leak",
+      "reason": "Providing confidential team, player, injury, or strategy information for gambling or improper competitive use.",
+      "minGames": 20,
+      "averageGames": 50,
+      "maxGames": 82
+    },
+    {
+      "id": "ped-positive",
+      "name": "PED Positive Test",
+      "reason": "A confirmed positive test for a prohibited performance-enhancing substance.",
+      "minGames": 25,
+      "averageGames": 25,
+      "maxGames": 25
+    },
+    {
+      "id": "substance-abuse",
+      "name": "Substance Abuse Violation",
+      "reason": "Violation of the league substance-abuse policy involving a prohibited drug or repeated policy offense.",
+      "minGames": 5,
+      "averageGames": 25,
+      "maxGames": 82
+    },
+    {
+      "id": "treatment-noncompliance",
+      "name": "Treatment Noncompliance",
+      "reason": "Failure to complete required counseling, rehabilitation, treatment, or return-to-play conditions.",
+      "minGames": 10,
+      "averageGames": 40,
+      "maxGames": 82
+    },
+    {
+      "id": "major-team-policy",
+      "name": "Major Team Policy Violation",
+      "reason": "A serious violation of internal team policy requiring an extended suspension after an organizational investigation.",
+      "minGames": 10,
+      "averageGames": 30,
+      "maxGames": 59
+    }
+  ]
+}
