@@ -486,10 +486,13 @@ export function generateStatsForTeam(
     let fourPa = 0;
     let fourPm = 0;
     if (knobs.fourPointAvailable) {
-      const fourPropensity = Math.pow(Math.max(0, (tp - 52) / 48), 1.45);
-      const fourPointRate = Math.min(0.105, (0.006 + fourPropensity * 0.085) * (knobs.fourPointRateMult ?? 1));
-      fourPa = Math.round(estimatedFga * fourPointRate * getVariance(1.0, 0.28));
-      if (tp < 58 && Math.random() < 0.65) fourPa = 0;
+      const fourPropensity = isPbaClubGame
+        ? Math.pow(Math.max(0, (tp - 35) / 65), 1.4)
+        : Math.pow(Math.max(0, (tp - 52) / 48), 1.45);
+      const fourPointRate = Math.min(isPbaClubGame ? 0.25 : 0.105, (isPbaClubGame ? 0.045 + fourPropensity * 0.09 : 0.006 + fourPropensity * 0.085) * (knobs.fourPointRateMult ?? 1));
+      const expectedFourPa = estimatedFga * fourPointRate * getVariance(1.0, 0.28);
+      fourPa = Math.floor(expectedFourPa) + (Math.random() < expectedFourPa % 1 ? 1 : 0);
+      if (tp < (isPbaClubGame ? 40 : 58) && Math.random() < 0.65) fourPa = 0;
 
       if (fourPa > 7) {
         let softCapped = 7;
@@ -509,7 +512,8 @@ export function generateStatsForTeam(
       const fourPctEffective = Math.max(0.08,
         fourPctBase * nightProfile.efficiencyMult * gamePlan.effMult[i] * userEffBias * perimPenalty * knobs.efficiencyMultiplier * (knobs.fourPointEfficiencyMult ?? 1.0) * fourVolDecay
       );
-      fourPm = Math.round(fourPa * fourPctEffective * getVariance(1.0, 0.34));
+      const expectedFourPm = fourPa * fourPctEffective * getVariance(1.0, 0.34);
+      fourPm = Math.floor(expectedFourPm) + (Math.random() < expectedFourPm % 1 ? 1 : 0);
       fourPm = Math.max(0, Math.min(fourPm, fourPa, Math.floor(fgPts / 4)));
       fgPts = Math.max(0, fgPts - fourPm * 4);
     }

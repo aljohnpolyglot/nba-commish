@@ -24,8 +24,9 @@ function isProtectedImport(player: NBAPlayer): boolean {
 
 function isPastImportPoolAge(player: NBAPlayer, season: number): boolean {
   const birthYear = Number(player.born?.year);
-  return Number.isInteger(birthYear)
-    && season - birthYear >= 40;
+  if (Number.isInteger(birthYear) && birthYear > 1900) return season - birthYear >= 40;
+  const sourceSeasons = player.historicalPbaSource?.importSourceSeasons ?? [];
+  return sourceSeasons.length > 0 && season - Math.max(...sourceSeasons) >= 20;
 }
 
 function retirePastPoolImport(player: NBAPlayer): NBAPlayer {
@@ -107,6 +108,7 @@ export function prepareHistoricalPbaImportPool(
 ): NBAPlayer[] {
   const candidates = refreshedImports
     .filter(player => player.historicalPbaSource?.importTagged === true)
+    .filter(player => !isPastImportPoolAge(player, season))
     .filter(player => Number(player.born?.year ?? season - 25) <= season - 19)
     .sort((left, right) =>
       sourceDistance(left, season) - sourceDistance(right, season)

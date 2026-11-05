@@ -84,11 +84,17 @@ function aggregatePbaRows(rows: SeasonRow[]): SeasonRow {
 
 export function groupPbaSeasonRows(rows: SeasonRow[]): SeasonRow[] {
   const conferenceRowsBySeason = new Map<number, SeasonRow[]>();
+  const teamRowsByConference = new Map<string, SeasonRow[]>();
   for (const row of rows) {
-    if (!row.isSubRow && isPbaConferenceStat(row.competitionId)) {
-      if (!conferenceRowsBySeason.has(row.season)) conferenceRowsBySeason.set(row.season, []);
-      conferenceRowsBySeason.get(row.season)!.push(row);
+    if (!isPbaConferenceStat(row.competitionId)) continue;
+    if (row.isSubRow) {
+      const key = pbaConferenceAwardKey(row.season, row.competitionId);
+      if (!teamRowsByConference.has(key)) teamRowsByConference.set(key, []);
+      teamRowsByConference.get(key)!.push(row);
+      continue;
     }
+    if (!conferenceRowsBySeason.has(row.season)) conferenceRowsBySeason.set(row.season, []);
+    conferenceRowsBySeason.get(row.season)!.push(row);
   }
   if (conferenceRowsBySeason.size === 0) return rows;
 
@@ -110,7 +116,10 @@ export function groupPbaSeasonRows(rows: SeasonRow[]): SeasonRow[] {
       (conferenceOrder.get(String(left.competitionId).toLowerCase()) ?? 99)
       - (conferenceOrder.get(String(right.competitionId).toLowerCase()) ?? 99));
     grouped.push(aggregatePbaRows(ordered));
-    grouped.push(...ordered.map(conferenceRow => ({ ...conferenceRow, isSubRow: true })));
+    for (const conferenceRow of ordered) {
+      grouped.push({ ...conferenceRow, isSubRow: true });
+      grouped.push(...(teamRowsByConference.get(pbaConferenceAwardKey(row.season, conferenceRow.competitionId)) ?? []));
+    }
   }
   return grouped;
 }

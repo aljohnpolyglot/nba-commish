@@ -1,5 +1,7 @@
 # NBA Commish Sim
 
+> November 6 PBA pass: player bios now keep foreign pre-PBA leagues/clubs and show same-conference team stints; historical namesakes no longer enter the modern import pool. Four-point attempts were calibrated on both simulator paths. All-Star Saturday and Sunday can be watched or simulated separately, with import tasks following Sunday. Focused checks pass; the exact browser save remains for live verification.
+
 > September 5 Turkish supplement: the supplied TBLStat 2008/09 JSON adds 191 regular-season rows for 193 matched identities without replacing Proballers roster/ratings or other seasons' statistics. Three missing portrait URLs are filled (94 remain). Unmatched identities, exact multi-club splits and other source/jersey gaps remain non-urgent in `TODO.md`; focused merge/Europe-backfill checks and TypeScript pass. Euro Social still uses local personas; authenticated research into real X accounts is not evidenced as completed.
 
 > September 5 recovery: Euro-2019 now has a dated NBA-waiver market with cutoff and external-identity protection; Chalmers' Euro biography restores his NBA titles and canonical draft attribution, Abrines reuses his dated club source, and the Bio Hero can wrap without clipping the name. Focused production/renderer checks and TypeScript pass. Full browser acceptance remains separately pending; no save migration, startup-test loop or model-weight cleanup was performed. Current remaining requirements are in `TODO.md`.

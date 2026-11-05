@@ -142,7 +142,7 @@ function buildStatRow(rows: RawPbaStatsRow[], player: NBAPlayer, season: number)
 
   return {
     season,
-    tid: player.tid,
+    tid: league.tag === 'PBA' ? player.tid : -1,
     gp,
     gs: rows.reduce((sum, row) => sum + numberValue(row.gs), 0),
     min,
@@ -170,6 +170,8 @@ function buildStatRow(rows: RawPbaStatsRow[], player: NBAPlayer, season: number)
     efgPct: fga > 0 ? ((fg + 0.5 * tp) / fga) * 100 : 0,
     ...(league as any),
     ...(abbrev ? { abbrev, teamAbbrev: abbrev, tm: abbrev } : {}),
+    teamName: rows[0]?.team,
+    _sourceAge: numberValue(rows[0]?.age),
     _archiveCompetitionId: competitionIdForLeague(rows[0]?.league),
     _seasonLabel: seasonLabel(rows[0]?.season),
     _source: 'pba-stats-archive',
@@ -213,6 +215,9 @@ export async function loadPbaStatsForPlayers(players: NBAPlayer[], options: Load
       if (!year || numberValue(row.gp) <= 0) continue;
       if (options.maxSeason != null && year > options.maxSeason) continue;
       if (excludedSeasons.has(year)) continue;
+      const birthYear = Number(player.born?.year) || (options.maxSeason != null && player.age ? options.maxSeason + 1 - player.age : 0);
+      const sourceAge = numberValue(row.age);
+      if (birthYear > 1900 && (year < birthYear + 14 || (sourceAge > 0 && Math.abs(sourceAge - (year - birthYear)) > 2))) continue;
       const competitionId = competitionIdForLeague(row.league) ?? `league:${String(row.league ?? '').trim() || 'unknown'}`;
       const key = `${year}|${competitionId}`;
       if (!bySeasonCompetition.has(key)) bySeasonCompetition.set(key, []);

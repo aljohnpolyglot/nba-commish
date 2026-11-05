@@ -117,7 +117,10 @@ export const autoLockThroneField = async (state: GameState): Promise<Partial<Gam
   }
 };
 
-export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<GameState>> => {
+export const autoSimAllStarWeekend = async (
+  state: GameState,
+  onlyDay?: 'saturday' | 'sunday',
+): Promise<Partial<GameState>> => {
   logPlanEvent('autoResolvers.autoSimAllStarWeekend', 'fire', `date=${state.date}`);
   if (state.leagueStats?.uiMode === 'pba_isolated') {
     const offseasonTaskState = state.offseasonChecklist?.pbaAllStarWeekend;
@@ -199,10 +202,12 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
           leagueStats,
           allStar,
         } as GameState,
-        getPbaAllStarWeekendSimulationFlags(stateForSim),
+        onlyDay
+          ? { friday: false, saturday: onlyDay === 'saturday', sunday: onlyDay === 'sunday' }
+          : getPbaAllStarWeekendSimulationFlags(stateForSim),
       );
       const simulatedAllStar = patch.allStar ?? allStar;
-      const danceContest = isDanceContestEnabled(leagueStats)
+      const danceContest = onlyDay !== 'saturday' && isDanceContestEnabled(leagueStats)
         ? simulatedAllStar.danceContest ?? withDeterministicRandom(
             buildAllStarEventSeed(stateForSim, 'allstar-dance-contest'),
             () => simulateDanceContest(simulatedAllStar.roster ?? []),

@@ -77,6 +77,7 @@ import {
 } from '../../services/commissionerTasks/taskRegistry';
 import { getNextPbaLocalFreeAgencyDay } from '../../services/pba/localFreeAgencyAi';
 import { getAllStarWeekendDates } from '../../services/allStar/allStarWeekendDates';
+import { isDunkContestEnabled, isThreePointContestEnabled, isSkillsChallengeEnabled, isShootingStarsEnabled } from '../../services/allStar/allStarEventAvailability';
 import { isPbaAllStarWeekendPending } from '../../services/pba/allStar';
 import { getLeagueCalendarDates } from '../../services/leagueCalendar';
 import {
@@ -677,7 +678,31 @@ export const PlayButton: React.FC<PlayButtonProps> = ({ setCurrentView }) => {
       const pbaAllStarStart = toISODateString(pbaAllStarDates.breakStart);
       const pbaAllStarPending = isPbaAllStarWeekendPending(state);
       if (pbaAllStarPending && norm >= pbaAllStarStart) {
-        return [{ label: 'Open PBA All-Star Weekend', action: () => navigate('All-Star' as Tab) }];
+        const watch = (label: string, tab: NonNullable<typeof state.pendingAllStarTab>): PlayOption => ({
+          label,
+          action: async () => {
+            await dispatchAction({ type: 'UPDATE_STATE', payload: { pendingAllStarTab: tab } } as any);
+            navigate('All-Star' as Tab);
+          },
+        });
+        const saturday = norm === toISODateString(pbaAllStarDates.saturday);
+        const sunday = norm === toISODateString(pbaAllStarDates.allStarGame);
+        const options: PlayOption[] = [];
+        if (saturday) {
+          if (isThreePointContestEnabled(state.leagueStats) && !state.allStar?.threePointContest?.complete) options.push(watch('Watch 3-Point Contest', 'three-point'));
+          if (isDunkContestEnabled(state.leagueStats) && !state.allStar?.dunkContest?.complete) options.push(watch('Watch Dunk Contest', 'dunk'));
+          if (isSkillsChallengeEnabled(state.leagueStats) && !state.allStar?.skillsChallenge?.complete) options.push(watch('Watch Skills Challenge', 'skills'));
+          if (isShootingStarsEnabled(state.leagueStats) && !state.allStar?.shootingStars?.complete) options.push(watch('Watch Shooting Stars', 'shooting-stars'));
+        }
+        if (sunday) options.push(watch('Watch PBA All-Star Game', 'overview'));
+        if (saturday || sunday) options.push({
+          label: 'Simulate Day',
+          action: () => {
+            setOpen(false);
+            void dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'pbaAllStarWeekend', day: saturday ? 'saturday' : 'sunday' } } as any);
+          },
+        });
+        return options.length ? options : [watch('Open PBA All-Star Weekend', 'overview')];
       }
       const allStarBlocksTarget = (date: string | null) =>
         pbaAllStarPending && norm < pbaAllStarStart && !!date && date >= pbaAllStarStart;

@@ -49,6 +49,7 @@ import { getCentralFreeAgencyDays } from '../../services/freeAgency/freeAgencyDe
 import { applySeasonRollover } from '../../services/logic/seasonRollover';
 import { autoSignPbaImportsForLazySim } from '../../services/logic/lazySimRunnerHelpers';
 import { getAllStarWeekendDates } from '../../services/allStar/allStarWeekendDates';
+import { areAllStarSaturdayEventsComplete } from '../../services/allStar/allStarSaturdayCompletion';
 import { getEffectivePbaConference } from '../../services/pba/importManager';
 import { bookEuroMediaRights } from '../../services/euro/mediaRights';
 import { promoteEuroAcademyPlayers } from '../../services/euroScouting/pipeline';
@@ -228,13 +229,13 @@ export function getCompletedSeasonForSummary(state: GameState): number | undefin
 const isUnresolvedOffseasonRow = (status: string | undefined): boolean =>
   status === 'pending' || status === 'in-progress';
 
-async function resolvePbaAllStarTaskState(state: GameState): Promise<{ state: GameState; completed: boolean }> {
+async function resolvePbaAllStarTaskState(state: GameState, onlyDay?: 'saturday' | 'sunday'): Promise<{ state: GameState; completed: boolean }> {
   const { autoSimAllStarWeekend } = await import('../../services/logic/autoResolvers');
   const stateForSim = {
     ...state,
     offseasonChecklist: setRowStatus(state.offseasonChecklist, 'pbaAllStarWeekend', 'done'),
   } as GameState;
-  const patch = await autoSimAllStarWeekend(stateForSim);
+  const patch = await autoSimAllStarWeekend(stateForSim, onlyDay);
   const { _deferred, ...resolvedPatch } = patch as any;
   void _deferred;
   const completed = (resolvedPatch.allStar ?? stateForSim.allStar)?.weekendComplete === true;
@@ -855,11 +856,21 @@ export async function handleOffseasonDispatchAction({
       return true;
     }
     if (row === 'pbaAllStarWeekend' && isPbaIsolatedMode(stateRef.current)) {
+      if (action.payload?.day === 'saturday') {
+        const resolved = await resolvePbaAllStarTaskState(stateRef.current, 'saturday');
+        const sunday = toISODateString(getAllStarWeekendDates(stateRef.current.leagueStats.year, stateRef.current.leagueStats).allStarGame);
+        stateRef.current = advancePbaAllStarTaskCalendar(resolved.state, sunday);
+        setState(stateRef.current);
+        return true;
+      }
       const advance = getPbaAllStarTaskCompletionTarget(stateRef.current);
       if (advance) {
         stateRef.current = advancePbaAllStarTaskCalendar(stateRef.current, advance.targetDate);
       }
-      const resolved = await resolvePbaAllStarTaskState(stateRef.current);
+      const resolved = await resolvePbaAllStarTaskState(
+        stateRef.current,
+        areAllStarSaturdayEventsComplete(stateRef.current) ? 'sunday' : undefined,
+      );
       stateRef.current = resolved.state;
       setState(resolved.state);
       if (resolved.completed && resolved.state.offseasonChecklist?.pbaImportSearch === 'in-progress') {

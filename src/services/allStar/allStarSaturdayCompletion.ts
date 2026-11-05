@@ -46,6 +46,12 @@ export function shouldAdvanceAfterAllStarEventDay(state: GameState): boolean {
   const isFriday = current === normalizeDate(dates.risingStars.toISOString());
   const isSunday = current === normalizeDate(dates.allStarGame.toISOString());
   if (!isFriday && !isSunday) return false;
+  if (isSunday && state.leagueStats.uiMode === 'pba_isolated' && (
+    state.offseasonChecklist?.pbaImportSearch === 'pending'
+    || state.offseasonChecklist?.pbaImportSearch === 'in-progress'
+    || state.offseasonChecklist?.pbaImportDecision === 'pending'
+    || state.offseasonChecklist?.pbaImportDecision === 'in-progress'
+  )) return false;
   const games = (state.schedule ?? []).filter(game =>
     normalizeDate(game.date) === current && (
       (isFriday && (game.isRisingStars || game.isCelebrityGame)) ||

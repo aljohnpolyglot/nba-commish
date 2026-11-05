@@ -37,7 +37,7 @@ export function pickShotZone(shooter: PlayerComposite, rules?: ShotRules, offens
     rim:      ZONE_DISTRIBUTION.rim      * (0.4 + 0.8 * shooter.rim + 0.4 * shooter.driving) * (offense?.gameplayModifiers?.rimRateMult ?? 1),
     midRange: ZONE_DISTRIBUTION.midRange * (0.4 + 0.9 * shooter.midRange) * (offense?.gameplayModifiers?.midRangeRateMult ?? 1),
     three:    threeOn ? ZONE_DISTRIBUTION.three * threeCurve * (offense?.gameplayModifiers?.threePointRateMult ?? 1) : 0,
-    four:     fourOn ? 0.02 * Math.pow(threeTendency + lowShooterLift * 0.9, 1.5) * (rules?.fourPointRateMult ?? 1) : 0,
+    four:     fourOn ? 0.095 * Math.pow(threeTendency + lowShooterLift * 0.9, 1.5) * (rules?.fourPointRateMult ?? 1) : 0,
     lowPost:  ZONE_DISTRIBUTION.lowPost  * Math.pow(shooter.lowPost + 0.15, 1.3) * (offense?.gameplayModifiers?.lowPostRateMult ?? 1),
   };
   const total = w.rim + w.midRange + w.three + w.four + w.lowPost;

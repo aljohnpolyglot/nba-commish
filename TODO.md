@@ -1,8 +1,14 @@
 # NBA Commish — TODO
 
-Stand: 5. September 2026.
+Stand: 6. November 2026.
 
 Diese Datei enthält ausschließlich Arbeit, für die noch Implementierung, eine konkrete Quelle/Entscheidung oder aussagekräftige Verifikation fehlt. Abgeschlossene Implementierung und historische Session-Evidenz stehen in [`CHANGELOG.md`](./CHANGELOG.md). Bewusst deferred Produktideen stehen in [`NEW_FEATURES.md`](./NEW_FEATURES.md).
+
+## 6. November — PBA-Screenshot-Batch: Live-Verifikation
+
+- [ ] **Verification only — konkreter User-Save:** Nach Deployment im Save `nba_commish_save_243dfdc0-dfe3-4df9-afde-0dbcb312dffd` Panopios 2017–19 Fremdligen/Clubs und 2025–26 Team-Splits prüfen; Herb Jones/Brandon Williams dürfen keine alten PBA-Statistiken als moderne Free Agents erben. Ein bereits gespeicherter falscher Importstatus wird nicht durch eine Save-Migration umgeschrieben.
+- [ ] **Verification only — PBA-All-Star-Ablauf:** Im selben Save Samstag die einzelnen Watch-Optionen und `Simulate Day`, Sonntag `Watch PBA All-Star Game` und `Simulate Day`, danach offene Import Search/Decision im Offseason-Rail prüfen. Fokuschecks decken den produktiven Samstag-/Sonntag-Simulatorpfad ab; Browser-/Reload-Abnahme fehlt.
+- [ ] **Verification only — Vierpunktverteilung:** In einem frisch weiter simulierten PBA-Conference-Save die sichtbaren Team-4PA/4PM über mehrere Spiele gegen den produktiven Fast-/Realistic-Benchmark prüfen. Vor Einführung der Linie bleiben 4PA/4PM null; NBA-, weitere External-, fictional- und GM-Gegenproben sind noch offen.
 
 ## 5. September — Recovery / Finish: verbleibende Arbeit
 

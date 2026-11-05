@@ -2,6 +2,14 @@
 
 Historical bug fixes, session notes, and architecture discoveries.
 
+## Session 6 (November 6, 2026) — PBA player history, four-point shots, and All-Star flow
+
+- PBA archive stats keep their original foreign competition, club, and age rather than inheriting the player's current PBA team; same-conference team stints appear below the conference total without inflating career totals (`src/services/pba/statsArchive.ts`, `src/components/central/view/playerBioPbaSeasonGrouping.ts`).
+- Age/season checks reject namesake matches in the PBA stats archive; historical imports with unknown birth dates and a source stint at least 20 years old remain retired rather than re-entering the modern free-agent pool (`src/services/pba/statsArchive.ts`, `src/services/pba/historicalImportPool.ts`). Existing saves are not migrated.
+- Fast and Realistic four-point attempts use PBA-calibrated frequency; the 2026 production benchmark yields roughly 4 team 4PA and 0.6–0.9 team 4PM per game across two seeds, while 2015 remains zero (`src/services/simulation/StatGenerator/initial.ts`, `src/services/simulation/realistic/shotResolver.ts`, `src/services/simulation/SimulatorKnobs.ts`, `scripts/benchmark-pba-sim.ts`).
+- PBA All-Star PlayButton offers the watchable Saturday contests and Sunday game with a separate `Simulate Day` action. Saturday sim leaves Sunday's game open; Sunday completion returns to Import Search. The schedule's Sunday action uses that same task completion, and automatic date advance waits for import decisions (`src/components/shared/PlayButton.tsx`, `src/components/allstar/AllStarView.tsx`, `src/components/schedule/view/ScheduleView.tsx`, `src/services/logic/autoResolversParts/allStarWeekendResolvers.ts`, `src/store/gameContext/offseasonDispatchActions.ts`, `src/services/allStar/allStarSaturdayCompletion.ts`).
+- Focused PBA history/identity, import-pool, weekend, and pre/post-four-point production checks pass. Exact user-save browser acceptance and broader mode matrix remain pending in TODO.
+
 ## September 5, 2026 — TBLStat 2008/09 supplemental merge
 
 - **FIXED — focused checks passed:** the byte-identical supplied TBLStat JSON supplements the existing Turkish importer with 191 Regular Season rows / 193 matched players, preserving original Proballers source files, ratings, existing roster identities and other seasons' stat rows. Ten multi-club aggregates retain all club provenance without inventing splits; absent ORB/DRB/BLK/PF remain absent. Supplemental shooting attempts do not change the loader's existing Proballers rating calibration (`scripts/import-turkish-historical-backfill.mjs`, `scripts/lib/turkish-tblstat-supplement.mjs`, `src/services/euroleagueRosterFetcher.ts`, `data/sources/turkish-bsl/`, runtime historical gzip).

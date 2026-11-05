@@ -104,6 +104,11 @@ export const AllStarView: React.FC = () => {
   );
   const allTeamsForLookup = isPba ? [...state.teams, ...pbaTeams] : contestTeams;
   const [activeTab, setActiveTab] = useState<AllStarTab>('overview');
+  useEffect(() => {
+    if (!state.pendingAllStarTab) return;
+    setActiveTab(state.pendingAllStarTab);
+    void dispatchAction({ type: 'UPDATE_STATE', payload: { pendingAllStarTab: undefined } } as any);
+  }, [dispatchAction, state.pendingAllStarTab]);
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<any | null>(null);
   const [showingHistory, setShowingHistory] = useState(false);
   const [historyVersion, setHistoryVersion] = useState(0);
@@ -179,7 +184,7 @@ export const AllStarView: React.FC = () => {
 
   const tabs = buildAllStarTabs({ allStar, currentDate, dates, leagueStats: allStarLeagueStats, phase, state });
   const visibleTabs = tabs.filter(tab => !tab.hidden);
-  const contentTab = visibleTabs.some(tab => tab.id === activeTab) ? activeTab : 'overview';
+  const contentTab = visibleTabs.some(tab => tab.id === activeTab && !tab.locked) ? activeTab : 'overview';
 
   if (showingHistory) {
     return (

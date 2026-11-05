@@ -54,6 +54,7 @@ export interface GameState {
   startModePolicy?: import('../services/lifecycle/startModePolicy').SeasonStartModePolicy;
   firstActionDate?: string;
   pendingScheduleFocus?: { date: string; gameId: number };
+  pendingAllStarTab?: 'overview' | 'dunk' | 'three-point' | 'shooting-stars' | 'skills';
   manualOffseasonBlockers?: OffseasonChecklistRow[];
   offseasonTaskDispositions?: Array<{
     cycleId: string;

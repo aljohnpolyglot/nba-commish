@@ -25,6 +25,7 @@ import {
 } from '../../allstar/AllStarSatelliteLiveContestOverlay';
 import { findBoxScoreForGame, findBoxScoreForScheduledGame } from '../../../utils/boxScoreLookup';
 import { shouldAdvanceAfterAllStarEventDay } from '../../../services/allStar/allStarSaturdayCompletion';
+import { getAllStarWeekendDates } from '../../../services/allStar/allStarWeekendDates';
 import { getDraftDate, toISODateString } from '../../../utils/dateUtils';
 import { getCurrentPbaOffseasonTaskTarget } from '../../../services/pba/offseasonTaskTarget';
 import { isDanceContestEnabled } from '../../../services/allStar/allStarEventAvailability';
@@ -246,6 +247,11 @@ export const ScheduleView: React.FC = () => {
   };
 
   const simulateDay = async () => {
+    if (pbaIsolated && ['pending', 'in-progress'].includes(state.offseasonChecklist?.pbaAllStarWeekend ?? '')
+      && normalizeDate(state.date) === toISODateString(getAllStarWeekendDates(state.leagueStats.year, state.leagueStats).allStarGame)) {
+      await dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'pbaAllStarWeekend' } } as any);
+      return;
+    }
     // Calendar advance is paused during offseason — user steps through
     // phases via the AUFGABEN sidebar instead. Avoids dual-driver bugs
     // where ADVANCE_DAY skips past Tag-counter ticks or option deadlines.
