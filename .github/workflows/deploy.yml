@@ -14,10 +14,8 @@ jobs:
           node-version: '20'
       - run: npm install
       - run: npm run build
-      - uses: cloudflare/pages-action@v1
+      - uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: nba-commish
-          directory: dist
-          branch: master
+          command: pages deploy dist --project-name=nba-commish --branch=master
